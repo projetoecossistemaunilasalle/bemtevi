@@ -12,15 +12,15 @@ export const supportContacts = {
   version: '0.1.0',
   status: 'draft',
   locale: 'pt-BR',
-  title: 'Voce nao esta sozinho(a).',
-  description: 'Se voce estiver em sofrimento agora, estas pessoas podem te ajudar.',
+  title: 'Você não está sozinho(a).',
+  description: 'Se você estiver em sofrimento agora, estas pessoas podem te ajudar.',
   contacts: [
     {
       id: 'support-cvv',
       name: 'CVV',
       phoneDisplay: '188',
       phoneHref: 'tel:188',
-      description: 'Centro de Valorizacao da Vida. Atendimento 24h, gratuito e sigiloso para apoio emocional e prevencao ao suicidio.',
+      description: 'Centro de Valorização da Vida. Atendimento 24h, gratuito e sigiloso para apoio emocional e prevenção ao suicídio.',
       review: pendingReview,
     },
     {
@@ -28,7 +28,7 @@ export const supportContacts = {
       name: 'SAMU',
       phoneDisplay: '192',
       phoneHref: 'tel:192',
-      description: 'Servico de Atendimento Movel de Urgencia. Para emergencias medicas que necessitem de intervencao imediata.',
+      description: 'Serviço de Atendimento Móvel de Urgência. Para emergências médicas que necessitem de intervenção imediata.',
       review: pendingReview,
     },
     {
@@ -36,9 +36,8 @@ export const supportContacts = {
       name: 'Bombeiros',
       phoneDisplay: '193',
       phoneHref: 'tel:193',
-      description: 'Corpo de Bombeiros. Para resgates, tentativas de suicidio em andamento ou situacoes de risco iminente a vida.',
+      description: 'Corpo de Bombeiros. Para resgates, tentativas de suicídio em andamento ou situações de risco iminente à vida.',
       review: pendingReview,
     },
   ],
 } satisfies SupportContactsContent;
-
