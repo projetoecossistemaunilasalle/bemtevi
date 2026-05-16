@@ -5,6 +5,7 @@ export interface EducationResource {
   title: string;
   source: string;
   description: string;
+  imageUrl?: string;
   tags: string[];
   href?: string;
   review: ReviewMetadata;

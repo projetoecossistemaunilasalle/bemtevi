@@ -11,14 +11,18 @@ export function ResourceDetailScreen() {
   return (
     <Page width="narrow">
       <Card className="p-6 flex flex-col gap-stack-sm">
+        {resource.imageUrl ? (
+          <div className="w-full h-48 rounded-lg overflow-hidden bg-surface-container-low flex items-center justify-center border border-outline-variant/20 mb-2">
+            <img alt="" className="w-full h-full object-cover opacity-90 mix-blend-multiply" src={resource.imageUrl} />
+          </div>
+        ) : null}
         <Badge tone="secondary">{resource.source}</Badge>
         <h1 className="font-headline-lg text-on-surface">{resource.title}</h1>
         <p className="font-body-lg text-on-surface-variant">{resource.description}</p>
         <p className="font-body-md text-on-surface-variant">
-          Este detalhe ainda e uma superficie inicial. A curadoria completa do recurso pertence ao front de Biblioteca de Educacao.
+          Este detalhe ainda é uma superfície inicial. A curadoria completa do recurso pertence ao front de Biblioteca de Educação.
         </p>
       </Card>
     </Page>
   );
 }
-
