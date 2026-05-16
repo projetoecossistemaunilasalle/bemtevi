@@ -7,6 +7,9 @@ const tones = {
 } as const;
 
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: keyof typeof tones }) {
-  return <span className={`px-3 py-1 rounded-full font-label-md ${tones[tone]}`}>{children}</span>;
+  return (
+    <span className={`inline-flex w-fit max-w-full items-center px-3 py-1 rounded-full font-label-md ${tones[tone]}`}>
+      {children}
+    </span>
+  );
 }
-

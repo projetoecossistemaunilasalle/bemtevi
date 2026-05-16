@@ -10,8 +10,6 @@ export interface HomeCopy extends ContentMetadata {
   title: string;
   subtitle: string;
   privacyReassurance: string;
-  howItWorksTitle: string;
-  howItWorksItems: string[];
   actions: HomeActionCopy[];
 }
 
