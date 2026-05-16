@@ -6,6 +6,7 @@ import { resumeFlow } from '../resumeFlow';
 import { suspendFlow } from '../suspendFlow';
 import { parseGuidedFlow } from '../parseFlow';
 import { validateFlow } from '../validateFlow';
+import { flowRegistry } from '../../../content/flows/registry';
 import type { GuidedFlow } from '../types';
 
 const validFlow: GuidedFlow = {
@@ -398,5 +399,52 @@ describe('flow runtime', () => {
     expect(nextState.safetyFlags['block-resume:safety-flow']).toBe(true);
     expect(nextState.transcript.map((message) => message.text)).toContain('Vamos te direcionar para apoio imediato.');
     expect(nextState.transcript.map((message) => message.text)).not.toContain('Este texto não deve aparecer antes do apoio.');
+  });
+
+  it('discovers JSON flows from the content folder without per-flow imports', () => {
+    const flowIds = flowRegistry.flows.map((flow) => flow.id);
+
+    expect(flowIds).toContain('srq20');
+  });
+
+  it('registers SRQ-20 from JSON as a normal guided flow entry phrase', () => {
+    const state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'work-stress');
+    const labels = resolveOptions(state, flowRegistry.flows).map((option) => option.label);
+
+    expect(labels).toContain('Quero responder o SRQ-20');
+  });
+
+  it('runs SRQ-20 JSON through the generic flow engine and resolves possible distress at score 7', () => {
+    let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
+
+    state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
+
+    for (let index = 0; index < 7; index += 1) {
+      state = advanceFlow(state, flowRegistry.flows, 'Sim');
+    }
+
+    for (let index = 7; index < 20; index += 1) {
+      state = advanceFlow(state, flowRegistry.flows, 'Não');
+    }
+
+    expect(state.activeNodeId).toBe('possible-distress-result');
+    expect(state.scores.srq20).toBe(7);
+    expect(state.transcript.at(-1)?.text).toContain('não é um diagnóstico');
+  });
+
+  it('routes SRQ-20 Q17 affirmative through generic JSON safety interruption', () => {
+    let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
+
+    state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
+
+    for (let index = 0; index < 16; index += 1) {
+      state = advanceFlow(state, flowRegistry.flows, 'Não');
+    }
+
+    state = advanceFlow(state, flowRegistry.flows, 'Sim');
+
+    expect(state.pendingNavigation).toBe('/apoio');
+    expect(state.safetyFlags['block-resume:srq20']).toBe(true);
+    expect(state.activeFlowId).toBeUndefined();
   });
 });

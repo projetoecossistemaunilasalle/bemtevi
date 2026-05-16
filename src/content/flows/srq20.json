@@ -1,0 +1,76 @@
+{
+  "id": "srq20",
+  "version": "1.0.0",
+  "locale": "pt-BR",
+  "title": "SRQ-20",
+  "type": "guided_conversation",
+  "status": "draft",
+  "entry": {
+    "nodeId": "consent",
+    "enteringPhrases": [
+      "Quero responder o SRQ-20",
+      "Quero fazer o questionário",
+      "Avaliar como estou",
+      "Ver como estou me sentindo"
+    ],
+    "transitionMessage": "Este é o SRQ-20, um questionário de rastreio. Ele ajuda a identificar sinais de sofrimento, mas não faz diagnóstico."
+  },
+  "nodes": {
+    "consent": {
+      "id": "consent",
+      "kind": "choice",
+      "text": "Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?",
+      "options": [
+        { "id": "accept", "label": "Quero responder", "next": "q1" },
+        { "id": "decline", "label": "Agora não", "next": "declined-result" }
+      ]
+    },
+    "q1": { "id": "q1", "kind": "choice", "text": "Você tem se sentido nervoso(a), tenso(a) ou preocupado(a) sem motivo claro?", "options": [{ "id": "yes", "label": "Sim", "next": "q2", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q2" }] },
+    "q2": { "id": "q2", "kind": "choice", "text": "Você tem tido dificuldade para dormir — demora para conseguir dormir ou acorda no meio da noite?", "options": [{ "id": "yes", "label": "Sim", "next": "q3", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q3" }] },
+    "q3": { "id": "q3", "kind": "choice", "text": "Você tem sentido medo ou receio de algo, mesmo sem saber bem o que é?", "options": [{ "id": "yes", "label": "Sim", "next": "q4", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q4" }] },
+    "q4": { "id": "q4", "kind": "choice", "text": "Você tem sentido o estômago ruim, com dor ou mal-estar, mesmo sem ter comido nada estranho?", "options": [{ "id": "yes", "label": "Sim", "next": "q5", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q5" }] },
+    "q5": { "id": "q5", "kind": "choice", "text": "Você tem tido tonturas ou sensação de cabeça leve?", "options": [{ "id": "yes", "label": "Sim", "next": "q6", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q6" }] },
+    "q6": { "id": "q6", "kind": "choice", "text": "Suas mãos tremem mesmo quando você não está fazendo esforço?", "options": [{ "id": "yes", "label": "Sim", "next": "q7", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q7" }] },
+    "q7": { "id": "q7", "kind": "choice", "text": "Você tem tido menos vontade de comer, mesmo quando é hora da refeição?", "options": [{ "id": "yes", "label": "Sim", "next": "q8", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q8" }] },
+    "q8": { "id": "q8", "kind": "choice", "text": "Você tem chorado com mais facilidade do que antes, mesmo por coisas pequenas?", "options": [{ "id": "yes", "label": "Sim", "next": "q9", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q9" }] },
+    "q9": { "id": "q9", "kind": "choice", "text": "Tem sido difícil sentir prazer ou alegria nas coisas que antes te faziam bem?", "options": [{ "id": "yes", "label": "Sim", "next": "q10", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q10" }] },
+    "q10": { "id": "q10", "kind": "choice", "text": "Você tem tido dificuldade para tomar decisões, mesmo as do dia a dia?", "options": [{ "id": "yes", "label": "Sim", "next": "q11", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q11" }] },
+    "q11": { "id": "q11", "kind": "choice", "text": "As tarefas do dia a dia — em casa ou no trabalho — têm parecido mais difíceis do que o normal?", "options": [{ "id": "yes", "label": "Sim", "next": "q12", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q12" }] },
+    "q12": { "id": "q12", "kind": "choice", "text": "Você sente que seu trabalho não está fazendo diferença ou que não está sendo útil?", "options": [{ "id": "yes", "label": "Sim", "next": "q13", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q13" }] },
+    "q13": { "id": "q13", "kind": "choice", "text": "Você tem perdido o interesse por coisas que antes considerava importantes?", "options": [{ "id": "yes", "label": "Sim", "next": "q14", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q14" }] },
+    "q14": { "id": "q14", "kind": "choice", "text": "Você tem se sentido sem valor ou como se não fosse capaz?", "options": [{ "id": "yes", "label": "Sim", "next": "q15", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q15" }] },
+    "q15": { "id": "q15", "kind": "choice", "text": "Você tem se sentido exausto(a), sem energia nem para as coisas básicas?", "options": [{ "id": "yes", "label": "Sim", "next": "q16", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q16" }] },
+    "q16": { "id": "q16", "kind": "choice", "text": "Você tem sentido alguma sensação desagradável no estômago, como aperto, queimação ou nojo?", "options": [{ "id": "yes", "label": "Sim", "next": "q17", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q17" }] },
+    "q17": { "id": "q17", "kind": "choice", "text": "Você já teve pensamentos de que seria melhor estar morto(a) ou de se machucar?", "options": [{ "id": "yes", "label": "Sim", "next": "q18", "effects": [{ "kind": "safety_interrupt", "message": "Agradecemos sua coragem em responder com sinceridade. Pensamentos assim merecem atenção e acolhimento profissional. Vamos te direcionar para recursos de apoio imediato. Você não está sozinho(a).", "destination": "/apoio", "blockResume": true }] }, { "id": "no", "label": "Não", "next": "q18" }] },
+    "q18": { "id": "q18", "kind": "choice", "text": "Você tem dormido mal — acorda cansado(a) mesmo depois de ter dormido?", "options": [{ "id": "yes", "label": "Sim", "next": "q19", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q19" }] },
+    "q19": { "id": "q19", "kind": "choice", "text": "Você tem se sentido preocupado(a) com coisas do dia a dia de um jeito que não consegue controlar?", "options": [{ "id": "yes", "label": "Sim", "next": "q20", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "q20" }] },
+    "q20": { "id": "q20", "kind": "choice", "text": "Você se cansa com facilidade, mesmo com atividades que antes não te cansavam?", "options": [{ "id": "yes", "label": "Sim", "next": "srq20-score", "effects": [{ "kind": "score", "scoreKey": "srq20", "value": 1 }] }, { "id": "no", "label": "Não", "next": "srq20-score" }] },
+    "srq20-score": {
+      "id": "srq20-score",
+      "kind": "score_branch",
+      "text": "Vou organizar suas respostas de forma cuidadosa.",
+      "scoreKey": "srq20",
+      "branches": [
+        { "id": "low-distress", "min": 0, "max": 6, "next": "low-distress-result" },
+        { "id": "possible-distress", "min": 7, "max": 20, "next": "possible-distress-result" }
+      ]
+    },
+    "declined-result": {
+      "id": "declined-result",
+      "kind": "result",
+      "text": "Tudo bem. Você pode responder o SRQ-20 em outro momento ou seguir com uma orientação mais breve."
+    },
+    "low-distress-result": {
+      "id": "low-distress-result",
+      "kind": "result",
+      "text": "Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia. Isso não significa que tudo está perfeito — mas sugere que, neste momento, você tem encontrado formas de cuidar de si. Continue prestando atenção em como se sente e valorize os momentos que te fazem bem.",
+      "recommendations": ["teacher-emotional-regulation-classroom"]
+    },
+    "possible-distress-result": {
+      "id": "possible-distress-result",
+      "kind": "result",
+      "text": "Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento. Isso não é um diagnóstico — é um sinal de que vale a pena prestar mais atenção em si mesmo(a). Muitas pessoas passam por fases assim, e buscar apoio é um ato de coragem, não de fraqueza.",
+      "recommendations": ["teacher-emotional-regulation-classroom"]
+    }
+  }
+}
