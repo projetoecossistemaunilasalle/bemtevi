@@ -46,9 +46,10 @@ Create the first generic flow content under:
 src/content/flows/
   registry.ts
   work-stress.ts
+  rest-recovery.ts
 ```
 
-The first non-questionnaire flow should cover a common teacher-oriented concern such as work overload or emotional exhaustion. It should be small enough to validate the engine without becoming a clinical intake.
+The first non-questionnaire flows should cover common teacher-oriented concerns such as work overload, emotional exhaustion, and rest recovery. Each flow should be small enough to validate the engine without becoming a clinical intake.
 
 Each flow should include stable metadata, entry node, explicit `entering_phrases`, transition message, nodes, options, optional recommendations, and optional safety rules.
 
@@ -95,6 +96,16 @@ current node options
 
 Typing may filter available choices, but submission must be limited to an existing option/action. No free-text user message should be treated as understood by the app.
 
+The Orientation UI should preserve the feel of a soothing chat:
+
+- answer options float as bubbles above the input;
+- clicking a bubble only autocompletes the input;
+- the user must press the send button to submit;
+- the send button is disabled until the input exactly matches one available option/action;
+- current node answers appear by default, while global actions and entering phrases can appear when the user types a matching phrase;
+- the composer is fixed above the bottom navigation on mobile;
+- the chat transcript is the only scrollable region in the responsive layout.
+
 Global actions should include at least `Quero apoio agora` → `/apoio`, `Ver contatos` → `/contatos`, `Ver materiais educativos` → `/educacao`, and `Encerrar por enquanto`.
 
 ---
@@ -108,12 +119,13 @@ Scope:
 1. define flow types in `src/domain/flow-engine/types.ts`;
 2. add a lightweight schema/validator module;
 3. create or finalize `src/content/flows/registry.ts`;
-4. add one small non-questionnaire flow;
+4. add at least two small non-questionnaire flows to validate real switching;
 5. add validation tests for valid and invalid flow shapes.
 
 Acceptance criteria:
 
 - flow content is JSON-compatible;
+- the registry contains switchable flows, not only test fixtures;
 - invalid `next` references fail validation;
 - entering phrases are explicit;
 - domain modules do not import React;
@@ -158,7 +170,7 @@ Scope:
 
 1. build constrained chat UI components under the orientation feature;
 2. render bot/user messages from engine state;
-3. show options as chips and searchable constrained choices;
+3. show options as floating chat bubbles that autocomplete the fixed composer;
 4. wire global actions to routes;
 5. remove the old step/slider prototype if fully replaced.
 
@@ -166,6 +178,9 @@ Acceptance criteria:
 
 - Orientation screen runs from flow content;
 - user cannot submit arbitrary free text;
+- clicking suggestions does not submit or navigate until the send button is pressed;
+- the send button is disabled unless the input exactly matches an available option;
+- the responsive layout avoids competing page and chat scroll regions;
 - UI copy does not imply real AI;
 - support route remains `/apoio`;
 - tests, typecheck, and build pass.
@@ -185,6 +200,7 @@ src/domain/flow-engine/suspendFlow.ts
 src/domain/flow-engine/resumeFlow.ts
 src/domain/flow-engine/safetyRules.ts
 src/content/flows/registry.ts
+src/content/flows/rest-recovery.ts
 src/content/flows/work-stress.ts
 src/features/orientation/OrientationScreen.tsx
 src/features/orientation/components/ChatTranscript.tsx

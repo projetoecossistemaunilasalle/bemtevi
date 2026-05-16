@@ -21,8 +21,9 @@
 - Create: `src/domain/flow-engine/safetyRules.ts` for the first no-op safety gate.
 - Create: `src/domain/flow-engine/__tests__/flow-engine.test.ts` for RED-GREEN coverage of validation, loading, option resolution, advancement, switching, and resume.
 - Create: `src/content/flows/work-stress.ts` for the first small teacher-oriented flow.
+- Create: `src/content/flows/rest-recovery.ts` for a second small teacher-oriented flow used by real flow switching.
 - Modify: `src/content/flows/registry.ts` to export validated flow content instead of the placeholder array.
-- Modify: `src/features/orientation/OrientationScreen.tsx` to render the constrained guided flow.
+- Modify: `src/features/orientation/OrientationScreen.tsx` to render the constrained guided flow as a clean chat surface.
 - Create: `src/features/orientation/__tests__/OrientationScreen.test.tsx` for UI constraints and route action coverage.
 - Modify: `docs/plans/README.md` to include this plan.
 
@@ -247,7 +248,7 @@ Expected: FAIL because the current screen is the hardcoded prototype.
 
 - [ ] **Step 3: Replace prototype with constrained guided chat**
 
-Render a polished, mobile-first Orientation screen from `flowRegistry.flows`, using transcript bubbles, stable option buttons, a filter input for available choices, and global actions routed through `useNavigate`. Do not persist state and do not imply AI understanding.
+Render a polished, mobile-first Orientation screen from `flowRegistry.flows`, using transcript bubbles, floating option chips, and a fixed chat composer. Clicking a suggestion should only fill the composer; the user submits by pressing the `Send` icon button. Disable send unless the input exactly matches an available option/action. Keep current node answers visually dominant, surface global actions through matching autocomplete, avoid extra explanatory panels, do not persist state, and do not imply AI understanding.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -282,9 +283,8 @@ Expected: Vite serves the app at `http://localhost:3000`.
 
 - [ ] **Step 3: Verify in browser**
 
-Open `http://localhost:3000/orientacao`, inspect desktop and mobile-ish viewports, click through at least one flow option, filter available options, and use one global action. Check that the UI is beautiful, calm, readable, responsive, and that the input cannot submit arbitrary free text.
+Open `http://localhost:3000/orientacao`, inspect desktop and mobile-ish viewports, click one suggestion and confirm it fills the input without submitting, press send and confirm the transcript advances, type a partial global action and confirm it appears through autocomplete, and use one global action. Check that the UI is beautiful, calm, readable, responsive, has only one practical scroll surface, and cannot submit arbitrary free text.
 
 - [ ] **Step 4: Refactor only if verification surfaces issues**
 
 Make focused fixes, then rerun the relevant test and browser check.
-

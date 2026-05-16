@@ -83,6 +83,8 @@ current node options
 + global support/navigation actions
 ```
 
+The visible UI should still feel like a conversation, not like a searchable form. In the Orientation screen, current node options appear as floating answer bubbles above the composer. Selecting one of these bubbles only fills the composer input; it does not submit the answer or navigate away. The send button becomes active only when the composer text exactly matches one available option/action, so arbitrary text cannot be submitted without adding warning copy.
+
 ---
 
 ## Flow Switching
@@ -111,6 +113,23 @@ Encerrar por enquanto
 ```
 
 The route target for immediate support should be `/apoio`, not `/crise`.
+
+Global actions may be available through the constrained autocomplete, but they should not visually crowd the default answer choices. The default empty-composer view should prioritize the current node's conversational answers.
+
+---
+
+## Orientation Chat UI Contract
+
+The Orientation route should render as a clean chat surface:
+
+- no extra page title or explanatory panel above the chat;
+- SeCuida messages stay on the left, with the chat icon next to the `SeCuida` sender label;
+- user-selected messages stay on the right;
+- option bubbles float on the right above the composer;
+- clicking an option bubble fills the input only;
+- the fixed composer sits above the mobile bottom navigation;
+- the send button uses the `Send` icon and is disabled unless the input exactly matches an available option;
+- the transcript is the only scrollable area on mobile, preventing competing page/chat scroll behavior.
 
 ---
 
@@ -156,6 +175,8 @@ Until Privacy/LGPD verification, treat this as in-memory session state only.
 * A new flow can be added without editing React components.
 * Flow switching works through `entering_phrases`.
 * Current node options and flow entry options appear together in autocomplete.
+* Suggestion bubbles autocomplete the composer but do not submit until the user presses send.
+* The composer send action is disabled unless the input exactly matches an available option/action.
 * The engine has no React dependency.
 * Invalid flow JSON fails validation before runtime.
 * Future dashboard can edit the same shape.
