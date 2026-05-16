@@ -1,11 +1,11 @@
 import type { ContentMetadata } from '../../domain/content/types';
+import type { GuidedFlow } from '../../domain/flow-engine/types';
+import { workStressFlow } from './work-stress';
 
 export const flowRegistry = {
   id: 'flow-registry',
-  version: '0.1.0',
+  version: '1.0.0',
   status: 'draft',
   locale: 'pt-BR',
-  flows: [],
-  note: 'Placeholder only. The full guided-flow schema and runtime belong to Front 05.',
-} satisfies ContentMetadata & { flows: unknown[]; note: string };
-
+  flows: [workStressFlow],
+} satisfies ContentMetadata & { flows: GuidedFlow[] };
