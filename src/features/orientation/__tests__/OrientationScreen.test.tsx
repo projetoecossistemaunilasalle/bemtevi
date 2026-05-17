@@ -18,7 +18,7 @@ describe('OrientationScreen', () => {
     expect(screen.queryByText('Sobrecarga na escola')).not.toBeInTheDocument();
   });
 
-  it('fills the input when the user chooses an available option and only advances after send', () => {
+  it('advances the flow immediately when the user clicks a bubble', () => {
     render(
       <MemoryRouter>
         <OrientationScreen />
@@ -27,13 +27,7 @@ describe('OrientationScreen', () => {
 
     fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
 
-    expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('Muitas tarefas ao mesmo tempo');
-    expect(
-      screen.queryByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar opção selecionada' }));
-
+    expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
     expect(
       screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
     ).toBeInTheDocument();
@@ -62,7 +56,6 @@ describe('OrientationScreen', () => {
     });
 
     fireEvent.click(screen.getByRole('option', { name: 'Quero responder o SRQ-20' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar opção selecionada' }));
 
     expect(screen.getByText(/Este é o SRQ-20/i)).toBeInTheDocument();
     expect(screen.getByText(/Antes de começar/i)).toBeInTheDocument();

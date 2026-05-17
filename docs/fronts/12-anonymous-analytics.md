@@ -6,6 +6,8 @@ Define aggregate-only analytics that help improve the app without violating anon
 
 This front should be designed early but implemented only after Privacy/LGPD approval.
 
+See also: [`12b-anonymous-analytics-lgpd-policy.md`](./12b-anonymous-analytics-lgpd-policy.md).
+
 ---
 
 ## Allowed Event Types

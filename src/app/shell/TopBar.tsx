@@ -25,7 +25,7 @@ export function TopBar() {
               key={to}
               to={to}
               className={({ isActive }) =>
-                `font-label-md px-4 py-2 min-h-11 flex items-center gap-2 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                `font-label-md px-4 py-2 min-h-11 flex items-center gap-2 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                   isActive
                     ? 'bg-primary-container text-on-primary-container'
                     : 'text-on-surface-variant hover:bg-surface-container-low'
@@ -34,7 +34,7 @@ export function TopBar() {
             >
               {({ isActive }) => (
                 <>
-                  <Icon size={20} fill={isActive ? 'currentColor' : 'none'} strokeWidth={isActive ? 2.5 : 2} />
+                  <Icon size={20} fill="none" strokeWidth={isActive ? 2.5 : 2} />
                   {label}
                 </>
               )}

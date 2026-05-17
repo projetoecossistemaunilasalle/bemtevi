@@ -38,18 +38,9 @@ There is no SRQ-20 screen, no SRQ-20 route, no `srq20.ts` workflow file, no per-
 
 ## Questionnaire Model
 
-Add questionnaire-oriented types under:
+Questionnaire-like flows are JSON guided-flow content executed by `src/domain/flow-engine`. There is no separate `src/domain/questionnaires/` runtime.
 
-```txt
-src/domain/questionnaires/
-  types.ts
-  questionnaireSchema.ts
-  validateQuestionnaire.ts
-  scoreQuestionnaire.ts
-  resolveQuestionnaireResult.ts
-```
-
-Questionnaire content should remain JSON-compatible and include consent, instrument metadata, fixed question IDs, answer options, scoring method, thresholds, interruption rules, recommendations, and non-diagnostic result copy.
+Questionnaire JSON content must include consent nodes, fixed question IDs, answer options with score effects, score branch thresholds, safety interrupt effects, result recommendations, and non-diagnostic result copy. All of these are generic flow engine capabilities, not questionnaire-specific types.
 
 ---
 
@@ -121,7 +112,7 @@ Acceptance criteria:
 
 Scope:
 
-1. add SRQ-20 questionnaire content under `src/content/flows/srq20.ts` or `src/content/questionnaires/srq20.ts`;
+1. add SRQ-20 questionnaire content as `src/content/flows/srq20.json`;
 2. register it with the flow registry;
 3. expose it from Orientation entry options;
 4. render consent, questions, interruption, and results through existing guided-flow UI;
@@ -137,20 +128,18 @@ Acceptance criteria:
 
 ---
 
-## Files Expected To Change First
+## Files That Changed
 
 ```txt
-src/domain/questionnaires/types.ts
-src/domain/questionnaires/questionnaireSchema.ts
-src/domain/questionnaires/validateQuestionnaire.ts
-src/domain/questionnaires/scoreQuestionnaire.ts
-src/domain/questionnaires/resolveQuestionnaireResult.ts
-src/domain/flow-engine/advanceFlow.ts
-src/domain/flow-engine/safetyRules.ts
-src/content/flows/registry.ts
-src/content/flows/srq20.ts
-src/features/orientation/OrientationScreen.tsx
-src/tests/questionnaires/*.test.ts
+src/domain/flow-engine/types.ts              — added FlowEffect, ScoreBranchFlowNode, pendingNavigation
+src/domain/flow-engine/parseFlow.ts          — new: validates unknown JSON into typed GuidedFlow
+src/domain/flow-engine/validateFlow.ts       — extended for score branches and effects
+src/domain/flow-engine/advanceFlow.ts        — executes score effects, safety interrupts, score branches
+src/domain/flow-engine/loadFlows.ts          — initializes pendingNavigation
+src/domain/flow-engine/resolveOptions.ts     — passes option effects through runtime options
+src/content/flows/srq20.json                 — new: SRQ-20 as JSON guided-flow content
+src/content/flows/registry.ts                — dynamic JSON discovery via import.meta.glob
+src/features/orientation/OrientationScreen.tsx — generic pendingNavigation effect
 ```
 
 ---

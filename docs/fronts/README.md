@@ -69,6 +69,10 @@ Each front has a corresponding `A` breakdown document with implementation slices
 | 13 | [`13-quality-validation-tooling.md`](./13-quality-validation-tooling.md) | [`13a-quality-validation-tooling-breakdown.md`](./13a-quality-validation-tooling-breakdown.md) |
 | 14 | [`14-dashboard-readiness.md`](./14-dashboard-readiness.md) | [`14a-dashboard-readiness-breakdown.md`](./14a-dashboard-readiness-breakdown.md) |
 
+Additional Privacy/LGPD decision note:
+
+- [`12b-anonymous-analytics-lgpd-policy.md`](./12b-anonymous-analytics-lgpd-policy.md)
+
 ---
 
 ## High-Level Dependency Map

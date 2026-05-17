@@ -1,73 +1,99 @@
 # Frontend Foundation Critique
 
-Review of the state after commit `87234c9` (Fronts 01-04 implementation).
+Original review of the state after commit `87234c9` (Fronts 01-04 implementation).
+
+Current status refreshed during the 2026-05-16 documentation audit.
+
+---
+
+## Status Summary
+
+| # | Issue | Current status | Current difficulty |
+|---|---|---|---|
+| 1 | "Como funciona" duplicated onboarding | Resolved in current `HomeScreen` | Easy if it regresses |
+| 2 | Missing Portuguese special characters | Mostly resolved in source content; manifest description still has `Orientacao` | Easy |
+| 3 | Immediate support action uses alarming icon | Still open: Home uses `AlertCircle` with amber treatment | Easy |
+| 4 | Breathing exercise lacks visual treatment | Resolved: dedicated animated `BreathingExercise` exists | Medium if redesigned |
+| 5 | Chat input floats mid-screen | Resolved: composer is fixed near viewport bottom | Medium if layout changes |
+| 6 | Education tab missing from bottom nav | Resolved: `Estudos` tab exists in bottom navigation | Easy if route/nav changes |
 
 ---
 
 ## 1. "Como funciona" section duplicated onboarding
 
-**File:** `src/features/home/HomeScreen.tsx`
+**Original file:** `src/features/home/HomeScreen.tsx`
 
-The "Como funciona" section duplicated the app-style starting screen. Now that onboarding exists as the first-run explanation layer, this section should stay out of Home. Home should focus on trust, the privacy reassurance, and the three main action paths.
+**Current status:** Resolved.
+
+The current Home screen keeps the page focused on trust, the privacy reassurance, and three main action paths. The app-style starting screen remains the explanation layer.
+
+Guardrail: do not reintroduce a regular visible "Como funciona" section on Home while onboarding exists as the first-run explanation.
 
 ---
 
-## 2. Missing special characters across all Portuguese text
+## 2. Missing special characters across Portuguese text
 
-**Files:** `src/content/copy/home.ts`, `src/content/support/contacts.ts`, `src/content/services/canoas-services.ts`, `src/features/support/SupportScreen.tsx`, `src/features/orientation/OrientationScreen.tsx`, `src/features/education/EducationLibraryScreen.tsx`, `src/features/privacy/PrivacyScreen.tsx`
+**Original files:** `src/content/copy/home.ts`, `src/content/support/contacts.ts`, `src/content/services/canoas-services.ts`, `src/features/support/SupportScreen.tsx`, `src/features/orientation/OrientationScreen.tsx`, `src/features/education/EducationLibraryScreen.tsx`, `src/features/privacy/PrivacyScreen.tsx`
 
-Every content file and screen component is missing Portuguese special characters (`é`, `ê`, `ç`, `á`, `ã`, `õ`, `ó`). Examples:
+**Current status:** Mostly resolved.
 
-- `"e"` instead of `"é"` (e.g. `"esta"` → `"está"`, `"e"` → `"é"`)
-- `"c"` instead of `"ç"` (e.g. `"praca"` → `"praça"`, `"prevencao"` → `"prevenção"`)
-- `"a"` instead of `"á"` (e.g. `"saude"` → `"saúde"`)
-- `"o"` instead of `"ó"` (e.g. `"orientacao"` → `"orientação"`)
+The source content and visible screen copy now use PT-BR accents in the inspected files. One remaining small issue is `public/manifest.webmanifest`, whose description still says `Orientacao` without accent.
 
-This affects the entire app and should be fixed globally.
+Recommended next action: fix manifest description when touching PWA metadata.
 
 ---
 
 ## 3. "Não estou bem agora" button uses an alarming icon
 
-**File:** `src/features/home/HomeScreen.tsx` (line 26)
+**File:** `src/features/home/HomeScreen.tsx`
 
-The immediate support button uses an `AlertCircle` icon (from `lucide-react`) colored amber `#F59E0B` with `fill="#F59E0B"`. The circle-with-exclamation-mark symbol conveys alert/danger rather than warmth or support. A friendlier icon and color would better match the app's calm, supportive tone.
+**Current status:** Open.
 
-The button's copy and label should also be reconsidered — `"Não estou bem agora"` can feel heavy and pressure-inducing. A softer, more inviting phrasing would better align with the supportive tone the app aims for.
+The immediate support action still uses an `AlertCircle` icon with an amber fill. That symbol can feel more like danger/alert than warm support.
+
+Recommended next action: switch to a calmer icon/treatment, such as a heart/helping-hands style already consistent with the support route. Also reconsider whether the action label should remain as direct as it is or become softer.
 
 ---
 
 ## 4. "Respire por um momento" section lacks visual treatment
 
-**File:** `src/features/support/SupportScreen.tsx` (lines 17-22)
+**Original file:** `src/features/support/SupportScreen.tsx`
 
-The breathing exercise section in the Support screen is a plain card with `bg-surface-container-low`, a subtle border, and plain text. It has no icon, illustration, animation, or any visual element that would make it stand out as an interactive/soothing feature. The instructions also lack special characters (`"ate"` → `"até"`, `"voce"` → `"você"`).
+**Current status:** Resolved.
+
+The support screen now uses `src/design-system/components/BreathingExercise.tsx`, with animated breathing phases, countdown, and start/stop behavior.
+
+Guardrail: keep breathing as a first-care action with clear instructions, not decorative filler.
 
 ---
 
 ## 5. Chat input floats in the middle of the screen
 
-**File:** `src/features/orientation/OrientationScreen.tsx` (StepChat component)
+**Original file:** `src/features/orientation/OrientationScreen.tsx`
 
-The chat input uses `mt-auto` + `sticky bottom-0` to anchor to the bottom of the flex container. However, because the container uses `flex-grow` and `h-full`, on tall screens with little content the input appears to float somewhere in the middle vertically. It should be consistently pinned to the bottom of the viewport.
+**Current status:** Resolved.
 
----
+The composer is now fixed near the bottom of the viewport, with suggestions positioned above it. This matches the intended chat surface better than the previous flex/sticky behavior.
 
-## 6. "Estudos" (Education) tab is missing from bottom navigation
-
-**File:** `src/app/shell/BottomNav.tsx`
-
-The BottomNav has only 4 items: Início, Orientação, Contatos, Apoio. The `/educacao` route exists in `src/app/routes.ts` and `EducationLibraryScreen` is rendered by the router, but there is no tab linking to it. Users can only access Education by typing the URL manually.
+Guardrail: if the orientation layout changes, verify desktop and mobile viewport behavior.
 
 ---
 
-## Summary
+## 6. "Estudos" tab missing from bottom navigation
 
-| # | Issue | Severity | File(s) |
-|---|---|---|---|
-| 1 | "Como funciona" duplicates onboarding | Medium | `src/features/home/HomeScreen.tsx` |
-| 2 | Missing special characters in PT-BR text | High | All content and screen files |
-| 3 | Alarming icon on support button | Medium | `src/features/home/HomeScreen.tsx` |
-| 4 | "Respire por um momento" lacks visual treatment | Low | `src/features/support/SupportScreen.tsx` |
-| 5 | Chat input not pinned to bottom | Medium | `src/features/orientation/OrientationScreen.tsx` |
-| 6 | Education tab missing from bottom nav | High | `src/app/shell/BottomNav.tsx` |
+**Original file:** `src/app/shell/BottomNav.tsx`
+
+**Current status:** Resolved.
+
+The bottom navigation now has five items: Início, Orientação, Estudos, Contatos, Apoio.
+
+Guardrail: keep `/educacao` reachable from primary navigation unless product/design intentionally changes the information architecture.
+
+---
+
+## Open Follow-Ups
+
+- Replace or soften the Home immediate-support icon treatment.
+- Align privacy copy with the onboarding `localStorage` flag.
+- Fix the manifest description accent.
+- Keep seed support, service, and education content marked as reviewable until clinical/editorial review is complete.

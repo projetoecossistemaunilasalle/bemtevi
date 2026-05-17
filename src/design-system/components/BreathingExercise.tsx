@@ -89,7 +89,7 @@ export function BreathingExercise() {
 
       <button
         onClick={handleToggle}
-        className="font-label-md text-primary bg-surface-container-lowest border border-primary/20 rounded-full px-6 py-3 hover:bg-primary-container transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="font-label-md text-primary bg-surface-container-lowest border border-primary/20 rounded-full px-6 py-3 hover:bg-primary-container hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         {active ? 'Parar' : 'Começar a respirar'}
       </button>

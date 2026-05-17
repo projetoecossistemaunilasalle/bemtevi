@@ -47,7 +47,7 @@ export function OrientationScreen() {
   }, [navigate, state.pendingNavigation]);
 
   function selectOption(option: RuntimeOption) {
-    setInputValue(option.label);
+    submitOption(option);
   }
 
   function submitOption(option: RuntimeOption) {
