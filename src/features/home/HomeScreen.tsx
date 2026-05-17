@@ -35,7 +35,7 @@ export function HomeScreen() {
             </Card>
           </section>
 
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-stack-sm max-w-5xl w-full mx-auto">
+          <section className="grid grid-cols-1 gap-stack-sm max-w-5xl w-full mx-auto">
             <ActionCard
               icon={<AlertCircle className="text-[#F59E0B]" size={22} fill="#F59E0B" color="#fff" />}
               label={supportAction.label}
