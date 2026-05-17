@@ -1,15 +1,35 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OrientationScreen } from '../OrientationScreen';
 
+const TYPING_DELAY_MS = 1200;
+
+function renderOrientation() {
+  render(
+    <MemoryRouter>
+      <OrientationScreen />
+    </MemoryRouter>,
+  );
+}
+
+function advanceInitialLoad() {
+  act(() => {
+    vi.advanceTimersByTime(TYPING_DELAY_MS);
+  });
+}
+
 describe('OrientationScreen', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders guided orientation without free-text submission', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
 
     expect(screen.queryByText('Orientação sem cadastro')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Orientação guiada' })).not.toBeInTheDocument();
@@ -19,13 +39,11 @@ describe('OrientationScreen', () => {
   });
 
   it('advances the flow immediately when the user clicks a bubble', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+    advanceInitialLoad();
 
     expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
     expect(
@@ -34,61 +52,45 @@ describe('OrientationScreen', () => {
   });
 
   it('exposes the conversation as an accessible log with sender context', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
     expect(screen.getAllByText('SeCuida')).toHaveLength(2);
   });
 
   it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
       target: { value: 'SRQ-20' },
     });
 
     fireEvent.click(screen.getByRole('option', { name: 'Quero responder o SRQ-20' }));
+    advanceInitialLoad();
 
     expect(screen.getByText(/Este é o SRQ-20/i)).toBeInTheDocument();
     expect(screen.getByText(/Antes de começar/i)).toBeInTheDocument();
   });
 
   it('does not render a questionnaire-specific screen entry', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
 
     expect(screen.queryByRole('link', { name: /SRQ-20/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Responder SRQ-20/i })).not.toBeInTheDocument();
   });
 
   it('keeps the composer fixed as a chat input above the page navigation', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
 
     expect(screen.getByTestId('orientation-composer')).toHaveClass('fixed');
     expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toHaveAttribute('data-icon', 'send');
   });
 
   it('only enables send when the input exactly matches an available option', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
     const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
@@ -103,11 +105,8 @@ describe('OrientationScreen', () => {
   });
 
   it('shows matching options in an autocomplete overlay above the input', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
       target: { value: 'descansar' },
@@ -119,11 +118,8 @@ describe('OrientationScreen', () => {
   });
 
   it('hides suggestions when input exactly matches an option label', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
 
@@ -138,11 +134,8 @@ describe('OrientationScreen', () => {
   });
 
   it('shows suggestions when trailing space breaks strict match but send stays enabled', () => {
-    render(
-      <MemoryRouter>
-        <OrientationScreen />
-      </MemoryRouter>,
-    );
+    renderOrientation();
+    advanceInitialLoad();
 
     const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
     const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
