@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { AlertCircle, Compass, MapPin, Shield } from 'lucide-react';
+import { Compass, MapPin, MessageCircleHeart, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { homeCopy } from '../../content/copy/home';
@@ -37,7 +37,7 @@ export function HomeScreen() {
 
           <section className="grid grid-cols-1 gap-stack-sm max-w-5xl w-full mx-auto">
             <ActionCard
-              icon={<AlertCircle className="text-[#F59E0B]" size={22} fill="#F59E0B" color="#fff" />}
+              icon={<MessageCircleHeart className="text-primary" size={22} />}
               label={supportAction.label}
               description={supportAction.description}
               onClick={() => navigate(routes.support)}

@@ -11,8 +11,8 @@ export const homeCopy = {
   actions: [
     {
       id: 'immediate-support',
-      label: 'Preciso de acolhimento agora',
-      description: 'Acesse contatos imediatos e um primeiro cuidado de regulação.',
+      label: 'Quero conversar com alguém',
+      description: 'Converse agora com uma pessoa preparada para ouvir e acolher.',
     },
     {
       id: 'guided-orientation',
