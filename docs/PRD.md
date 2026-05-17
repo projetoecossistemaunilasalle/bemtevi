@@ -172,7 +172,8 @@ It should operate as a constrained guided conversation:
 * user responses appear on the right;
 * the user may type into an autocomplete input;
 * only predefined options can be submitted;
-* current options are also shown as chips before typing.
+* current options are also shown as chips before typing;
+* chips hide when the input exactly matches an option label and reappear when it no longer does.
 
 The app must not pretend that this is real AI.
 

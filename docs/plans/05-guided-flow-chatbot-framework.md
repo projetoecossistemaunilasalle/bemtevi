@@ -248,7 +248,7 @@ Expected: FAIL because the current screen is the hardcoded prototype.
 
 - [ ] **Step 3: Replace prototype with constrained guided chat**
 
-Render a polished, mobile-first Orientation screen from `flowRegistry.flows`, using transcript bubbles, floating option chips, and a fixed chat composer. Clicking a suggestion should only fill the composer; the user submits by pressing the `Send` icon button. Disable send unless the input exactly matches an available option/action. Keep current node answers visually dominant, surface global actions through matching autocomplete, avoid extra explanatory panels, do not persist state, and do not imply AI understanding.
+Render a polished, mobile-first Orientation screen from `flowRegistry.flows`, using transcript bubbles, floating option chips, and a fixed chat composer. Clicking a suggestion should only fill the composer; the user submits by pressing the `Send` icon button. Disable send unless the input exactly matches an available option/action. Hide the suggestion list when the input strictly matches an option label and show it again when the input changes. Keep current node answers visually dominant, surface global actions through matching autocomplete, avoid extra explanatory panels, do not persist state, and do not imply AI understanding.
 
 - [ ] **Step 4: Run test to verify it passes**
 

@@ -102,6 +102,7 @@ The Orientation UI should preserve the feel of a soothing chat:
 - clicking a bubble only autocompletes the input;
 - the user must press the send button to submit;
 - the send button is disabled until the input exactly matches one available option/action;
+- the suggestion list hides when the input strictly matches an option label and reappears when it no longer does;
 - current node answers appear by default, while global actions and entering phrases can appear when the user types a matching phrase;
 - the composer is fixed above the bottom navigation on mobile;
 - the chat transcript is the only scrollable region in the responsive layout.
@@ -180,6 +181,7 @@ Acceptance criteria:
 - user cannot submit arbitrary free text;
 - clicking suggestions does not submit or navigate until the send button is pressed;
 - the send button is disabled unless the input exactly matches an available option;
+- the suggestion list hides when the input strictly matches an option label and reappears when it no longer does;
 - the responsive layout avoids competing page and chat scroll regions;
 - UI copy does not imply real AI;
 - support route remains `/apoio`;
