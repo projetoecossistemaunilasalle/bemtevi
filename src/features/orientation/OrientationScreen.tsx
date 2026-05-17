@@ -5,7 +5,9 @@ import { flowRegistry } from '../../content/flows/registry';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowStateFromRegistry } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
-import type { ChatMessage, RuntimeOption } from '../../domain/flow-engine/types';
+import type { ChatMessage, FlowRuntimeState, RuntimeOption } from '../../domain/flow-engine/types';
+
+const TYPING_DELAY_MS = 1200
 
 const flows = flowRegistry.flows;
 
@@ -13,8 +15,12 @@ export function OrientationScreen() {
   const navigate = useNavigate();
   const logRef = useRef<HTMLDivElement | null>(null);
   const [inputValue, setInputValue] = useState('');
-  const [state, setState] = useState(() => createInitialFlowStateFromRegistry(flows, 'work-stress'));
-  const options = useMemo(() => resolveOptions(state, flows), [state]);
+  const [state, setState] = useState<FlowRuntimeState | null>(null);
+  const [visibleCount, setVisibleCount] = useState(0);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRevealing = state === null || visibleCount < state.transcript.length;
+
+  const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing]);
   const visibleOptions = useMemo(() => {
     const normalizedInput = inputValue.trim().toLocaleLowerCase('pt-BR');
     const strictMatch = options.find(
@@ -38,26 +44,64 @@ export function OrientationScreen() {
     if (log) {
       log.scrollTop = log.scrollHeight;
     }
-  }, [state.transcript, visibleOptions.length]);
+  }, [state?.transcript, visibleOptions.length, visibleCount]);
 
   useEffect(() => {
-    if (state.pendingNavigation) {
+    if (state && !isRevealing && state.pendingNavigation) {
       navigate(state.pendingNavigation);
     }
-  }, [navigate, state.pendingNavigation]);
+  }, [navigate, state, isRevealing]);
+
+  useEffect(() => {
+    typingTimerRef.current = setTimeout(() => {
+      const initialState = createInitialFlowStateFromRegistry(flows, 'work-stress');
+      setState(initialState);
+      setVisibleCount(initialState.transcript.length);
+    }, TYPING_DELAY_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, []);
 
   function selectOption(option: RuntimeOption) {
     submitOption(option);
   }
 
   function submitOption(option: RuntimeOption) {
+    if (!state) return;
+
     if (option.kind === 'global_action' && option.target !== 'end') {
       navigate(option.target);
       return;
     }
 
-    setState((currentState) => advanceFlow(currentState, flows, option.label));
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     setInputValue('');
+
+    const preAdvanceCount = state.transcript.length;
+    const newState = advanceFlow(state, flows, option.label);
+
+    let immediateCount: number;
+    if (option.kind === 'entry_phrase') {
+      immediateCount = 0;
+    } else if (option.kind === 'resume_flow') {
+      immediateCount = newState.transcript.length;
+    } else {
+      immediateCount = preAdvanceCount + 1;
+    }
+
+    setState(newState);
+    setVisibleCount(immediateCount);
+
+    const totalMessages = newState.transcript.length;
+    if (immediateCount < totalMessages) {
+      typingTimerRef.current = setTimeout(() => {
+        setVisibleCount(totalMessages);
+      }, TYPING_DELAY_MS);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -78,9 +122,10 @@ export function OrientationScreen() {
           ref={logRef}
           className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-56 pt-5 [scrollbar:none] md:px-6 md:pb-48 [&::-webkit-scrollbar]:hidden"
         >
-          {state.transcript.map((message) => (
+          {state?.transcript.slice(0, visibleCount).map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
+          {isRevealing && <TypingIndicator />}
         </div>
 
         <form
@@ -126,6 +171,7 @@ export function OrientationScreen() {
               placeholder="Digite ou escolha uma opção"
               aria-autocomplete="list"
               aria-controls="orientation-suggestions"
+              disabled={isRevealing}
               className="min-h-11 min-w-0 flex-1 bg-transparent font-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
             />
             <button
@@ -176,4 +222,38 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       )}
     </article>
   );
+}
+
+function TypingIndicator() {
+  return (
+    <article className="flex items-end gap-2 justify-start" aria-hidden="true">
+      <style>{`
+        @keyframes orientation-typing-bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-6px); }
+        }
+        .orientation-typing-dot {
+          width: 8px;
+          height: 8px;
+          background: #6b7280;
+          border-radius: 50%;
+          display: inline-block;
+          animation: orientation-typing-bounce 1.2s infinite ease-in-out;
+        }
+      `}</style>
+      <div className="flex max-w-[84%] flex-col gap-1 items-start">
+        <span className="flex items-center gap-2 font-label-md text-on-surface-variant">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
+            <MessageCircle size={17} />
+          </span>
+          SeCuida
+        </span>
+        <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
+          <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />
+          <span className="orientation-typing-dot" style={{ animationDelay: '0.15s', marginLeft: 4 }} />
+          <span className="orientation-typing-dot" style={{ animationDelay: '0.3s', marginLeft: 4 }} />
+        </div>
+      </div>
+    </article>
+  )
 }
