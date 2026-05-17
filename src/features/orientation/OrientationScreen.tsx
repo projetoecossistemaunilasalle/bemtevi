@@ -11,6 +11,23 @@ const TYPING_DELAY_MS = 1200
 
 const flows = flowRegistry.flows;
 
+const typingIndicatorStyle = (
+  <style>{`
+    @keyframes orientation-typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
+    .orientation-typing-dot {
+      width: 8px;
+      height: 8px;
+      background: #6b7280;
+      border-radius: 50%;
+      display: inline-block;
+      animation: orientation-typing-bounce 1.2s infinite ease-in-out;
+    }
+  `}</style>
+);
+
 export function OrientationScreen() {
   const navigate = useNavigate();
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -178,7 +195,7 @@ export function OrientationScreen() {
               type="submit"
               aria-label="Enviar opção selecionada"
               data-icon="send"
-              disabled={!exactOption}
+              disabled={isRevealing || !exactOption}
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary transition-colors disabled:bg-secondary-container disabled:text-on-secondary-container"
             >
               <Send size={21} aria-hidden="true" />
@@ -227,20 +244,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 function TypingIndicator() {
   return (
     <article className="flex items-end gap-2 justify-start" aria-hidden="true">
-      <style>{`
-        @keyframes orientation-typing-bounce {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-6px); }
-        }
-        .orientation-typing-dot {
-          width: 8px;
-          height: 8px;
-          background: #6b7280;
-          border-radius: 50%;
-          display: inline-block;
-          animation: orientation-typing-bounce 1.2s infinite ease-in-out;
-        }
-      `}</style>
+      {typingIndicatorStyle}
       <div className="flex max-w-[84%] flex-col gap-1 items-start">
         <span className="flex items-center gap-2 font-label-md text-on-surface-variant">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
