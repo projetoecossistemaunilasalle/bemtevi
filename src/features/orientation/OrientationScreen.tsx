@@ -3,13 +3,23 @@ import { MessageCircle, Send, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { flowRegistry } from '../../content/flows/registry';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
-import { createInitialFlowStateFromRegistry } from '../../domain/flow-engine/loadFlows';
+import { createInitialFlowStateFromRegistry, createMessage } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
 import type { ChatMessage, FlowRuntimeState, RuntimeOption } from '../../domain/flow-engine/types';
 
 const TYPING_DELAY_MS = 1200
 
 const flows = flowRegistry.flows;
+
+const INTRO_STARTERS = [
+  { id: 'tired', label: 'Me sinto um pouco cansado(a).' },
+  { id: 'full-day', label: 'Tive um dia cheio.' },
+  { id: 'organize-thoughts', label: 'Quero organizar meus pensamentos.' },
+  { id: 'breathe', label: 'Preciso de um momento para respirar.' },
+  { id: 'other', label: 'Outro' },
+] as const;
+
+type IntroStarter = (typeof INTRO_STARTERS)[number];
 
 const typingIndicatorStyle = (
   <style>{`
@@ -32,10 +42,12 @@ export function OrientationScreen() {
   const navigate = useNavigate();
   const logRef = useRef<HTMLDivElement | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const [hasStarted, setHasStarted] = useState(false);
+  const [selectedIntroStarter, setSelectedIntroStarter] = useState<string | null>(null);
   const [state, setState] = useState<FlowRuntimeState | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isRevealing = state === null || visibleCount < state.transcript.length;
+  const isRevealing = hasStarted && (state === null || visibleCount < state.transcript.length);
 
   const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing]);
   const visibleOptions = useMemo(() => {
@@ -70,18 +82,39 @@ export function OrientationScreen() {
   }, [navigate, state, isRevealing]);
 
   useEffect(() => {
+    if (!hasStarted || state) return;
+
     typingTimerRef.current = setTimeout(() => {
       const initialState = createInitialFlowStateFromRegistry(flows, 'work-stress');
-      setState(initialState);
-      setVisibleCount(initialState.transcript.length);
+      const introMessages =
+        selectedIntroStarter === null
+          ? []
+          : [createMessage('user', selectedIntroStarter, initialState.activeFlowId ?? 'work-stress', initialState.activeNodeId)];
+      const nextState = {
+        ...initialState,
+        transcript: [...introMessages, ...initialState.transcript],
+      };
+
+      setState(nextState);
+      setVisibleCount(nextState.transcript.length);
     }, TYPING_DELAY_MS);
-  }, []);
+  }, [hasStarted, selectedIntroStarter, state]);
 
   useEffect(() => {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
+
+  function startConversation(starter: IntroStarter) {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+
+    setSelectedIntroStarter(starter.id === 'other' ? null : starter.label);
+    setInputValue('');
+    setState(null);
+    setVisibleCount(0);
+    setHasStarted(true);
+  }
 
   function selectOption(option: RuntimeOption) {
     submitOption(option);
@@ -131,79 +164,131 @@ export function OrientationScreen() {
 
   return (
     <main className="mx-auto flex h-[calc(100dvh-160px)] w-full max-w-3xl flex-col overflow-hidden px-container-padding-mobile pt-3 md:h-[calc(100dvh-64px)] md:px-container-padding-desktop md:pt-stack-md">
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-container-lowest shadow-[0_16px_48px_rgba(17,28,44,0.08)]">
-        <div
-          role="log"
-          aria-label="Histórico da orientação guiada"
-          aria-live="polite"
-          ref={logRef}
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-56 pt-5 [scrollbar:none] md:px-6 md:pb-48 [&::-webkit-scrollbar]:hidden"
-        >
-          {state?.transcript.slice(0, visibleCount).map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {isRevealing && <TypingIndicator />}
+      {!hasStarted && <OrientationIntroScreen onSelectStarter={startConversation} />}
+
+      {hasStarted && (
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-container-lowest shadow-[0_16px_48px_rgba(17,28,44,0.08)]">
+          <div
+            role="log"
+            aria-label="Histórico da orientação guiada"
+            aria-live="polite"
+            ref={logRef}
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-56 pt-5 [scrollbar:none] md:px-6 md:pb-48 [&::-webkit-scrollbar]:hidden"
+          >
+            {state?.transcript.slice(0, visibleCount).map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            {isRevealing && <TypingIndicator />}
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            data-testid="orientation-composer"
+            className="fixed bottom-21.5 left-0 right-0 z-40 mx-auto max-w-3xl px-container-padding-mobile md:bottom-6 md:px-container-padding-desktop"
+          >
+            {visibleOptions.length > 0 && (
+              <div
+                id="orientation-suggestions"
+                role="listbox"
+                aria-label="Sugestões de resposta"
+                className="absolute bottom-18.5 right-container-padding-mobile z-20 flex max-h-40 max-w-[calc(100%-2.5rem)] flex-col items-end gap-2 overflow-y-auto md:right-container-padding-desktop md:max-w-[calc(100%-5rem)]"
+              >
+                {visibleOptions.map((option) => (
+                  <button
+                    key={`${option.kind}-${option.id}`}
+                    type="button"
+                    role="option"
+                    aria-selected={exactOption?.id === option.id}
+                    onClick={() => selectOption(option)}
+                    className={`min-h-10 w-fit max-w-full rounded-full px-4 py-2 text-left font-label-md shadow-sm transition-colors focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                      option.kind === 'global_action'
+                        ? 'border border-outline-variant bg-surface-container-lowest text-secondary hover:border-secondary hover:bg-surface-container-low'
+                        : 'bg-primary-fixed text-on-surface hover:bg-primary-fixed-dim'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <label htmlFor="orientation-choice-input" className="sr-only">
+              Digite ou escolha uma opção
+            </label>
+            <div className="flex items-center gap-2 rounded-full border border-secondary/30 bg-surface-container-lowest py-2 pl-5 pr-2 shadow-[0_4px_14px_rgba(17,28,44,0.12)] focus-within:border-transparent focus-within:ring-2 focus-within:ring-primary">
+              <input
+                id="orientation-choice-input"
+                type="text"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                placeholder="Digite ou escolha uma opção"
+                aria-autocomplete="list"
+                aria-controls="orientation-suggestions"
+                disabled={isRevealing}
+                className="min-h-11 min-w-0 flex-1 bg-transparent font-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
+              />
+              <button
+                type="submit"
+                aria-label="Enviar opção selecionada"
+                data-icon="send"
+                disabled={isRevealing || !exactOption}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary transition-colors disabled:bg-secondary-container disabled:text-on-secondary-container"
+              >
+                <Send size={21} aria-hidden="true" />
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+    </main>
+  );
+}
+
+function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter: IntroStarter) => void }) {
+  return (
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-container-lowest shadow-[0_16px_48px_rgba(17,28,44,0.08)]">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-6 overflow-y-auto px-5 py-6 md:px-8 md:py-8">
+        <div className="flex flex-col gap-5">
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary"
+              aria-hidden="true"
+            >
+              <MessageCircle size={22} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="font-title-lg text-on-surface">Antes de começar</h1>
+              <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
+                Conte como você está chegando agora. Você pode escolher uma sugestão ou escrever do seu jeito.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-4">
+            <p id="orientation-intro-question" className="font-label-lg text-on-surface">
+              Pode nos contar como está se sentindo hoje?
+            </p>
+          </div>
+
+          <div className="grid gap-2" role="group" aria-labelledby="orientation-intro-question">
+            {INTRO_STARTERS.map((starter) => (
+              <button
+                key={starter.id}
+                type="button"
+                onClick={() => onSelectStarter(starter)}
+                className="min-h-12 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-3 text-left font-label-md text-on-surface shadow-sm transition-colors hover:border-primary hover:bg-primary-fixed/45 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                {starter.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          data-testid="orientation-composer"
-          className="fixed bottom-21.5 left-0 right-0 z-40 mx-auto max-w-3xl px-container-padding-mobile md:bottom-6 md:px-container-padding-desktop"
-        >
-          {visibleOptions.length > 0 && (
-            <div
-              id="orientation-suggestions"
-              role="listbox"
-              aria-label="Sugestões de resposta"
-              className="absolute bottom-18.5 right-container-padding-mobile z-20 flex max-h-40 max-w-[calc(100%-2.5rem)] flex-col items-end gap-2 overflow-y-auto md:right-container-padding-desktop md:max-w-[calc(100%-5rem)]"
-            >
-              {visibleOptions.map((option) => (
-                <button
-                  key={`${option.kind}-${option.id}`}
-                  type="button"
-                  role="option"
-                  aria-selected={exactOption?.id === option.id}
-                  onClick={() => selectOption(option)}
-                  className={`min-h-10 w-fit max-w-full rounded-full px-4 py-2 text-left font-label-md shadow-sm transition-colors focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                    option.kind === 'global_action'
-                      ? 'border border-outline-variant bg-surface-container-lowest text-secondary hover:border-secondary hover:bg-surface-container-low'
-                      : 'bg-primary-fixed text-on-surface hover:bg-primary-fixed-dim'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <label htmlFor="orientation-choice-input" className="sr-only">
-            Digite ou escolha uma opção
-          </label>
-          <div className="flex items-center gap-2 rounded-full border border-secondary/30 bg-surface-container-lowest py-2 pl-5 pr-2 shadow-[0_4px_14px_rgba(17,28,44,0.12)] focus-within:border-transparent focus-within:ring-2 focus-within:ring-primary">
-            <input
-              id="orientation-choice-input"
-              type="text"
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Digite ou escolha uma opção"
-              aria-autocomplete="list"
-              aria-controls="orientation-suggestions"
-              disabled={isRevealing}
-              className="min-h-11 min-w-0 flex-1 bg-transparent font-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
-            />
-            <button
-              type="submit"
-              aria-label="Enviar opção selecionada"
-              data-icon="send"
-              disabled={isRevealing || !exactOption}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary transition-colors disabled:bg-secondary-container disabled:text-on-secondary-container"
-            >
-              <Send size={21} aria-hidden="true" />
-            </button>
-          </div>
-        </form>
-      </section>
-    </main>
+        <p className="rounded-xl bg-[#EEF8F3] px-4 py-3 font-body-sm text-on-surface-variant">
+          Este espaço é anônimo e não salva sua conversa.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -243,21 +328,26 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 function TypingIndicator() {
   return (
-    <article className="flex items-end gap-2 justify-start" aria-hidden="true">
-      {typingIndicatorStyle}
-      <div className="flex max-w-[84%] flex-col gap-1 items-start">
-        <span className="flex items-center gap-2 font-label-md text-on-surface-variant">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
-            <MessageCircle size={17} />
+    <>
+      <span role="status" className="sr-only">
+        Carregando conversa
+      </span>
+      <article className="flex items-end gap-2 justify-start" aria-hidden="true">
+        {typingIndicatorStyle}
+        <div className="flex max-w-[84%] flex-col gap-1 items-start">
+          <span className="flex items-center gap-2 font-label-md text-on-surface-variant">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
+              <MessageCircle size={17} />
+            </span>
+            SeCuida
           </span>
-          SeCuida
-        </span>
-        <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
-          <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />
-          <span className="orientation-typing-dot" style={{ animationDelay: '0.15s', marginLeft: 4 }} />
-          <span className="orientation-typing-dot" style={{ animationDelay: '0.3s', marginLeft: 4 }} />
+          <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
+            <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />
+            <span className="orientation-typing-dot" style={{ animationDelay: '0.15s', marginLeft: 4 }} />
+            <span className="orientation-typing-dot" style={{ animationDelay: '0.3s', marginLeft: 4 }} />
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </>
   )
 }

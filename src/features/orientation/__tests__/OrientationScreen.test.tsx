@@ -183,6 +183,7 @@ describe('OrientationScreen', () => {
     // Typing indicator visible, no messages yet
     expect(screen.queryByText(/Vamos olhar para essa sobrecarga com calma/)).not.toBeInTheDocument();
     expect(screen.getByText('SeCuida')).toBeInTheDocument(); // avatar in typing indicator
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
     // After delay, messages appear
     advanceInitialLoad();
