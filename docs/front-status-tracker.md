@@ -14,9 +14,14 @@ Last updated: 2026-05-16
 
 ## Completed Fronts
 
-### 01 — App Architecture & PWA — Done
+### 01 — App Architecture & PWA — Partial
 
 React Router with 7 routes, AppShell (TopBar + BottomNav), PWA manifest, Vite config for GitHub Pages deployment.
+
+**What's missing:**
+- Service worker for offline support and true PWA installability (manifest exists but no `vite-plugin-pwa` or custom SW)
+
+**Ready to start** — no blockers, can be implemented with `vite-plugin-pwa`.
 
 ### 02 — Readable Folder Structure — Done
 
@@ -122,14 +127,13 @@ Cannot finalize the directory structure or filtering logic until this decision i
 
 ### 13 — Quality, Validation & Tooling — Partial
 
-**What exists:** Vitest configured, 4 test files (~49 tests passing). Content validators in domain layer.
+**What exists:** Vitest configured, 4 test files (55 tests passing). Content validators in domain layer. CI runs lint + test on push.
 
 **What's missing:**
 - ESLint configuration
 - Prettier configuration
 - Storybook setup
 - Accessibility testing (axe-core or similar)
-- CI quality pipeline (lint + test + build in GitHub Actions)
 - Repo-wide content validation CLI script
 
 **Blocker:** None — can be worked on now.

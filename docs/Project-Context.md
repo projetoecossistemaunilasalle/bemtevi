@@ -384,14 +384,8 @@ Analytics policy note: `docs/fronts/12b-anonymous-analytics-lgpd-policy.md` docu
 
 ---
 
-## 15. Known Open Review Items
+## 15. Known Open Items
 
-From `docs/reviews/frontend-foundation-critique.md`, several items have been addressed, including education in bottom nav, Portuguese accents across most source content, the breathing exercise visual treatment, and the fixed orientation composer.
-
-Open or partially open items:
-
-- Home still uses an `AlertCircle` icon for the immediate support action, which may feel too alarming.
-- `public/manifest.webmanifest` still has `Orientacao` without accent in its description.
 - Privacy copy and onboarding persistence need alignment.
 - Clinical/editorial review metadata is still pending for seed content.
 

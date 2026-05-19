@@ -42,7 +42,6 @@ pnpm run build
 - Project fronts and milestones: [`docs/fronts/README.md`](docs/fronts/README.md)
 - Implementation plans: [`docs/plans/README.md`](docs/plans/README.md)
 - Current repository context: [`docs/Project-Context.md`](docs/Project-Context.md)
-- Foundation critique and open review notes: [`docs/reviews/frontend-foundation-critique.md`](docs/reviews/frontend-foundation-critique.md)
 - Analytics/LGPD policy note: [`docs/fronts/12b-anonymous-analytics-lgpd-policy.md`](docs/fronts/12b-anonymous-analytics-lgpd-policy.md)
 
 ## Current Caution
