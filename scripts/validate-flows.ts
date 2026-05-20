@@ -53,9 +53,7 @@ export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {
     for (const phrase of flow.entry.enteringPhrases) {
       const existing = seenPhrases.get(phrase);
       if (existing !== undefined) {
-        errors.push(
-          `Duplicate entering phrase "${phrase}" used by flows ${existing} and ${flow.id}.`,
-        );
+        errors.push(`Duplicate entering phrase "${phrase}" used by flows ${existing} and ${flow.id}.`);
       } else {
         seenPhrases.set(phrase, flow.id);
       }
@@ -65,7 +63,11 @@ export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {
   return errors;
 }
 
-export function validateSrq20Contract(flow: GuidedFlow): string[] {
+export function validateSrq20Contract(flow: GuidedFlow | undefined): string[] {
+  if (!flow) {
+    return ['SRQ-20 flow is not registered.'];
+  }
+
   const errors: string[] = [];
 
   for (let questionNumber = 1; questionNumber <= 20; questionNumber += 1) {
@@ -92,15 +94,10 @@ export function validateSrq20Contract(flow: GuidedFlow): string[] {
 
     if (questionNumber === 17 && yesOption) {
       const hasSafetyInterrupt = yesOption.effects?.some(
-        (e) =>
-          e.kind === 'safety_interrupt' &&
-          e.destination === '/apoio' &&
-          e.blockResume === true,
+        (e) => e.kind === 'safety_interrupt' && e.destination === '/apoio' && e.blockResume === true,
       );
       if (!hasSafetyInterrupt) {
-        errors.push(
-          `SRQ-20 q17 yes option must include a safety_interrupt effect to /apoio with blockResume enabled.`,
-        );
+        errors.push(`SRQ-20 q17 yes option must include a safety_interrupt effect to /apoio with blockResume enabled.`);
       }
     } else if (yesOption && !yesOption.effects?.some((e) => e.kind === 'score' && e.scoreKey === 'srq20')) {
       errors.push(`SRQ-20 ${nodeId} yes option must include a score effect for srq20.`);
@@ -110,15 +107,27 @@ export function validateSrq20Contract(flow: GuidedFlow): string[] {
   const scoreNode = flow.nodes['srq20-score'];
   if (!scoreNode || scoreNode.kind !== 'score_branch') {
     errors.push('SRQ-20 must include a score_branch node with id srq20-score.');
+  } else {
+    if (scoreNode.scoreKey !== 'srq20') {
+      errors.push('SRQ-20 score_branch must have scoreKey "srq20".');
+    }
+
+    const hasLowBranch = scoreNode.branches.some((b) => b.min === 0 && b.max === 6);
+    const hasPossibleDistressBranch = scoreNode.branches.some((b) => b.min === 7 && b.max === 20);
+
+    if (!hasLowBranch) {
+      errors.push('SRQ-20 score branch must include a 0-6 branch.');
+    }
+
+    if (!hasPossibleDistressBranch) {
+      errors.push('SRQ-20 score branch must include a 7-20 branch.');
+    }
   }
 
   return errors;
 }
 
-export function validateResourceRecommendations(
-  flows: GuidedFlow[],
-  resourceIds: string[],
-): string[] {
+export function validateResourceRecommendations(flows: GuidedFlow[], resourceIds: string[]): string[] {
   const errors: string[] = [];
   const resourceSet = new Set(resourceIds);
 
@@ -150,7 +159,9 @@ export function validateContent(): string[] {
   errors.push(...validateRegisteredFlows(flows));
 
   const srq20Flow = flows.find((f) => f.id === 'srq20');
-  if (srq20Flow) {
+  if (!srq20Flow) {
+    errors.push('SRQ-20 flow is not registered.');
+  } else {
     errors.push(...validateSrq20Contract(srq20Flow));
   }
 

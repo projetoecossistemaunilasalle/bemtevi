@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GuidedFlow } from '../../src/domain/flow-engine/types';
-import {
-  validateRegisteredFlows,
-  validateResourceRecommendations,
-  validateSrq20Contract,
-} from '../validate-flows';
+import { validateRegisteredFlows, validateResourceRecommendations, validateSrq20Contract } from '../validate-flows';
 
 const validSrq20Fixture = {
   id: 'srq20',
@@ -107,6 +103,10 @@ describe('validateRegisteredFlows', () => {
 });
 
 describe('validateSrq20Contract', () => {
+  it('reports error when SRQ-20 flow is undefined', () => {
+    expect(validateSrq20Contract(undefined)).toEqual(['SRQ-20 flow is not registered.']);
+  });
+
   it('accepts a structurally complete SRQ-20 flow', () => {
     expect(validateSrq20Contract(validSrq20Fixture)).toEqual([]);
   });
@@ -124,6 +124,30 @@ describe('validateSrq20Contract', () => {
         'SRQ-20 must include question node q20.',
         'SRQ-20 q17 yes option must include a safety_interrupt effect to /apoio with blockResume enabled.',
       ]),
+    );
+  });
+
+  it('reports wrong scoreKey on score_branch', () => {
+    const broken = structuredClone(validSrq20Fixture);
+    const scoreNode = broken.nodes['srq20-score'];
+    if (scoreNode.kind === 'score_branch') {
+      scoreNode.scoreKey = 'wrong-key';
+    }
+
+    expect(validateSrq20Contract(broken)).toEqual(
+      expect.arrayContaining(['SRQ-20 score_branch must have scoreKey "srq20".']),
+    );
+  });
+
+  it('reports missing 0-6 and 7-20 branches', () => {
+    const broken = structuredClone(validSrq20Fixture);
+    const scoreNode = broken.nodes['srq20-score'];
+    if (scoreNode.kind === 'score_branch') {
+      scoreNode.branches = [{ id: 'only-low', min: 0, max: 6, next: 'low-result' }];
+    }
+
+    expect(validateSrq20Contract(broken)).toEqual(
+      expect.arrayContaining(['SRQ-20 score branch must include a 7-20 branch.']),
     );
   });
 });
