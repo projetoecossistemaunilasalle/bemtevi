@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "validate:flows": "tsx scripts/validate-flows.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -41,6 +42,7 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.1.14",
+    "tsx": "^4.22.3",
     "typescript": "~5.8.2",
     "typescript-eslint": "^8.59.4",
     "vite": "^6.2.3",
