@@ -293,4 +293,27 @@ describe('OrientationScreen', () => {
     expect(screen.getByText(/Vamos olhar para essa sobrecarga com calma/)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
   });
+
+  it('offers a calm next-step route after a regular flow result', () => {
+    renderOrientation();
+    startOrientationWithStarter();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Escolher o que fazer agora' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Escolher o que fazer agora' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.')).toBeInTheDocument();
+    expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
+  });
 });
