@@ -13,11 +13,11 @@
 ## File Structure
 
 - Modify: `src/domain/flow-engine/types.ts`
-  - Add `FlowPurpose`, `FlowStartFlowEffect`, and `RuntimeFlowStartOption`.
+  - Add `FlowPurpose`, `FlowStartFlowEffect`, `NavigateFlowEffect`, and `RuntimeFlowStartOption`.
   - Extend `GuidedFlow`, `FlowEffect`, `RuntimeOptionKind`, and `RuntimeOption`.
 - Modify: `src/domain/flow-engine/validateFlow.ts`
   - Validate optional `purpose`.
-  - Validate `flow_start` effect shape.
+  - Validate `flow_start` and `navigate` effect shapes.
 - Modify: `src/domain/flow-engine/loadFlows.ts`
   - Validate cross-flow `flow_start` targets in `validateRegisteredFlows`.
 - Modify: `src/domain/flow-engine/advanceFlow.ts`
@@ -71,8 +71,8 @@ Add these tests inside the existing `describe('validateFlow', ...)` block in `sr
     );
   });
 
-  it('rejects malformed flow_start effects', () => {
-    const invalidFlow: GuidedFlow = {
+  it('rejects malformed flow_start and navigate effects', () => {
+    const invalidFlow = {
       ...validFlow,
       nodes: {
         ...validFlow.nodes,
@@ -83,7 +83,10 @@ Add these tests inside the existing `describe('validateFlow', ...)` block in `sr
               id: 'bad-start',
               label: 'Começar outro fluxo',
               next: 'end',
-              effects: [{ kind: 'flow_start', flowId: '' }],
+              effects: [
+                { kind: 'flow_start', flowId: '' },
+                { kind: 'navigate', destination: 'end' },
+              ],
             },
           ],
         },
@@ -93,6 +96,9 @@ Add these tests inside the existing `describe('validateFlow', ...)` block in `sr
     expect(validateFlow(invalidFlow).errors).toContain(
       'Flow fixture-flow option bad-start flow_start effect must include flowId.',
     );
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow option bad-start navigate effect must include a supported destination.',
+    );
   });
 ```
 
@@ -100,7 +106,7 @@ Add these tests inside the existing `describe('validateFlow', ...)` block in `sr
 
 Run: `pnpm run test src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
-Expected: FAIL with TypeScript errors because `purpose` and `flow_start` are not defined yet.
+Expected: FAIL because `purpose`, `flow_start`, and `navigate` validation is not implemented yet.
 
 - [ ] **Step 3: Extend flow-engine types**
 
@@ -123,7 +129,12 @@ export interface FlowStartFlowEffect {
   flowId: string;
 }
 
-export type FlowEffect = ScoreFlowEffect | SafetyInterruptFlowEffect | FlowStartFlowEffect;
+export interface NavigateFlowEffect {
+  kind: 'navigate';
+  destination: Exclude<GlobalActionTarget, 'end'>;
+}
+
+export type FlowEffect = ScoreFlowEffect | SafetyInterruptFlowEffect | FlowStartFlowEffect | NavigateFlowEffect;
 ```
 
 Add `purpose?: FlowPurpose;` to `GuidedFlow` after `type: FlowType;`.
@@ -168,6 +179,13 @@ Add this case to `validateEffect`:
   if (effect.kind === 'flow_start') {
     if (!hasText(effect.flowId)) {
       errors.push(`Flow ${flowLabel} option ${optionId} flow_start effect must include flowId.`);
+    }
+    return;
+  }
+
+  if (effect.kind === 'navigate') {
+    if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
+      errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
     }
   }
 ```
@@ -340,6 +358,39 @@ Add these tests inside `describe('flow runtime', ...)`:
     expect(nextState.transcript.map((message) => message.text)).toContain(validFlow.entry.transitionMessage);
   });
 
+  it('navigates directly from neutral flow options that target app destinations', () => {
+    const navigationFlow: GuidedFlow = {
+      ...neutralRouterFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'O que você quer abrir?',
+          options: [
+            {
+              id: 'education',
+              label: 'Abrir materiais educativos',
+              next: 'fallback',
+              effects: [{ kind: 'navigate', destination: '/educacao' }],
+            },
+          ],
+        },
+        fallback: {
+          id: 'fallback',
+          kind: 'result',
+          text: 'Abrindo materiais educativos.',
+        },
+      },
+    };
+    const state = createInitialFlowState(navigationFlow, [navigationFlow, validFlow]);
+    const nextState = advanceFlow(state, [navigationFlow, validFlow], 'Abrir materiais educativos');
+
+    expect(nextState.activeFlowId).toBeUndefined();
+    expect(nextState.activeNodeId).toBeUndefined();
+    expect(nextState.pendingNavigation).toBe('/educacao');
+    expect(nextState.transcript.map((message) => message.text)).toContain('Abrir materiais educativos');
+  });
+
   it('offers post-flow routing after regular result nodes', () => {
     const postFlowRouter: GuidedFlow = {
       ...neutralRouterFlow,
@@ -371,7 +422,7 @@ Add these tests inside `describe('flow runtime', ...)`:
           options: [
             {
               id: 'end',
-              label: 'Encerrar por enquanto',
+              label: 'Finalizar por hoje',
               next: 'done',
             },
           ],
@@ -384,7 +435,7 @@ Add these tests inside `describe('flow runtime', ...)`:
       },
     };
     const state = createInitialFlowState(postFlowRouter, [postFlowRouter, validFlow]);
-    const resultState = advanceFlow(state, [postFlowRouter, validFlow], 'Encerrar por enquanto');
+    const resultState = advanceFlow(state, [postFlowRouter, validFlow], 'Finalizar por hoje');
 
     expect(resolveOptions(resultState, [postFlowRouter, validFlow])).not.toContainEqual(
       expect.objectContaining({ id: 'post-flow-next-step-start' }),
@@ -402,7 +453,7 @@ Add these tests inside `describe('flow runtime', ...)`:
           options: [
             {
               id: 'end',
-              label: 'Encerrar por enquanto',
+              label: 'Finalizar por hoje',
               next: 'done',
             },
           ],
@@ -421,7 +472,7 @@ Add these tests inside `describe('flow runtime', ...)`:
     };
     const flows = [orientationFlow, postFlowRouter, validFlow];
     const state = createInitialFlowState(orientationFlow, flows);
-    const resultState = advanceFlow(state, flows, 'Encerrar por enquanto');
+    const resultState = advanceFlow(state, flows, 'Finalizar por hoje');
 
     expect(resolveOptions(resultState, flows)).not.toContainEqual(
       expect.objectContaining({ id: 'post-flow-next-step-start' }),
@@ -433,11 +484,17 @@ Add these tests inside `describe('flow runtime', ...)`:
 
 Run: `pnpm run test src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
-Expected: FAIL because `advanceFlow` and `resolveOptions` do not handle direct flow starts yet.
+Expected: FAIL because `advanceFlow` and `resolveOptions` do not handle direct flow starts, navigation effects, or post-flow routing yet.
 
 - [ ] **Step 3: Add direct flow-start helpers to `advanceFlow`**
 
 Update the imports in `src/domain/flow-engine/advanceFlow.ts`:
+
+```ts
+import { createInitialFlowState, createMessage, getActiveFlow, getFlowById } from './loadFlows';
+```
+
+Update the type imports:
 
 ```ts
 import type {
@@ -512,6 +569,49 @@ function startFlowWithoutSuspending(state: FlowRuntimeState, flows: GuidedFlow[]
 
 This helper intentionally keeps the prior transcript, suspended flows, and safety flags while using the target flow's fresh `answers` and `scores`. The existing suspend/resume model does not persist scores in `SuspendedFlowState`; future score-based resume requirements need a separate engine change.
 
+Update `applyOptionEffects` so every effect kind is checked explicitly:
+
+```ts
+function applyOptionEffects(state: FlowRuntimeState, flowId: string, effects: FlowEffect[]): FlowRuntimeState {
+  return effects.reduce((nextState, effect) => {
+    if (effect.kind === 'score') {
+      return {
+        ...nextState,
+        scores: {
+          ...nextState.scores,
+          [effect.scoreKey]: (nextState.scores[effect.scoreKey] ?? 0) + effect.value,
+        },
+      };
+    }
+
+    if (effect.kind === 'safety_interrupt') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        pendingNavigation: effect.destination,
+        safetyFlags: {
+          ...nextState.safetyFlags,
+          ...(effect.blockResume ? { [`block-resume:${flowId}`]: true } : {}),
+        },
+        transcript: [...nextState.transcript, createMessage('bot', effect.message, flowId, nextState.activeNodeId)],
+      };
+    }
+
+    if (effect.kind === 'navigate') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        pendingNavigation: effect.destination,
+      };
+    }
+
+    return nextState;
+  }, state);
+}
+```
+
 - [ ] **Step 4: Add post-flow option resolution**
 
 Update the import in `src/domain/flow-engine/resolveOptions.ts`:
@@ -578,7 +678,7 @@ Update the flow registry test in `src/content/__tests__/content.test.ts`:
   it('contains switchable guided conversation flows', () => {
     const flowIds = flowRegistry.flows.map((flow) => flow.id);
 
-    expect(flowRegistry.flows.length).toBeGreaterThanOrEqual(8);
+    expect(flowRegistry.flows).toHaveLength(8);
     expect(flowIds).toEqual(expect.arrayContaining([
       'orientation-understand-feelings',
       'orientation-talk-through-experience',
@@ -610,7 +710,7 @@ Create `src/content/flows/neutral.ts`:
 
 The `flow_start` options below still include `next` values because `FlowOption` requires a valid local node reference. Those handoff result nodes are structural fallbacks for validation; the normal runtime path starts the target flow immediately and does not display the handoff result text.
 
-Node option labels intentionally avoid exact duplicates of global action labels such as "Quero apoio agora", "Ver contatos", and "Ver materiais educativos". `advanceFlow` selects by label, so duplicate labels would make a neutral node option shadow the global action.
+Neutral node options intentionally stay focused on guided-flow routing, direct app destinations, and local sign-off choices. App-destination labels avoid exact duplicates of global action labels because `advanceFlow` selects by label and duplicate labels would shadow the persistent global actions.
 
 ```ts
 import type { GuidedFlow } from '../../domain/flow-engine/types';
@@ -755,39 +855,44 @@ export const neutralFlows = [
             effects: [{ kind: 'flow_start', flowId: 'srq20' }],
           },
           {
+            id: 'app-destinations',
+            label: 'Materiais, contatos ou apoio',
+            next: 'app-destinations',
+          },
+        ],
+      },
+      'app-destinations': {
+        id: 'app-destinations',
+        kind: 'choice',
+        text: 'O que você quer abrir agora?',
+        options: [
+          {
             id: 'education',
-            label: 'Entender materiais educativos',
-            next: 'education-result',
+            label: 'Abrir materiais educativos',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/educacao' }],
           },
           {
             id: 'contacts',
-            label: 'Entender contatos de apoio',
-            next: 'contacts-result',
+            label: 'Abrir contatos de apoio',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/contatos' }],
           },
           {
             id: 'support-now',
-            label: 'Organizar apoio imediato',
-            next: 'support-result',
+            label: 'Abrir apoio agora',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/apoio' }],
           },
         ],
       },
       'handoff-work-stress': { id: 'handoff-work-stress', kind: 'result', text: 'Vou abrir uma orientação guiada.' },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir uma pausa de recuperação.' },
       'handoff-srq20': { id: 'handoff-srq20', kind: 'result', text: 'Vou abrir o questionário.' },
-      'education-result': {
-        id: 'education-result',
+      'navigation-fallback': {
+        id: 'navigation-fallback',
         kind: 'result',
-        text: 'Você pode usar a opção "Ver materiais educativos" para abrir conteúdos de apoio.',
-      },
-      'contacts-result': {
-        id: 'contacts-result',
-        kind: 'result',
-        text: 'Você pode usar a opção "Ver contatos" para encontrar serviços e contatos de apoio.',
-      },
-      'support-result': {
-        id: 'support-result',
-        kind: 'result',
-        text: 'Se precisar de ajuda imediata, use a opção "Quero apoio agora".',
+        text: 'Abrindo o caminho escolhido.',
       },
     },
   },
@@ -818,21 +923,22 @@ export const neutralFlows = [
           },
           {
             id: 'education',
-            label: 'Entender algo educativo',
-            next: 'education-result',
+            label: 'Abrir algo educativo',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/educacao' }],
           },
           {
             id: 'end',
-            label: 'Encerrar por enquanto',
+            label: 'Finalizar por hoje',
             next: 'end-result',
           },
         ],
       },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir uma pausa curta.' },
-      'education-result': {
-        id: 'education-result',
+      'navigation-fallback': {
+        id: 'navigation-fallback',
         kind: 'result',
-        text: 'Você pode usar a opção "Ver materiais educativos" para abrir conteúdos quando quiser.',
+        text: 'Abrindo materiais educativos.',
       },
       'end-result': {
         id: 'end-result',
@@ -873,43 +979,48 @@ export const neutralFlows = [
             effects: [{ kind: 'flow_start', flowId: 'rest-recovery' }],
           },
           {
-            id: 'education',
-            label: 'Entender materiais educativos',
-            next: 'education-result',
-          },
-          {
-            id: 'contacts',
-            label: 'Entender contatos de apoio',
-            next: 'contacts-result',
-          },
-          {
-            id: 'support-now',
-            label: 'Organizar apoio imediato',
-            next: 'support-result',
+            id: 'app-destinations',
+            label: 'Materiais, contatos ou apoio',
+            next: 'app-destinations',
           },
           {
             id: 'end',
-            label: 'Encerrar por enquanto',
+            label: 'Finalizar por hoje',
             next: 'end-result',
+          },
+        ],
+      },
+      'app-destinations': {
+        id: 'app-destinations',
+        kind: 'choice',
+        text: 'O que você quer abrir agora?',
+        options: [
+          {
+            id: 'education',
+            label: 'Abrir materiais educativos',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/educacao' }],
+          },
+          {
+            id: 'contacts',
+            label: 'Abrir contatos de apoio',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/contatos' }],
+          },
+          {
+            id: 'support-now',
+            label: 'Abrir apoio agora',
+            next: 'navigation-fallback',
+            effects: [{ kind: 'navigate', destination: '/apoio' }],
           },
         ],
       },
       'handoff-orientation': { id: 'handoff-orientation', kind: 'result', text: 'Vou abrir outro caminho de orientação.' },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir uma pausa de descanso.' },
-      'education-result': {
-        id: 'education-result',
+      'navigation-fallback': {
+        id: 'navigation-fallback',
         kind: 'result',
-        text: 'Você pode seguir pela opção "Ver materiais educativos" se quiser ler algo agora.',
-      },
-      'contacts-result': {
-        id: 'contacts-result',
-        kind: 'result',
-        text: 'Você pode seguir pela opção "Ver contatos" para procurar apoio local.',
-      },
-      'support-result': {
-        id: 'support-result',
-        kind: 'result',
-        text: 'Se for urgente, use "Quero apoio agora" a qualquer momento.',
+        text: 'Abrindo o caminho escolhido.',
       },
       'end-result': {
         id: 'end-result',
@@ -920,6 +1031,8 @@ export const neutralFlows = [
   },
 ] satisfies GuidedFlow[];
 ```
+
+The `pressure-conflict` option routes to `work-stress` because the current app has no dedicated conflict flow and `work-stress` already contains a pressure/conflict branch. If a dedicated conflict flow is added later, this option should be retargeted.
 
 - [ ] **Step 4: Register neutral flows**
 
@@ -1134,6 +1247,22 @@ Add this test:
     expect(screen.getByText('Quero encontrar um próximo passo de cuidado')).toBeInTheDocument();
     expect(screen.getByText('Vamos escolher um próximo passo possível para agora.')).toBeInTheDocument();
     expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
+  });
+```
+
+Add this test to prove neutral app-destination options are exposed instead of dead-end result instructions:
+
+```ts
+  it('shows neutral app-destination options', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Materiais, contatos ou apoio' }));
+    advanceInitialLoad();
+
+    expect(screen.getByRole('option', { name: 'Abrir materiais educativos' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Abrir contatos de apoio' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Abrir apoio agora' })).toBeInTheDocument();
   });
 ```
 

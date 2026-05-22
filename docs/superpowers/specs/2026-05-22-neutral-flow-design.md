@@ -71,14 +71,15 @@ Initial neutral flow responsibilities:
 
 - `orientation-understand-feelings`: helps the user choose among overload, rest/difficulty disconnecting, SRQ-20, or a calmer next step.
 - `orientation-talk-through-experience`: helps the user name whether the day involved tasks, conflict/pressure, body tiredness, or uncertainty.
-- `orientation-next-care-step`: helps the user choose between guided reflection, rest, educational material, contacts, or immediate support.
+- `orientation-next-care-step`: helps the user choose between guided reflection, rest, a brief questionnaire, or a small set of direct app destinations.
 - `orientation-calm-moment`: routes directly toward rest/recovery, education, or ending for now.
-- `post-flow-next-step`: appears after ordinary result nodes and offers another topic, rest/recovery, education, contacts, immediate support, or ending.
+- `post-flow-next-step`: appears after ordinary result nodes and offers another topic, rest/recovery, direct app destinations, or ending.
 
 Neutral flows may route to specific flows in two ways:
 
 1. A neutral flow option can use a new `flow_start` effect that starts a target flow by ID.
-2. Existing flow entry phrases remain visible through autocomplete and can still switch flows.
+2. A neutral flow option can use a new `navigate` effect that opens an app destination such as education, contacts, or immediate support.
+3. Existing flow entry phrases remain visible through autocomplete and can still switch flows.
 
 The `flow_start` effect is preferred for curated neutral-flow buttons because it keeps labels natural and avoids making users select exact entry phrases like "Estou sobrecarregado no trabalho" when the neutral copy has already done the narrowing.
 
@@ -90,6 +91,11 @@ Add a `flow_start` effect:
 export interface FlowStartFlowEffect {
   kind: 'flow_start';
   flowId: string;
+}
+
+export interface NavigateFlowEffect {
+  kind: 'navigate';
+  destination: Exclude<GlobalActionTarget, 'end'>;
 }
 ```
 
@@ -105,6 +111,8 @@ export interface RuntimeFlowStartOption {
 ```
 
 When a user selects a node option with a `flow_start` effect, the engine should append the user message, then start the target flow with `createInitialFlowState`. When a user selects a runtime `flow_start` option, the engine should append the user message and start the target flow the same way. In both cases, the previous neutral or completed flow should not be resumable. Neutral routing flows are stepping stones, not tasks the user needs to return to.
+
+When a user selects a node option with a `navigate` effect, the engine should append the user message, clear the active flow, and set `pendingNavigation` to the destination. This gives education, contacts, and immediate support options a direct handoff instead of a result node that merely tells the user to find another button.
 
 The existing `entry_phrase` switching behavior remains unchanged for autocomplete-driven flow switching. Suspending and resuming still apply to regular flow switching unless safety rules block it.
 
@@ -143,6 +151,7 @@ Validation should fail fast when:
 
 - a flow purpose is present but not one of the allowed values;
 - a `flow_start` effect is missing a target flow ID;
+- a `navigate` effect is missing a supported app destination;
 - a registered `flow_start` target does not exist in the same registry.
 
 Runtime should throw a clear error if a validated registry is bypassed and a selected `flow_start` target cannot be found.
