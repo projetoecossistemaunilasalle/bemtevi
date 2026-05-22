@@ -1,6 +1,6 @@
 # SeCuida — Front Status Tracker
 
-Last updated: 2026-05-19
+Last updated: 2026-05-22
 
 ## Legend
 
@@ -28,11 +28,11 @@ Feature-based layout: `src/app/`, `src/features/`, `src/content/`, `src/domain/`
 
 ### 04 — Content/Data Modeling — Done
 
-Domain types for content metadata, copy, support contacts, services, resources, and flow engine. All content in `src/content/`.
+Domain types for content metadata, copy, support contacts, services, resources, and flow engine. All content in `src/content/`. Flow registry includes neutral routing flows (`neutral.ts`), TS flows (`work-stress.ts`, `rest-recovery.ts`), and auto-discovered JSON flows.
 
 ### 05 — Guided Flow Engine — Done
 
-Full flow engine: `advanceFlow`, `resolveOptions`, `loadFlows`, `suspendFlow`, `resumeFlow`, `safetyRules`, `validateFlow`, `parseFlow`. 2 TS flows registered (work-stress, rest-recovery). JSON flow auto-discovery via `import.meta.glob`.
+Full flow engine: `advanceFlow`, `resolveOptions`, `loadFlows`, `suspendFlow`, `resumeFlow`, `safetyRules`, `validateFlow`, `parseFlow`. 2 TS flows registered (work-stress, rest-recovery). JSON flow auto-discovery via `import.meta.glob`. Neutral routing flows with `flow_start`, `navigate`, and `end_flow` effects. Post-flow routing after regular result nodes. Exhaustive effect-kind validation.
 
 ### 06 — Questionnaire Framework & SRQ-20 — Done
 

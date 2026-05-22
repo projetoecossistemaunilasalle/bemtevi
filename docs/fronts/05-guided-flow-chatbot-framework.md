@@ -65,6 +65,16 @@ Example:
 }
 ```
 
+Flows may optionally declare a `purpose` field to distinguish neutral routing flows from regular content flows:
+
+```ts
+type FlowPurpose = 'orientation_entry' | 'post_flow_routing';
+```
+
+- `orientation_entry` — broad, low-pressure flows that help users choose a more specific path.
+- `post_flow_routing` — a calm next-step router offered after regular flow result nodes.
+- `undefined` (omitted) — regular content flows (work-stress, rest-recovery, SRQ-20, etc.).
+
 ---
 
 ## Entering Phrases
@@ -96,6 +106,48 @@ If the user selects an entering phrase from another flow:
 3. New flow starts from its entry node.
 4. Bot emits the target flow transition message.
 5. When the new flow ends, the app may gently offer to resume the previous flow, unless a safety rule prevents it.
+
+### Neutral Flow Handoff (flow_start)
+
+If the user selects a curated option with a `flow_start` effect:
+
+1. User message is appended to the transcript.
+2. Target flow starts immediately with `createInitialFlowState`.
+3. The previous flow is **not** suspended — neutral routing flows are stepping stones, not resumable tasks.
+4. The target flow's entry transition and first node appear in the same transcript.
+
+### Navigation Handoff (navigate)
+
+If the user selects an option with a `navigate` effect:
+
+1. User message is appended to the transcript.
+2. Active flow is cleared.
+3. `pendingNavigation` is set to the destination (`/apoio`, `/contatos`, or `/educacao`).
+4. The UI navigates to the route after message reveal.
+
+### Flow End (end_flow)
+
+If the user selects an option with an `end_flow` effect:
+
+1. User message is appended to the transcript.
+2. The effect's `message` is appended as a bot message.
+3. Active flow and node are cleared — the flow is over.
+4. Global actions become the available options.
+
+### Post-Flow Routing
+
+After a regular flow reaches a result node (`purpose === undefined`), `resolveOptions` offers a calm next-step option:
+
+```ts
+{
+  kind: 'flow_start',
+  id: 'post-flow-next-step-start',
+  label: 'Escolher o que fazer agora',
+  flowId: 'post-flow-next-step'
+}
+```
+
+This option does not appear inside orientation or post-flow neutral flows themselves, preventing recursive routing loops.
 
 ---
 
@@ -145,9 +197,11 @@ src/domain/flow-engine/
   advanceFlow.ts
   suspendFlow.ts
   resumeFlow.ts
-  scoreFlow.ts
   safetyRules.ts
+  parseFlow.ts
 ```
+
+`validateFlow` performs exhaustive effect-kind checking — unknown effect kinds produce validation errors rather than being silently ignored.
 
 ---
 
@@ -162,6 +216,7 @@ type FlowRuntimeState = {
   answers: Record<string, unknown>;
   scores: Record<string, number>;
   safetyFlags: Record<string, boolean>;
+  pendingNavigation?: '/apoio' | '/contatos' | '/educacao';
 };
 ```
 
@@ -182,3 +237,8 @@ Until Privacy/LGPD verification, treat this as in-memory session state only.
 - The engine has no React dependency.
 - Invalid flow JSON fails validation before runtime.
 - Future dashboard can edit the same shape.
+- Neutral flows route users to specific flows via `flow_start` effects without suspending the source flow.
+- `navigate` effects hand off directly to app destinations.
+- `end_flow` effects clear the active flow and emit a sign-off message.
+- Post-flow routing offers a calm next-step option after regular result nodes.
+- Unknown effect kinds fail validation.
