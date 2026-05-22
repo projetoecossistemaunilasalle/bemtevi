@@ -493,6 +493,30 @@ describe('flow runtime', () => {
     expect(state.transcript.at(-1)?.text).toContain('não é um diagnóstico');
   });
 
+  it('rejects registered flow_start targets that do not exist', () => {
+    const invalidFlow: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        ...validFlow.nodes,
+        start: {
+          ...validFlow.nodes.start,
+          options: [
+            {
+              id: 'missing-flow',
+              label: 'Ir para outro fluxo',
+              next: 'end',
+              effects: [{ kind: 'flow_start', flowId: 'missing-target' }],
+            },
+          ],
+        },
+      },
+    };
+
+    expect(() => createInitialFlowStateFromRegistry([invalidFlow], 'fixture-flow')).toThrow(
+      'Flow fixture-flow option missing-flow starts missing flow missing-target.',
+    );
+  });
+
   it('routes SRQ-20 Q17 affirmative through generic JSON safety interruption', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 

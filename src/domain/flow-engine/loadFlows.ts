@@ -1,4 +1,4 @@
-import type { ChatMessage, FlowRuntimeState, GuidedFlow } from './types';
+import type { ChatMessage, FlowRuntimeState, FlowStartFlowEffect, GuidedFlow } from './types';
 import { validateFlow } from './validateFlow';
 
 let messageCounter = 0;
@@ -75,9 +75,26 @@ export function createInitialFlowStateFromRegistry(flows: GuidedFlow[], preferre
 }
 
 export function validateRegisteredFlows(flows: GuidedFlow[]) {
-  const errors = flows.flatMap((flow) => validateFlow(flow).errors);
+  const flowIds = new Set(flows.map((flow) => flow.id));
+  const errors = [
+    ...flows.flatMap((flow) => validateFlow(flow).errors),
+    ...flows.flatMap((flow) => validateFlowStartTargets(flow, flowIds)),
+  ];
 
   if (errors.length > 0) {
     throw new Error(errors.join(' '));
   }
+}
+
+function validateFlowStartTargets(flow: GuidedFlow, flowIds: Set<string>) {
+  return Object.values(flow.nodes).flatMap((node) => {
+    if (node.kind !== 'choice') return [];
+
+    return node.options.flatMap((option) =>
+      (option.effects ?? [])
+        .filter((effect): effect is FlowStartFlowEffect => effect.kind === 'flow_start')
+        .filter((effect) => !flowIds.has(effect.flowId))
+        .map((effect) => `Flow ${flow.id} option ${option.id} starts missing flow ${effect.flowId}.`),
+    );
+  });
 }
