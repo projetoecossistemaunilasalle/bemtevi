@@ -497,6 +497,43 @@ describe('flow runtime', () => {
     );
   });
 
+  it('ends the flow when an end_flow effect is applied', () => {
+    const endFlowFixture: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'O que deseja fazer?',
+          options: [
+            {
+              id: 'end-today',
+              label: 'Finalizar por hoje',
+              next: 'end',
+              effects: [{ kind: 'end_flow', message: 'Até a próxima.' }],
+            },
+          ],
+        },
+        end: {
+          id: 'end',
+          kind: 'result',
+          text: 'Este texto não deve aparecer.',
+        },
+      },
+    };
+
+    const nextState = advanceFlow(
+      createInitialFlowState(endFlowFixture, [endFlowFixture]),
+      [endFlowFixture],
+      'Finalizar por hoje',
+    );
+
+    expect(nextState.activeFlowId).toBeUndefined();
+    expect(nextState.activeNodeId).toBeUndefined();
+    expect(nextState.transcript.map((m) => m.text)).toContain('Até a próxima.');
+    expect(nextState.transcript.map((m) => m.text)).not.toContain('Este texto não deve aparecer.');
+  });
+
   it('discovers JSON flows from the content folder without per-flow imports', () => {
     const flowIds = flowRegistry.flows.map((flow) => flow.id);
 

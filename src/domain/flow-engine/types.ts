@@ -30,7 +30,17 @@ export interface NavigateFlowEffect {
   destination: Exclude<GlobalActionTarget, 'end'>;
 }
 
-export type FlowEffect = ScoreFlowEffect | SafetyInterruptFlowEffect | FlowStartFlowEffect | NavigateFlowEffect;
+export interface EndFlowEffect {
+  kind: 'end_flow';
+  message: string;
+}
+
+export type FlowEffect =
+  | ScoreFlowEffect
+  | SafetyInterruptFlowEffect
+  | FlowStartFlowEffect
+  | NavigateFlowEffect
+  | EndFlowEffect;
 
 export interface FlowEntry {
   nodeId: string;
@@ -151,7 +161,12 @@ export interface RuntimeFlowStartOption {
   flowId: string;
 }
 
-export type RuntimeOption = RuntimeNodeOption | RuntimeEntryOption | RuntimeGlobalAction | RuntimeResumeOption | RuntimeFlowStartOption;
+export type RuntimeOption =
+  | RuntimeNodeOption
+  | RuntimeEntryOption
+  | RuntimeGlobalAction
+  | RuntimeResumeOption
+  | RuntimeFlowStartOption;
 
 export interface FlowValidationResult {
   valid: boolean;

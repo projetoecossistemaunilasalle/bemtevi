@@ -42,7 +42,9 @@ describe('OrientationScreen', () => {
     renderOrientation();
 
     expect(screen.getByRole('heading', { name: 'Antes de começar' })).toBeInTheDocument();
-    expect(screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' })).toBeInTheDocument();
@@ -183,13 +185,17 @@ describe('OrientationScreen', () => {
     renderOrientation();
     fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
 
-    expect(screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('SeCuida')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
     advanceInitialLoad();
 
-    expect(screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
   });
 
@@ -215,7 +221,9 @@ describe('OrientationScreen', () => {
     advanceInitialLoad();
 
     expect(screen.queryByText(/^Outro$/)).not.toBeInTheDocument();
-    expect(screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
   });
 
@@ -307,13 +315,19 @@ describe('OrientationScreen', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' }));
     advanceInitialLoad();
 
-    expect(screen.getByText('Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Escolher o que fazer agora' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('option', { name: 'Escolher o que fazer agora' }));
     advanceInitialLoad();
 
-    expect(screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
   });
 });

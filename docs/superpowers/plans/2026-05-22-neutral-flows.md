@@ -42,6 +42,7 @@
 ## Task 1: Add Flow Purpose And Flow Start Types
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/types.ts`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
@@ -50,56 +51,56 @@
 Add these tests inside the existing `describe('validateFlow', ...)` block in `src/domain/flow-engine/__tests__/flow-engine.test.ts`:
 
 ```ts
-  it('accepts optional neutral flow purpose metadata', () => {
-    const neutralFlow: GuidedFlow = {
-      ...validFlow,
-      id: 'neutral-flow',
-      purpose: 'orientation_entry',
-    };
+it('accepts optional neutral flow purpose metadata', () => {
+  const neutralFlow: GuidedFlow = {
+    ...validFlow,
+    id: 'neutral-flow',
+    purpose: 'orientation_entry',
+  };
 
-    expect(validateFlow(neutralFlow)).toEqual({ valid: true, errors: [] });
-  });
+  expect(validateFlow(neutralFlow)).toEqual({ valid: true, errors: [] });
+});
 
-  it('rejects unknown flow purpose metadata', () => {
-    const invalidFlow = {
-      ...validFlow,
-      purpose: 'diagnostic_router',
-    };
+it('rejects unknown flow purpose metadata', () => {
+  const invalidFlow = {
+    ...validFlow,
+    purpose: 'diagnostic_router',
+  };
 
-    expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow purpose must be one of orientation_entry, post_flow_routing.',
-    );
-  });
+  expect(validateFlow(invalidFlow).errors).toContain(
+    'Flow fixture-flow purpose must be one of orientation_entry, post_flow_routing.',
+  );
+});
 
-  it('rejects malformed flow_start and navigate effects', () => {
-    const invalidFlow = {
-      ...validFlow,
-      nodes: {
-        ...validFlow.nodes,
-        start: {
-          ...validFlow.nodes.start,
-          options: [
-            {
-              id: 'bad-start',
-              label: 'Começar outro fluxo',
-              next: 'end',
-              effects: [
-                { kind: 'flow_start', flowId: '' },
-                { kind: 'navigate', destination: 'end' },
-              ],
-            },
-          ],
-        },
+it('rejects malformed flow_start and navigate effects', () => {
+  const invalidFlow = {
+    ...validFlow,
+    nodes: {
+      ...validFlow.nodes,
+      start: {
+        ...validFlow.nodes.start,
+        options: [
+          {
+            id: 'bad-start',
+            label: 'Começar outro fluxo',
+            next: 'end',
+            effects: [
+              { kind: 'flow_start', flowId: '' },
+              { kind: 'navigate', destination: 'end' },
+            ],
+          },
+        ],
       },
-    };
+    },
+  };
 
-    expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option bad-start flow_start effect must include flowId.',
-    );
-    expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option bad-start navigate effect must include a supported destination.',
-    );
-  });
+  expect(validateFlow(invalidFlow).errors).toContain(
+    'Flow fixture-flow option bad-start flow_start effect must include flowId.',
+  );
+  expect(validateFlow(invalidFlow).errors).toContain(
+    'Flow fixture-flow option bad-start navigate effect must include a supported destination.',
+  );
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -168,26 +169,26 @@ const allowedFlowPurposes = ['orientation_entry', 'post_flow_routing'];
 Add this check inside `validateFlow` after the required `id` check:
 
 ```ts
-  if (flowRecord.purpose !== undefined && !allowedFlowPurposes.includes(String(flowRecord.purpose))) {
-    errors.push(`Flow ${flowLabel} purpose must be one of ${allowedFlowPurposes.join(', ')}.`);
-  }
+if (flowRecord.purpose !== undefined && !allowedFlowPurposes.includes(String(flowRecord.purpose))) {
+  errors.push(`Flow ${flowLabel} purpose must be one of ${allowedFlowPurposes.join(', ')}.`);
+}
 ```
 
 Add this case to `validateEffect`:
 
 ```ts
-  if (effect.kind === 'flow_start') {
-    if (!hasText(effect.flowId)) {
-      errors.push(`Flow ${flowLabel} option ${optionId} flow_start effect must include flowId.`);
-    }
-    return;
+if (effect.kind === 'flow_start') {
+  if (!hasText(effect.flowId)) {
+    errors.push(`Flow ${flowLabel} option ${optionId} flow_start effect must include flowId.`);
   }
+  return;
+}
 
-  if (effect.kind === 'navigate') {
-    if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
-      errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
-    }
+if (effect.kind === 'navigate') {
+  if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
+    errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
   }
+}
 ```
 
 - [ ] **Step 5: Run tests to verify they pass**
@@ -206,6 +207,7 @@ git commit -m "feat: add neutral flow metadata types"
 ## Task 2: Validate Registered Flow Start Targets
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/loadFlows.ts`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
@@ -214,29 +216,29 @@ git commit -m "feat: add neutral flow metadata types"
 Add this test inside `describe('flow runtime', ...)`:
 
 ```ts
-  it('rejects registered flow_start targets that do not exist', () => {
-    const invalidFlow: GuidedFlow = {
-      ...validFlow,
-      nodes: {
-        ...validFlow.nodes,
-        start: {
-          ...validFlow.nodes.start,
-          options: [
-            {
-              id: 'missing-flow',
-              label: 'Ir para outro fluxo',
-              next: 'end',
-              effects: [{ kind: 'flow_start', flowId: 'missing-target' }],
-            },
-          ],
-        },
+it('rejects registered flow_start targets that do not exist', () => {
+  const invalidFlow: GuidedFlow = {
+    ...validFlow,
+    nodes: {
+      ...validFlow.nodes,
+      start: {
+        ...validFlow.nodes.start,
+        options: [
+          {
+            id: 'missing-flow',
+            label: 'Ir para outro fluxo',
+            next: 'end',
+            effects: [{ kind: 'flow_start', flowId: 'missing-target' }],
+          },
+        ],
       },
-    };
+    },
+  };
 
-    expect(() => createInitialFlowStateFromRegistry([invalidFlow], 'fixture-flow')).toThrow(
-      'Flow fixture-flow option missing-flow starts missing flow missing-target.',
-    );
-  });
+  expect(() => createInitialFlowStateFromRegistry([invalidFlow], 'fixture-flow')).toThrow(
+    'Flow fixture-flow option missing-flow starts missing flow missing-target.',
+  );
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -298,6 +300,7 @@ git commit -m "feat: validate flow start targets"
 ## Task 3: Implement Direct Flow Start Runtime Behavior
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/advanceFlow.ts`
 - Modify: `src/domain/flow-engine/resolveOptions.ts`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
@@ -346,138 +349,138 @@ const neutralRouterFlow: GuidedFlow = {
 Add these tests inside `describe('flow runtime', ...)`:
 
 ```ts
-  it('starts a target flow from a neutral flow option without suspending the neutral flow', () => {
-    const state = createInitialFlowState(neutralRouterFlow, [neutralRouterFlow, validFlow]);
-    const nextState = advanceFlow(state, [neutralRouterFlow, validFlow], 'Falar sobre sobrecarga');
+it('starts a target flow from a neutral flow option without suspending the neutral flow', () => {
+  const state = createInitialFlowState(neutralRouterFlow, [neutralRouterFlow, validFlow]);
+  const nextState = advanceFlow(state, [neutralRouterFlow, validFlow], 'Falar sobre sobrecarga');
 
-    expect(nextState.activeFlowId).toBe('fixture-flow');
-    expect(nextState.activeNodeId).toBe('start');
-    expect(nextState.suspendedFlows['neutral-router']).toBeUndefined();
-    expect(nextState.transcript.map((message) => message.text)).toContain('Falar sobre sobrecarga');
-    // The target flow starts immediately, so its entry transition appears in the same transcript.
-    expect(nextState.transcript.map((message) => message.text)).toContain(validFlow.entry.transitionMessage);
-  });
+  expect(nextState.activeFlowId).toBe('fixture-flow');
+  expect(nextState.activeNodeId).toBe('start');
+  expect(nextState.suspendedFlows['neutral-router']).toBeUndefined();
+  expect(nextState.transcript.map((message) => message.text)).toContain('Falar sobre sobrecarga');
+  // The target flow starts immediately, so its entry transition appears in the same transcript.
+  expect(nextState.transcript.map((message) => message.text)).toContain(validFlow.entry.transitionMessage);
+});
 
-  it('navigates directly from neutral flow options that target app destinations', () => {
-    const navigationFlow: GuidedFlow = {
-      ...neutralRouterFlow,
-      nodes: {
-        start: {
-          id: 'start',
-          kind: 'choice',
-          text: 'O que você quer abrir?',
-          options: [
-            {
-              id: 'education',
-              label: 'Abrir materiais educativos',
-              next: 'fallback',
-              effects: [{ kind: 'navigate', destination: '/educacao' }],
-            },
-          ],
-        },
-        fallback: {
-          id: 'fallback',
-          kind: 'result',
-          text: 'Abrindo materiais educativos.',
-        },
+it('navigates directly from neutral flow options that target app destinations', () => {
+  const navigationFlow: GuidedFlow = {
+    ...neutralRouterFlow,
+    nodes: {
+      start: {
+        id: 'start',
+        kind: 'choice',
+        text: 'O que você quer abrir?',
+        options: [
+          {
+            id: 'education',
+            label: 'Abrir materiais educativos',
+            next: 'fallback',
+            effects: [{ kind: 'navigate', destination: '/educacao' }],
+          },
+        ],
       },
-    };
-    const state = createInitialFlowState(navigationFlow, [navigationFlow, validFlow]);
-    const nextState = advanceFlow(state, [navigationFlow, validFlow], 'Abrir materiais educativos');
-
-    expect(nextState.activeFlowId).toBeUndefined();
-    expect(nextState.activeNodeId).toBeUndefined();
-    expect(nextState.pendingNavigation).toBe('/educacao');
-    expect(nextState.transcript.map((message) => message.text)).toContain('Abrir materiais educativos');
-  });
-
-  it('offers post-flow routing after regular result nodes', () => {
-    const postFlowRouter: GuidedFlow = {
-      ...neutralRouterFlow,
-      id: 'post-flow-next-step',
-      purpose: 'post_flow_routing',
-    };
-    const flows = [validFlow, neutralRouterFlow, postFlowRouter];
-    const state = createInitialFlowState(validFlow, flows);
-    const resultState = advanceFlow(state, flows, 'Continuar');
-
-    expect(resolveOptions(resultState, flows)).toContainEqual({
-      kind: 'flow_start',
-      id: 'post-flow-next-step-start',
-      label: 'Escolher o que fazer agora',
-      flowId: 'post-flow-next-step',
-    });
-  });
-
-  it('does not offer post-flow routing from the post-flow router itself', () => {
-    const postFlowRouter: GuidedFlow = {
-      ...neutralRouterFlow,
-      id: 'post-flow-next-step',
-      purpose: 'post_flow_routing',
-      nodes: {
-        start: {
-          id: 'start',
-          kind: 'choice',
-          text: 'Qual próximo passo você prefere?',
-          options: [
-            {
-              id: 'end',
-              label: 'Finalizar por hoje',
-              next: 'done',
-            },
-          ],
-        },
-        done: {
-          id: 'done',
-          kind: 'result',
-          text: 'Tudo bem. Você pode voltar quando quiser.',
-        },
+      fallback: {
+        id: 'fallback',
+        kind: 'result',
+        text: 'Abrindo materiais educativos.',
       },
-    };
-    const state = createInitialFlowState(postFlowRouter, [postFlowRouter, validFlow]);
-    const resultState = advanceFlow(state, [postFlowRouter, validFlow], 'Finalizar por hoje');
+    },
+  };
+  const state = createInitialFlowState(navigationFlow, [navigationFlow, validFlow]);
+  const nextState = advanceFlow(state, [navigationFlow, validFlow], 'Abrir materiais educativos');
 
-    expect(resolveOptions(resultState, [postFlowRouter, validFlow])).not.toContainEqual(
-      expect.objectContaining({ id: 'post-flow-next-step-start' }),
-    );
+  expect(nextState.activeFlowId).toBeUndefined();
+  expect(nextState.activeNodeId).toBeUndefined();
+  expect(nextState.pendingNavigation).toBe('/educacao');
+  expect(nextState.transcript.map((message) => message.text)).toContain('Abrir materiais educativos');
+});
+
+it('offers post-flow routing after regular result nodes', () => {
+  const postFlowRouter: GuidedFlow = {
+    ...neutralRouterFlow,
+    id: 'post-flow-next-step',
+    purpose: 'post_flow_routing',
+  };
+  const flows = [validFlow, neutralRouterFlow, postFlowRouter];
+  const state = createInitialFlowState(validFlow, flows);
+  const resultState = advanceFlow(state, flows, 'Continuar');
+
+  expect(resolveOptions(resultState, flows)).toContainEqual({
+    kind: 'flow_start',
+    id: 'post-flow-next-step-start',
+    label: 'Escolher o que fazer agora',
+    flowId: 'post-flow-next-step',
   });
+});
 
-  it('does not offer post-flow routing from orientation neutral flow results', () => {
-    const orientationFlow: GuidedFlow = {
-      ...neutralRouterFlow,
-      nodes: {
-        start: {
-          id: 'start',
-          kind: 'choice',
-          text: 'Qual próximo passo você prefere?',
-          options: [
-            {
-              id: 'end',
-              label: 'Finalizar por hoje',
-              next: 'done',
-            },
-          ],
-        },
-        done: {
-          id: 'done',
-          kind: 'result',
-          text: 'Tudo bem. Você pode voltar quando quiser.',
-        },
+it('does not offer post-flow routing from the post-flow router itself', () => {
+  const postFlowRouter: GuidedFlow = {
+    ...neutralRouterFlow,
+    id: 'post-flow-next-step',
+    purpose: 'post_flow_routing',
+    nodes: {
+      start: {
+        id: 'start',
+        kind: 'choice',
+        text: 'Qual próximo passo você prefere?',
+        options: [
+          {
+            id: 'end',
+            label: 'Finalizar por hoje',
+            next: 'done',
+          },
+        ],
       },
-    };
-    const postFlowRouter: GuidedFlow = {
-      ...neutralRouterFlow,
-      id: 'post-flow-next-step',
-      purpose: 'post_flow_routing',
-    };
-    const flows = [orientationFlow, postFlowRouter, validFlow];
-    const state = createInitialFlowState(orientationFlow, flows);
-    const resultState = advanceFlow(state, flows, 'Finalizar por hoje');
+      done: {
+        id: 'done',
+        kind: 'result',
+        text: 'Tudo bem. Você pode voltar quando quiser.',
+      },
+    },
+  };
+  const state = createInitialFlowState(postFlowRouter, [postFlowRouter, validFlow]);
+  const resultState = advanceFlow(state, [postFlowRouter, validFlow], 'Finalizar por hoje');
 
-    expect(resolveOptions(resultState, flows)).not.toContainEqual(
-      expect.objectContaining({ id: 'post-flow-next-step-start' }),
-    );
-  });
+  expect(resolveOptions(resultState, [postFlowRouter, validFlow])).not.toContainEqual(
+    expect.objectContaining({ id: 'post-flow-next-step-start' }),
+  );
+});
+
+it('does not offer post-flow routing from orientation neutral flow results', () => {
+  const orientationFlow: GuidedFlow = {
+    ...neutralRouterFlow,
+    nodes: {
+      start: {
+        id: 'start',
+        kind: 'choice',
+        text: 'Qual próximo passo você prefere?',
+        options: [
+          {
+            id: 'end',
+            label: 'Finalizar por hoje',
+            next: 'done',
+          },
+        ],
+      },
+      done: {
+        id: 'done',
+        kind: 'result',
+        text: 'Tudo bem. Você pode voltar quando quiser.',
+      },
+    },
+  };
+  const postFlowRouter: GuidedFlow = {
+    ...neutralRouterFlow,
+    id: 'post-flow-next-step',
+    purpose: 'post_flow_routing',
+  };
+  const flows = [orientationFlow, postFlowRouter, validFlow];
+  const state = createInitialFlowState(orientationFlow, flows);
+  const resultState = advanceFlow(state, flows, 'Finalizar por hoje');
+
+  expect(resolveOptions(resultState, flows)).not.toContainEqual(
+    expect.objectContaining({ id: 'post-flow-next-step-start' }),
+  );
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -497,54 +500,47 @@ import { createInitialFlowState, createMessage, getActiveFlow, getFlowById } fro
 Update the type imports:
 
 ```ts
-import type {
-  FlowEffect,
-  FlowNode,
-  FlowRuntimeState,
-  FlowStartFlowEffect,
-  GuidedFlow,
-  RuntimeOption,
-} from './types';
+import type { FlowEffect, FlowNode, FlowRuntimeState, FlowStartFlowEffect, GuidedFlow, RuntimeOption } from './types';
 ```
 
 Add this branch after the `resume_flow` branch:
 
 ```ts
-  if (selectedOption.kind === 'flow_start') {
-    return startFlowWithoutSuspending(
-      appendUserMessage(state, selectedOption, state.activeFlowId ?? 'global'),
-      flows,
-      selectedOption.flowId,
-    );
-  }
+if (selectedOption.kind === 'flow_start') {
+  return startFlowWithoutSuspending(
+    appendUserMessage(state, selectedOption, state.activeFlowId ?? 'global'),
+    flows,
+    selectedOption.flowId,
+  );
+}
 ```
 
 Replace the existing `applyOptionEffects(...)` call with this version so `flow_start` is not treated like a safety interrupt:
 
 ```ts
-  const flowStartEffect = findFlowStartEffect(matchingOption.effects ?? []);
-  const nonStartEffects = (matchingOption.effects ?? []).filter((effect) => effect.kind !== 'flow_start');
-  const effectedState = applyOptionEffects(
-    {
-      ...state,
-      transcript: [...state.transcript, userMessage],
-      answers: {
-        ...state.answers,
-        [currentNodeId]: selectedOption.id,
-      },
-      pendingNavigation: undefined,
+const flowStartEffect = findFlowStartEffect(matchingOption.effects ?? []);
+const nonStartEffects = (matchingOption.effects ?? []).filter((effect) => effect.kind !== 'flow_start');
+const effectedState = applyOptionEffects(
+  {
+    ...state,
+    transcript: [...state.transcript, userMessage],
+    answers: {
+      ...state.answers,
+      [currentNodeId]: selectedOption.id,
     },
-    activeFlow.id,
-    nonStartEffects,
-  );
+    pendingNavigation: undefined,
+  },
+  activeFlow.id,
+  nonStartEffects,
+);
 ```
 
 Add this branch after `effectedState.pendingNavigation` handling and before `advanceToNode`:
 
 ```ts
-  if (flowStartEffect) {
-    return startFlowWithoutSuspending(effectedState, flows, flowStartEffect.flowId);
-  }
+if (flowStartEffect) {
+  return startFlowWithoutSuspending(effectedState, flows, flowStartEffect.flowId);
+}
 ```
 
 Add helper functions before `advanceToNode`:
@@ -634,18 +630,18 @@ const postFlowStartOption: RuntimeFlowStartOption = {
 Add this block after `resumeOptions`:
 
 ```ts
-  const postFlowOptions: RuntimeOption[] =
-    activeNode?.kind === 'result' && activeFlow.purpose === undefined
-      ? flows.some((flow) => flow.id === postFlowStartOption.flowId)
-        ? [postFlowStartOption]
-        : []
-      : [];
+const postFlowOptions: RuntimeOption[] =
+  activeNode?.kind === 'result' && activeFlow.purpose === undefined
+    ? flows.some((flow) => flow.id === postFlowStartOption.flowId)
+      ? [postFlowStartOption]
+      : []
+    : [];
 ```
 
 Update the return:
 
 ```ts
-  return [...currentNodeOptions, ...entryPhraseOptions, ...resumeOptions, ...postFlowOptions, ...globalFlowActions];
+return [...currentNodeOptions, ...entryPhraseOptions, ...resumeOptions, ...postFlowOptions, ...globalFlowActions];
 ```
 
 Do not suppress neutral flow entry phrases in this task. Existing autocomplete flow switching should continue to expose entry phrases from every other flow, including neutral flows; this is deterministic switching, not free-text understanding.
@@ -666,6 +662,7 @@ git commit -m "feat: start flows from neutral routers"
 ## Task 4: Add Neutral Flow Content
 
 **Files:**
+
 - Create: `src/content/flows/neutral.ts`
 - Modify: `src/content/flows/registry.ts`
 - Modify: `src/content/__tests__/content.test.ts`
@@ -675,11 +672,12 @@ git commit -m "feat: start flows from neutral routers"
 Update the flow registry test in `src/content/__tests__/content.test.ts`:
 
 ```ts
-  it('contains switchable guided conversation flows', () => {
-    const flowIds = flowRegistry.flows.map((flow) => flow.id);
+it('contains switchable guided conversation flows', () => {
+  const flowIds = flowRegistry.flows.map((flow) => flow.id);
 
-    expect(flowRegistry.flows).toHaveLength(8);
-    expect(flowIds).toEqual(expect.arrayContaining([
+  expect(flowRegistry.flows).toHaveLength(8);
+  expect(flowIds).toEqual(
+    expect.arrayContaining([
       'orientation-understand-feelings',
       'orientation-talk-through-experience',
       'orientation-next-care-step',
@@ -688,14 +686,15 @@ Update the flow registry test in `src/content/__tests__/content.test.ts`:
       'work-stress',
       'rest-recovery',
       'srq20',
-    ]));
-    flowRegistry.flows.forEach((flow) => {
-      expect(flow.type).toBe('guided_conversation');
-      expect(flow.entry.enteringPhrases.length).toBeGreaterThan(0);
-    });
-    expect(flowRegistry.flows.filter((flow) => flow.purpose === 'orientation_entry')).toHaveLength(4);
-    expect(flowRegistry.flows.find((flow) => flow.id === 'post-flow-next-step')?.purpose).toBe('post_flow_routing');
+    ]),
+  );
+  flowRegistry.flows.forEach((flow) => {
+    expect(flow.type).toBe('guided_conversation');
+    expect(flow.entry.enteringPhrases.length).toBeGreaterThan(0);
   });
+  expect(flowRegistry.flows.filter((flow) => flow.purpose === 'orientation_entry')).toHaveLength(4);
+  expect(flowRegistry.flows.find((flow) => flow.id === 'post-flow-next-step')?.purpose).toBe('post_flow_routing');
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -761,7 +760,11 @@ export const neutralFlows = [
           },
         ],
       },
-      'handoff-work-stress': { id: 'handoff-work-stress', kind: 'result', text: 'Vou abrir um caminho sobre sobrecarga.' },
+      'handoff-work-stress': {
+        id: 'handoff-work-stress',
+        kind: 'result',
+        text: 'Vou abrir um caminho sobre sobrecarga.',
+      },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir um caminho sobre descanso.' },
       'handoff-srq20': { id: 'handoff-srq20', kind: 'result', text: 'Vou abrir o questionário.' },
       'handoff-calm': { id: 'handoff-calm', kind: 'result', text: 'Vou abrir um caminho mais leve.' },
@@ -812,9 +815,17 @@ export const neutralFlows = [
           },
         ],
       },
-      'handoff-work-stress': { id: 'handoff-work-stress', kind: 'result', text: 'Vou abrir um caminho sobre sobrecarga.' },
+      'handoff-work-stress': {
+        id: 'handoff-work-stress',
+        kind: 'result',
+        text: 'Vou abrir um caminho sobre sobrecarga.',
+      },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir um caminho sobre descanso.' },
-      'handoff-understand': { id: 'handoff-understand', kind: 'result', text: 'Vou abrir um caminho para entender o momento.' },
+      'handoff-understand': {
+        id: 'handoff-understand',
+        kind: 'result',
+        text: 'Vou abrir um caminho para entender o momento.',
+      },
     },
   },
   {
@@ -1015,7 +1026,11 @@ export const neutralFlows = [
           },
         ],
       },
-      'handoff-orientation': { id: 'handoff-orientation', kind: 'result', text: 'Vou abrir outro caminho de orientação.' },
+      'handoff-orientation': {
+        id: 'handoff-orientation',
+        kind: 'result',
+        text: 'Vou abrir outro caminho de orientação.',
+      },
       'handoff-rest': { id: 'handoff-rest', kind: 'result', text: 'Vou abrir uma pausa de descanso.' },
       'navigation-fallback': {
         id: 'navigation-fallback',
@@ -1064,6 +1079,7 @@ git commit -m "feat: add neutral routing flows"
 ## Task 5: Start Orientation From Neutral Flows
 
 **Files:**
+
 - Modify: `src/features/orientation/OrientationScreen.tsx`
 - Modify: `src/features/orientation/__tests__/OrientationScreen.test.tsx`
 
@@ -1072,12 +1088,14 @@ git commit -m "feat: add neutral routing flows"
 In `src/features/orientation/__tests__/OrientationScreen.test.tsx`, replace intro copy expectations:
 
 ```ts
-    expect(screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.')).toBeInTheDocument();
-    expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Quero encontrar um próximo passo de cuidado' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Preciso de um momento mais leve' })).toBeInTheDocument();
+expect(
+  screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.'),
+).toBeInTheDocument();
+expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
+expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
+expect(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' })).toBeInTheDocument();
+expect(screen.getByRole('button', { name: 'Quero encontrar um próximo passo de cuidado' })).toBeInTheDocument();
+expect(screen.getByRole('button', { name: 'Preciso de um momento mais leve' })).toBeInTheDocument();
 ```
 
 Update `startOrientationWithStarter` default:
@@ -1101,215 +1119,219 @@ function routeFromNeutralToWorkStress() {
 Update existing tests that currently assume `work-stress` starts immediately:
 
 ```ts
-  it('advances the flow immediately when the user clicks a bubble', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+it('advances the flow immediately when the user clicks a bubble', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+  advanceInitialLoad();
 
-    expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
-    expect(
-      screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
-    ).toBeInTheDocument();
-  });
+  expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
+  expect(
+    screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
+  ).toBeInTheDocument();
+});
 ```
 
 Replace these existing work-stress-assumption tests with versions that first route through the neutral flow:
 
 ```ts
-  it('only enables send when the input exactly matches an available option', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+it('only enables send when the input exactly matches an available option', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+  const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+  const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
 
-    expect(sendButton).toBeDisabled();
+  expect(sendButton).toBeDisabled();
 
-    fireEvent.change(input, { target: { value: 'qualquer coisa' } });
-    expect(sendButton).toBeDisabled();
+  fireEvent.change(input, { target: { value: 'qualquer coisa' } });
+  expect(sendButton).toBeDisabled();
 
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
-    expect(sendButton).toBeEnabled();
+  fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
+  expect(sendButton).toBeEnabled();
+});
+
+it('shows matching options in an autocomplete overlay above the input', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
+
+  fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
+    target: { value: 'descansar' },
   });
 
-  it('shows matching options in an autocomplete overlay above the input', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+  expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Dificuldade para descansar' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).not.toBeInTheDocument();
+});
 
-    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
-      target: { value: 'descansar' },
-    });
+it('hides suggestions when input exactly matches an option label', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Dificuldade para descansar' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).not.toBeInTheDocument();
-  });
+  const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
 
-  it('hides suggestions when input exactly matches an option label', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+  expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+  fireEvent.change(input, { target: { value: 'Muitas tarefas ao mesmo tempo' } });
 
-    expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
+  expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
+});
 
-    fireEvent.change(input, { target: { value: 'Muitas tarefas ao mesmo tempo' } });
+it('shows suggestions when trailing space breaks strict match but send stays enabled', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
-  });
+  const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+  const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
 
-  it('shows suggestions when trailing space breaks strict match but send stays enabled', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+  fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
+  expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
+  expect(sendButton).toBeEnabled();
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+  fireEvent.change(input, { target: { value: 'Dificuldade para descansar ' } });
+  expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
+  expect(sendButton).toBeEnabled();
+});
 
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
-    expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
-    expect(sendButton).toBeEnabled();
+it('shows user message immediately and bot response after delay when selecting a node option', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar ' } });
-    expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
-    expect(sendButton).toBeEnabled();
-  });
+  fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
 
-  it('shows user message immediately and bot response after delay when selecting a node option', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+  expect(screen.getByText('Muitas tarefas ao mesmo tempo')).toBeInTheDocument();
+  expect(
+    screen.queryByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('option')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+  advanceInitialLoad();
 
-    expect(screen.getByText('Muitas tarefas ao mesmo tempo')).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        'Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.',
-      ),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  expect(
+    screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' })).toBeInTheDocument();
+});
 
-    advanceInitialLoad();
+it('disables input and send while revealing bot messages', () => {
+  renderOrientation();
+  startOrientationWithStarter();
+  routeFromNeutralToWorkStress();
 
-    expect(
-      screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' })).toBeInTheDocument();
-  });
+  fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
 
-  it('disables input and send while revealing bot messages', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+  const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+  const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
 
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+  expect(input).toBeDisabled();
+  expect(sendButton).toBeDisabled();
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+  advanceInitialLoad();
 
-    expect(input).toBeDisabled();
-    expect(sendButton).toBeDisabled();
-
-    advanceInitialLoad();
-
-    expect(input).not.toBeDisabled();
-    expect(sendButton).toBeDisabled();
-  });
+  expect(input).not.toBeDisabled();
+  expect(sendButton).toBeDisabled();
+});
 ```
 
 Update the initial typing indicator test to expect neutral-flow copy:
 
 ```ts
-    expect(screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
+expect(
+  screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+).not.toBeInTheDocument();
+expect(screen.getByText('SeCuida')).toBeInTheDocument();
+expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
-    advanceInitialLoad();
+advanceInitialLoad();
 
-    expect(screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
+expect(
+  screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+).toBeInTheDocument();
+expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
 ```
 
 Add this test:
 
 ```ts
-  it('starts the selected neutral orientation flow', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
+it('starts the selected neutral orientation flow', () => {
+  renderOrientation();
+  startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
 
-    expect(screen.getByText('Quero encontrar um próximo passo de cuidado')).toBeInTheDocument();
-    expect(screen.getByText('Vamos escolher um próximo passo possível para agora.')).toBeInTheDocument();
-    expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
-  });
+  expect(screen.getByText('Quero encontrar um próximo passo de cuidado')).toBeInTheDocument();
+  expect(screen.getByText('Vamos escolher um próximo passo possível para agora.')).toBeInTheDocument();
+  expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
+});
 ```
 
 Add this test to prove neutral app-destination options are exposed instead of dead-end result instructions:
 
 ```ts
-  it('shows neutral app-destination options', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
+it('shows neutral app-destination options', () => {
+  renderOrientation();
+  startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
 
-    fireEvent.click(screen.getByRole('option', { name: 'Materiais, contatos ou apoio' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Materiais, contatos ou apoio' }));
+  advanceInitialLoad();
 
-    expect(screen.getByRole('option', { name: 'Abrir materiais educativos' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Abrir contatos de apoio' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Abrir apoio agora' })).toBeInTheDocument();
-  });
+  expect(screen.getByRole('option', { name: 'Abrir materiais educativos' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Abrir contatos de apoio' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Abrir apoio agora' })).toBeInTheDocument();
+});
 ```
 
 Replace the "Outro" test with the complete neutral-flow version:
 
 ```ts
-  it('starts the default neutral flow from Outro without adding Outro as a conversation message', () => {
-    renderOrientation();
+it('starts the default neutral flow from Outro without adding Outro as a conversation message', () => {
+  renderOrientation();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Outro' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('button', { name: 'Outro' }));
+  advanceInitialLoad();
 
-    expect(screen.queryByText(/^Outro$/)).not.toBeInTheDocument();
-    expect(screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
-  });
+  expect(screen.queryByText(/^Outro$/)).not.toBeInTheDocument();
+  expect(
+    screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
+});
 ```
 
 Update the starter-recording test to use a new intro label:
 
 ```ts
-    fireEvent.click(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' }));
+fireEvent.click(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' }));
 
-    expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
+expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
+expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
+expect(screen.getByText('SeCuida')).toBeInTheDocument();
 
-    advanceInitialLoad();
+advanceInitialLoad();
 
-    expect(screen.getByText('Quero falar sobre o que estou vivendo')).toBeInTheDocument();
-    expect(screen.getByText('Podemos organizar isso por partes, sem pressa.')).toBeInTheDocument();
+expect(screen.getByText('Quero falar sobre o que estou vivendo')).toBeInTheDocument();
+expect(screen.getByText('Podemos organizar isso por partes, sem pressa.')).toBeInTheDocument();
 ```
 
 Add this test for curated neutral handoff:
 
 ```ts
-  it('routes from a neutral option into a specific guided flow', () => {
-    renderOrientation();
-    startOrientationWithStarter();
+it('routes from a neutral option into a specific guided flow', () => {
+  renderOrientation();
+  startOrientationWithStarter();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+  advanceInitialLoad();
 
-    expect(screen.getByText('Parece mais sobre sobrecarga')).toBeInTheDocument();
-    expect(screen.getByText(/Vamos olhar para essa sobrecarga com calma/)).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
-  });
+  expect(screen.getByText('Parece mais sobre sobrecarga')).toBeInTheDocument();
+  expect(screen.getByText(/Vamos olhar para essa sobrecarga com calma/)).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
+});
 ```
 
 - [ ] **Step 2: Run UI tests to verify they fail**
@@ -1360,13 +1382,13 @@ const INTRO_STARTERS = [
 Add state for starter flow ID:
 
 ```ts
-  const [selectedIntroFlowId, setSelectedIntroFlowId] = useState<string>(INTRO_STARTERS[0].flowId);
+const [selectedIntroFlowId, setSelectedIntroFlowId] = useState<string>(INTRO_STARTERS[0].flowId);
 ```
 
 Update initial state creation:
 
 ```ts
-      const initialState = createInitialFlowStateFromRegistry(flows, selectedIntroFlowId);
+const initialState = createInitialFlowStateFromRegistry(flows, selectedIntroFlowId);
 ```
 
 Update the intro message fallback in the same hook:
@@ -1384,7 +1406,7 @@ Update the hook dependency array:
 Update intro message logic:
 
 ```ts
-        selectedIntroStarter === null
+selectedIntroStarter === null;
 ```
 
 stays unchanged, because `startConversation` will now set `selectedIntroStarter` only when `recordAsMessage` is true.
@@ -1392,16 +1414,16 @@ stays unchanged, because `startConversation` will now set `selectedIntroStarter`
 Update `startConversation`:
 
 ```ts
-    setSelectedIntroFlowId(starter.flowId);
-    setSelectedIntroStarter(starter.recordAsMessage ? starter.label : null);
+setSelectedIntroFlowId(starter.flowId);
+setSelectedIntroStarter(starter.recordAsMessage ? starter.label : null);
 ```
 
 Update intro copy:
 
 ```tsx
-              <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
-                Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
-              </p>
+<p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
+  Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
+</p>
 ```
 
 ```tsx
@@ -1424,6 +1446,7 @@ git commit -m "feat: start orientation from neutral flows"
 ## Task 6: Cover Post-Flow Routing In The UI
 
 **Files:**
+
 - Modify: `src/features/orientation/__tests__/OrientationScreen.test.tsx`
 
 - [ ] **Step 1: Add failing post-flow UI test**
@@ -1431,28 +1454,34 @@ git commit -m "feat: start orientation from neutral flows"
 Add this test:
 
 ```ts
-  it('offers a calm next-step route after a regular flow result', () => {
-    renderOrientation();
-    startOrientationWithStarter();
+it('offers a calm next-step route after a regular flow result', () => {
+  renderOrientation();
+  startOrientationWithStarter();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+  advanceInitialLoad();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+  advanceInitialLoad();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' }));
+  advanceInitialLoad();
 
-    expect(screen.getByText('Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Escolher o que fazer agora' })).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      'Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Escolher o que fazer agora' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Escolher o que fazer agora' }));
-    advanceInitialLoad();
+  fireEvent.click(screen.getByRole('option', { name: 'Escolher o que fazer agora' }));
+  advanceInitialLoad();
 
-    expect(screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.')).toBeInTheDocument();
-    expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
-  });
+  expect(
+    screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
+});
 ```
 
 - [ ] **Step 2: Run UI test**
@@ -1471,6 +1500,7 @@ git commit -m "test: cover post-flow neutral routing"
 ## Task 7: Final Verification
 
 **Files:**
+
 - No source edits expected.
 
 - [ ] **Step 1: Run flow validation**

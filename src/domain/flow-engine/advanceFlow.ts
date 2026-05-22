@@ -2,14 +2,7 @@ import { createInitialFlowState, createMessage, getActiveFlow, getFlowById } fro
 import { resolveOptions } from './resolveOptions';
 import { resumeFlow } from './resumeFlow';
 import { suspendFlow } from './suspendFlow';
-import type {
-  FlowEffect,
-  FlowNode,
-  FlowRuntimeState,
-  FlowStartFlowEffect,
-  GuidedFlow,
-  RuntimeOption,
-} from './types';
+import type { FlowEffect, FlowNode, FlowRuntimeState, FlowStartFlowEffect, GuidedFlow, RuntimeOption } from './types';
 
 export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], selectedLabel: string): FlowRuntimeState {
   const selectedOption = resolveOptions(state, flows).find((option) => option.label === selectedLabel);
@@ -81,6 +74,10 @@ export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], select
     return effectedState;
   }
 
+  if (effectedState.activeFlowId === undefined) {
+    return effectedState;
+  }
+
   if (flowStartEffect) {
     return startFlowWithoutSuspending(effectedState, flows, flowStartEffect.flowId);
   }
@@ -142,6 +139,15 @@ function applyOptionEffects(state: FlowRuntimeState, flowId: string, effects: Fl
         activeFlowId: undefined,
         activeNodeId: undefined,
         pendingNavigation: effect.destination,
+      };
+    }
+
+    if (effect.kind === 'end_flow') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        transcript: [...nextState.transcript, createMessage('bot', effect.message, flowId, nextState.activeNodeId)],
       };
     }
 

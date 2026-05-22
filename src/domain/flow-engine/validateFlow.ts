@@ -168,5 +168,12 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
     if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
       errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
     }
+    return;
+  }
+
+  if (effect.kind === 'end_flow') {
+    if (!hasText(effect.message)) {
+      errors.push(`Flow ${flowLabel} option ${optionId} end_flow effect must include message.`);
+    }
   }
 }
