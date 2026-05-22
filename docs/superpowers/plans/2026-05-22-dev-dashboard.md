@@ -69,6 +69,7 @@ src/dev-dashboard/
     flowValidation.ts
   validation/
     validationTypes.ts
+    duplicateIds.ts
   __tests__/
     dashboardRoute.test.tsx
     dashboardStorage.test.ts
@@ -269,6 +270,7 @@ git commit -m "feat: gate dev dashboard route"
 - Create: `src/dev-dashboard/components/FieldHint.tsx`
 - Create: `src/dev-dashboard/content/shippedContent.ts`
 - Create: `src/dev-dashboard/content/normalize.ts`
+- Create: `src/dev-dashboard/validation/duplicateIds.ts`
 - Create: `src/dev-dashboard/validation/validationTypes.ts`
 
 - [ ] **Step 1: Create shared validation types**
@@ -300,7 +302,25 @@ export function createValidationResult(issues: DashboardValidationIssue[]): Dash
 }
 ```
 
-- [ ] **Step 2: Add shipped content adapter**
+- [ ] **Step 2: Add shared duplicate helper**
+
+Create `src/dev-dashboard/validation/duplicateIds.ts`:
+
+```ts
+export function findDuplicateIds(values: string[]) {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  values.forEach((value) => {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  });
+
+  return [...duplicates];
+}
+```
+
+- [ ] **Step 3: Add shipped content adapter**
 
 Create `src/dev-dashboard/content/shippedContent.ts`:
 
@@ -323,7 +343,7 @@ export function getShippedDashboardContent(): DashboardShippedContent {
 }
 ```
 
-- [ ] **Step 3: Add stable normalization helper**
+- [ ] **Step 4: Add stable normalization helper**
 
 Create `src/dev-dashboard/content/normalize.ts`:
 
@@ -347,7 +367,7 @@ function sortRecord(value: unknown): unknown {
 }
 ```
 
-- [ ] **Step 4: Add shell components**
+- [ ] **Step 5: Add shell components**
 
 Create `src/dev-dashboard/components/FieldHint.tsx`:
 
@@ -355,7 +375,7 @@ Create `src/dev-dashboard/components/FieldHint.tsx`:
 import type { ReactNode } from 'react';
 
 export function FieldHint({ children }: { children: ReactNode }) {
-  return <p className="font-body-sm text-on-surface-variant">{children}</p>;
+  return <p className="font-body-md text-on-surface-variant">{children}</p>;
 }
 ```
 
@@ -369,8 +389,8 @@ export function DashboardNotice() {
     <aside className="flex items-start gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low p-4">
       <Info className="mt-0.5 shrink-0 text-secondary" size={20} aria-hidden="true" />
       <div>
-        <h2 className="font-title-sm text-on-surface">Rascunho local</h2>
-        <p className="mt-1 font-body-sm text-on-surface-variant">
+        <h2 className="font-headline-sm text-on-surface">Rascunho local</h2>
+        <p className="mt-1 font-body-md text-on-surface-variant">
           Este conteúdo está salvo apenas neste navegador. Ele ainda não foi publicado.
         </p>
       </div>
@@ -429,7 +449,7 @@ export function DashboardShell({
 }
 ```
 
-- [ ] **Step 5: Wire placeholder shell**
+- [ ] **Step 6: Wire placeholder shell**
 
 Replace `src/dev-dashboard/DashboardRoute.tsx`:
 
@@ -447,7 +467,7 @@ export function DashboardRoute() {
       <PageHeader title="Dashboard" description="Rascunhos locais para fluxos e materiais educativos." />
       <DashboardShell activeTab={activeTab} onTabChange={setActiveTab}>
         <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-          <h2 className="font-title-md text-on-surface">
+          <h2 className="font-headline-sm text-on-surface">
             {activeTab === 'flows' ? 'Fluxos' : activeTab === 'education' ? 'Materiais' : 'Exportar'}
           </h2>
         </section>
@@ -457,7 +477,7 @@ export function DashboardRoute() {
 }
 ```
 
-- [ ] **Step 6: Run route smoke test**
+- [ ] **Step 7: Run route smoke test**
 
 Run:
 
@@ -467,7 +487,7 @@ pnpm run test -- src/app/__tests__/routes.test.tsx
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/dev-dashboard
@@ -733,6 +753,7 @@ Create `src/dev-dashboard/flows/flowValidation.ts`:
 import { validateFlow } from '../../domain/flow-engine/validateFlow';
 import type { FlowEffect, GuidedFlow } from '../../domain/flow-engine/types';
 import { createValidationResult, type DashboardValidationIssue } from '../validation/validationTypes';
+import { findDuplicateIds } from '../validation/duplicateIds';
 
 const allowedNavigateDestinations = new Set(['/apoio', '/contatos', '/educacao']);
 const allowedNodeKinds = new Set(['choice', 'result', 'score_branch']);
@@ -753,7 +774,7 @@ export function validateDashboardFlows(flows: GuidedFlow[], resourceIds: string[
     });
   });
 
-  findDuplicates(flows.map((flow) => flow.id)).forEach((id) => {
+  findDuplicateIds(flows.map((flow) => flow.id)).forEach((id) => {
     issues.push({
       level: 'error',
       area: 'flows',
@@ -845,18 +866,6 @@ function validateEffect(
   }
 
   return [];
-}
-
-function findDuplicates(values: string[]) {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-
-  values.forEach((value) => {
-    if (seen.has(value)) duplicates.add(value);
-    seen.add(value);
-  });
-
-  return [...duplicates];
 }
 ```
 
@@ -989,12 +998,13 @@ Create `src/dev-dashboard/education/educationValidation.ts`:
 ```ts
 import type { EducationResource } from '../../domain/resources/types';
 import { createValidationResult, type DashboardValidationIssue } from '../validation/validationTypes';
+import { findDuplicateIds } from '../validation/duplicateIds';
 import { educationTypesRequiringUrl } from './educationTypes';
 
 export function validateDashboardEducation(resources: EducationResource[]) {
   const issues: DashboardValidationIssue[] = [];
 
-  findDuplicates(resources.map((resource) => resource.id)).forEach((id) => {
+  findDuplicateIds(resources.map((resource) => resource.id)).forEach((id) => {
     issues.push({
       level: 'error',
       area: 'education',
@@ -1059,18 +1069,6 @@ function isHttpUrl(value: string) {
   } catch {
     return false;
   }
-}
-
-function findDuplicates(values: string[]) {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-
-  values.forEach((value) => {
-    if (seen.has(value)) duplicates.add(value);
-    seen.add(value);
-  });
-
-  return [...duplicates];
 }
 ```
 
@@ -1431,13 +1429,13 @@ import type { DashboardValidationResult } from '../validation/validationTypes';
 export function ValidationSummary({ result }: { result: DashboardValidationResult }) {
   return (
     <section className="rounded-lg border border-outline-variant/50 bg-surface-container-low p-4">
-      <h3 className="font-title-sm text-on-surface">Validação</h3>
+      <h3 className="font-headline-sm text-on-surface">Validação</h3>
       {result.errors.length === 0 && result.warnings.length === 0 ? (
-        <p className="mt-2 font-body-sm text-on-surface-variant">Nenhum problema encontrado neste rascunho.</p>
+        <p className="mt-2 font-body-md text-on-surface-variant">Nenhum problema encontrado neste rascunho.</p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
           {[...result.errors, ...result.warnings].map((issue) => (
-            <li key={issue.id} className="font-body-sm text-on-surface-variant">
+            <li key={issue.id} className="font-body-md text-on-surface-variant">
               <strong>{issue.level === 'error' ? 'Erro:' : 'Aviso:'}</strong> {issue.message}
             </li>
           ))}
@@ -1460,7 +1458,7 @@ import { flowPurposeLabels } from './flowLabels';
 export function FlowEditor({ flow }: { flow: GuidedFlow }) {
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <h2 className="font-title-md text-on-surface">Dados do fluxo</h2>
+      <h2 className="font-headline-sm text-on-surface">Dados do fluxo</h2>
 
       <label className="flex flex-col gap-2">
         <span className="font-label-md text-on-surface">Título</span>
@@ -1485,7 +1483,7 @@ export function FlowEditor({ flow }: { flow: GuidedFlow }) {
       </label>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-title-sm text-on-surface">Frases de entrada</h3>
+        <h3 className="font-headline-sm text-on-surface">Frases de entrada</h3>
         <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
         <ul className="flex flex-wrap gap-2">
           {flow.entry.enteringPhrases.map((phrase) => (
@@ -1510,16 +1508,16 @@ import type { GuidedFlow } from '../../domain/flow-engine/types';
 export function FlowMap({ flow }: { flow: GuidedFlow }) {
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <h2 className="font-title-md text-on-surface">Mapa visual</h2>
+      <h2 className="font-headline-sm text-on-surface">Mapa visual</h2>
       <div className="grid gap-3 md:grid-cols-2">
         {Object.values(flow.nodes).map((node) => (
           <article key={node.id} className="rounded-lg border border-outline-variant bg-surface-container-low p-3">
             <p className="font-label-md text-on-surface">{node.id}</p>
-            <p className="mt-1 font-body-sm text-on-surface-variant">{node.text}</p>
+            <p className="mt-1 font-body-md text-on-surface-variant">{node.text}</p>
             {node.kind === 'choice' && (
               <ul className="mt-2 flex flex-col gap-1">
                 {node.options.map((option) => (
-                  <li key={option.id} className="font-body-sm text-on-surface-variant">
+                  <li key={option.id} className="font-body-md text-on-surface-variant">
                     {option.label} -> {option.effects?.find((effect) => effect.kind === 'flow_start') ? 'começa fluxo' : option.next}
                   </li>
                 ))}
@@ -1545,12 +1543,14 @@ export function FlowPreview({ flow }: { flow: GuidedFlow }) {
 
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <h2 className="font-title-md text-on-surface">Testar conversa</h2>
+      <h2 className="font-headline-sm text-on-surface">Testar conversa</h2>
       <div className="rounded-2xl rounded-bl-sm bg-[#EEF8F3] px-4 py-3">
         <p className="font-body-md text-on-surface">{flow.entry.transitionMessage}</p>
       </div>
       <div className="rounded-2xl rounded-bl-sm bg-[#EEF8F3] px-4 py-3">
-        <p className="font-body-md text-on-surface">{firstNode.text}</p>
+        <p className="font-body-md text-on-surface">
+          {firstNode?.text ?? 'A etapa inicial deste fluxo ainda precisa ser corrigida.'}
+        </p>
       </div>
     </section>
   );
@@ -1590,7 +1590,7 @@ export function FlowDashboard({ flows, resources }: { flows: GuidedFlow[]; resou
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <aside className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-        <h2 className="font-title-md text-on-surface">Fluxos</h2>
+        <h2 className="font-headline-sm text-on-surface">Fluxos</h2>
         <div className="mt-3 flex flex-col gap-2">
           {flows.map((flow) => (
             <button
@@ -1640,12 +1640,12 @@ export function DashboardRoute() {
         {activeTab === 'flows' && <FlowDashboard flows={shipped.flows} resources={shipped.educationMaterials} />}
         {activeTab === 'education' && (
           <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-            <h2 className="font-title-md text-on-surface">Materiais</h2>
+            <h2 className="font-headline-sm text-on-surface">Materiais</h2>
           </section>
         )}
         {activeTab === 'export' && (
           <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-            <h2 className="font-title-md text-on-surface">Exportar</h2>
+            <h2 className="font-headline-sm text-on-surface">Exportar</h2>
           </section>
         )}
       </DashboardShell>
@@ -1735,7 +1735,7 @@ export function EducationDashboard({ resources }: { resources: EducationResource
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <aside className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-        <h2 className="font-title-md text-on-surface">Materiais</h2>
+        <h2 className="font-headline-sm text-on-surface">Materiais</h2>
         <div className="mt-3 flex flex-col gap-2">
           {resources.map((resource) => (
             <button
@@ -1756,7 +1756,7 @@ export function EducationDashboard({ resources }: { resources: EducationResource
 
       <div className="flex flex-col gap-stack-md">
         <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-          <h2 className="font-title-md text-on-surface">Dados principais</h2>
+          <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
           <label className="flex flex-col gap-2">
             <span className="font-label-md text-on-surface">Título</span>
             <input
@@ -1781,7 +1781,7 @@ export function EducationDashboard({ resources }: { resources: EducationResource
             <FieldHint>Escolha como este material será aberto no app.</FieldHint>
           </label>
           <div>
-            <h3 className="font-title-sm text-on-surface">Tags</h3>
+            <h3 className="font-headline-sm text-on-surface">Tags</h3>
             <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
             <div className="mt-2 flex flex-wrap gap-2">
               {selectedResource.tags.map((tag) => (
@@ -1810,9 +1810,7 @@ import { EducationDashboard } from './education/EducationDashboard';
 Replace the education placeholder:
 
 ```tsx
-{
-  activeTab === 'education' && <EducationDashboard resources={shipped.educationMaterials} />;
-}
+<>{activeTab === 'education' && <EducationDashboard resources={shipped.educationMaterials} />}</>
 ```
 
 - [ ] **Step 5: Run dashboard UI test**
@@ -1876,6 +1874,7 @@ Expected: FAIL because export dashboard does not exist.
 Create `src/dev-dashboard/export/ExportDashboard.tsx`:
 
 ```tsx
+import { useMemo, useState } from 'react';
 import type { DashboardDraftContent } from './exportBundle';
 import type { DashboardShippedContent } from '../content/shippedContent';
 import type { DashboardValidationResult } from '../validation/validationTypes';
@@ -1890,12 +1889,17 @@ export function ExportDashboard({
   drafts: DashboardDraftContent;
   validation: DashboardValidationResult;
 }) {
-  const bundle = buildExportBundle({
-    shipped,
-    drafts,
-    validation,
-    exportedAt: new Date().toISOString(),
-  });
+  const [exportedAt] = useState(() => new Date().toISOString());
+  const bundle = useMemo(
+    () =>
+      buildExportBundle({
+        shipped,
+        drafts,
+        validation,
+        exportedAt,
+      }),
+    [drafts, exportedAt, shipped, validation],
+  );
   const hasErrors = validation.errors.length > 0;
 
   function downloadBundle() {
@@ -1906,21 +1910,23 @@ export function ExportDashboard({
     const link = document.createElement('a');
     link.href = url;
     link.download = `secuida-dashboard-export-${bundle.exportedAt.slice(0, 10)}.json`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   }
 
   return (
     <section className="flex flex-col gap-stack-md rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
       <div>
-        <h2 className="font-title-md text-on-surface">Arquivo para revisão</h2>
+        <h2 className="font-headline-sm text-on-surface">Arquivo para revisão</h2>
         <p className="mt-2 font-body-md text-on-surface-variant">
           Envie este arquivo para a pessoa responsável pelo repositório.
         </p>
         <p className="font-body-md text-on-surface-variant">Ele não publica nada sozinho.</p>
       </div>
       <div className="rounded-lg bg-surface-container-low p-4">
-        <p className="font-body-sm text-on-surface-variant">
+        <p className="font-body-md text-on-surface-variant">
           Fluxos no arquivo: {bundle.changes.flows.length}. Materiais no arquivo:{' '}
           {bundle.changes.educationMaterials.length}.
         </p>
@@ -1969,9 +1975,7 @@ const drafts = {
 Replace the export placeholder:
 
 ```tsx
-{
-  activeTab === 'export' && <ExportDashboard shipped={shipped} drafts={drafts} validation={validation} />;
-}
+<>{activeTab === 'export' && <ExportDashboard shipped={shipped} drafts={drafts} validation={validation} />}</>
 ```
 
 - [ ] **Step 5: Run dashboard UI test**
@@ -2023,6 +2027,21 @@ it('updates a local flow title draft', () => {
 
   expect(screen.getByDisplayValue('Fluxo editado localmente')).toBeInTheDocument();
 });
+
+it('updates a local education title draft', () => {
+  render(
+    <MemoryRouter>
+      <DashboardRoute />
+    </MemoryRouter>,
+  );
+
+  screen.getByRole('tab', { name: 'Materiais' }).click();
+
+  const titleInput = screen.getByLabelText('Título do material');
+  fireEvent.change(titleInput, { target: { value: 'Material editado localmente' } });
+
+  expect(screen.getByDisplayValue('Material editado localmente')).toBeInTheDocument();
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2033,14 +2052,14 @@ Run:
 pnpm run test -- src/dev-dashboard/__tests__/dashboardRoute.test.tsx
 ```
 
-Expected: FAIL because flow title input is read-only and not labeled for editing.
+Expected: FAIL because flow and education title inputs are read-only and not labeled for editing.
 
 - [ ] **Step 3: Load and save local drafts in route**
 
 Update `DashboardRoute.tsx` to use draft storage:
 
 ```tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   createEmptyDashboardDraftState,
   loadDashboardDrafts,
@@ -2063,15 +2082,20 @@ const [draftState, setDraftState] = useState(() => {
   };
 });
 
-useEffect(() => {
-  saveDashboardDrafts({
-    ...draftState,
-    updatedAt: new Date().toISOString(),
+function updateDraftState(updater: (current: typeof draftState) => typeof draftState) {
+  setDraftState((current) => {
+    const next = {
+      ...updater(current),
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveDashboardDrafts(next);
+    return next;
   });
-}, [draftState]);
+}
 ```
 
-Use `draftState.flows` and `draftState.educationMaterials` instead of `shipped` records for dashboard tabs and validation.
+Use `draftState.flows` and `draftState.educationMaterials` instead of `shipped` records for dashboard tabs and validation. Do not call `saveDashboardDrafts` from a mount-time `useEffect`; saving shipped content immediately would lock the browser to stale copies of future code-level content changes before the editor has made any draft edits.
 
 - [ ] **Step 4: Make flow editor editable**
 
@@ -2139,7 +2163,7 @@ In `DashboardRoute`, pass:
   flows={draftState.flows}
   resources={draftState.educationMaterials}
   onFlowChange={(flow) =>
-    setDraftState((current) => ({
+    updateDraftState((current) => ({
       ...current,
       flows: current.flows.map((item) => (item.id === flow.id ? flow : item)),
     }))
@@ -2147,7 +2171,64 @@ In `DashboardRoute`, pass:
 />
 ```
 
-- [ ] **Step 6: Run edit smoke test**
+- [ ] **Step 6: Make education editor editable**
+
+Change `EducationDashboard` props:
+
+```tsx
+export function EducationDashboard({
+  resources,
+  onResourceChange,
+}: {
+  resources: EducationResource[];
+  onResourceChange: (resource: EducationResource) => void;
+}) {
+```
+
+Change the title field:
+
+```tsx
+<label className="flex flex-col gap-2">
+  <span className="font-label-md text-on-surface">Título do material</span>
+  <input
+    aria-label="Título do material"
+    className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+    value={selectedResource.title}
+    onChange={(event) => onResourceChange({ ...selectedResource, title: event.target.value })}
+  />
+</label>
+```
+
+Change the content-type select from `readOnly` to an editable `onChange` handler:
+
+```tsx
+<select
+  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+  value={selectedResource.contentType}
+  onChange={(event) =>
+    onResourceChange({
+      ...selectedResource,
+      contentType: event.target.value as EducationResource['contentType'],
+    })
+  }
+>
+```
+
+In `DashboardRoute`, pass:
+
+```tsx
+<EducationDashboard
+  resources={draftState.educationMaterials}
+  onResourceChange={(resource) =>
+    updateDraftState((current) => ({
+      ...current,
+      educationMaterials: current.educationMaterials.map((item) => (item.id === resource.id ? resource : item)),
+    }))
+  }
+/>
+```
+
+- [ ] **Step 7: Run edit smoke test**
 
 Run:
 
@@ -2157,7 +2238,7 @@ pnpm run test -- src/dev-dashboard/__tests__/dashboardRoute.test.tsx
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/dev-dashboard
