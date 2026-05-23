@@ -1,14 +1,19 @@
-import { Brain, Compass, GraduationCap, HeartHandshake, Home, Users } from 'lucide-react';
+import { Brain, Compass, Gauge, GraduationCap, HeartHandshake, Home, Users } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { routes } from '../routes';
 
-const navItems = [
-  { to: routes.home, label: 'Início', Icon: Home },
-  { to: routes.orientation, label: 'Orientação', Icon: Compass },
-  { to: routes.education, label: 'Estudos', Icon: GraduationCap },
-  { to: routes.contacts, label: 'Contatos', Icon: Users },
-  { to: routes.support, label: 'Apoio', Icon: HeartHandshake },
-];
+function getNavItems() {
+  return [
+    { to: routes.home, label: 'Início', Icon: Home },
+    { to: routes.orientation, label: 'Orientação', Icon: Compass },
+    { to: routes.education, label: 'Estudos', Icon: GraduationCap },
+    { to: routes.contacts, label: 'Contatos', Icon: Users },
+    { to: routes.support, label: 'Apoio', Icon: HeartHandshake },
+    ...(import.meta.env.VITE_ENABLE_DEV_DASHBOARD === 'true'
+      ? [{ to: routes.dashboard, label: 'Dashboard', Icon: Gauge }]
+      : []),
+  ];
+}
 
 export function TopBar() {
   return (
@@ -20,7 +25,7 @@ export function TopBar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-3" aria-label="Navegação principal">
-          {navItems.map(({ to, label, Icon }) => (
+          {getNavItems().map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
