@@ -422,6 +422,8 @@ export function DashboardShell({
   onTabChange: (tab: DashboardTab) => void;
   children: ReactNode;
 }) {
+  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Dashboard';
+
   return (
     <div className="flex flex-col gap-stack-md">
       <DashboardNotice />
@@ -443,7 +445,9 @@ export function DashboardShell({
           </button>
         ))}
       </div>
-      {children}
+      <section role="tabpanel" aria-label={activeTabLabel}>
+        {children}
+      </section>
     </div>
   );
 }
@@ -1389,10 +1393,14 @@ Create `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`:
 ```tsx
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { DashboardRoute } from '../DashboardRoute';
 
 describe('DashboardRoute', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('renders pt-BR flow editor helper text', () => {
     render(
       <MemoryRouter>
@@ -1766,6 +1774,24 @@ export function EducationDashboard({ resources }: { resources: EducationResource
             />
           </label>
           <label className="flex flex-col gap-2">
+            <span className="font-label-md text-on-surface">Descrição</span>
+            <textarea
+              className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+              value={selectedResource.description}
+              readOnly
+            />
+            <FieldHint>Resumo curto que aparece na lista de materiais.</FieldHint>
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="font-label-md text-on-surface">Fonte</span>
+            <input
+              className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+              value={selectedResource.source}
+              readOnly
+            />
+            <FieldHint>Nome da organização, autora ou referência principal do material.</FieldHint>
+          </label>
+          <label className="flex flex-col gap-2">
             <span className="font-label-md text-on-surface">Tipo do material</span>
             <select
               className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
@@ -1957,15 +1983,18 @@ import { validateDashboardFlows } from './flows/flowValidation';
 Inside `DashboardRoute`, after `shipped`:
 
 ```tsx
-const flowValidation = validateDashboardFlows(
-  shipped.flows,
-  shipped.educationMaterials.map((resource) => resource.id),
-);
-const educationValidation = validateDashboardEducation(shipped.educationMaterials);
-const validation = {
-  errors: [...flowValidation.errors, ...educationValidation.errors],
-  warnings: [...flowValidation.warnings, ...educationValidation.warnings],
-};
+const validation = useMemo(() => {
+  const flowValidation = validateDashboardFlows(
+    shipped.flows,
+    shipped.educationMaterials.map((resource) => resource.id),
+  );
+  const educationValidation = validateDashboardEducation(shipped.educationMaterials);
+
+  return {
+    errors: [...flowValidation.errors, ...educationValidation.errors],
+    warnings: [...flowValidation.warnings, ...educationValidation.warnings],
+  };
+}, [shipped]);
 const drafts = {
   flows: shipped.flows,
   educationMaterials: shipped.educationMaterials,
@@ -2042,6 +2071,26 @@ it('updates a local education title draft', () => {
 
   expect(screen.getByDisplayValue('Material editado localmente')).toBeInTheDocument();
 });
+
+it('updates required education metadata drafts', () => {
+  render(
+    <MemoryRouter>
+      <DashboardRoute />
+    </MemoryRouter>,
+  );
+
+  screen.getByRole('tab', { name: 'Materiais' }).click();
+
+  fireEvent.change(screen.getByLabelText('Descrição do material'), {
+    target: { value: 'Descrição editada localmente' },
+  });
+  fireEvent.change(screen.getByLabelText('Fonte do material'), {
+    target: { value: 'Fonte editada localmente' },
+  });
+
+  expect(screen.getByDisplayValue('Descrição editada localmente')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Fonte editada localmente')).toBeInTheDocument();
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2052,7 +2101,7 @@ Run:
 pnpm run test -- src/dev-dashboard/__tests__/dashboardRoute.test.tsx
 ```
 
-Expected: FAIL because flow and education title inputs are read-only and not labeled for editing.
+Expected: FAIL because flow and education inputs are read-only and not labeled for editing.
 
 - [ ] **Step 3: Load and save local drafts in route**
 
@@ -2095,7 +2144,7 @@ function updateDraftState(updater: (current: typeof draftState) => typeof draftS
 }
 ```
 
-Use `draftState.flows` and `draftState.educationMaterials` instead of `shipped` records for dashboard tabs and validation. Do not call `saveDashboardDrafts` from a mount-time `useEffect`; saving shipped content immediately would lock the browser to stale copies of future code-level content changes before the editor has made any draft edits.
+Use `draftState.flows` and `draftState.educationMaterials` instead of `shipped` records for dashboard tabs, export drafts, and the existing memoized validation block. Do not call `saveDashboardDrafts` from a mount-time `useEffect`; saving shipped content immediately would lock the browser to stale copies of future code-level content changes before the editor has made any draft edits.
 
 - [ ] **Step 4: Make flow editor editable**
 
@@ -2146,14 +2195,33 @@ export function FlowDashboard({
 }: {
   flows: GuidedFlow[];
   resources: EducationResource[];
-  onFlowChange: (flow: GuidedFlow) => void;
+  onFlowChange: (flowIndex: number, flow: GuidedFlow) => void;
 }) {
+```
+
+Change the selection state to use array indexes, not flow IDs. Duplicate IDs are invalid, but the editor must still avoid destroying data while the user fixes them:
+
+```tsx
+const [selectedFlowIndex, setSelectedFlowIndex] = useState(0);
+const selectedFlow = flows[selectedFlowIndex] ?? flows[0];
+```
+
+Change each sidebar button handler to use the mapped index:
+
+```tsx
+<>
+  {flows.map((flow, flowIndex) => (
+    <button key={`${flow.id}-${flowIndex}`} type="button" onClick={() => setSelectedFlowIndex(flowIndex)}>
+      {flow.title}
+    </button>
+  ))}
+</>
 ```
 
 Pass to editor:
 
 ```tsx
-<FlowEditor flow={selectedFlow} onChange={onFlowChange} />
+<FlowEditor flow={selectedFlow} onChange={(flow) => onFlowChange(selectedFlowIndex, flow)} />
 ```
 
 In `DashboardRoute`, pass:
@@ -2162,10 +2230,10 @@ In `DashboardRoute`, pass:
 <FlowDashboard
   flows={draftState.flows}
   resources={draftState.educationMaterials}
-  onFlowChange={(flow) =>
+  onFlowChange={(flowIndex, flow) =>
     updateDraftState((current) => ({
       ...current,
-      flows: current.flows.map((item) => (item.id === flow.id ? flow : item)),
+      flows: current.flows.map((item, index) => (index === flowIndex ? flow : item)),
     }))
   }
 />
@@ -2181,8 +2249,31 @@ export function EducationDashboard({
   onResourceChange,
 }: {
   resources: EducationResource[];
-  onResourceChange: (resource: EducationResource) => void;
+  onResourceChange: (resourceIndex: number, resource: EducationResource) => void;
 }) {
+```
+
+Change the selection state to use array indexes for the same duplicate-ID safety:
+
+```tsx
+const [selectedResourceIndex, setSelectedResourceIndex] = useState(0);
+const selectedResource = resources[selectedResourceIndex] ?? resources[0];
+```
+
+Change each sidebar button handler to use the mapped index:
+
+```tsx
+<>
+  {resources.map((resource, resourceIndex) => (
+    <button
+      key={`${resource.id}-${resourceIndex}`}
+      type="button"
+      onClick={() => setSelectedResourceIndex(resourceIndex)}
+    >
+      {resource.title}
+    </button>
+  ))}
+</>
 ```
 
 Change the title field:
@@ -2194,8 +2285,36 @@ Change the title field:
     aria-label="Título do material"
     className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
     value={selectedResource.title}
-    onChange={(event) => onResourceChange({ ...selectedResource, title: event.target.value })}
+    onChange={(event) => onResourceChange(selectedResourceIndex, { ...selectedResource, title: event.target.value })}
   />
+</label>
+```
+
+Add editable required fields for the properties enforced by validation:
+
+```tsx
+<label className="flex flex-col gap-2">
+  <span className="font-label-md text-on-surface">Descrição</span>
+  <textarea
+    aria-label="Descrição do material"
+    className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+    value={selectedResource.description}
+    onChange={(event) =>
+      onResourceChange(selectedResourceIndex, { ...selectedResource, description: event.target.value })
+    }
+  />
+  <FieldHint>Resumo curto que aparece na lista de materiais.</FieldHint>
+</label>
+
+<label className="flex flex-col gap-2">
+  <span className="font-label-md text-on-surface">Fonte</span>
+  <input
+    aria-label="Fonte do material"
+    className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+    value={selectedResource.source}
+    onChange={(event) => onResourceChange(selectedResourceIndex, { ...selectedResource, source: event.target.value })}
+  />
+  <FieldHint>Nome da organização, autora ou referência principal do material.</FieldHint>
 </label>
 ```
 
@@ -2206,7 +2325,7 @@ Change the content-type select from `readOnly` to an editable `onChange` handler
   className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
   value={selectedResource.contentType}
   onChange={(event) =>
-    onResourceChange({
+    onResourceChange(selectedResourceIndex, {
       ...selectedResource,
       contentType: event.target.value as EducationResource['contentType'],
     })
@@ -2219,10 +2338,10 @@ In `DashboardRoute`, pass:
 ```tsx
 <EducationDashboard
   resources={draftState.educationMaterials}
-  onResourceChange={(resource) =>
+  onResourceChange={(resourceIndex, resource) =>
     updateDraftState((current) => ({
       ...current,
-      educationMaterials: current.educationMaterials.map((item) => (item.id === resource.id ? resource : item)),
+      educationMaterials: current.educationMaterials.map((item, index) => (index === resourceIndex ? resource : item)),
     }))
   }
 />
