@@ -324,7 +324,6 @@ import { flowRegistry } from '../../content/flows/registry';
 import { resourcesContent } from '../../content/resources/resources';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
-import type { DashboardShippedContent } from '../content/shippedContent';
 
 export interface DashboardShippedContent {
   flows: GuidedFlow[];
@@ -2207,6 +2206,8 @@ const drafts = {
   educationMaterials: shipped.educationMaterials,
 };
 ```
+
+At this point Task 10 still has no editable draft state, so `drafts` intentionally mirrors `shipped` and the export count remains zero. Task 11 replaces this with `mergedDrafts` after local sparse drafts are introduced; do not treat the Task 10 placeholder as final export wiring.
 
 Replace the export placeholder:
 
