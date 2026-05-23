@@ -1,9 +1,10 @@
 import type { ContentLocale, ContentStatus } from '../content/types';
 
 export type FlowType = 'guided_conversation';
+export type FlowPurpose = 'orientation_entry' | 'post_flow_routing';
 export type FlowNodeKind = 'choice' | 'result' | 'score_branch';
 export type ChatMessageSender = 'bot' | 'user';
-export type RuntimeOptionKind = 'node_option' | 'entry_phrase' | 'global_action' | 'resume_flow';
+export type RuntimeOptionKind = 'node_option' | 'entry_phrase' | 'global_action' | 'resume_flow' | 'flow_start';
 export type GlobalActionTarget = '/apoio' | '/contatos' | '/educacao' | 'end';
 
 export interface ScoreFlowEffect {
@@ -19,7 +20,27 @@ export interface SafetyInterruptFlowEffect {
   blockResume: boolean;
 }
 
-export type FlowEffect = ScoreFlowEffect | SafetyInterruptFlowEffect;
+export interface FlowStartFlowEffect {
+  kind: 'flow_start';
+  flowId: string;
+}
+
+export interface NavigateFlowEffect {
+  kind: 'navigate';
+  destination: Exclude<GlobalActionTarget, 'end'>;
+}
+
+export interface EndFlowEffect {
+  kind: 'end_flow';
+  message: string;
+}
+
+export type FlowEffect =
+  | ScoreFlowEffect
+  | SafetyInterruptFlowEffect
+  | FlowStartFlowEffect
+  | NavigateFlowEffect
+  | EndFlowEffect;
 
 export interface FlowEntry {
   nodeId: string;
@@ -71,6 +92,7 @@ export interface GuidedFlow {
   locale: ContentLocale;
   title: string;
   type: FlowType;
+  purpose?: FlowPurpose;
   status: ContentStatus;
   entry: FlowEntry;
   nodes: Record<string, FlowNode>;
@@ -132,7 +154,19 @@ export interface RuntimeResumeOption {
   flowId: string;
 }
 
-export type RuntimeOption = RuntimeNodeOption | RuntimeEntryOption | RuntimeGlobalAction | RuntimeResumeOption;
+export interface RuntimeFlowStartOption {
+  kind: 'flow_start';
+  id: string;
+  label: string;
+  flowId: string;
+}
+
+export type RuntimeOption =
+  | RuntimeNodeOption
+  | RuntimeEntryOption
+  | RuntimeGlobalAction
+  | RuntimeResumeOption
+  | RuntimeFlowStartOption;
 
 export interface FlowValidationResult {
   valid: boolean;

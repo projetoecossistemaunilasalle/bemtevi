@@ -1,4 +1,4 @@
-import type { FlowRuntimeState, GuidedFlow, RuntimeGlobalAction, RuntimeOption } from './types';
+import type { FlowRuntimeState, GuidedFlow, RuntimeFlowStartOption, RuntimeGlobalAction, RuntimeOption } from './types';
 import { getActiveFlow } from './loadFlows';
 import { canResumeFlow } from './safetyRules';
 
@@ -8,6 +8,13 @@ export const globalFlowActions: RuntimeGlobalAction[] = [
   { kind: 'global_action', id: 'view-education', label: 'Ver materiais educativos', target: '/educacao' },
   { kind: 'global_action', id: 'end-now', label: 'Encerrar por enquanto', target: 'end' },
 ];
+
+const postFlowStartOption: RuntimeFlowStartOption = {
+  kind: 'flow_start',
+  id: 'post-flow-next-step-start',
+  label: 'Escolher o que fazer agora',
+  flowId: 'post-flow-next-step',
+};
 
 export function resolveOptions(state: FlowRuntimeState, flows: GuidedFlow[]): RuntimeOption[] {
   if (!state.activeFlowId || !state.activeNodeId) {
@@ -54,5 +61,12 @@ export function resolveOptions(state: FlowRuntimeState, flows: GuidedFlow[]): Ru
           })
       : [];
 
-  return [...currentNodeOptions, ...entryPhraseOptions, ...resumeOptions, ...globalFlowActions];
+  const postFlowOptions: RuntimeOption[] =
+    activeNode?.kind === 'result' && activeFlow.purpose === undefined
+      ? flows.some((flow) => flow.id === postFlowStartOption.flowId)
+        ? [postFlowStartOption]
+        : []
+      : [];
+
+  return [...currentNodeOptions, ...entryPhraseOptions, ...resumeOptions, ...postFlowOptions, ...globalFlowActions];
 }

@@ -38,29 +38,26 @@ A JSON-compatible content model makes it possible to later build a dashboard wit
 ```txt
 src/content/
   flows/
-    registry.json
+    registry.ts
+    neutral.ts
+    work-stress.ts
+    rest-recovery.ts
     srq20.json
-    work-stress.json
-    sleep-anxiety.json
-    sadness-helplessness.json
-    other.json
 
   resources/
-    resources.json
+    resources.ts
 
   services/
-    canoas-services.json
-    national-services.json
+    canoas-services.ts
 
   support/
-    contacts.json
-    breathing.json
+    contacts.ts
 
   copy/
-    home.json
-    onboarding.json
-    privacy.json
+    home.ts
 ```
+
+`neutral.ts` contains orientation entry flows and the post-flow routing flow. These are ordinary `guided_conversation` flows with optional `purpose` metadata — they do not use a separate runtime engine.
 
 ---
 

@@ -2,7 +2,7 @@ import { createInitialFlowState, createMessage, getActiveFlow, getFlowById } fro
 import { resolveOptions } from './resolveOptions';
 import { resumeFlow } from './resumeFlow';
 import { suspendFlow } from './suspendFlow';
-import type { FlowEffect, FlowNode, FlowRuntimeState, GuidedFlow, RuntimeOption } from './types';
+import type { FlowEffect, FlowNode, FlowRuntimeState, FlowStartFlowEffect, GuidedFlow, RuntimeOption } from './types';
 
 export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], selectedLabel: string): FlowRuntimeState {
   const selectedOption = resolveOptions(state, flows).find((option) => option.label === selectedLabel);
@@ -22,6 +22,14 @@ export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], select
 
   if (selectedOption.kind === 'resume_flow') {
     return resumeFlow(state, selectedOption.flowId);
+  }
+
+  if (selectedOption.kind === 'flow_start') {
+    return startFlowWithoutSuspending(
+      appendUserMessage(state, selectedOption, state.activeFlowId ?? 'global'),
+      flows,
+      selectedOption.flowId,
+    );
   }
 
   if (selectedOption.kind === 'entry_phrase') {
@@ -46,6 +54,8 @@ export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], select
   }
 
   const userMessage = createMessage('user', selectedOption.label, activeFlow.id, currentNodeId);
+  const flowStartEffect = findFlowStartEffect(matchingOption.effects ?? []);
+  const nonStartEffects = (matchingOption.effects ?? []).filter((effect) => effect.kind !== 'flow_start');
   const effectedState = applyOptionEffects(
     {
       ...state,
@@ -57,11 +67,19 @@ export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], select
       pendingNavigation: undefined,
     },
     activeFlow.id,
-    matchingOption.effects ?? [],
+    nonStartEffects,
   );
 
   if (effectedState.pendingNavigation) {
     return effectedState;
+  }
+
+  if (effectedState.activeFlowId === undefined) {
+    return effectedState;
+  }
+
+  if (flowStartEffect) {
+    return startFlowWithoutSuspending(effectedState, flows, flowStartEffect.flowId);
   }
 
   return advanceToNode(effectedState, activeFlow, matchingOption.next);
@@ -101,18 +119,56 @@ function applyOptionEffects(state: FlowRuntimeState, flowId: string, effects: Fl
       };
     }
 
-    return {
-      ...nextState,
-      activeFlowId: undefined,
-      activeNodeId: undefined,
-      pendingNavigation: effect.destination,
-      safetyFlags: {
-        ...nextState.safetyFlags,
-        ...(effect.blockResume ? { [`block-resume:${flowId}`]: true } : {}),
-      },
-      transcript: [...nextState.transcript, createMessage('bot', effect.message, flowId, nextState.activeNodeId)],
-    };
+    if (effect.kind === 'safety_interrupt') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        pendingNavigation: effect.destination,
+        safetyFlags: {
+          ...nextState.safetyFlags,
+          ...(effect.blockResume ? { [`block-resume:${flowId}`]: true } : {}),
+        },
+        transcript: [...nextState.transcript, createMessage('bot', effect.message, flowId, nextState.activeNodeId)],
+      };
+    }
+
+    if (effect.kind === 'navigate') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        pendingNavigation: effect.destination,
+      };
+    }
+
+    if (effect.kind === 'end_flow') {
+      return {
+        ...nextState,
+        activeFlowId: undefined,
+        activeNodeId: undefined,
+        transcript: [...nextState.transcript, createMessage('bot', effect.message, flowId, nextState.activeNodeId)],
+      };
+    }
+
+    return nextState;
   }, state);
+}
+
+function findFlowStartEffect(effects: FlowEffect[]): FlowStartFlowEffect | undefined {
+  return effects.find((effect): effect is FlowStartFlowEffect => effect.kind === 'flow_start');
+}
+
+function startFlowWithoutSuspending(state: FlowRuntimeState, flows: GuidedFlow[], flowId: string): FlowRuntimeState {
+  const nextFlow = getFlowById(flows, flowId);
+  const nextState = createInitialFlowState(nextFlow, flows);
+
+  return {
+    ...nextState,
+    transcript: [...state.transcript, ...nextState.transcript],
+    suspendedFlows: state.suspendedFlows,
+    safetyFlags: state.safetyFlags,
+  };
 }
 
 function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string): FlowRuntimeState {

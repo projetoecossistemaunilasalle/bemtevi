@@ -136,7 +136,7 @@ This option should not appear while inside orientation or post-flow neutral flow
 Starting a conversation should call:
 
 ```ts
-createInitialFlowStateFromRegistry(flows, starter.flowId)
+createInitialFlowStateFromRegistry(flows, starter.flowId);
 ```
 
 The typing delay, accessible log, exact-match composer behavior, autocomplete suggestions, direct option click behavior, and pending navigation behavior should remain unchanged.

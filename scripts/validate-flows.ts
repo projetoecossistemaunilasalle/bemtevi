@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { neutralFlows } from '../src/content/flows/neutral';
 import { restRecoveryFlow } from '../src/content/flows/rest-recovery';
 import { workStressFlow } from '../src/content/flows/work-stress';
 import { resourcesContent } from '../src/content/resources/resources';
@@ -30,13 +31,14 @@ function loadJsonFlows(rootDir: string): GuidedFlow[] {
 export function loadRegisteredFlows(rootDir?: string): GuidedFlow[] {
   const resolvedRoot = rootDir ?? getRepoRoot();
   const jsonFlows = loadJsonFlows(resolvedRoot);
-  return [workStressFlow, restRecoveryFlow, ...jsonFlows];
+  return [...neutralFlows, workStressFlow, restRecoveryFlow, ...jsonFlows];
 }
 
 export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {
   const errors: string[] = [];
   const seenIds = new Map<string, number>();
   const seenPhrases = new Map<string, string>();
+  const flowIds = new Set(flows.map((flow) => flow.id));
 
   for (const flow of flows) {
     const structuralResult = validateFlow(flow);
@@ -56,6 +58,18 @@ export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {
         errors.push(`Duplicate entering phrase "${phrase}" used by flows ${existing} and ${flow.id}.`);
       } else {
         seenPhrases.set(phrase, flow.id);
+      }
+    }
+
+    for (const node of Object.values(flow.nodes)) {
+      if (node.kind !== 'choice') continue;
+
+      for (const option of node.options) {
+        for (const effect of option.effects ?? []) {
+          if (effect.kind === 'flow_start' && !flowIds.has(effect.flowId)) {
+            errors.push(`Flow ${flow.id} option ${option.id} starts missing flow ${effect.flowId}.`);
+          }
+        }
       }
     }
   }

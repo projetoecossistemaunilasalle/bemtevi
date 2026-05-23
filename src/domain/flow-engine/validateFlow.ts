@@ -1,5 +1,7 @@
 import type { ChoiceFlowNode, FlowEffect, FlowNode, FlowValidationResult, ScoreBranchFlowNode } from './types';
 
+const allowedFlowPurposes = ['orientation_entry', 'post_flow_routing'];
+
 function hasText(value: unknown) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -18,6 +20,10 @@ export function validateFlow(flow: unknown): FlowValidationResult {
 
   if (!hasText(flowRecord.id)) {
     errors.push('Flow id is required.');
+  }
+
+  if (flowRecord.purpose !== undefined && !allowedFlowPurposes.includes(String(flowRecord.purpose))) {
+    errors.push(`Flow ${flowLabel} purpose must be one of ${allowedFlowPurposes.join(', ')}.`);
   }
 
   if (!isRecord(entry)) {
@@ -149,5 +155,31 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
         `Flow ${flowLabel} option ${optionId} safety interrupt effect must include message, destination, and blockResume.`,
       );
     }
+    return;
   }
+
+  if (effect.kind === 'flow_start') {
+    if (!hasText(effect.flowId)) {
+      errors.push(`Flow ${flowLabel} option ${optionId} flow_start effect must include flowId.`);
+    }
+    return;
+  }
+
+  if (effect.kind === 'navigate') {
+    if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
+      errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
+    }
+    return;
+  }
+
+  if (effect.kind === 'end_flow') {
+    if (!hasText(effect.message)) {
+      errors.push(`Flow ${flowLabel} option ${optionId} end_flow effect must include message.`);
+    }
+    return;
+  }
+
+  errors.push(
+    `Flow ${flowLabel} option ${optionId} has unsupported effect kind "${(effect as { kind: string }).kind}".`,
+  );
 }

@@ -1,6 +1,7 @@
 import type { ContentMetadata } from '../../domain/content/types';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import { parseGuidedFlow } from '../../domain/flow-engine/parseFlow';
+import { neutralFlows } from './neutral';
 import { restRecoveryFlow } from './rest-recovery';
 import { workStressFlow } from './work-stress';
 
@@ -22,5 +23,5 @@ export const flowRegistry = {
   version: '1.0.0',
   status: 'draft',
   locale: 'pt-BR',
-  flows: [workStressFlow, restRecoveryFlow, ...jsonFlows],
+  flows: [...neutralFlows, workStressFlow, restRecoveryFlow, ...jsonFlows],
 } satisfies ContentMetadata & { flows: GuidedFlow[] };

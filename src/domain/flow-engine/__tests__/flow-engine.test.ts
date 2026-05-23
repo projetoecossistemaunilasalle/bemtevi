@@ -224,7 +224,117 @@ describe('validateFlow', () => {
       errors: ['Flow scoring-flow option bad score effect must include scoreKey and numeric value.'],
     });
   });
+
+  it('accepts optional neutral flow purpose metadata', () => {
+    const neutralFlow: GuidedFlow = {
+      ...validFlow,
+      id: 'neutral-flow',
+      purpose: 'orientation_entry',
+    };
+
+    expect(validateFlow(neutralFlow)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects unknown flow purpose metadata', () => {
+    const invalidFlow = {
+      ...validFlow,
+      purpose: 'diagnostic_router',
+    };
+
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow purpose must be one of orientation_entry, post_flow_routing.',
+    );
+  });
+
+  it('rejects malformed flow_start and navigate effects', () => {
+    const invalidFlow = {
+      ...validFlow,
+      nodes: {
+        ...validFlow.nodes,
+        start: {
+          ...validFlow.nodes.start,
+          options: [
+            {
+              id: 'bad-start',
+              label: 'Começar outro fluxo',
+              next: 'end',
+              effects: [
+                { kind: 'flow_start', flowId: '' },
+                { kind: 'navigate', destination: 'end' },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow option bad-start flow_start effect must include flowId.',
+    );
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow option bad-start navigate effect must include a supported destination.',
+    );
+  });
+
+  it('rejects unknown effect kinds', () => {
+    const invalidFlow = {
+      ...validFlow,
+      nodes: {
+        ...validFlow.nodes,
+        start: {
+          ...validFlow.nodes.start,
+          options: [
+            {
+              id: 'bad-kind',
+              label: 'Efeito desconhecido',
+              next: 'end',
+              effects: [{ kind: 'flow_statr', flowId: 'some-flow' }],
+            },
+          ],
+        },
+      },
+    };
+
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow option bad-kind has unsupported effect kind "flow_statr".',
+    );
+  });
 });
+
+const neutralRouterFlow: GuidedFlow = {
+  id: 'neutral-router',
+  version: '1.0.0',
+  locale: 'pt-BR',
+  title: 'Roteador neutro',
+  type: 'guided_conversation',
+  purpose: 'orientation_entry',
+  status: 'draft',
+  entry: {
+    nodeId: 'start',
+    enteringPhrases: ['Quero escolher um caminho'],
+    transitionMessage: 'Vamos escolher com calma.',
+  },
+  nodes: {
+    start: {
+      id: 'start',
+      kind: 'choice',
+      text: 'O que parece fazer sentido agora?',
+      options: [
+        {
+          id: 'start-specific',
+          label: 'Falar sobre sobrecarga',
+          next: 'handoff',
+          effects: [{ kind: 'flow_start', flowId: 'fixture-flow' }],
+        },
+      ],
+    },
+    handoff: {
+      id: 'handoff',
+      kind: 'result',
+      text: 'Vou abrir outro caminho.',
+    },
+  },
+};
 
 describe('flow runtime', () => {
   it('starts a flow with the entry transition and current node prompt', () => {
@@ -411,6 +521,43 @@ describe('flow runtime', () => {
     );
   });
 
+  it('ends the flow when an end_flow effect is applied', () => {
+    const endFlowFixture: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'O que deseja fazer?',
+          options: [
+            {
+              id: 'end-today',
+              label: 'Finalizar por hoje',
+              next: 'end',
+              effects: [{ kind: 'end_flow', message: 'Até a próxima.' }],
+            },
+          ],
+        },
+        end: {
+          id: 'end',
+          kind: 'result',
+          text: 'Este texto não deve aparecer.',
+        },
+      },
+    };
+
+    const nextState = advanceFlow(
+      createInitialFlowState(endFlowFixture, [endFlowFixture]),
+      [endFlowFixture],
+      'Finalizar por hoje',
+    );
+
+    expect(nextState.activeFlowId).toBeUndefined();
+    expect(nextState.activeNodeId).toBeUndefined();
+    expect(nextState.transcript.map((m) => m.text)).toContain('Até a próxima.');
+    expect(nextState.transcript.map((m) => m.text)).not.toContain('Este texto não deve aparecer.');
+  });
+
   it('discovers JSON flows from the content folder without per-flow imports', () => {
     const flowIds = flowRegistry.flows.map((flow) => flow.id);
 
@@ -442,6 +589,30 @@ describe('flow runtime', () => {
     expect(state.transcript.at(-1)?.text).toContain('não é um diagnóstico');
   });
 
+  it('rejects registered flow_start targets that do not exist', () => {
+    const invalidFlow: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        ...validFlow.nodes,
+        start: {
+          ...(validFlow.nodes.start as import('../types').ChoiceFlowNode),
+          options: [
+            {
+              id: 'missing-flow',
+              label: 'Ir para outro fluxo',
+              next: 'end',
+              effects: [{ kind: 'flow_start', flowId: 'missing-target' }],
+            },
+          ],
+        },
+      },
+    };
+
+    expect(() => createInitialFlowStateFromRegistry([invalidFlow], 'fixture-flow')).toThrow(
+      'Flow fixture-flow option missing-flow starts missing flow missing-target.',
+    );
+  });
+
   it('routes SRQ-20 Q17 affirmative through generic JSON safety interruption', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 
@@ -456,5 +627,138 @@ describe('flow runtime', () => {
     expect(state.pendingNavigation).toBe('/apoio');
     expect(state.safetyFlags['block-resume:srq20']).toBe(true);
     expect(state.activeFlowId).toBeUndefined();
+  });
+
+  it('starts a target flow from a neutral flow option without suspending the neutral flow', () => {
+    const state = createInitialFlowState(neutralRouterFlow, [neutralRouterFlow, validFlow]);
+    const nextState = advanceFlow(state, [neutralRouterFlow, validFlow], 'Falar sobre sobrecarga');
+
+    expect(nextState.activeFlowId).toBe('fixture-flow');
+    expect(nextState.activeNodeId).toBe('start');
+    expect(nextState.suspendedFlows['neutral-router']).toBeUndefined();
+    expect(nextState.transcript.map((message) => message.text)).toContain('Falar sobre sobrecarga');
+    // The target flow starts immediately, so its entry transition appears in the same transcript.
+    expect(nextState.transcript.map((message) => message.text)).toContain(validFlow.entry.transitionMessage);
+  });
+
+  it('navigates directly from neutral flow options that target app destinations', () => {
+    const navigationFlow: GuidedFlow = {
+      ...neutralRouterFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'O que você quer abrir?',
+          options: [
+            {
+              id: 'education',
+              label: 'Abrir materiais educativos',
+              next: 'fallback',
+              effects: [{ kind: 'navigate', destination: '/educacao' }],
+            },
+          ],
+        },
+        fallback: {
+          id: 'fallback',
+          kind: 'result',
+          text: 'Abrindo materiais educativos.',
+        },
+      },
+    };
+    const state = createInitialFlowState(navigationFlow, [navigationFlow, validFlow]);
+    const nextState = advanceFlow(state, [navigationFlow, validFlow], 'Abrir materiais educativos');
+
+    expect(nextState.activeFlowId).toBeUndefined();
+    expect(nextState.activeNodeId).toBeUndefined();
+    expect(nextState.pendingNavigation).toBe('/educacao');
+    expect(nextState.transcript.map((message) => message.text)).toContain('Abrir materiais educativos');
+  });
+
+  it('offers post-flow routing after regular result nodes', () => {
+    const postFlowRouter: GuidedFlow = {
+      ...neutralRouterFlow,
+      id: 'post-flow-next-step',
+      purpose: 'post_flow_routing',
+    };
+    const flows = [validFlow, neutralRouterFlow, postFlowRouter];
+    const state = createInitialFlowState(validFlow, flows);
+    const resultState = advanceFlow(state, flows, 'Continuar');
+
+    expect(resolveOptions(resultState, flows)).toContainEqual({
+      kind: 'flow_start',
+      id: 'post-flow-next-step-start',
+      label: 'Escolher o que fazer agora',
+      flowId: 'post-flow-next-step',
+    });
+  });
+
+  it('does not offer post-flow routing from the post-flow router itself', () => {
+    const postFlowRouter: GuidedFlow = {
+      ...neutralRouterFlow,
+      id: 'post-flow-next-step',
+      purpose: 'post_flow_routing',
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'Qual próximo passo você prefere?',
+          options: [
+            {
+              id: 'end',
+              label: 'Finalizar por hoje',
+              next: 'done',
+            },
+          ],
+        },
+        done: {
+          id: 'done',
+          kind: 'result',
+          text: 'Tudo bem. Você pode voltar quando quiser.',
+        },
+      },
+    };
+    const state = createInitialFlowState(postFlowRouter, [postFlowRouter, validFlow]);
+    const resultState = advanceFlow(state, [postFlowRouter, validFlow], 'Finalizar por hoje');
+
+    expect(resolveOptions(resultState, [postFlowRouter, validFlow])).not.toContainEqual(
+      expect.objectContaining({ id: 'post-flow-next-step-start' }),
+    );
+  });
+
+  it('does not offer post-flow routing from orientation neutral flow results', () => {
+    const orientationFlow: GuidedFlow = {
+      ...neutralRouterFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'Qual próximo passo você prefere?',
+          options: [
+            {
+              id: 'end',
+              label: 'Finalizar por hoje',
+              next: 'done',
+            },
+          ],
+        },
+        done: {
+          id: 'done',
+          kind: 'result',
+          text: 'Tudo bem. Você pode voltar quando quiser.',
+        },
+      },
+    };
+    const postFlowRouter: GuidedFlow = {
+      ...neutralRouterFlow,
+      id: 'post-flow-next-step',
+      purpose: 'post_flow_routing',
+    };
+    const flows = [orientationFlow, postFlowRouter, validFlow];
+    const state = createInitialFlowState(orientationFlow, flows);
+    const resultState = advanceFlow(state, flows, 'Finalizar por hoje');
+
+    expect(resolveOptions(resultState, flows)).not.toContainEqual(
+      expect.objectContaining({ id: 'post-flow-next-step-start' }),
+    );
   });
 });

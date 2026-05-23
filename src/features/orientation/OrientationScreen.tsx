@@ -12,11 +12,36 @@ const TYPING_DELAY_MS = 1200;
 const flows = flowRegistry.flows;
 
 const INTRO_STARTERS = [
-  { id: 'tired', label: 'Me sinto um pouco cansado(a).' },
-  { id: 'full-day', label: 'Tive um dia cheio.' },
-  { id: 'organize-thoughts', label: 'Quero organizar meus pensamentos.' },
-  { id: 'breathe', label: 'Preciso de um momento para respirar.' },
-  { id: 'other', label: 'Outro' },
+  {
+    id: 'understand-feelings',
+    label: 'Quero entender como estou me sentindo',
+    flowId: 'orientation-understand-feelings',
+    recordAsMessage: true,
+  },
+  {
+    id: 'talk-through-experience',
+    label: 'Quero falar sobre o que estou vivendo',
+    flowId: 'orientation-talk-through-experience',
+    recordAsMessage: true,
+  },
+  {
+    id: 'next-care-step',
+    label: 'Quero encontrar um próximo passo de cuidado',
+    flowId: 'orientation-next-care-step',
+    recordAsMessage: true,
+  },
+  {
+    id: 'calm-moment',
+    label: 'Preciso de um momento mais leve',
+    flowId: 'orientation-calm-moment',
+    recordAsMessage: true,
+  },
+  {
+    id: 'other',
+    label: 'Outro',
+    flowId: 'orientation-understand-feelings',
+    recordAsMessage: false,
+  },
 ] as const;
 
 type IntroStarter = (typeof INTRO_STARTERS)[number];
@@ -44,6 +69,7 @@ export function OrientationScreen() {
   const [inputValue, setInputValue] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
   const [selectedIntroStarter, setSelectedIntroStarter] = useState<string | null>(null);
+  const [selectedIntroFlowId, setSelectedIntroFlowId] = useState<string>(INTRO_STARTERS[0].flowId);
   const [state, setState] = useState<FlowRuntimeState | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,7 +85,7 @@ export function OrientationScreen() {
     if (strictMatch) return [];
 
     if (!normalizedInput) {
-      return options.filter((option) => option.kind === 'node_option');
+      return options.filter((option) => option.kind === 'node_option' || option.kind === 'flow_start');
     }
 
     return options.filter((option) => option.label.toLocaleLowerCase('pt-BR').includes(normalizedInput));
@@ -87,7 +113,7 @@ export function OrientationScreen() {
     if (!hasStarted || state) return;
 
     typingTimerRef.current = setTimeout(() => {
-      const initialState = createInitialFlowStateFromRegistry(flows, 'work-stress');
+      const initialState = createInitialFlowStateFromRegistry(flows, selectedIntroFlowId);
       const introMessages =
         selectedIntroStarter === null
           ? []
@@ -95,7 +121,7 @@ export function OrientationScreen() {
               createMessage(
                 'user',
                 selectedIntroStarter,
-                initialState.activeFlowId ?? 'work-stress',
+                initialState.activeFlowId ?? selectedIntroFlowId,
                 initialState.activeNodeId,
               ),
             ];
@@ -107,7 +133,7 @@ export function OrientationScreen() {
       setState(nextState);
       setVisibleCount(nextState.transcript.length);
     }, TYPING_DELAY_MS);
-  }, [hasStarted, selectedIntroStarter, state]);
+  }, [hasStarted, selectedIntroStarter, selectedIntroFlowId, state]);
 
   useEffect(() => {
     return () => {
@@ -118,7 +144,8 @@ export function OrientationScreen() {
   function startConversation(starter: IntroStarter) {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
 
-    setSelectedIntroStarter(starter.id === 'other' ? null : starter.label);
+    setSelectedIntroFlowId(starter.flowId);
+    setSelectedIntroStarter(starter.recordAsMessage ? starter.label : null);
     setInputValue('');
     setState(null);
     setVisibleCount(0);
@@ -268,14 +295,14 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
             <div className="min-w-0">
               <h1 className="font-title-lg text-on-surface">Antes de começar</h1>
               <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
-                Escolha uma frase para começar. Em seguida, o SeCuida te guia com perguntas simples, no seu ritmo.
+                Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
               </p>
             </div>
           </div>
 
           <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-4">
             <p id="orientation-intro-question" className="font-label-lg text-on-surface">
-              Pode nos contar como está se sentindo hoje?
+              O que você gostaria de fazer agora?
             </p>
           </div>
 
