@@ -1,7 +1,10 @@
 import type { EducationResource } from '../../domain/resources/types';
+import { findFeaturedImageOption } from '../../content/resources/featuredImages';
 import { createValidationResult, type DashboardValidationIssue } from '../validation/validationTypes';
 import { findDuplicateIds } from '../validation/duplicateIds';
 import { educationTypesRequiringUrl } from './educationTypes';
+
+type EducationResourceBodyBlock = NonNullable<EducationResource['body']>[number];
 
 export function validateDashboardEducation(resources: EducationResource[]) {
   const issues: DashboardValidationIssue[] = [];
@@ -49,9 +52,96 @@ export function validateDashboardEducation(resources: EducationResource[]) {
         path: `${resource.id}.externalUrl`,
       });
     }
+
+    if (!resource.featuredImage) {
+      issues.push({
+        level: 'error',
+        area: 'education',
+        id: `missing-featured-image:${resource.id}`,
+        message: 'A imagem principal do material é obrigatória.',
+        path: `${resource.id}.featuredImage`,
+      });
+    } else if (resource.featuredImage.kind === 'catalog') {
+      const option = findFeaturedImageOption(resource.featuredImage.imageId);
+      if (!option) {
+        issues.push({
+          level: 'error',
+          area: 'education',
+          id: `unknown-featured-image:${resource.id}`,
+          message: 'A imagem principal selecionada não existe no catálogo.',
+          path: `${resource.id}.featuredImage.imageId`,
+        });
+      }
+    } else if (resource.featuredImage.kind === 'external') {
+      if (!isHttpUrl(resource.featuredImage.imageUrl)) {
+        issues.push({
+          level: 'error',
+          area: 'education',
+          id: `invalid-featured-image-url:${resource.id}`,
+          message: 'A URL da imagem principal precisa começar com http:// ou https://.',
+          path: `${resource.id}.featuredImage.imageUrl`,
+        });
+      }
+    }
+
+    resource.body?.forEach((block) => validateBodyBlock(issues, resource.id, block));
   });
 
   return createValidationResult(issues);
+}
+
+function validateBodyBlock(issues: DashboardValidationIssue[], resourceId: string, block: EducationResourceBodyBlock) {
+  const path = `${resourceId}.body.${block.id}`;
+
+  if ((block.kind === 'paragraph' || block.kind === 'heading') && !block.text?.trim()) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `empty-body-block:${resourceId}:${block.id}`,
+      message: 'Este bloco do conteúdo está vazio.',
+      path,
+    });
+  }
+
+  if (block.kind === 'list' && (!block.items || block.items.every((item) => !item.trim()))) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `empty-body-block:${resourceId}:${block.id}`,
+      message: 'Este bloco do conteúdo está vazio.',
+      path,
+    });
+  }
+
+  if (block.kind === 'image' && !isHttpUrl(block.imageUrl ?? '')) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `invalid-body-image-url:${resourceId}:${block.id}`,
+      message: 'A URL da imagem interna precisa começar com http:// ou https://.',
+      path: `${path}.imageUrl`,
+    });
+  }
+
+  if (block.kind === 'video' && !isHttpUrl(block.url ?? '')) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `invalid-video-block-url:${resourceId}:${block.id}`,
+      message: 'A URL do vídeo precisa começar com http:// ou https://.',
+      path: `${path}.url`,
+    });
+  }
+
+  if (block.kind === 'sourceLink' && (!block.label?.trim() || !isHttpUrl(block.url ?? ''))) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `invalid-source-link-block:${resourceId}:${block.id}`,
+      message: 'O bloco de fonte precisa de rótulo e URL pública.',
+      path,
+    });
+  }
 }
 
 function pushMissing(issues: DashboardValidationIssue[], resourceId: string, field: string, message: string) {

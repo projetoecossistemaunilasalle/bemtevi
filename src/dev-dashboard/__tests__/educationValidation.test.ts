@@ -90,4 +90,43 @@ describe('validateDashboardEducation', () => {
       }),
     );
   });
+
+  it('rejects empty paragraph body blocks', () => {
+    const result = validateDashboardEducation([
+      { ...baseResource, body: [{ id: 'overview', kind: 'paragraph', text: '   ' }] },
+    ]);
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        id: 'empty-body-block:resource-one:overview',
+        message: 'Este bloco do conteúdo está vazio.',
+      }),
+    );
+  });
+
+  it('rejects body image blocks with invalid URLs', () => {
+    const result = validateDashboardEducation([
+      { ...baseResource, body: [{ id: 'image-one', kind: 'image', imageUrl: 'image.png' }] },
+    ]);
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        id: 'invalid-body-image-url:resource-one:image-one',
+        message: 'A URL da imagem interna precisa começar com http:// ou https://.',
+      }),
+    );
+  });
+
+  it('rejects video blocks with invalid URLs', () => {
+    const result = validateDashboardEducation([
+      { ...baseResource, body: [{ id: 'video-one', kind: 'video', title: 'Vídeo', url: 'video' }] },
+    ]);
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        id: 'invalid-video-block-url:resource-one:video-one',
+        message: 'A URL do vídeo precisa começar com http:// ou https://.',
+      }),
+    );
+  });
 });
