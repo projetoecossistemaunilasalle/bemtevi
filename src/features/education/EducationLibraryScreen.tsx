@@ -1,7 +1,7 @@
 import { BookOpen, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
-import { resourcesContent } from '../../content/resources/resources';
+import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { Badge } from '../../design-system/components/Badge';
 import { Button } from '../../design-system/components/Button';
 import { Card } from '../../design-system/components/Card';
@@ -10,6 +10,7 @@ import { PageHeader } from '../../design-system/components/PageHeader';
 
 export function EducationLibraryScreen() {
   const navigate = useNavigate();
+  const { resources, isPreviewingDrafts } = resolveEducationResourcesForPreview();
 
   return (
     <Page>
@@ -19,8 +20,14 @@ export function EducationLibraryScreen() {
         icon={<BookOpen className="text-primary" size={32} />}
       />
 
+      {isPreviewingDrafts ? (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 font-body-md text-yellow-900">
+          Essa é uma versão de teste. O conteúdo não está salvo no site oficial.
+        </div>
+      ) : null}
+
       <section className="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-        {resourcesContent.resources.map((resource) => (
+        {resources.map((resource) => (
           <Card key={resource.id} className="p-6 flex flex-col gap-stack-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-stack-sm flex-1">
