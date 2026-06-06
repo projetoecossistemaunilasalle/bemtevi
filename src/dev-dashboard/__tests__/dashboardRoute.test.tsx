@@ -333,4 +333,66 @@ describe('DashboardRoute', () => {
 
     expect(screen.getByLabelText('Tag 1')).toHaveFocus();
   });
+
+  it('edits the featured image with catalog and external URL modes', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+
+    expect(screen.getByRole('group', { name: 'Imagem principal do material' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mãos segurando uma planta pequena/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Usar URL externa' }));
+    fireEvent.change(screen.getByLabelText('URL da imagem principal'), {
+      target: { value: 'https://example.com/main.jpg' },
+    });
+
+    expect(screen.getByDisplayValue('https://example.com/main.jpg')).toBeInTheDocument();
+  });
+
+  it('adds, edits, and reorders material body blocks', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.change(screen.getByLabelText('Tipo do novo bloco'), { target: { value: 'video' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bloco' }));
+    fireEvent.change(screen.getByLabelText('Título do bloco 2'), { target: { value: 'Vídeo de teste' } });
+    fireEvent.change(screen.getByLabelText('URL do vídeo do bloco 2'), {
+      target: { value: 'https://www.youtube.com/watch?v=abcdef12345' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mover bloco 2 para cima' }));
+
+    expect(screen.getByDisplayValue('Vídeo de teste')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('https://www.youtube.com/watch?v=abcdef12345')).toBeInTheDocument();
+  });
+
+  it('keeps focus while editing a material body block', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+
+    const bodyInput = screen.getByLabelText('Texto do bloco 1');
+    await user.click(bodyInput);
+    await user.keyboard('s');
+
+    expect(screen.getByLabelText('Texto do bloco 1')).toHaveFocus();
+  });
 });
+
