@@ -179,7 +179,6 @@ export function EducationDashboard({
             <FieldHint>Nome da organização, autora ou referência principal do material.</FieldHint>
           </label>
 
-
           <label className="flex flex-col gap-2">
             <span className="font-label-md text-on-surface">Miniatura da biblioteca</span>
             <input
