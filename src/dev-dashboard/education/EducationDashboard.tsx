@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { EducationResource } from '../../domain/resources/types';
+import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
+import type {
+  EducationResource,
+  EducationResourceBlock,
+  EducationResourceFeaturedImage,
+} from '../../domain/resources/types';
 import { FieldHint } from '../components/FieldHint';
 import { ValidationSummary } from '../components/ValidationSummary';
 import { educationContentTypeLabels, educationTypesRequiringUrl } from './educationTypes';
@@ -37,6 +42,50 @@ export function EducationDashboard({
 
   function removeTag(tagIndex: number) {
     updateTags(selectedResource.tags.filter((_, index) => index !== tagIndex));
+  }
+
+  const [newBlockKind, setNewBlockKind] = useState<EducationResourceBlock['kind']>('paragraph');
+
+  const selectedResourceBody = selectedResource.body ?? [
+    {
+      id: `${selectedResource.id}-overview`,
+      kind: 'paragraph',
+      title: 'Sobre este material',
+      text: 'Descreva aqui o conteúdo principal do material.',
+    },
+  ];
+
+  const featuredImage = selectedResource.featuredImage ?? {
+    kind: 'catalog',
+    imageId: defaultFeaturedImageId,
+  };
+
+  function updateFeaturedImage(featuredImage: EducationResourceFeaturedImage) {
+    onResourceChange(selectedResourceIndex, selectedResource.id, { featuredImage });
+  }
+
+  function updateBody(body: EducationResourceBlock[]) {
+    onResourceChange(selectedResourceIndex, selectedResource.id, { body });
+  }
+
+  function updateBlock(blockId: string, patch: Partial<EducationResourceBlock>) {
+    updateBody(selectedResourceBody.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+  }
+
+  function addBlock() {
+    updateBody([...selectedResourceBody, createBodyBlock(newBlockKind, selectedResourceBody.length)]);
+  }
+
+  function removeBlock(blockId: string) {
+    updateBody(selectedResourceBody.filter((block) => block.id !== blockId));
+  }
+
+  function moveBlock(blockIndex: number, direction: -1 | 1) {
+    const body = [...selectedResourceBody];
+    const nextIndex = blockIndex + direction;
+    if (nextIndex < 0 || nextIndex >= body.length) return;
+    [body[blockIndex], body[nextIndex]] = [body[nextIndex], body[blockIndex]];
+    updateBody(body);
   }
 
   if (!selectedResource) {
@@ -147,6 +196,77 @@ export function EducationDashboard({
               </label>
             )}
           </>
+
+          <label className="flex flex-col gap-2">
+            <span className="font-label-md text-on-surface">Miniatura da biblioteca</span>
+            <input
+              aria-label="URL da miniatura da biblioteca"
+              className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+              value={selectedResource.imageUrl ?? ''}
+              onChange={(event) =>
+                onResourceChange(selectedResourceIndex, selectedResource.id, { imageUrl: event.target.value })
+              }
+            />
+            <FieldHint>Imagem pequena usada no cartão da biblioteca de Estudos.</FieldHint>
+          </label>
+
+          <fieldset
+            aria-label="Imagem principal do material"
+            className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 p-4"
+          >
+            <legend className="font-label-md text-on-surface font-semibold">Imagem principal do material</legend>
+            <FieldHint>Imagem grande exibida acima do conteúdo do material.</FieldHint>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 font-label-md text-on-surface">
+                <input
+                  checked={featuredImage.kind === 'catalog'}
+                  name="featured-image-kind"
+                  type="radio"
+                  onChange={() => updateFeaturedImage({ kind: 'catalog', imageId: defaultFeaturedImageId })}
+                />
+                Usar imagem padrão
+              </label>
+              <label className="flex items-center gap-2 font-label-md text-on-surface">
+                <input
+                  checked={featuredImage.kind === 'external'}
+                  name="featured-image-kind"
+                  type="radio"
+                  onChange={() => updateFeaturedImage({ kind: 'external', imageUrl: selectedResource.imageUrl ?? '' })}
+                />
+                Usar URL externa
+              </label>
+            </div>
+            {featuredImage.kind === 'catalog' ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {featuredImageOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-label={option.alt}
+                    aria-pressed={featuredImage.kind === 'catalog' && featuredImage.imageId === option.id}
+                    onClick={() => updateFeaturedImage({ kind: 'catalog', imageId: option.id })}
+                    className={`h-24 overflow-hidden rounded-xl border-2 ${
+                      featuredImage.kind === 'catalog' && featuredImage.imageId === option.id
+                        ? 'border-primary'
+                        : 'border-transparent'
+                    }`}
+                  >
+                    <img alt="" className="h-full w-full object-cover" src={option.src} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <label className="flex flex-col gap-2">
+                <span className="font-label-md text-on-surface font-semibold">URL da imagem principal</span>
+                <input
+                  aria-label="URL da imagem principal"
+                  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                  value={featuredImage.kind === 'external' ? featuredImage.imageUrl : ''}
+                  onChange={(event) => updateFeaturedImage({ kind: 'external', imageUrl: event.target.value })}
+                />
+              </label>
+            )}
+          </fieldset>
           <div>
             <h3 className="font-headline-sm text-on-surface">Tags</h3>
             <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
@@ -181,8 +301,239 @@ export function EducationDashboard({
             </button>
           </div>
         </section>
+
+        <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+          <h2 className="font-headline-sm text-on-surface">Conteúdo do material</h2>
+          <div className="flex flex-col gap-6">
+            {selectedResourceBody.map((block, blockIndex) => {
+              const blockNumber = blockIndex + 1;
+              return (
+                <div key={block.id} className="flex flex-col gap-3 rounded-lg border border-outline-variant/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-md text-on-surface-variant font-semibold">
+                      Bloco {blockNumber} ({block.kind})
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => moveBlock(blockIndex, -1)}
+                        className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container"
+                        aria-label={`Mover bloco ${blockNumber} para cima`}
+                      >
+                        Mover para cima
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveBlock(blockIndex, 1)}
+                        className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container"
+                        aria-label={`Mover bloco ${blockNumber} para baixo`}
+                      >
+                        Mover para baixo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeBlock(block.id)}
+                        className="rounded-full bg-error-container px-3 py-1 font-label-sm text-on-error-container"
+                        aria-label={`Remover bloco ${blockNumber}`}
+                      >
+                        Remover bloco
+                      </button>
+                    </div>
+                  </div>
+                  <BlockFields
+                    block={block}
+                    blockNumber={blockNumber}
+                    onChange={(patch) => updateBlock(block.id, patch)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
+            <label className="flex flex-col gap-2">
+              <span className="font-label-md text-on-surface">Tipo do novo bloco</span>
+              <select
+                className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                value={newBlockKind}
+                onChange={(event) => setNewBlockKind(event.target.value as EducationResourceBlock['kind'])}
+              >
+                <option value="paragraph">Parágrafo</option>
+                <option value="heading">Título</option>
+                <option value="list">Lista</option>
+                <option value="image">Imagem</option>
+                <option value="video">Vídeo</option>
+                <option value="sourceLink">Link da fonte</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={addBlock}
+              className="min-h-11 self-start rounded-full bg-primary px-4 font-label-md text-on-primary"
+            >
+              Adicionar bloco
+            </button>
+          </div>
+        </section>
+
         <ValidationSummary result={validation} />
       </div>
     </section>
   );
+}
+
+function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: number): EducationResourceBlock {
+  const id = `body-block-${Date.now()}-${existingCount + 1}`;
+
+  if (kind === 'heading') return { id, kind, text: 'Novo título' };
+  if (kind === 'list') return { id, kind, title: 'Nova lista', items: ['Novo item'] };
+  if (kind === 'image') return { id, kind, imageUrl: 'https://example.com/image.jpg', alt: '' };
+  if (kind === 'video') return { id, kind, title: 'Novo vídeo', url: 'https://www.youtube.com/watch?v=abcdef12345' };
+  if (kind === 'sourceLink') return { id, kind, label: 'Acessar fonte original', url: 'https://example.com' };
+
+  return { id, kind: 'paragraph', title: 'Novo bloco', text: 'Texto do bloco.' };
+}
+
+function BlockFields({
+  block,
+  blockNumber,
+  onChange,
+}: {
+  block: EducationResourceBlock;
+  blockNumber: number;
+  onChange: (patch: Partial<EducationResourceBlock>) => void;
+}) {
+  if (block.kind === 'paragraph') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
+          <input
+            aria-label={`Título do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.title ?? ''}
+            onChange={(e) => onChange({ title: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Texto do bloco {blockNumber}</span>
+          <textarea
+            aria-label={`Texto do bloco ${blockNumber}`}
+            className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+            value={block.text ?? ''}
+            onChange={(e) => onChange({ text: e.target.value })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'heading') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
+          <input
+            aria-label={`Título do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.text ?? ''}
+            onChange={(e) => onChange({ text: e.target.value })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'video') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
+          <input
+            aria-label={`Título do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.title ?? ''}
+            onChange={(e) => onChange({ title: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">URL do vídeo do bloco {blockNumber}</span>
+          <input
+            aria-label={`URL do vídeo do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.url ?? ''}
+            onChange={(e) => onChange({ url: e.target.value })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'image') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">URL da imagem do bloco {blockNumber}</span>
+          <input
+            aria-label={`URL da imagem do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.imageUrl ?? ''}
+            onChange={(e) => onChange({ imageUrl: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Descrição da imagem do bloco {blockNumber}</span>
+          <input
+            aria-label={`Descrição da imagem do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.alt ?? ''}
+            onChange={(e) => onChange({ alt: e.target.value })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'list') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Itens da lista do bloco {blockNumber}</span>
+          <textarea
+            aria-label={`Itens da lista do bloco ${blockNumber}`}
+            className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+            value={(block.items ?? []).join('\n')}
+            onChange={(e) => onChange({ items: e.target.value.split('\n') })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'sourceLink') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber}</span>
+          <input
+            aria-label={`Texto do link do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.label ?? ''}
+            onChange={(e) => onChange({ label: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">URL da fonte do bloco {blockNumber}</span>
+          <input
+            aria-label={`URL da fonte do bloco ${blockNumber}`}
+            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            value={block.url ?? ''}
+            onChange={(e) => onChange({ url: e.target.value })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  return null;
 }
