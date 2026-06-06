@@ -44,7 +44,9 @@ export function ResourceDetailScreen() {
       ) : null}
 
       <section className="flex flex-col gap-stack-md">
-        {resource.body?.map((block) => <ResourceBodyBlock key={block.id} block={block} source={resource.source} />)}
+        {resource.body?.map((block) => (
+          <ResourceBodyBlock key={block.id} block={block} source={resource.source} />
+        ))}
       </section>
     </Page>
   );
@@ -85,7 +87,9 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
         <ul className="list-disc space-y-2 pl-5 font-body-lg text-on-surface-variant">
           {block.items
             ?.filter((item) => item.trim())
-            .map((item, index) => <li key={`${block.id}-${index}`}>{item}</li>)}
+            .map((item, index) => (
+              <li key={`${block.id}-${index}`}>{item}</li>
+            ))}
         </ul>
       </Card>
     );

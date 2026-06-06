@@ -395,4 +395,3 @@ describe('DashboardRoute', () => {
     expect(screen.getByLabelText('Texto do bloco 1')).toHaveFocus();
   });
 });
-
