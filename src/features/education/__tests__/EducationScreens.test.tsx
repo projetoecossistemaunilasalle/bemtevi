@@ -29,6 +29,9 @@ describe('EducationLibraryScreen', () => {
     await user.click(screen.getByRole('button', { name: /ver material/i }));
 
     expect(screen.getByRole('heading', { name: resource.title })).toBeInTheDocument();
+    expect(screen.getByText('Sobre este material')).toBeInTheDocument();
+    expect(screen.getByText('Aplicação prática')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /acessar fonte original/i })).toHaveAttribute('href', 'https://www.feevale.br/');
   });
 });
 
@@ -45,6 +48,79 @@ describe('ResourceDetailScreen', () => {
     );
 
     expect(screen.getByRole('heading', { name: resource.title })).toBeInTheDocument();
+  });
+
+  it('previews local dashboard drafts with a warning banner', () => {
+    const resource = resourcesContent.resources[0];
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        flowPatches: [],
+        educationMaterialPatches: [
+          {
+            id: resource.id,
+            sourceIndex: 0,
+            patch: {
+              title: 'Material em teste',
+              body: [{ id: 'draft-body', kind: 'paragraph', title: 'Rascunho', text: 'Texto em revisão.' }],
+            },
+          },
+        ],
+        addedFlows: [],
+        addedEducationMaterials: [],
+        updatedAt: '2026-06-05T00:00:00.000Z',
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Material em teste' })).toBeInTheDocument();
+    expect(screen.getByText(/versão de teste/i)).toBeInTheDocument();
+    expect(screen.getByText('Texto em revisão.')).toBeInTheDocument();
+  });
+
+  it('renders generic video URLs as full-card links instead of broken embeds', () => {
+    const resource = resourcesContent.resources[0];
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        flowPatches: [],
+        educationMaterialPatches: [
+          {
+            id: resource.id,
+            sourceIndex: 0,
+            patch: {
+              body: [{ id: 'generic-video', kind: 'video', title: 'Vídeo externo', url: 'https://example.com/video' }],
+            },
+          },
+        ],
+        addedFlows: [],
+        addedEducationMaterials: [],
+        updatedAt: '2026-06-05T00:00:00.000Z',
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: /vídeo externo abrir vídeo externo/i })).toHaveAttribute(
+      'href',
+      'https://example.com/video',
+    );
+    expect(screen.queryByTitle('Vídeo externo')).not.toBeInTheDocument();
   });
 });
 
