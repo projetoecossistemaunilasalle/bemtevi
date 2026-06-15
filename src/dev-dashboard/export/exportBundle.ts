@@ -1,14 +1,16 @@
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
+import type { EducationResourceGroup } from '../../content/resources/groups';
 import { normalizeForComparison } from '../content/normalize';
 import type { DashboardShippedContent } from '../content/shippedContent';
 import type { DashboardValidationResult } from '../validation/validationTypes';
 
-export const DASHBOARD_EXPORT_SCHEMA_VERSION = '1.0.0' as const;
+export const DASHBOARD_EXPORT_SCHEMA_VERSION = '2.0.0' as const;
 
 export interface DashboardDraftContent {
   flows: GuidedFlow[];
   educationMaterials: EducationResource[];
+  educationGroups: EducationResourceGroup[];
 }
 
 export interface DashboardExportBundle {
@@ -37,6 +39,7 @@ export function buildExportBundle({
     changes: {
       flows: changedRecords(shipped.flows, drafts.flows),
       educationMaterials: changedRecords(shipped.educationMaterials, drafts.educationMaterials),
+      educationGroups: changedRecords(shipped.educationGroups, drafts.educationGroups),
     },
     validation,
   };
