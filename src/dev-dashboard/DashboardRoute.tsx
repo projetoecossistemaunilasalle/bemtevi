@@ -81,7 +81,7 @@ export function DashboardRoute() {
       mergedDrafts.flows,
       mergedDrafts.educationMaterials.map((resource) => resource.id),
     );
-    const educationValidation = validateDashboardEducation(mergedDrafts.educationMaterials);
+    const educationValidation = validateDashboardEducation(mergedDrafts.educationMaterials, mergedDrafts.educationGroups);
 
     return {
       errors: [...flowValidation.errors, ...educationValidation.errors],
@@ -112,6 +112,7 @@ export function DashboardRoute() {
         {activeTab === 'education' && (
           <EducationDashboard
             resources={mergedDrafts.educationMaterials}
+            groups={mergedDrafts.educationGroups}
             onResourceChange={(resourceIndex, resourceId, patch) =>
               updateDraftState((current) => {
                 const addedIndex = resourceIndex - shipped.educationMaterials.length;

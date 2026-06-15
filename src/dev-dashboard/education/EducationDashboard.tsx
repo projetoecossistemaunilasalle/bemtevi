@@ -5,6 +5,7 @@ import type {
   EducationResourceBlock,
   EducationResourceFeaturedImage,
 } from '../../domain/resources/types';
+import type { EducationResourceGroup } from '../../content/resources/groups';
 import { FieldHint } from '../components/FieldHint';
 import { ValidationSummary } from '../components/ValidationSummary';
 import { validateDashboardEducation } from './educationValidation';
@@ -20,16 +21,18 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
 
 export function EducationDashboard({
   resources,
+  groups,
   onResourceChange,
   onResourceAdd,
 }: {
   resources: EducationResource[];
+  groups: EducationResourceGroup[];
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
   onResourceAdd: () => void;
 }) {
   const [selectedResourceIndex, setSelectedResourceIndex] = useState(0);
   const selectedResource = resources[selectedResourceIndex] ?? resources[0];
-  const validation = useMemo(() => validateDashboardEducation(resources), [resources]);
+  const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
   function addResource() {
     onResourceAdd();

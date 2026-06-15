@@ -28,7 +28,7 @@ const material: EducationResource = {
 describe('buildExportBundle', () => {
   it('excludes unchanged shipped records', () => {
     const bundle = buildExportBundle({
-      shipped: { flows: [flow], educationMaterials: [material] },
+      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [] },
       drafts: { flows: [flow], educationMaterials: [material] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-05-22T00:00:00.000Z',
@@ -42,7 +42,7 @@ describe('buildExportBundle', () => {
     const changedFlow = { ...flow, title: 'Fluxo atualizado' };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [flow], educationMaterials: [material] },
+      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [] },
       drafts: { flows: [changedFlow], educationMaterials: [] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-05-22T00:00:00.000Z',
@@ -59,7 +59,7 @@ describe('buildExportBundle', () => {
     };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [material] },
+      shipped: { flows: [], educationMaterials: [material], educationGroups: [] },
       drafts: { flows: [], educationMaterials: [changedMaterial] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-06-05T00:00:00.000Z',
