@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/SeCuida-Prototipo/',
+  base: '/secuida/',
   plugins: [
     react(),
     tailwindcss(),
@@ -17,8 +17,8 @@ export default defineConfig({
         description: 'Orientação emocional, recursos e apoio para educadores.',
         display: 'standalone',
         lang: 'pt-BR',
-        start_url: '/SeCuida-Prototipo/',
-        scope: '/SeCuida-Prototipo/',
+        start_url: '/secuida/',
+        scope: '/secuida/',
         theme_color: '#006a43',
         background_color: '#f9f9ff',
         icons: [

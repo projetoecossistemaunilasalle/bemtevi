@@ -32,11 +32,12 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           run_install: false
+      - uses: actions/configure-pages@v4
+        id: pages
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm build --base ${{ steps.pages.outputs.base_url }}/
         env:
           VITE_ENABLE_DEV_DASHBOARD: ${{ vars.VITE_ENABLE_DEV_DASHBOARD }}
-      - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
