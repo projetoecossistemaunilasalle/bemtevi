@@ -142,6 +142,26 @@ describe('validateFlow', () => {
     });
   });
 
+  it('rejects invalid free-text next references before runtime', () => {
+    const invalidFlow: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        ...validFlow.nodes,
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'O que você quer testar?',
+          options: [{ id: 'continue', label: 'Continuar', next: 'end' }],
+          freeText: { next: 'missing-node' },
+        },
+      },
+    };
+
+    expect(validateFlow(invalidFlow)).toEqual({
+      valid: false,
+      errors: ['Flow fixture-flow choice node start freeText points to missing node missing-node.'],
+    });
+  });
   it('returns validation errors for malformed JSON-shaped content instead of throwing', () => {
     expect(validateFlow({})).toEqual({
       valid: false,
@@ -361,6 +381,32 @@ describe('flow runtime', () => {
     expect(nextState.transcript.at(-1)?.text).toBe('Chegamos ao fim.');
   });
 
+  it('advances free text without storing the raw answer when a node explicitly allows it', () => {
+    const freeTextFlow: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'Quer escrever algo livremente?',
+          freeText: { next: 'end' },
+          options: [{ id: 'skip', label: 'Prefiro pular', next: 'end' }],
+        },
+        end: {
+          id: 'end',
+          kind: 'result',
+          text: 'Seguimos com calma.',
+        },
+      },
+    };
+
+    const nextState = advanceFlow(createInitialFlowState(freeTextFlow, [freeTextFlow]), [freeTextFlow], 'Foi difícil.');
+
+    expect(nextState.activeNodeId).toBe('end');
+    expect(nextState.answers).toEqual({ start: 'free_text_submitted' });
+    expect(nextState.transcript.map((message) => message.text)).toContain('Foi difícil.');
+    expect(nextState.transcript.at(-1)?.text).toBe('Seguimos com calma.');
+  });
   it('resolves current options and global actions', () => {
     const state = createInitialFlowState(validFlow, [validFlow]);
     const labels = resolveOptions(state, [validFlow]).map((option) => option.label);
@@ -597,6 +643,7 @@ describe('flow runtime', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 
     state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
+    state = advanceFlow(state, flowRegistry.flows, 'Continuar');
 
     for (let index = 0; index < 7; index += 1) {
       state = advanceFlow(state, flowRegistry.flows, 'Sim');
@@ -639,6 +686,7 @@ describe('flow runtime', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 
     state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
+    state = advanceFlow(state, flowRegistry.flows, 'Continuar');
 
     for (let index = 0; index < 16; index += 1) {
       state = advanceFlow(state, flowRegistry.flows, 'Não');

@@ -140,6 +140,26 @@ describe('OrientationScreen', () => {
     expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toHaveAttribute('data-icon', 'send');
   });
 
+  it('submits explicit free text as a user bubble and advances without option matching', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
+
+    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+
+    fireEvent.change(input, { target: { value: 'Foi uma semana difícil.' } });
+    expect(sendButton).toBeEnabled();
+
+    fireEvent.click(sendButton);
+
+    expect(screen.getByText('Foi uma semana difícil.')).toBeInTheDocument();
+    expect(input).toHaveValue('');
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+
+    advanceInitialLoad();
+
+    expect(screen.getByText('Obrigado por compartilhar. Podemos seguir sem analisar esse texto.')).toBeInTheDocument();
+  });
   it('only enables send when the input exactly matches an available option', () => {
     renderOrientation();
     startOrientationWithStarter();
@@ -299,6 +319,16 @@ describe('OrientationScreen', () => {
     expect(sendButton).toBeDisabled();
   });
 
+  it('does not look for free-text config after the active flow ends', () => {
+    renderOrientation();
+    startOrientationWithStarter('Preciso de um momento mais leve');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Finalizar por hoje' }));
+    advanceInitialLoad();
+
+    expect(screen.getAllByText('Tudo bem. Você pode voltar quando quiser.').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toBeDisabled();
+  });
   it('starts the selected neutral orientation flow', () => {
     renderOrientation();
     startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');

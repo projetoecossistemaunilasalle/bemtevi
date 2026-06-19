@@ -100,6 +100,26 @@ export const neutralFlows = [
             effects: [{ kind: 'flow_start', flowId: 'orientation-understand-feelings' }],
           },
         ],
+        freeText: { next: 'free-reflection-response' },
+      },
+      'free-reflection-response': {
+        id: 'free-reflection-response',
+        kind: 'choice',
+        text: 'Obrigado por compartilhar. Podemos seguir sem analisar esse texto.',
+        options: [
+          {
+            id: 'understand',
+            label: 'Quero entender melhor esse momento',
+            next: 'handoff-understand',
+            effects: [{ kind: 'flow_start', flowId: 'orientation-understand-feelings' }],
+          },
+          {
+            id: 'care-step',
+            label: 'Quero escolher um próximo passo',
+            next: 'handoff-care-step',
+            effects: [{ kind: 'flow_start', flowId: 'orientation-next-care-step' }],
+          },
+        ],
       },
       'handoff-work-stress': {
         id: 'handoff-work-stress',
@@ -111,6 +131,11 @@ export const neutralFlows = [
         id: 'handoff-understand',
         kind: 'result',
         text: 'Vou abrir um caminho para entender o momento.',
+      },
+      'handoff-care-step': {
+        id: 'handoff-care-step',
+        kind: 'result',
+        text: 'Vou abrir um caminho para escolher um próximo passo.',
       },
     },
   },

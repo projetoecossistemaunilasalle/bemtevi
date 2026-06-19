@@ -55,11 +55,16 @@ export interface FlowOption {
   effects?: FlowEffect[];
 }
 
+export interface FreeTextFlowAdvance {
+  next: string;
+}
+
 export interface ChoiceFlowNode {
   id: string;
   kind: 'choice';
   text: string;
   options: FlowOption[];
+  freeText?: FreeTextFlowAdvance;
 }
 
 export interface ResultFlowNode {

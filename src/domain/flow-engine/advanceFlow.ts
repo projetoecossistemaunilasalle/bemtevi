@@ -9,6 +9,12 @@ export function advanceFlow(state: FlowRuntimeState, flows: GuidedFlow[], select
   const activeNodeId = state.activeNodeId ?? 'none';
 
   if (!selectedOption) {
+    const freeTextState = advanceFreeTextIfAvailable(state, flows, selectedLabel);
+
+    if (freeTextState) {
+      return freeTextState;
+    }
+
     throw new Error(`Selection ${selectedLabel} is not available for node ${activeNodeId}.`);
   }
 
@@ -200,4 +206,32 @@ function resolveScoreBranchNextNode(state: FlowRuntimeState, node: Extract<FlowN
   }
 
   return branch.next;
+}
+
+function advanceFreeTextIfAvailable(
+  state: FlowRuntimeState,
+  flows: GuidedFlow[],
+  submittedText: string,
+): FlowRuntimeState | undefined {
+  if (!submittedText.trim()) return undefined;
+
+  const activeFlow = getActiveFlow(state, flows);
+  const currentNodeId = state.activeNodeId ?? activeFlow.entry.nodeId;
+  const currentNode = activeFlow.nodes[currentNodeId];
+
+  if (currentNode.kind !== 'choice' || currentNode.freeText === undefined) {
+    return undefined;
+  }
+
+  const nextState = {
+    ...state,
+    transcript: [...state.transcript, createMessage('user', submittedText, activeFlow.id, currentNodeId)],
+    answers: {
+      ...state.answers,
+      [currentNodeId]: 'free_text_submitted',
+    },
+    pendingNavigation: undefined,
+  };
+
+  return advanceToNode(nextState, activeFlow, currentNode.freeText.next);
 }

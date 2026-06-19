@@ -3,7 +3,7 @@ import { MessageCircle, Send, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { flowRegistry } from '../../content/flows/registry';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
-import { createInitialFlowStateFromRegistry, createMessage } from '../../domain/flow-engine/loadFlows';
+import { createInitialFlowStateFromRegistry, createMessage, getActiveFlow } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
 import type { ChatMessage, FlowRuntimeState, RuntimeOption } from '../../domain/flow-engine/types';
 
@@ -91,9 +91,20 @@ export function OrientationScreen() {
     return options.filter((option) => option.label.toLocaleLowerCase('pt-BR').includes(normalizedInput));
   }, [inputValue, options]);
 
+  const acceptsFreeText = useMemo(() => {
+    if (!state || !state.activeFlowId || isRevealing) return false;
+
+    const activeFlow = getActiveFlow(state, flows);
+    const activeNodeId = state.activeNodeId ?? activeFlow.entry.nodeId;
+    const activeNode = activeFlow.nodes[activeNodeId];
+
+    return activeNode.kind === 'choice' && activeNode.freeText !== undefined;
+  }, [state, isRevealing]);
+
   const exactOption = options.find(
     (option) => option.label.toLocaleLowerCase('pt-BR') === inputValue.trim().toLocaleLowerCase('pt-BR'),
   );
+  const canSubmit = exactOption !== undefined || (acceptsFreeText && inputValue.trim().length > 0);
 
   useEffect(() => {
     const log = logRef.current;
@@ -190,11 +201,37 @@ export function OrientationScreen() {
     }
   }
 
+  function submitFreeText(submittedText: string) {
+    if (!state) return;
+
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    setInputValue('');
+
+    const preAdvanceCount = state.transcript.length;
+    const newState = advanceFlow(state, flows, submittedText);
+    const immediateCount = preAdvanceCount + 1;
+
+    setState(newState);
+    setVisibleCount(immediateCount);
+
+    const totalMessages = newState.transcript.length;
+    if (immediateCount < totalMessages) {
+      typingTimerRef.current = setTimeout(() => {
+        setVisibleCount(totalMessages);
+      }, TYPING_DELAY_MS);
+    }
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (exactOption) {
       submitOption(exactOption);
+      return;
+    }
+
+    if (acceptsFreeText && inputValue.trim()) {
+      submitFreeText(inputValue);
     }
   }
 
@@ -269,7 +306,7 @@ export function OrientationScreen() {
                 type="submit"
                 aria-label="Enviar opção selecionada"
                 data-icon="send"
-                disabled={isRevealing || !exactOption}
+                disabled={isRevealing || !canSubmit}
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary transition-colors disabled:bg-secondary-container disabled:text-on-secondary-container"
               >
                 <Send size={21} aria-hidden="true" />

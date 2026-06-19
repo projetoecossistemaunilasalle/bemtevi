@@ -96,8 +96,12 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
 }
 
 function validateChoiceNode(flowLabel: string, node: ChoiceFlowNode, nodeIds: Set<string>, errors: string[]) {
-  if (node.options.length === 0) {
+  if (node.options.length === 0 && node.freeText === undefined) {
     errors.push(`Flow ${flowLabel} choice node ${node.id} must include options.`);
+  }
+
+  if (node.freeText !== undefined && !nodeIds.has(node.freeText.next)) {
+    errors.push(`Flow ${flowLabel} choice node ${node.id} freeText points to missing node ${node.freeText.next}.`);
   }
 
   node.options.forEach((option) => {
