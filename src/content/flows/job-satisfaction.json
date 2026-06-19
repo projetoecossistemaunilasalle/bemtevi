@@ -1,0 +1,1444 @@
+{
+  "id": "job-satisfaction",
+  "version": "1.0.0",
+  "locale": "pt-BR",
+  "title": "Satisfação no trabalho",
+  "type": "guided_conversation",
+  "status": "draft",
+  "entry": {
+    "nodeId": "consent",
+    "enteringPhrases": [
+      "Quero avaliar minha satisfação no trabalho",
+      "Como estou em relação ao meu trabalho",
+      "Questionário de satisfação no trabalho"
+    ],
+    "transitionMessage": "Este é um questionário de satisfação no trabalho. Ele ajuda a refletir sobre diferentes aspectos da sua rotina, mas não faz diagnóstico nem atribui um valor único à sua experiência."
+  },
+  "nodes": {
+    "consent": {
+      "id": "consent",
+      "kind": "choice",
+      "text": "Antes de começar: suas respostas ficam apenas nesta conversa. Este questionário é uma autoavaliação e não substitui uma conversa com um profissional. Você quer responder agora?",
+      "options": [
+        { "id": "accept", "label": "Quero responder", "next": "instructions" },
+        { "id": "decline", "label": "Agora não", "next": "declined-result" }
+      ]
+    },
+    "instructions": {
+      "id": "instructions",
+      "kind": "choice",
+      "text": "Atribua notas para os aspectos citados abaixo, relacionados ao seu trabalho.\n\nConsidere, para responder, o seu grau de satisfação com esses aspectos.",
+      "options": [{ "id": "continue", "label": "Continuar", "next": "q1" }]
+    },
+    "q1": {
+      "id": "q1",
+      "kind": "choice",
+      "text": "1. Jornada de trabalho",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q2": {
+      "id": "q2",
+      "kind": "choice",
+      "text": "2. Limpeza/conforto no ambiente de trabalho",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q3": {
+      "id": "q3",
+      "kind": "choice",
+      "text": "3. Segurança no ambiente de trabalho",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q4": {
+      "id": "q4",
+      "kind": "choice",
+      "text": "4. Instrumentos/equipamentos/materiais pedagógicos",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q5": {
+      "id": "q5",
+      "kind": "choice",
+      "text": "5. Instalações adequadas e condições gerais de infraestrutura",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q6",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q6",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q6",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q6",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q6",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q6": {
+      "id": "q6",
+      "kind": "choice",
+      "text": "6. Identificação com as atividades realizadas",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q7",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q7",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q7",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q7",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q7",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q7": {
+      "id": "q7",
+      "kind": "choice",
+      "text": "7. Ritmo de trabalho",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q8",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q8",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q8",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q8",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q8",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q8": {
+      "id": "q8",
+      "kind": "choice",
+      "text": "8. Diversidade de tarefas",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q9",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q9",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q9",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q9",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q9",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q9": {
+      "id": "q9",
+      "kind": "choice",
+      "text": "9. Salário",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q10",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q10",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q10",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q10",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q10",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q10": {
+      "id": "q10",
+      "kind": "choice",
+      "text": "10. Salário variável — bônus, gratificações, hora extra etc.",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q11",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q11",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q11",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q11",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q11",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q11": {
+      "id": "q11",
+      "kind": "choice",
+      "text": "11. Benefícios — materiais e não materiais",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q12",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q12",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q12",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q12",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q12",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q12": {
+      "id": "q12",
+      "kind": "choice",
+      "text": "12. Autonomia",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q13",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q13",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q13",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q13",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q13",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q13": {
+      "id": "q13",
+      "kind": "choice",
+      "text": "13. Uso da criatividade",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q14",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q14",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q14",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q14",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q14",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q14": {
+      "id": "q14",
+      "kind": "choice",
+      "text": "14. Liberdade de expressão",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q15",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q15",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q15",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q15",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q15",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q15": {
+      "id": "q15",
+      "kind": "choice",
+      "text": "15. Repercussão/aceitação de suas ideias",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q16",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q16",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q16",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q16",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q16",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q16": {
+      "id": "q16",
+      "kind": "choice",
+      "text": "16. Trabalho coletivo / grupos de trabalho / troca de experiências",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q17",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q17",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q17",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q17",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q17",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q17": {
+      "id": "q17",
+      "kind": "choice",
+      "text": "17. Direitos garantidos",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q18",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q18",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q18",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q18",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q18",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q18": {
+      "id": "q18",
+      "kind": "choice",
+      "text": "18. Privacidade / vida pessoal preservada",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q19",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q19",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q19",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q19",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q19",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q19": {
+      "id": "q19",
+      "kind": "choice",
+      "text": "19. Horários previsíveis",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q20",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q20",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q20",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q20",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q20",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q20": {
+      "id": "q20",
+      "kind": "choice",
+      "text": "20. Tempo para lazer e para a família",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q21",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q21",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q21",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q21",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q21",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q21": {
+      "id": "q21",
+      "kind": "choice",
+      "text": "21. Relações interpessoais no ambiente de trabalho",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q22",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q22",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q22",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q22",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q22",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q22": {
+      "id": "q22",
+      "kind": "choice",
+      "text": "22. Reconhecimento do trabalho realizado / feedback",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q23",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q23",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q23",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q23",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q23",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q23": {
+      "id": "q23",
+      "kind": "choice",
+      "text": "23. Estabilidade no emprego",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q24",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q24",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q24",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q24",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q24",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q24": {
+      "id": "q24",
+      "kind": "choice",
+      "text": "24. Plano de carreira",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q25",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q25",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q25",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q25",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q25",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q25": {
+      "id": "q25",
+      "kind": "choice",
+      "text": "25. Desenvolvimento profissional / treinamentos / educação continuada",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q26",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q26",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q26",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q26",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q26",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q26": {
+      "id": "q26",
+      "kind": "choice",
+      "text": "26. Ausência de preconceitos",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q27",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q27",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q27",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q27",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q27",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q27": {
+      "id": "q27",
+      "kind": "choice",
+      "text": "27. Igualdade de tratamento",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q28",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q28",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q28",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q28",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q28",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q28": {
+      "id": "q28",
+      "kind": "choice",
+      "text": "28. Relações hierárquicas",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q29",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q29",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q29",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q29",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q29",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q29": {
+      "id": "q29",
+      "kind": "choice",
+      "text": "29. Apoio socioemocional",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q30",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q30",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q30",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q30",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q30",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q30": {
+      "id": "q30",
+      "kind": "choice",
+      "text": "30. Conhecimento das metas da escola",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q31",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q31",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q31",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q31",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q31",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q31": {
+      "id": "q31",
+      "kind": "choice",
+      "text": "31. Participação nas decisões sobre metas/objetivos/estratégias",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q32",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q32",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q32",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q32",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q32",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q32": {
+      "id": "q32",
+      "kind": "choice",
+      "text": "32. Fluxo de informações / formas de comunicação",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q33",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q33",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q33",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q33",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q33",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q33": {
+      "id": "q33",
+      "kind": "choice",
+      "text": "33. Identificação com objetivos sociais da educação",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q34",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q34",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q34",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q34",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q34",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q34": {
+      "id": "q34",
+      "kind": "choice",
+      "text": "34. Imagem interna da escola e do sistema educacional",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q35",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q35",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q35",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q35",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q35",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q35": {
+      "id": "q35",
+      "kind": "choice",
+      "text": "35. Imagem externa da escola e do sistema educacional",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q36",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q36",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q36",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q36",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q36",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q36": {
+      "id": "q36",
+      "kind": "choice",
+      "text": "36. Responsabilidade comunitária/social da escola",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q37",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q37",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q37",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q37",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q37",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q37": {
+      "id": "q37",
+      "kind": "choice",
+      "text": "37. Nível de interesse dos alunos",
+      "options": [
+        {
+          "id": "1",
+          "label": "1 - Muito insatisfeito(a)",
+          "next": "q-open",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 1 }]
+        },
+        {
+          "id": "2",
+          "label": "2 - Insatisfeito(a)",
+          "next": "q-open",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 2 }]
+        },
+        {
+          "id": "3",
+          "label": "3 - Nem satisfeito(a) / nem insatisfeito(a)",
+          "next": "q-open",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 3 }]
+        },
+        {
+          "id": "4",
+          "label": "4 - Satisfeito(a)",
+          "next": "q-open",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 4 }]
+        },
+        {
+          "id": "5",
+          "label": "5 - Muito satisfeito(a)",
+          "next": "q-open",
+          "effects": [{ "kind": "score", "scoreKey": "job-satisfaction", "value": 5 }]
+        }
+      ]
+    },
+    "q-open": {
+      "id": "q-open",
+      "kind": "choice",
+      "text": "Você é feliz no seu trabalho?",
+      "options": [],
+      "freeText": { "next": "job-satisfaction-score" }
+    },
+    "job-satisfaction-score": {
+      "id": "job-satisfaction-score",
+      "kind": "score_branch",
+      "text": "Vou organizar suas respostas com cuidado.",
+      "scoreKey": "job-satisfaction",
+      "branches": [
+        { "id": "low-satisfaction", "min": 37, "max": 86, "next": "low-satisfaction-result" },
+        { "id": "moderate-satisfaction", "min": 87, "max": 134, "next": "moderate-satisfaction-result" },
+        { "id": "high-satisfaction", "min": 135, "max": 185, "next": "high-satisfaction-result" }
+      ]
+    },
+    "declined-result": {
+      "id": "declined-result",
+      "kind": "result",
+      "text": "Tudo bem. Você pode responder a avaliação de satisfação no trabalho em outro momento ou seguir com uma orientação mais breve."
+    },
+    "low-satisfaction-result": {
+      "id": "low-satisfaction-result",
+      "kind": "result",
+      "text": "Com base nas suas respostas, muitos aspectos do seu trabalho estão gerando insatisfação. Isso é um sinal importante — pode valer a pena conversar com alguém de confiança ou buscar apoio profissional para refletir sobre os próximos passos. Reconhecer o que pesa já é um começo.",
+      "recommendations": ["teacher-emotional-regulation-classroom"]
+    },
+    "moderate-satisfaction-result": {
+      "id": "moderate-satisfaction-result",
+      "kind": "result",
+      "text": "Com base nas suas respostas, você tem uma relação mista com o trabalho — alguns pontos trazem satisfação, outros geram incômodo. Olhar para esses contrastes com curiosidade, em vez de cobrança, pode ajudar a entender o que vale a pena fortalecer e onde pedir apoio.",
+      "recommendations": ["teacher-emotional-regulation-classroom"]
+    },
+    "high-satisfaction-result": {
+      "id": "high-satisfaction-result",
+      "kind": "result",
+      "text": "Com base nas suas respostas, no geral você está satisfeito(a) com o seu trabalho. Continue valorizando o que faz bem na sua rotina e cultivando os aspectos positivos. Mesmo assim, vale ficar atento(a) aos pontos que ainda incomodam — pequenas mudanças também contam.",
+      "recommendations": ["teacher-emotional-regulation-classroom"]
+    }
+  }
+}
