@@ -21,14 +21,20 @@
       "kind": "choice",
       "text": "Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?",
       "options": [
-        { "id": "accept", "label": "Quero responder", "next": "q1" },
+        { "id": "accept", "label": "Quero responder", "next": "instructions" },
         { "id": "decline", "label": "Agora não", "next": "declined-result" }
       ]
+    },
+    "instructions": {
+      "id": "instructions",
+      "kind": "choice",
+      "text": "Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias.\n\nSe você acha que a questão se aplica a você e teve o problema descrito nos últimos 30 dias, responda SIM.\n\nSe a questão não se aplica a você ou você não teve o problema nos últimos 30 dias, responda NÃO.\n\nObservação: o diagnóstico definitivo só pode ser fornecido por um profissional.",
+      "options": [{ "id": "continue", "label": "Continuar", "next": "q1" }]
     },
     "q1": {
       "id": "q1",
       "kind": "choice",
-      "text": "Você tem se sentido nervoso(a), tenso(a) ou preocupado(a) sem motivo claro?",
+      "text": "Você tem dores de cabeça frequentes?",
       "options": [
         {
           "id": "yes",
@@ -42,7 +48,7 @@
     "q2": {
       "id": "q2",
       "kind": "choice",
-      "text": "Você tem tido dificuldade para dormir — demora para conseguir dormir ou acorda no meio da noite?",
+      "text": "Tem falta de apetite?",
       "options": [
         {
           "id": "yes",
@@ -56,7 +62,7 @@
     "q3": {
       "id": "q3",
       "kind": "choice",
-      "text": "Você tem sentido medo ou receio de algo, mesmo sem saber bem o que é?",
+      "text": "Dorme mal?",
       "options": [
         {
           "id": "yes",
@@ -70,7 +76,7 @@
     "q4": {
       "id": "q4",
       "kind": "choice",
-      "text": "Você tem sentido o estômago ruim, com dor ou mal-estar, mesmo sem ter comido nada estranho?",
+      "text": "Assusta-se com facilidade?",
       "options": [
         {
           "id": "yes",
@@ -84,7 +90,7 @@
     "q5": {
       "id": "q5",
       "kind": "choice",
-      "text": "Você tem tido tonturas ou sensação de cabeça leve?",
+      "text": "Tem tremores nas mãos?",
       "options": [
         {
           "id": "yes",
@@ -98,7 +104,7 @@
     "q6": {
       "id": "q6",
       "kind": "choice",
-      "text": "Suas mãos tremem mesmo quando você não está fazendo esforço?",
+      "text": "Sente-se nervoso(a), tenso(a) ou preocupado(a)?",
       "options": [
         {
           "id": "yes",
@@ -112,7 +118,7 @@
     "q7": {
       "id": "q7",
       "kind": "choice",
-      "text": "Você tem tido menos vontade de comer, mesmo quando é hora da refeição?",
+      "text": "Tem má digestão?",
       "options": [
         {
           "id": "yes",
@@ -126,7 +132,7 @@
     "q8": {
       "id": "q8",
       "kind": "choice",
-      "text": "Você tem chorado com mais facilidade do que antes, mesmo por coisas pequenas?",
+      "text": "Tem dificuldades de pensar com clareza?",
       "options": [
         {
           "id": "yes",
@@ -140,7 +146,7 @@
     "q9": {
       "id": "q9",
       "kind": "choice",
-      "text": "Tem sido difícil sentir prazer ou alegria nas coisas que antes te faziam bem?",
+      "text": "Tem se sentido triste ultimamente?",
       "options": [
         {
           "id": "yes",
@@ -154,7 +160,7 @@
     "q10": {
       "id": "q10",
       "kind": "choice",
-      "text": "Você tem tido dificuldade para tomar decisões, mesmo as do dia a dia?",
+      "text": "Tem chorado mais do que de costume?",
       "options": [
         {
           "id": "yes",
@@ -168,7 +174,7 @@
     "q11": {
       "id": "q11",
       "kind": "choice",
-      "text": "As tarefas do dia a dia — em casa ou no trabalho — têm parecido mais difíceis do que o normal?",
+      "text": "Encontra dificuldades para realizar com satisfação suas atividades diárias?",
       "options": [
         {
           "id": "yes",
@@ -182,7 +188,7 @@
     "q12": {
       "id": "q12",
       "kind": "choice",
-      "text": "Você sente que seu trabalho não está fazendo diferença ou que não está sendo útil?",
+      "text": "Tem dificuldades para tomar decisões?",
       "options": [
         {
           "id": "yes",
@@ -196,7 +202,7 @@
     "q13": {
       "id": "q13",
       "kind": "choice",
-      "text": "Você tem perdido o interesse por coisas que antes considerava importantes?",
+      "text": "Tem dificuldades no serviço? Seu trabalho é penoso, causa-lhe sofrimento?",
       "options": [
         {
           "id": "yes",
@@ -210,7 +216,7 @@
     "q14": {
       "id": "q14",
       "kind": "choice",
-      "text": "Você tem se sentido sem valor ou como se não fosse capaz?",
+      "text": "É incapaz de desempenhar um papel útil em sua vida?",
       "options": [
         {
           "id": "yes",
@@ -224,7 +230,7 @@
     "q15": {
       "id": "q15",
       "kind": "choice",
-      "text": "Você tem se sentido exausto(a), sem energia nem para as coisas básicas?",
+      "text": "Tem perdido o interesse pelas coisas?",
       "options": [
         {
           "id": "yes",
@@ -238,7 +244,7 @@
     "q16": {
       "id": "q16",
       "kind": "choice",
-      "text": "Você tem sentido alguma sensação desagradável no estômago, como aperto, queimação ou nojo?",
+      "text": "Você se sente uma pessoa inútil, sem prestímo?",
       "options": [
         {
           "id": "yes",
@@ -252,7 +258,7 @@
     "q17": {
       "id": "q17",
       "kind": "choice",
-      "text": "Você já teve pensamentos de que seria melhor estar morto(a) ou de se machucar?",
+      "text": "Tem tido ideia de acabar com a vida?",
       "options": [
         {
           "id": "yes",
@@ -273,7 +279,7 @@
     "q18": {
       "id": "q18",
       "kind": "choice",
-      "text": "Você tem dormido mal — acorda cansado(a) mesmo depois de ter dormido?",
+      "text": "Sente-se cansado(a) o tempo todo?",
       "options": [
         {
           "id": "yes",
@@ -287,7 +293,7 @@
     "q19": {
       "id": "q19",
       "kind": "choice",
-      "text": "Você tem se sentido preocupado(a) com coisas do dia a dia de um jeito que não consegue controlar?",
+      "text": "Você se cansa com facilidade?",
       "options": [
         {
           "id": "yes",
@@ -301,7 +307,7 @@
     "q20": {
       "id": "q20",
       "kind": "choice",
-      "text": "Você se cansa com facilidade, mesmo com atividades que antes não te cansavam?",
+      "text": "Tem sensações desagradáveis no estômago?",
       "options": [
         {
           "id": "yes",
