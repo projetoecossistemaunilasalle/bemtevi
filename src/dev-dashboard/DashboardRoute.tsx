@@ -17,6 +17,7 @@ import { validateDashboardFlows } from './flows/flowValidation';
 import { defaultFeaturedImageId } from '../content/resources/featuredImages';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../content/resources/groups';
 import type { EducationResourceGroup } from '../content/resources/groups';
+import { loadActiveTab, saveActiveTab } from './draft-storage/dashboardTabStorage';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -71,6 +72,38 @@ function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shipped
   };
 }
 
+function createLocalFlow(existingCount: number) {
+  const suffix = existingCount + 1;
+  const id = `flow-local-${suffix}`;
+
+  return {
+    id,
+    version: '1.0.0' as const,
+    locale: 'pt-BR' as const,
+    title: 'Novo fluxo',
+    type: 'guided_conversation' as const,
+    status: 'draft' as const,
+    entry: {
+      nodeId: 'start',
+      enteringPhrases: ['Começar'],
+      transitionMessage: 'Olá.',
+    },
+    nodes: {
+      start: {
+        id: 'start',
+        kind: 'choice' as const,
+        text: 'Como você quer continuar?',
+        options: [{ id: 'done', label: 'Continuar', next: 'done' }],
+      },
+      done: {
+        id: 'done',
+        kind: 'result' as const,
+        text: 'Finalizado.',
+      },
+    },
+  };
+}
+
 function updateRecordAtIndex<T>(records: T[], index: number, patch: Partial<T>) {
   return records.map((record, recordIndex) => (recordIndex === index ? { ...record, ...patch } : record));
 }
@@ -80,10 +113,15 @@ function findGroupIndex(groups: EducationResourceGroup[], groupId: string) {
 }
 
 export function DashboardRoute() {
-  const [activeTab, setActiveTab] = useState<DashboardTab>('flows');
+  const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
   const shipped = useMemo(() => getShippedDashboardContent(), []);
   const [draftState, setDraftState] = useState(() => loadDashboardDrafts());
   const mergedDrafts = useMemo(() => mergeDashboardDrafts(shipped, draftState), [draftState, shipped]);
+
+  function setActiveTab(tab: DashboardTab) {
+    setActiveTabState(tab);
+    saveActiveTab(tab);
+  }
 
   function updateDraftState(updater: (current: typeof draftState) => typeof draftState) {
     setDraftState((current) => {
@@ -134,6 +172,12 @@ export function DashboardRoute() {
                 flowPatches: upsertPatchById(current.flowPatches, flowId, flowIndex, patch),
               }))
             }
+            onFlowAdd={() =>
+              updateDraftState((current) => ({
+                ...current,
+                addedFlows: [...current.addedFlows, createLocalFlow(current.addedFlows.length)],
+              }))
+            }
           />
         )}
         {activeTab === 'education' && (
@@ -163,17 +207,16 @@ export function DashboardRoute() {
                 };
               })
             }
-            onResourceAdd={() =>
+            onResourceAdd={() => {
+              const newMaterial = createLocalEducationMaterial(
+                shipped.educationMaterials.length + draftState.addedEducationMaterials.length,
+              );
               updateDraftState((current) => ({
                 ...current,
-                addedEducationMaterials: [
-                  ...current.addedEducationMaterials,
-                  createLocalEducationMaterial(
-                    shipped.educationMaterials.length + current.addedEducationMaterials.length,
-                  ),
-                ],
-              }))
-            }
+                addedEducationMaterials: [...current.addedEducationMaterials, newMaterial],
+              }));
+              return newMaterial.id;
+            }}
             onGroupChange={(groupIndex, groupId, patch) =>
               updateDraftState((current) => {
                 const addedIndex = findGroupIndex(current.addedGroups, groupId);
@@ -367,7 +410,14 @@ export function DashboardRoute() {
             }
           />
         )}
-        {activeTab === 'export' && <ExportDashboard shipped={shipped} drafts={drafts} validation={validation} />}
+        {activeTab === 'export' && (
+          <ExportDashboard
+            shipped={shipped}
+            drafts={drafts}
+            validation={validation}
+            draftUpdatedAt={draftState.updatedAt}
+          />
+        )}
       </DashboardShell>
     </Page>
   );

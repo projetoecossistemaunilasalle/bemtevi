@@ -5,9 +5,11 @@ const variants = {
   secondary:
     'bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low hover:border-secondary',
   ghost: 'text-primary hover:bg-surface-container-low',
+  danger: 'bg-error-container text-on-error-container hover:bg-error-container/85',
 } as const;
 
 const sizes = {
+  sm: 'min-h-9 px-3 py-1 text-sm',
   md: 'min-h-12 px-5 py-2',
   lg: 'min-h-14 px-6 py-3',
 } as const;

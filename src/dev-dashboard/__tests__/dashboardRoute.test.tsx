@@ -239,6 +239,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Mapa visual' }));
     expect(screen.getAllByText('Etapa 1').length).toBeGreaterThan(0);
     expect(screen.getByText('Se escolher "Continuar"')).toBeInTheDocument();
     expect(screen.getByText('vai para Etapa 2')).toBeInTheDocument();
@@ -422,6 +423,7 @@ describe('DashboardRoute', () => {
     await waitFor(() => expect(screen.getByLabelText('Grupo do material')).toHaveValue('mock-group'));
     fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo de teste' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover grupo Grupo de teste' }));
 
     const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
     const materialGroupSelect = screen.getByLabelText('Grupo do material') as HTMLSelectElement;
@@ -463,12 +465,13 @@ describe('DashboardRoute', () => {
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar tag' }));
-    fireEvent.change(screen.getByLabelText('Tag 2'), { target: { value: 'acolhimento' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remover tag' })[0]);
+    const tagInput = screen.getByLabelText('Tags do material');
+    fireEvent.change(tagInput, { target: { value: 'acolhimento' } });
+    fireEvent.keyDown(tagInput, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'Remover teste' }));
 
-    expect(screen.getByDisplayValue('acolhimento')).toBeInTheDocument();
-    expect(screen.queryByDisplayValue('teste')).not.toBeInTheDocument();
+    expect(screen.getByText('acolhimento')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remover teste' })).not.toBeInTheDocument();
   });
 
   it('keeps focus while editing an education tag', async () => {
@@ -482,11 +485,11 @@ describe('DashboardRoute', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
 
-    const tagInput = screen.getByLabelText('Tag 1');
+    const tagInput = screen.getByLabelText('Tags do material');
     await user.click(tagInput);
     await user.keyboard('s');
 
-    expect(screen.getByLabelText('Tag 1')).toHaveFocus();
+    expect(screen.getByLabelText('Tags do material')).toHaveFocus();
   });
 
   it('edits the featured image with catalog and external URL modes', () => {
@@ -778,6 +781,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Grupo adicionado')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo adicionado' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover grupo Grupo adicionado' }));
 
     expect(onGroupRemove).toHaveBeenCalledWith(2, 'added-group');
   });

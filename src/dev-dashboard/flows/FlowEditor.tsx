@@ -1,7 +1,10 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { ChoiceFlowNode, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import { Button } from '../../design-system/components/Button';
+import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
+import { inputClass, inputClassSm, textareaClass } from '../components/fieldStyles';
 import { getFlowNodeLabel, getFlowNodeTitle } from './flowDisplay';
 import { flowPurposeLabels } from './flowLabels';
 
@@ -123,20 +126,18 @@ export function FlowEditor({
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
       <h2 className="font-headline-sm text-on-surface">Dados do fluxo</h2>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-label-md text-on-surface">Título do fluxo</span>
+      <Field label="Título do fluxo">
         <input
           aria-label="Título do fluxo"
-          className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+          className={inputClass}
           value={flow.title}
           onChange={(event) => onChange({ title: event.target.value })}
         />
-      </label>
+      </Field>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-label-md text-on-surface">Uso do fluxo</span>
+      <Field label="Uso do fluxo" hint="Define onde este fluxo aparece no app e como ele pode ser iniciado.">
         <select
-          className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+          className={inputClass}
           value={flow.purpose ?? 'common'}
           onChange={(event) =>
             onChange({
@@ -148,53 +149,47 @@ export function FlowEditor({
           <option value="orientation_entry">{flowPurposeLabels.orientation_entry}</option>
           <option value="post_flow_routing">{flowPurposeLabels.post_flow_routing}</option>
         </select>
-        <FieldHint>Define onde este fluxo aparece no app e como ele pode ser iniciado.</FieldHint>
-      </label>
+      </Field>
 
       <div className="flex flex-col gap-2">
         <h3 className="font-headline-sm text-on-surface">Frases de entrada</h3>
         <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
         <ul className="flex flex-col gap-3">
           {flow.entry.enteringPhrases.map((phrase, phraseIndex) => (
-            <li key={`${phrase}-${phraseIndex}`} className="flex flex-col gap-1">
-              <label className="font-label-sm text-on-surface" htmlFor={`entry-phrase-${phraseIndex}`}>
-                Frase de entrada {phraseIndex + 1}
-              </label>
+            <li key={`${phrase}-${phraseIndex}`}>
               <textarea
-                id={`entry-phrase-${phraseIndex}`}
                 aria-label={`Frase de entrada ${phraseIndex + 1}`}
-                className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+                className={textareaClass}
                 value={phrase}
                 onChange={(event) => updateEnteringPhrase(phraseIndex, event.target.value)}
               />
             </li>
           ))}
         </ul>
-        <button
-          type="button"
-          onClick={addEnteringPhrase}
-          className="min-h-11 w-fit rounded-full bg-secondary-container px-4 font-label-md text-on-secondary-container"
-        >
+        <Button variant="secondary" size="sm" onClick={addEnteringPhrase} className="w-fit">
           Adicionar frase de entrada
-        </button>
+        </Button>
       </div>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-label-md text-on-surface">Mensagem antes do fluxo</span>
+      <Field
+        label="Mensagem antes do fluxo"
+        hint="Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo."
+      >
         <textarea
           aria-label="Mensagem antes do fluxo"
-          className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+          className={textareaClass}
           value={flow.entry.transitionMessage}
           onChange={(event) => updateEntry({ transitionMessage: event.target.value })}
         />
-        <FieldHint>Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo.</FieldHint>
-      </label>
+      </Field>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-label-md text-on-surface">Primeira etapa</span>
+      <Field
+        label="Primeira etapa"
+        hint="Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui."
+      >
         <select
           aria-label="Primeira etapa"
-          className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+          className={inputClass}
           value={flow.entry.nodeId}
           onChange={(event) => updateEntry({ nodeId: event.target.value })}
         >
@@ -204,10 +199,7 @@ export function FlowEditor({
             </option>
           ))}
         </select>
-        <FieldHint>
-          Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui.
-        </FieldHint>
-      </label>
+      </Field>
 
       <section className="flex flex-col gap-stack-sm">
         <h3 className="font-headline-sm text-on-surface">Etapas</h3>
@@ -266,7 +258,7 @@ export function FlowEditor({
                       <span className="font-label-sm text-on-surface">Tipo da etapa</span>
                       <select
                         aria-label={`Tipo da ${stepLabel}`}
-                        className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                        className={inputClassSm}
                         value={node.kind}
                         onChange={(event) => updateNodeKind(node, event.target.value as FlowNode['kind'])}
                       >
@@ -281,7 +273,7 @@ export function FlowEditor({
                       <span className="font-label-sm text-on-surface">Texto da etapa</span>
                       <textarea
                         aria-label={`Texto da ${stepLabel}`}
-                        className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+                        className={textareaClass}
                         value={node.text}
                         onChange={(event) => updateNode(node.id, { text: event.target.value })}
                       />
@@ -291,14 +283,14 @@ export function FlowEditor({
                       <div className="flex flex-col gap-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-label-md text-on-surface">Opções</p>
-                          <button
-                            type="button"
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => addOption(node)}
                             aria-label={`Adicionar opção na ${stepLabel}`}
-                            className="min-h-10 rounded-full bg-secondary-container px-3 font-label-md text-on-secondary-container"
                           >
                             Adicionar opção nesta etapa
-                          </button>
+                          </Button>
                         </div>
                         {node.options.map((option, optionIndex) => (
                           <div
@@ -309,7 +301,7 @@ export function FlowEditor({
                               <span className="font-label-sm text-on-surface">Texto da opção</span>
                               <input
                                 aria-label={`Texto da opção ${optionIndex + 1} da ${stepLabel}`}
-                                className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                                className={inputClassSm}
                                 value={option.label}
                                 onChange={(event) => updateChoiceOption(node, option.id, { label: event.target.value })}
                               />
@@ -318,7 +310,7 @@ export function FlowEditor({
                               <span className="font-label-sm text-on-surface">Ação</span>
                               <select
                                 aria-label={`Ação da opção ${optionIndex + 1} da ${stepLabel}`}
-                                className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                                className={inputClassSm}
                                 value={
                                   option.effects?.some((effect) => effect.kind === 'flow_start') ? 'flow_start' : 'next'
                                 }
@@ -352,7 +344,7 @@ export function FlowEditor({
                                 <span className="font-label-sm text-on-surface">Fluxo de destino</span>
                                 <select
                                   aria-label={`Fluxo de destino da opção ${optionIndex + 1} da ${stepLabel}`}
-                                  className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                                  className={inputClassSm}
                                   value={
                                     option.effects.find((effect) => effect.kind === 'flow_start')?.flowId ?? flow.id
                                   }
@@ -377,7 +369,7 @@ export function FlowEditor({
                                 <span className="font-label-sm text-on-surface">Próxima etapa</span>
                                 <select
                                   aria-label={`Próxima etapa da opção ${optionIndex + 1} da ${stepLabel}`}
-                                  className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                                  className={inputClassSm}
                                   value={option.next}
                                   onChange={(event) =>
                                     updateChoiceOption(node, option.id, { next: event.target.value })
@@ -401,13 +393,9 @@ export function FlowEditor({
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={addResultNode}
-          className="min-h-11 w-fit rounded-full bg-secondary-container px-4 font-label-md text-on-secondary-container"
-        >
+        <Button variant="secondary" onClick={addResultNode} className="w-fit">
           Adicionar etapa
-        </button>
+        </Button>
       </section>
     </section>
   );

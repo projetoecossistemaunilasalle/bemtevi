@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Check } from 'lucide-react';
 import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
 import type {
@@ -7,8 +8,21 @@ import type {
   EducationResourceFeaturedImage,
 } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
+import { Button } from '../../design-system/components/Button';
+import { ChipInput } from '../components/ChipInput';
+import { ConfirmButton } from '../components/ConfirmButton';
+import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
+import {
+  inputClass,
+  inputClassSm,
+  inputInvalidClass,
+  textareaClass,
+  textareaClassTall,
+} from '../components/fieldStyles';
 import { ValidationSummary } from '../components/ValidationSummary';
+import { issuesForPath } from '../validation/fieldIssues';
+import type { FieldIssues } from '../validation/fieldIssues';
 import { validateDashboardEducation } from './educationValidation';
 
 const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
@@ -37,36 +51,39 @@ export function EducationDashboard({
   groups: EducationResourceGroup[];
   defaultGroupOrder?: number;
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
-  onResourceAdd: () => void;
+  onResourceAdd: () => string;
   onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
   onGroupAdd: () => void;
   onGroupRemove: (groupIndex: number, groupId: string) => void;
   onGroupMove: (groupIndex: number, direction: -1 | 1) => void;
 }) {
-  const [selectedResourceIndex, setSelectedResourceIndex] = useState(0);
+  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(() => resources[0]?.id ?? null);
   const [groupsExpanded, setGroupsExpanded] = useState(false);
-  const selectedResource = resources[selectedResourceIndex] ?? resources[0];
+  const selectedIndex = useMemo(
+    () => resources.findIndex((resource) => resource.id === selectedResourceId),
+    [resources, selectedResourceId],
+  );
   const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
+  // Canonical selection: fall back to the first resource if the selected id is
+  // no longer present (e.g. after the data set changes). All field edits and
+  // list highlighting key off these two values.
+  const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const selectedResource = resources[effectiveIndex];
+
+  function changeField(patch: Partial<EducationResource>) {
+    if (!selectedResource) return;
+    onResourceChange(effectiveIndex, selectedResource.id, patch);
+  }
+
   function addResource() {
-    onResourceAdd();
-    setSelectedResourceIndex(resources.length);
+    const newId = onResourceAdd();
+    setSelectedResourceId(newId);
   }
 
-  function updateTags(tags: string[]) {
-    onResourceChange(selectedResourceIndex, selectedResource.id, { tags });
-  }
-
-  function addTag() {
-    updateTags([...selectedResource.tags, 'nova-tag']);
-  }
-
-  function updateTag(tagIndex: number, value: string) {
-    updateTags(selectedResource.tags.map((tag, index) => (index === tagIndex ? value : tag)));
-  }
-
-  function removeTag(tagIndex: number) {
-    updateTags(selectedResource.tags.filter((_, index) => index !== tagIndex));
+  /** Builds an invalid-aware input className for a given issue set. */
+  function fieldClass(issues: FieldIssues, base = inputClass) {
+    return issues.errors.length > 0 ? `${base} ${inputInvalidClass}` : base;
   }
 
   const [newBlockKind, setNewBlockKind] = useState<EducationResourceBlock['kind']>('paragraph');
@@ -87,19 +104,19 @@ export function EducationDashboard({
     imageId: defaultFeaturedImageId,
   };
 
-  function updateFeaturedImage(featuredImage: EducationResourceFeaturedImage) {
-    onResourceChange(selectedResourceIndex, selectedResource.id, { featuredImage });
+  function updateFeaturedImage(next: EducationResourceFeaturedImage) {
+    changeField({ featuredImage: next });
   }
 
   function updateBody(body: EducationResourceBlock[]) {
-    onResourceChange(selectedResourceIndex, selectedResource.id, { body });
+    changeField({ body });
   }
 
   function updateGroupSelection(groupId: string | undefined) {
     if (groupId === undefined || groupId === DEFAULT_EDUCATION_GROUP_ID) {
-      onResourceChange(selectedResourceIndex, selectedResource.id, { group: undefined });
+      changeField({ group: undefined });
     } else {
-      onResourceChange(selectedResourceIndex, selectedResource.id, { group: groupId });
+      changeField({ group: groupId });
     }
   }
 
@@ -123,6 +140,9 @@ export function EducationDashboard({
     updateBody(body);
   }
 
+  // Path prefix used to scope inline validation issues to the selected resource.
+  const resourcePath = selectedResource?.id ?? '';
+
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <GroupManagementSection
@@ -139,35 +159,27 @@ export function EducationDashboard({
       {!selectedResource ? (
         <section className="lg:col-span-2 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
           <p className="font-body-md text-on-surface-variant">Nenhum material disponível.</p>
-          <button
-            type="button"
-            onClick={addResource}
-            className="mt-3 min-h-11 rounded-full bg-primary px-4 font-label-md text-on-primary"
-          >
+          <Button className="mt-3" onClick={addResource}>
             Novo material
-          </button>
+          </Button>
         </section>
       ) : (
         <>
           <aside className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
             <h2 className="font-headline-sm text-on-surface">Materiais</h2>
-            <button
-              type="button"
-              onClick={addResource}
-              className="mt-3 min-h-11 w-full rounded-full bg-primary px-4 font-label-md text-on-primary"
-            >
+            <Button className="mt-3 w-full" onClick={addResource}>
               Novo material
-            </button>
+            </Button>
             <div className="mt-3 flex flex-col gap-2">
               {resources.map((resource, resourceIndex) => (
                 <button
                   key={`${resource.id}-${resourceIndex}`}
                   type="button"
-                  onClick={() => setSelectedResourceIndex(resourceIndex)}
-                  className={`rounded-lg px-3 py-2 text-left font-label-md ${
-                    selectedResourceIndex === resourceIndex
+                  onClick={() => setSelectedResourceId(resource.id)}
+                  className={`rounded-lg px-3 py-2 text-left font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                    resource.id === selectedResource.id
                       ? 'bg-primary text-on-primary'
-                      : 'bg-surface-container-low text-on-surface'
+                      : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                   }`}
                 >
                   {resource.title}
@@ -179,54 +191,47 @@ export function EducationDashboard({
           <div className="flex flex-col gap-stack-md">
             <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
               <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
-              <label className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Título do material</span>
+              <Field label="Título do material" issues={issuesForPath(validation, `${resourcePath}.title`)}>
                 <input
                   aria-label="Título do material"
-                  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                  className={fieldClass(issuesForPath(validation, `${resourcePath}.title`))}
                   value={selectedResource.title}
-                  onChange={(event) =>
-                    onResourceChange(selectedResourceIndex, selectedResource.id, { title: event.target.value })
-                  }
+                  onChange={(event) => changeField({ title: event.target.value })}
                 />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Descrição do material</span>
+              </Field>
+              <Field
+                label="Descrição do material"
+                hint="Resumo curto que aparece na lista de materiais."
+                issues={issuesForPath(validation, `${resourcePath}.description`)}
+              >
                 <textarea
                   aria-label="Descrição do material"
-                  className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+                  className={fieldClass(issuesForPath(validation, `${resourcePath}.description`), textareaClassTall)}
                   value={selectedResource.description}
-                  onChange={(event) =>
-                    onResourceChange(selectedResourceIndex, selectedResource.id, { description: event.target.value })
-                  }
+                  onChange={(event) => changeField({ description: event.target.value })}
                 />
-                <FieldHint>Resumo curto que aparece na lista de materiais.</FieldHint>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Fonte do material</span>
+              </Field>
+              <Field
+                label="Fonte do material"
+                hint="Nome da organização, autora ou referência principal do material."
+                issues={issuesForPath(validation, `${resourcePath}.source`)}
+              >
                 <input
                   aria-label="Fonte do material"
-                  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                  className={fieldClass(issuesForPath(validation, `${resourcePath}.source`))}
                   value={selectedResource.source}
-                  onChange={(event) =>
-                    onResourceChange(selectedResourceIndex, selectedResource.id, { source: event.target.value })
-                  }
+                  onChange={(event) => changeField({ source: event.target.value })}
                 />
-                <FieldHint>Nome da organização, autora ou referência principal do material.</FieldHint>
-              </label>
+              </Field>
 
-              <label className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Miniatura da biblioteca</span>
+              <Field label="Miniatura da biblioteca" hint="Imagem pequena usada no cartão da biblioteca de Estudos.">
                 <input
                   aria-label="URL da miniatura da biblioteca"
-                  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                  className={inputClass}
                   value={selectedResource.imageUrl ?? ''}
-                  onChange={(event) =>
-                    onResourceChange(selectedResourceIndex, selectedResource.id, { imageUrl: event.target.value })
-                  }
+                  onChange={(event) => changeField({ imageUrl: event.target.value })}
                 />
-                <FieldHint>Imagem pequena usada no cartão da biblioteca de Estudos.</FieldHint>
-              </label>
+              </Field>
 
               <fieldset
                 aria-label="Imagem principal do material"
@@ -258,40 +263,49 @@ export function EducationDashboard({
                 </div>
                 {featuredImage.kind === 'catalog' ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {featuredImageOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        aria-label={option.alt}
-                        aria-pressed={featuredImage.kind === 'catalog' && featuredImage.imageId === option.id}
-                        onClick={() => updateFeaturedImage({ kind: 'catalog', imageId: option.id })}
-                        className={`h-24 overflow-hidden rounded-xl border-2 ${
-                          featuredImage.kind === 'catalog' && featuredImage.imageId === option.id
-                            ? 'border-primary'
-                            : 'border-transparent'
-                        }`}
-                      >
-                        <img alt="" className="h-full w-full object-cover" src={option.src} />
-                      </button>
-                    ))}
+                    {featuredImageOptions.map((option) => {
+                      const isActive = featuredImage.kind === 'catalog' && featuredImage.imageId === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          aria-label={option.alt}
+                          aria-pressed={isActive}
+                          onClick={() => updateFeaturedImage({ kind: 'catalog', imageId: option.id })}
+                          className={`relative h-24 overflow-hidden rounded-xl border-2 transition-all ${
+                            isActive
+                              ? 'border-primary ring-2 ring-primary/30'
+                              : 'border-transparent hover:border-outline-variant'
+                          }`}
+                        >
+                          <img alt="" className="h-full w-full object-cover" src={option.src} />
+                          {isActive && (
+                            <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-on-primary shadow-sm">
+                              <Check aria-hidden="true" className="h-4 w-4" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <label className="flex flex-col gap-2">
-                    <span className="font-label-md text-on-surface font-semibold">URL da imagem principal</span>
+                  <Field
+                    label="URL da imagem principal"
+                    issues={issuesForPath(validation, `${resourcePath}.featuredImage`)}
+                  >
                     <input
                       aria-label="URL da imagem principal"
-                      className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                      className={fieldClass(issuesForPath(validation, `${resourcePath}.featuredImage`))}
                       value={featuredImage.kind === 'external' ? featuredImage.imageUrl : ''}
                       onChange={(event) => updateFeaturedImage({ kind: 'external', imageUrl: event.target.value })}
                     />
-                  </label>
+                  </Field>
                 )}
               </fieldset>
-              <label className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Grupo do material</span>
+              <Field label="Grupo do material" hint="Categoria que agrupa este material junto com outros relacionados.">
                 <select
                   aria-label="Grupo do material"
-                  className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                  className={inputClass}
                   value={selectedResource.group ?? DEFAULT_EDUCATION_GROUP_ID}
                   onChange={(event) => updateGroupSelection(event.target.value || undefined)}
                 >
@@ -302,41 +316,17 @@ export function EducationDashboard({
                     </option>
                   ))}
                 </select>
-                <FieldHint>Categoria que agrupa este material junto com outros relacionados.</FieldHint>
-              </label>
+              </Field>
 
-              <div>
-                <h3 className="font-headline-sm text-on-surface">Tags</h3>
+              <div className="flex flex-col gap-2">
+                <span className="font-label-md text-on-surface">Tags</span>
                 <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
-                <div className="mt-3 flex flex-col gap-2">
-                  {selectedResource.tags.map((tag, tagIndex) => (
-                    <div key={tagIndex} className="grid gap-2 md:grid-cols-[1fr_auto]">
-                      <label className="flex flex-col gap-1">
-                        <span className="font-label-sm text-on-surface">Tag {tagIndex + 1}</span>
-                        <input
-                          aria-label={`Tag ${tagIndex + 1}`}
-                          className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
-                          value={tag}
-                          onChange={(event) => updateTag(tagIndex, event.target.value)}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tagIndex)}
-                        className="self-end rounded-full bg-error-container px-4 py-2 font-label-md text-on-error-container"
-                      >
-                        Remover tag
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={addTag}
-                  className="mt-3 min-h-11 rounded-full bg-secondary-container px-4 font-label-md text-on-secondary-container"
-                >
-                  Adicionar tag
-                </button>
+                <ChipInput
+                  aria-label="Tags do material"
+                  placeholder="Digite uma tag e pressione Enter"
+                  values={selectedResource.tags}
+                  onChange={(tags) => changeField({ tags })}
+                />
               </div>
             </section>
 
@@ -345,42 +335,43 @@ export function EducationDashboard({
               <div className="flex flex-col gap-6">
                 {selectedResourceBody.map((block, blockIndex) => {
                   const blockNumber = blockIndex + 1;
+                  const blockIssues = issuesForPath(validation, `${resourcePath}.body.${block.id}`);
                   return (
                     <div key={block.id} className="flex flex-col gap-3 rounded-lg border border-outline-variant/30 p-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-label-md text-on-surface-variant font-semibold">
                           Bloco {blockNumber} — {blockKindLabels[block.kind]}
                         </span>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => moveBlock(blockIndex, -1)}
-                            className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container"
                             aria-label={`Mover bloco ${blockNumber} para cima`}
                           >
                             Mover para cima
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => moveBlock(blockIndex, 1)}
-                            className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container"
                             aria-label={`Mover bloco ${blockNumber} para baixo`}
                           >
                             Mover para baixo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeBlock(block.id)}
-                            className="rounded-full bg-error-container px-3 py-1 font-label-sm text-on-error-container"
+                          </Button>
+                          <ConfirmButton
+                            prompt="Remover bloco"
+                            confirmLabel="Confirmar"
+                            onConfirm={() => removeBlock(block.id)}
                             aria-label={`Remover bloco ${blockNumber}`}
-                          >
-                            Remover bloco
-                          </button>
+                            className="rounded-full bg-error-container px-4 py-2 font-label-sm text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+                          />
                         </div>
                       </div>
                       <BlockFields
                         block={block}
                         blockNumber={blockNumber}
+                        invalid={blockIssues.errors.length > 0}
                         onChange={(patch) => updateBlock(block.id, patch)}
                       />
                     </div>
@@ -389,10 +380,10 @@ export function EducationDashboard({
               </div>
 
               <div className="mt-4 flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
-                <label className="flex flex-col gap-2">
-                  <span className="font-label-md text-on-surface">Tipo do novo bloco</span>
+                <Field label="Tipo do novo bloco">
                   <select
-                    className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+                    aria-label="Tipo do novo bloco"
+                    className={inputClass}
                     value={newBlockKind}
                     onChange={(event) => setNewBlockKind(event.target.value as EducationResourceBlock['kind'])}
                   >
@@ -402,14 +393,10 @@ export function EducationDashboard({
                       </option>
                     ))}
                   </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={addBlock}
-                  className="min-h-11 self-start rounded-full bg-primary px-4 font-label-md text-on-primary"
-                >
+                </Field>
+                <Button onClick={addBlock} className="self-start">
                   Adicionar bloco
-                </button>
+                </Button>
               </div>
             </section>
 
@@ -486,7 +473,7 @@ function GroupManagementSection({
                       <span className="font-label-sm text-on-surface-variant">Título</span>
                       <input
                         aria-label={`Título do grupo ${group.title}`}
-                        className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                        className={inputClassSm}
                         value={group.title}
                         disabled={isDefault}
                         onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
@@ -502,7 +489,7 @@ function GroupManagementSection({
                         <span className="font-label-sm text-on-surface-variant">Descrição opcional</span>
                         <textarea
                           aria-label={`Descrição do grupo ${group.title}`}
-                          className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+                          className={textareaClass}
                           value={group.description ?? ''}
                           onChange={(event) => onGroupChange(groupIndex, group.id, { description: event.target.value })}
                         />
@@ -511,33 +498,32 @@ function GroupManagementSection({
                   </div>
 
                   <div className="flex flex-wrap items-end gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={groupIndex === 0}
                       onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, -1)}
                       aria-label={`Mover grupo ${group.title} para cima`}
-                      className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
                     >
                       Mover para cima
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={groupIndex === managedGroups.length - 1}
                       onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, 1)}
                       aria-label={`Mover grupo ${group.title} para baixo`}
-                      className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
                     >
                       Mover para baixo
-                    </button>
+                    </Button>
                     {!isDefault && (
-                      <button
-                        type="button"
-                        onClick={() => onGroupRemove(groupIndex, group.id)}
+                      <ConfirmButton
+                        prompt="Remover"
+                        confirmLabel="Confirmar"
+                        onConfirm={() => onGroupRemove(groupIndex, group.id)}
                         aria-label={`Remover grupo ${group.title}`}
-                        className="rounded-full bg-error-container px-3 py-2 font-label-md text-on-error-container"
-                      >
-                        Remover
-                      </button>
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-error-container px-4 py-2 font-label-md text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+                      />
                     )}
                     {isDefault && <span className="font-label-sm text-on-surface-variant">Grupo padrão</span>}
                   </div>
@@ -545,13 +531,9 @@ function GroupManagementSection({
               );
             });
           })()}
-          <button
-            type="button"
-            onClick={onGroupAdd}
-            className="min-h-11 self-start rounded-full bg-primary px-4 font-label-md text-on-primary"
-          >
+          <Button onClick={onGroupAdd} className="self-start">
             Novo grupo
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -573,12 +555,17 @@ function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: nu
 function BlockFields({
   block,
   blockNumber,
+  invalid = false,
   onChange,
 }: {
   block: EducationResourceBlock;
   blockNumber: number;
+  invalid?: boolean;
   onChange: (patch: Partial<EducationResourceBlock>) => void;
 }) {
+  const baseInput = invalid ? `${inputClass} ${inputInvalidClass}` : inputClass;
+  const baseTextarea = invalid ? `${textareaClassTall} ${inputInvalidClass}` : textareaClassTall;
+
   if (block.kind === 'paragraph') {
     return (
       <div className="flex flex-col gap-3">
@@ -586,7 +573,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
           <input
             aria-label={`Título do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            aria-invalid={invalid || undefined}
+            className={baseInput}
             value={block.title ?? ''}
             onChange={(e) => onChange({ title: e.target.value })}
           />
@@ -595,7 +583,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Texto do bloco {blockNumber}</span>
           <textarea
             aria-label={`Texto do bloco ${blockNumber}`}
-            className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+            aria-invalid={invalid || undefined}
+            className={baseTextarea}
             value={block.text ?? ''}
             onChange={(e) => onChange({ text: e.target.value })}
           />
@@ -611,7 +600,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
           <input
             aria-label={`Título do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            aria-invalid={invalid || undefined}
+            className={baseInput}
             value={block.text ?? ''}
             onChange={(e) => onChange({ text: e.target.value })}
           />
@@ -627,7 +617,7 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
           <input
             aria-label={`Título do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            className={baseInput}
             value={block.title ?? ''}
             onChange={(e) => onChange({ title: e.target.value })}
           />
@@ -636,7 +626,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">URL do vídeo do bloco {blockNumber}</span>
           <input
             aria-label={`URL do vídeo do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            aria-invalid={invalid || undefined}
+            className={baseInput}
             value={block.url ?? ''}
             onChange={(e) => onChange({ url: e.target.value })}
           />
@@ -652,7 +643,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">URL da imagem do bloco {blockNumber}</span>
           <input
             aria-label={`URL da imagem do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            aria-invalid={invalid || undefined}
+            className={baseInput}
             value={block.imageUrl ?? ''}
             onChange={(e) => onChange({ imageUrl: e.target.value })}
           />
@@ -661,7 +653,7 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Descrição da imagem do bloco {blockNumber}</span>
           <input
             aria-label={`Descrição da imagem do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            className={baseInput}
             value={block.alt ?? ''}
             onChange={(e) => onChange({ alt: e.target.value })}
           />
@@ -677,7 +669,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Itens da lista do bloco {blockNumber}</span>
           <textarea
             aria-label={`Itens da lista do bloco ${blockNumber}`}
-            className="min-h-24 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+            aria-invalid={invalid || undefined}
+            className={baseTextarea}
             value={(block.items ?? []).join('\n')}
             onChange={(e) => onChange({ items: e.target.value.split('\n') })}
           />
@@ -693,7 +686,7 @@ function BlockFields({
           <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber}</span>
           <input
             aria-label={`Texto do link do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            className={baseInput}
             value={block.label ?? ''}
             onChange={(e) => onChange({ label: e.target.value })}
           />
@@ -702,7 +695,8 @@ function BlockFields({
           <span className="font-label-md text-on-surface">URL da fonte do bloco {blockNumber}</span>
           <input
             aria-label={`URL da fonte do bloco ${blockNumber}`}
-            className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+            aria-invalid={invalid || undefined}
+            className={baseInput}
             value={block.url ?? ''}
             onChange={(e) => onChange({ url: e.target.value })}
           />
