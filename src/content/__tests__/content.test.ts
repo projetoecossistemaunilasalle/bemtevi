@@ -5,6 +5,7 @@ import { canoasServices } from '../services/canoas-services';
 import { resourcesContent } from '../resources/resources';
 import { flowRegistry } from '../flows/registry';
 import { educationResourceGroups, DEFAULT_EDUCATION_GROUP_ID } from '../resources/groups';
+import { featuredImageOptions } from '../resources/featuredImages';
 import type { EducationResourceGroup } from '../resources/groups';
 
 describe('Home copy', () => {
@@ -127,6 +128,17 @@ describe('Flow registry', () => {
     });
     expect(flows.filter((flow) => flow.purpose === 'orientation_entry')).toHaveLength(4);
     expect(flows.find((flow) => flow.id === 'post-flow-next-step')?.purpose).toBe('post_flow_routing');
+  });
+});
+
+describe('Featured image options', () => {
+  it('defines bundled catalog images', () => {
+    expect(featuredImageOptions).toHaveLength(4);
+    featuredImageOptions.forEach((option) => {
+      expect(option.id).toBeTruthy();
+      expect(option.src).toBeTruthy();
+      expect(option.alt).toBeTruthy();
+    });
   });
 });
 

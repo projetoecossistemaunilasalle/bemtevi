@@ -4,8 +4,8 @@ import { existsSync, rmSync } from 'node:fs';
 const command = process.argv[2];
 
 const isWindows = process.platform === 'win32' && !process.env.WSL_DISTRO_NAME && !process.env.WSL_INTEROP;
-const modulesDir = isWindows ? 'node_modules.win' : 'node_modules.wsl';
-const installTarget = isWindows ? 'win' : 'wsl';
+const modulesDir = isWindows ? 'node_modules.win' : 'node_modules';
+const installTarget = isWindows ? 'win' : 'default';
 const node = process.execPath;
 
 const bins = {

@@ -1,3 +1,8 @@
+import handsHoldingPlant from '../../assets/featured-images/hands_holding_plant.png';
+import classroom1 from '../../assets/featured-images/classroom_1.png';
+import classroom2 from '../../assets/featured-images/classroom_2.png';
+import greenPatch from '../../assets/featured-images/green_patch.png';
+
 export interface FeaturedImageOption {
   id: string;
   src: string;
@@ -7,22 +12,22 @@ export interface FeaturedImageOption {
 export const featuredImageOptions = [
   {
     id: 'hands-holding-plant',
-    src: `${import.meta.env.BASE_URL}hands_holding_plant.png`,
+    src: handsHoldingPlant,
     alt: 'Mãos segurando uma planta pequena.',
   },
   {
     id: 'classroom-1',
-    src: `${import.meta.env.BASE_URL}classroom_1.png`,
+    src: classroom1,
     alt: 'Sala de aula vazia.',
   },
   {
     id: 'classroom-2',
-    src: `${import.meta.env.BASE_URL}classroom_2.png`,
+    src: classroom2,
     alt: 'Sala de aula vazia com uma mesa com café e um caderno.',
   },
   {
     id: 'green-patch',
-    src: `${import.meta.env.BASE_URL}green_patch.png`,
+    src: greenPatch,
     alt: 'Mesa com café e um caderno com uma janela para uma floresta ao lado.',
   },
 ] satisfies FeaturedImageOption[];
