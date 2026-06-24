@@ -65,6 +65,7 @@ function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shipped
   return {
     id: `group-local-${suffix}`,
     title: 'Novo grupo',
+    description: '',
     order: shippedGroups.length + existingAddedGroups.length + 1,
   };
 }
@@ -198,6 +199,53 @@ export function DashboardRoute() {
                   ...current,
                   addedGroups: current.addedGroups.filter((_, index) => index !== addedIndex),
                 };
+              })
+            }
+            onGroupMove={(groupIndex, direction) =>
+              updateDraftState((current) => {
+                const nextIndex = groupIndex + direction;
+                if (
+                  nextIndex < 0 ||
+                  nextIndex >= mergedDrafts.educationGroups.length ||
+                  mergedDrafts.educationGroups[groupIndex] === undefined ||
+                  mergedDrafts.educationGroups[nextIndex] === undefined
+                ) {
+                  return current;
+                }
+
+                const currentGroup = mergedDrafts.educationGroups[groupIndex];
+                const adjacentGroup = mergedDrafts.educationGroups[nextIndex];
+                const currentAddedIndex = groupIndex - shipped.educationGroups.length;
+                const adjacentAddedIndex = nextIndex - shipped.educationGroups.length;
+                let next = current;
+
+                function applyShippedPatch(index: number, groupId: string, patch: Partial<EducationResourceGroup>) {
+                  next = {
+                    ...next,
+                    groupPatches: upsertPatchById(next.groupPatches, groupId, index, patch),
+                  };
+                }
+
+                function applyLocalGroup(index: number, patch: Partial<EducationResourceGroup>) {
+                  next = {
+                    ...next,
+                    addedGroups: updateRecordAtIndex(next.addedGroups, index, patch),
+                  };
+                }
+
+                if (currentAddedIndex >= 0) {
+                  applyLocalGroup(currentAddedIndex, { order: adjacentGroup.order });
+                } else {
+                  applyShippedPatch(groupIndex, currentGroup.id, { order: adjacentGroup.order });
+                }
+
+                if (adjacentAddedIndex >= 0) {
+                  applyLocalGroup(adjacentAddedIndex, { order: currentGroup.order });
+                } else {
+                  applyShippedPatch(nextIndex, adjacentGroup.id, { order: currentGroup.order });
+                }
+
+                return next;
               })
             }
           />

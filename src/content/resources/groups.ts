@@ -1,6 +1,7 @@
 export interface EducationResourceGroup {
   id: string;
   title: string;
+  description?: string;
   order: number;
 }
 

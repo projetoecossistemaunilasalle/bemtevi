@@ -1,6 +1,9 @@
+.kimchi
 dist
 coverage
 node_modules
+node_modules.win
+node_modules.wsl
 .pnpm-store
 vite-dev*.log
 vite-dev*.err.log

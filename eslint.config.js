@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', '.pnpm-store'],
+    ignores: ['dist', 'coverage', 'node_modules', 'node_modules.win', 'node_modules.wsl', '.pnpm-store'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -42,6 +42,15 @@ export default tseslint.config(
     files: ['vite.config.ts', 'vitest.config.ts', 'scripts/**/*.ts'],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
     },
   },
 );
