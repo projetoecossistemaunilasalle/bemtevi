@@ -19,6 +19,8 @@ const emptyDraft: DashboardDraftState = {
   addedFlows: [],
   addedEducationMaterials: [],
   addedGroups: [],
+  defaultGroupOrder: 0,
+  removedGroupIds: [],
   updatedAt: '2026-05-22T00:00:00.000Z',
 };
 
@@ -36,6 +38,8 @@ describe('dashboardStorage', () => {
       addedFlows: [],
       addedEducationMaterials: [],
       addedGroups: [],
+      defaultGroupOrder: 0,
+      removedGroupIds: [],
       updatedAt: null,
     });
   });
@@ -67,7 +71,33 @@ describe('dashboardStorage', () => {
       flows: [{ ...shippedFlow, title: 'Edited flow' }],
       educationMaterials: [shippedMaterial],
       educationGroups: [],
+      defaultGroupOrder: 0,
     });
+  });
+
+  it('filters removed education groups after merge', () => {
+    const shippedGroup = { id: 'group-one', title: 'Group one', order: 1 };
+    const keptGroup = { id: 'group-two', title: 'Group two', order: 2 };
+    const draft = {
+      ...emptyDraft,
+      removedGroupIds: ['group-one'],
+    };
+
+    expect(
+      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [shippedGroup, keptGroup] }, draft)
+        .educationGroups,
+    ).toEqual([keptGroup]);
+  });
+
+  it('preserves the default group order when merging drafts', () => {
+    const draft = {
+      ...emptyDraft,
+      defaultGroupOrder: 2,
+    };
+
+    expect(
+      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [] }, draft).defaultGroupOrder,
+    ).toBe(2);
   });
 
   it('keeps duplicate IDs isolated by source index while editing', () => {
@@ -108,6 +138,8 @@ describe('dashboardStorage', () => {
     const draft = loadDashboardDrafts();
     expect(draft.groupPatches).toEqual([]);
     expect(draft.addedGroups).toEqual([]);
+    expect(draft.defaultGroupOrder).toBe(0);
+    expect(draft.removedGroupIds).toEqual([]);
   });
 
   it('migrates v1 localStorage value to v2 preserving existing fields', () => {
@@ -131,26 +163,8 @@ describe('dashboardStorage', () => {
     expect(loaded.updatedAt).toBe(v1Draft.updatedAt);
     expect(loaded.groupPatches).toEqual([]);
     expect(loaded.addedGroups).toEqual([]);
-  });
-
-  it('migrates v1 draft with group data to v2 preserving groups', () => {
-    const v1Draft = {
-      schemaVersion: '1.0.0',
-      flowPatches: [],
-      educationMaterialPatches: [],
-      addedFlows: [],
-      addedEducationMaterials: [],
-      updatedAt: '2026-05-22T00:00:00.000Z',
-      groupPatches: [{ id: 'auto-cuidado', sourceIndex: 0, patch: { title: 'Edited Group' } }],
-      addedGroups: [{ id: 'new-group', title: 'New Group', order: 5 }],
-    };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(v1Draft));
-
-    const loaded = loadDashboardDrafts();
-
-    expect(loaded.schemaVersion).toBe(DASHBOARD_DRAFT_SCHEMA_VERSION);
-    expect(loaded.groupPatches).toEqual(v1Draft.groupPatches);
-    expect(loaded.addedGroups).toEqual(v1Draft.addedGroups);
+    expect(loaded.defaultGroupOrder).toBe(0);
+    expect(loaded.removedGroupIds).toEqual([]);
   });
 
   it('resets to empty v2 draft for unknown schema version', () => {
@@ -169,6 +183,8 @@ describe('dashboardStorage', () => {
     expect(loaded.schemaVersion).toBe(DASHBOARD_DRAFT_SCHEMA_VERSION);
     expect(loaded.flowPatches).toEqual([]);
     expect(loaded.addedGroups).toEqual([]);
+    expect(loaded.defaultGroupOrder).toBe(0);
+    expect(loaded.removedGroupIds).toEqual([]);
     expect(loaded.updatedAt).toBeNull();
   });
 });

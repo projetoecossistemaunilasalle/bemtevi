@@ -20,10 +20,12 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
   sourceLink: 'Link da fonte',
 };
 
+type ManagedEducationGroup = EducationResourceGroup & { isDefault?: boolean };
+
 export function EducationDashboard({
   resources,
   groups,
-  shippedGroups,
+  defaultGroupOrder = 0,
   onResourceChange,
   onResourceAdd,
   onGroupChange,
@@ -33,7 +35,7 @@ export function EducationDashboard({
 }: {
   resources: EducationResource[];
   groups: EducationResourceGroup[];
-  shippedGroups: EducationResourceGroup[];
+  defaultGroupOrder?: number;
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
   onResourceAdd: () => void;
   onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
@@ -125,7 +127,7 @@ export function EducationDashboard({
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <GroupManagementSection
         groups={groups}
-        shippedGroups={shippedGroups}
+        defaultGroupOrder={defaultGroupOrder}
         onGroupChange={onGroupChange}
         onGroupAdd={onGroupAdd}
         onGroupRemove={onGroupRemove}
@@ -293,7 +295,7 @@ export function EducationDashboard({
                   value={selectedResource.group ?? DEFAULT_EDUCATION_GROUP_ID}
                   onChange={(event) => updateGroupSelection(event.target.value || undefined)}
                 >
-                  <option value="">Geral</option>
+                  <option value={DEFAULT_EDUCATION_GROUP_ID}>Geral</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.title}
@@ -419,9 +421,22 @@ export function EducationDashboard({
   );
 }
 
+function getManagedGroups(groups: EducationResourceGroup[], defaultGroupOrder: number): ManagedEducationGroup[] {
+  return [
+    {
+      id: DEFAULT_EDUCATION_GROUP_ID,
+      title: 'Geral',
+      description: 'Grupo padrão para materiais sem categoria específica.',
+      order: defaultGroupOrder,
+      isDefault: true,
+    },
+    ...groups,
+  ].sort((left, right) => left.order - right.order);
+}
+
 function GroupManagementSection({
   groups,
-  shippedGroups,
+  defaultGroupOrder,
   groupsExpanded,
   onGroupChange,
   onGroupAdd,
@@ -430,7 +445,7 @@ function GroupManagementSection({
   onToggleExpanded,
 }: {
   groups: EducationResourceGroup[];
-  shippedGroups: EducationResourceGroup[];
+  defaultGroupOrder: number;
   groupsExpanded: boolean;
   onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
   onGroupAdd: () => void;
@@ -455,67 +470,81 @@ function GroupManagementSection({
 
       {groupsExpanded && (
         <div id="education-group-management-content" className="mt-3 flex flex-col gap-3">
-          {groups.map((group, groupIndex) => {
-            const isShipped = groupIndex < shippedGroups.length;
+          {(() => {
+            const managedGroups = getManagedGroups(groups, defaultGroupOrder);
 
-            return (
-              <div
-                key={group.id}
-                className="grid gap-3 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto]"
-              >
-                <div className="flex flex-col gap-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="font-label-sm text-on-surface-variant">Título</span>
-                    <input
-                      aria-label={`Título do grupo ${group.title}`}
-                      className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
-                      value={group.title}
-                      onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="font-label-sm text-on-surface-variant">Descrição opcional</span>
-                    <textarea
-                      aria-label={`Descrição do grupo ${group.title}`}
-                      className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
-                      value={group.description ?? ''}
-                      onChange={(event) => onGroupChange(groupIndex, group.id, { description: event.target.value })}
-                    />
-                  </label>
-                </div>
+            return managedGroups.map((group, groupIndex) => {
+              const isDefault = group.isDefault === true;
 
-                <div className="flex flex-wrap items-end gap-2">
-                  <button
-                    type="button"
-                    disabled={groupIndex === 0}
-                    onClick={() => onGroupMove(groupIndex, -1)}
-                    aria-label={`Mover grupo ${group.title} para cima`}
-                    className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
-                  >
-                    Mover para cima
-                  </button>
-                  <button
-                    type="button"
-                    disabled={groupIndex === groups.length - 1}
-                    onClick={() => onGroupMove(groupIndex, 1)}
-                    aria-label={`Mover grupo ${group.title} para baixo`}
-                    className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
-                  >
-                    Mover para baixo
-                  </button>
-                  {!isShipped && (
+              return (
+                <div
+                  key={group.id}
+                  className="grid gap-3 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto]"
+                >
+                  <div className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-on-surface-variant">Título</span>
+                      <input
+                        aria-label={`Título do grupo ${group.title}`}
+                        className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                        value={group.title}
+                        disabled={isDefault}
+                        onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
+                      />
+                    </label>
+                    {isDefault ? (
+                      <FieldHint>
+                        Geral é o grupo padrão para materiais sem categoria específica. Ele não pode ser removido porque
+                        garante que todo material tenha uma seção padrão.
+                      </FieldHint>
+                    ) : (
+                      <label className="flex flex-col gap-1">
+                        <span className="font-label-sm text-on-surface-variant">Descrição opcional</span>
+                        <textarea
+                          aria-label={`Descrição do grupo ${group.title}`}
+                          className="min-h-20 rounded-lg border border-outline-variant bg-surface px-3 py-2"
+                          value={group.description ?? ''}
+                          onChange={(event) => onGroupChange(groupIndex, group.id, { description: event.target.value })}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-end gap-2">
                     <button
                       type="button"
-                      onClick={() => onGroupRemove(groupIndex, group.id)}
-                      className="rounded-full bg-error-container px-3 py-2 font-label-md text-on-error-container"
+                      disabled={groupIndex === 0}
+                      onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, -1)}
+                      aria-label={`Mover grupo ${group.title} para cima`}
+                      className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
                     >
-                      Remover
+                      Mover para cima
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      disabled={groupIndex === managedGroups.length - 1}
+                      onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, 1)}
+                      aria-label={`Mover grupo ${group.title} para baixo`}
+                      className="rounded-full bg-secondary-container px-3 py-2 font-label-md text-on-secondary-container disabled:opacity-50"
+                    >
+                      Mover para baixo
+                    </button>
+                    {!isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => onGroupRemove(groupIndex, group.id)}
+                        aria-label={`Remover grupo ${group.title}`}
+                        className="rounded-full bg-error-container px-3 py-2 font-label-md text-on-error-container"
+                      >
+                        Remover
+                      </button>
+                    )}
+                    {isDefault && <span className="font-label-sm text-on-surface-variant">Grupo padrão</span>}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
           <button
             type="button"
             onClick={onGroupAdd}

@@ -11,7 +11,7 @@ import { PageHeader } from '../../design-system/components/PageHeader';
 
 export function EducationLibraryScreen() {
   const navigate = useNavigate();
-  const { resources, groups, isPreviewingDrafts } = resolveEducationResourcesForPreview();
+  const { resources, groups, defaultGroupOrder, isPreviewingDrafts } = resolveEducationResourcesForPreview();
 
   // Determine group for each resource
   const groupAssignments = resources.map((resource) => {
@@ -22,11 +22,11 @@ export function EducationLibraryScreen() {
 
   // Build groups to render (only those with resources)
   const groupsWithResources = [
-    // geral always first, unheaded
-    { id: DEFAULT_EDUCATION_GROUP_ID, title: '', order: -1 },
-    // named groups sorted by order
+    { id: DEFAULT_EDUCATION_GROUP_ID, title: '', order: defaultGroupOrder },
     ...[...groups].sort((a, b) => a.order - b.order),
-  ].filter((group) => resources.some((r, i) => groupAssignments[i] === group.id));
+  ]
+    .sort((a, b) => a.order - b.order)
+    .filter((group) => resources.some((r, i) => groupAssignments[i] === group.id));
 
   return (
     <Page>
@@ -42,8 +42,9 @@ export function EducationLibraryScreen() {
         </div>
       ) : null}
 
-      {groupsWithResources.map((group) => {
+      {groupsWithResources.map((group, sectionIndex) => {
         const isGeral = group.id === DEFAULT_EDUCATION_GROUP_ID;
+        const showGeralSeparator = isGeral && sectionIndex > 0;
         const groupResourceIndices = resources
           .map((_, i) => i)
           .filter((i) => groupAssignments[i] === group.id)
@@ -56,6 +57,17 @@ export function EducationLibraryScreen() {
 
         return (
           <section key={group.id}>
+            {showGeralSeparator ? (
+              <div
+                aria-label="Separador entre grupos de materiais"
+                className="mb-6 flex items-center gap-4 pt-2"
+                role="separator"
+              >
+                <span className="h-px flex-1 bg-outline-variant/70" />
+                <span className="h-2 w-2 rounded-full bg-secondary/60" />
+                <span className="h-px flex-1 bg-outline-variant/70" />
+              </div>
+            ) : null}
             {!isGeral && <h2 className="font-headline-md text-on-surface mb-4">{group.title}</h2>}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-stack-md ${isGeral ? '' : 'mb-8'}`}>
               {groupResourceIndices.map((resourceIndex) => {

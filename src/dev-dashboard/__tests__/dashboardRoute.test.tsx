@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -325,6 +325,136 @@ describe('DashboardRoute', () => {
     ]);
   });
 
+  it('reorders education groups in the dashboard list after moving', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+
+    const groupTitles = () =>
+      screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
+
+    expect(groupTitles()).toEqual(['Geral', 'Grupo de teste', 'Segundo grupo de teste']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para baixo' }));
+
+    expect(groupTitles()).toEqual(['Geral', 'Segundo grupo de teste', 'Grupo de teste']);
+  });
+
+  it('shows Geral as the non-removable default group with an explanation', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+
+    const geralTitle = screen.getByLabelText('Título do grupo Geral') as HTMLInputElement;
+
+    expect(geralTitle).toHaveValue('Geral');
+    expect(geralTitle).toBeDisabled();
+    expect(
+      screen.getByText(
+        'Geral é o grupo padrão para materiais sem categoria específica. Ele não pode ser removido porque garante que todo material tenha uma seção padrão.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mover grupo Geral para baixo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remover grupo Geral' })).not.toBeInTheDocument();
+  });
+
+  it('moves Geral down in the group management list', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+
+    const groupTitles = () =>
+      screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Geral para baixo' }));
+
+    expect(groupTitles()).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
+
+    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+
+    expect(draft.defaultGroupOrder).toBe(1);
+    expect(draft.groupPatches).toEqual([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
+  });
+
+  it('moves the first named group above Geral', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para cima' }));
+
+    const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
+    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+
+    expect(groupTitles).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
+    expect(draft.defaultGroupOrder).toBe(1);
+    expect(draft.groupPatches).toEqual([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
+  });
+
+  it('removes a shipped education group and moves its materials to Geral', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.change(screen.getByLabelText('Grupo do material'), { target: { value: 'mock-group' } });
+    await waitFor(() => expect(screen.getByLabelText('Grupo do material')).toHaveValue('mock-group'));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo de teste' }));
+
+    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const materialGroupSelect = screen.getByLabelText('Grupo do material') as HTMLSelectElement;
+
+    expect(draft.removedGroupIds).toEqual(['mock-group']);
+    expect(draft.groupPatches).toEqual([]);
+    expect(draft.educationMaterialPatches).toEqual([
+      { id: 'mock-material', sourceIndex: 0, patch: { group: 'geral' } },
+    ]);
+    expect(materialGroupSelect).toHaveValue('geral');
+    expect(screen.queryByLabelText('Título do grupo Grupo de teste')).not.toBeInTheDocument();
+  });
+
+  it('moves an added education group relative to shipped groups', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Novo grupo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Novo grupo para cima' }));
+
+    const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
+    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+
+    expect(groupTitles).toEqual(['Geral', 'Grupo de teste', 'Novo grupo', 'Segundo grupo de teste']);
+    expect(draft.addedGroups).toEqual([{ id: 'group-local-1', title: 'Novo grupo', description: '', order: 2 }]);
+    expect(draft.groupPatches).toEqual([{ id: 'mock-group-two', sourceIndex: 1, patch: { order: 3 } }]);
+  });
+
   it('adds, edits, and removes education tags', () => {
     render(
       <MemoryRouter>
@@ -427,7 +557,6 @@ describe('DashboardRoute', () => {
       <EducationDashboard
         resources={[]}
         groups={[]}
-        shippedGroups={[]}
         onResourceChange={vi.fn()}
         onResourceAdd={onResourceAdd}
         onGroupChange={vi.fn()}
@@ -461,7 +590,6 @@ describe('DashboardRoute', () => {
           },
         ]}
         groups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={vi.fn()}
@@ -492,7 +620,6 @@ describe('DashboardRoute', () => {
           },
         ]}
         groups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={vi.fn()}
@@ -531,7 +658,6 @@ describe('DashboardRoute', () => {
           { id: 'mock-group', title: 'Grupo de teste', order: 1 },
           { id: 'added-group', title: 'Grupo editável', order: 2 },
         ]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={onGroupChange}
@@ -545,7 +671,7 @@ describe('DashboardRoute', () => {
     const groupTitleInput = screen.getByDisplayValue('Grupo editável');
     fireEvent.change(groupTitleInput, { target: { value: 'Título do grupo editado' } });
 
-    expect(onGroupChange).toHaveBeenCalledWith(1, 'added-group', { title: 'Título do grupo editado' });
+    expect(onGroupChange).toHaveBeenCalledWith(2, 'added-group', { title: 'Título do grupo editado' });
   });
 
   it('editing a group description calls onGroupChange with correct arguments', () => {
@@ -568,7 +694,6 @@ describe('DashboardRoute', () => {
           { id: 'mock-group', title: 'Grupo de teste', order: 1 },
           { id: 'added-group', title: 'Grupo editável', order: 2, description: 'Descrição atual' },
         ]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={onGroupChange}
@@ -582,7 +707,7 @@ describe('DashboardRoute', () => {
     const groupDescriptionInput = screen.getByLabelText('Descrição do grupo Grupo editável');
     fireEvent.change(groupDescriptionInput, { target: { value: 'Descrição editada do grupo' } });
 
-    expect(onGroupChange).toHaveBeenCalledWith(1, 'added-group', { description: 'Descrição editada do grupo' });
+    expect(onGroupChange).toHaveBeenCalledWith(2, 'added-group', { description: 'Descrição editada do grupo' });
   });
 
   it('moving a group calls onGroupMove with the selected index and direction', () => {
@@ -605,7 +730,6 @@ describe('DashboardRoute', () => {
           { id: 'mock-group', title: 'Grupo de teste', order: 1 },
           { id: 'added-group', title: 'Grupo editável', order: 2 },
         ]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={vi.fn()}
@@ -641,7 +765,6 @@ describe('DashboardRoute', () => {
           { id: 'mock-group', title: 'Grupo de teste', order: 1 },
           { id: 'added-group', title: 'Grupo adicionado', order: 2 },
         ]}
-        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
         onResourceChange={vi.fn()}
         onResourceAdd={vi.fn()}
         onGroupChange={vi.fn()}
@@ -654,8 +777,8 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
     expect(screen.getByDisplayValue('Grupo adicionado')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Remover$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo adicionado' }));
 
-    expect(onGroupRemove).toHaveBeenCalledWith(1, 'added-group');
+    expect(onGroupRemove).toHaveBeenCalledWith(2, 'added-group');
   });
 });

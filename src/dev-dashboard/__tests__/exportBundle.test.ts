@@ -38,6 +38,8 @@ describe('buildExportBundle', () => {
     expect(bundle.changes.flows).toEqual([]);
     expect(bundle.changes.educationMaterials).toEqual([]);
     expect(bundle.changes.educationGroups).toEqual([]);
+    expect(bundle.changes.defaultGroupOrder).toBe(0);
+    expect(bundle.changes.removedEducationGroupIds).toEqual([]);
   });
 
   it('exports complete changed records', () => {
@@ -95,6 +97,27 @@ describe('buildExportBundle', () => {
     });
 
     expect(bundle.changes.educationGroups).toEqual([changedGroup]);
+  });
+
+  it('exports removed education group IDs', () => {
+    const shippedGroup: EducationResourceGroup = { id: 'auto-cuidado', title: 'Autocuidado', order: 1 };
+
+    const bundle = buildExportBundle({
+      shipped: { flows: [], educationMaterials: [], educationGroups: [shippedGroup] },
+      drafts: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        defaultGroupOrder: 2,
+        removedEducationGroupIds: ['auto-cuidado'],
+      },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-06-15T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.educationGroups).toEqual([]);
+    expect(bundle.changes.defaultGroupOrder).toBe(2);
+    expect(bundle.changes.removedEducationGroupIds).toEqual(['auto-cuidado']);
   });
 
   it('exports with schema version 2.0.0', () => {

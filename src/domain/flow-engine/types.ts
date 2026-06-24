@@ -110,6 +110,7 @@ export interface SuspendedFlowState {
   flowId: string;
   nodeId: string;
   answers: Record<string, string>;
+  scores: Record<string, number>;
   transcript: ChatMessage[];
 }
 

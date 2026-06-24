@@ -8,7 +8,6 @@ import { EducationLibraryScreen } from '../features/education/EducationLibrarySc
 import { ResourceDetailScreen } from '../features/education/ResourceDetailScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { OrientationScreen } from '../features/orientation/OrientationScreen';
-import { PrivacyScreen } from '../features/privacy/PrivacyScreen';
 import { SupportScreen } from '../features/support/SupportScreen';
 
 const DevDashboardRoute = createDevDashboardRoute();
@@ -23,7 +22,6 @@ export function Router() {
         <Route path={routes.contacts} element={<ContactsScreen />} />
         <Route path={routes.education} element={<EducationLibraryScreen />} />
         <Route path={routes.educationDetail} element={<ResourceDetailScreen />} />
-        <Route path={routes.privacy} element={<PrivacyScreen />} />
         {canShowDevDashboard() && DevDashboardRoute && (
           <Route
             path={routes.dashboard}

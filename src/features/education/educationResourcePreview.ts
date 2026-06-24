@@ -10,6 +10,7 @@ import type { EducationResourceGroup } from '../../content/resources/groups';
 export interface EducationResourcePreviewState {
   resources: EducationResource[];
   groups: EducationResourceGroup[];
+  defaultGroupOrder: number;
   changedResourceIds: string[];
   isPreviewingDrafts: boolean;
 }
@@ -21,12 +22,14 @@ export function resolveEducationResourcesForPreview(): EducationResourcePreviewS
     drafts.educationMaterialPatches.length > 0 ||
     drafts.addedEducationMaterials.length > 0 ||
     drafts.groupPatches.length > 0 ||
-    drafts.addedGroups.length > 0;
+    drafts.addedGroups.length > 0 ||
+    (drafts.defaultGroupOrder !== undefined && drafts.defaultGroupOrder !== 0);
 
   if (!hasEducationDrafts) {
     return {
       resources: shipped.educationMaterials,
       groups: shipped.educationGroups,
+      defaultGroupOrder: 0,
       changedResourceIds: [],
       isPreviewingDrafts: false,
     };
@@ -35,13 +38,15 @@ export function resolveEducationResourcesForPreview(): EducationResourcePreviewS
   const merged = mergeDashboardDrafts(shipped, drafts);
   const resources = merged.educationMaterials;
   const groups = merged.educationGroups;
+  const defaultGroupOrder = merged.defaultGroupOrder;
   const changedResourceIds = resolveChangedEducationResourceIds(shipped.educationMaterials, resources);
   const shippedGroupIds = shipped.educationGroups.map((g) => g.id);
-  const hasGroupChanges = groups.some((g) => !shippedGroupIds.includes(g.id));
+  const hasGroupChanges = groups.some((g) => !shippedGroupIds.includes(g.id)) || merged.defaultGroupOrder !== 0;
 
   return {
     resources,
     groups,
+    defaultGroupOrder,
     changedResourceIds,
     isPreviewingDrafts: changedResourceIds.length > 0 || hasGroupChanges,
   };

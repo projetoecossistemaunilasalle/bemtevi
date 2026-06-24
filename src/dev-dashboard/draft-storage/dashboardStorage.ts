@@ -20,6 +20,8 @@ export interface DashboardDraftState {
   addedFlows: GuidedFlow[];
   addedEducationMaterials: EducationResource[];
   addedGroups: EducationResourceGroup[];
+  defaultGroupOrder?: number;
+  removedGroupIds?: string[];
   updatedAt: string | null;
 }
 
@@ -32,6 +34,8 @@ export function createEmptyDashboardDraftState(): DashboardDraftState {
     addedFlows: [],
     addedEducationMaterials: [],
     addedGroups: [],
+    defaultGroupOrder: 0,
+    removedGroupIds: [],
     updatedAt: null,
   };
 }
@@ -52,6 +56,8 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
         groupPatches: (record.groupPatches ?? []) as DashboardRecordPatch<EducationResourceGroup>[],
         addedGroups: (record.addedGroups ?? []) as EducationResourceGroup[],
+        defaultGroupOrder: (record.defaultGroupOrder ?? 0) as number,
+        removedGroupIds: (record.removedGroupIds ?? []) as string[],
       } as DashboardDraftState;
     }
     if (version !== DASHBOARD_DRAFT_SCHEMA_VERSION) return createEmptyDashboardDraftState();
@@ -70,6 +76,11 @@ export function clearDashboardDrafts(storage: Storage = localStorage) {
 }
 
 export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: DashboardDraftState) {
+  const removedGroupIds = new Set(drafts.removedGroupIds ?? []);
+  const educationGroups = mergeRecords(shipped.educationGroups, drafts.groupPatches, drafts.addedGroups).filter(
+    (group) => !removedGroupIds.has(group.id),
+  );
+
   return {
     flows: mergeRecords(shipped.flows, drafts.flowPatches, drafts.addedFlows),
     educationMaterials: mergeRecords(
@@ -77,8 +88,13 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
       drafts.educationMaterialPatches,
       drafts.addedEducationMaterials,
     ),
-    educationGroups: mergeRecords(shipped.educationGroups, drafts.groupPatches, drafts.addedGroups),
+    educationGroups: sortGroupsByOrder(educationGroups),
+    defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
   };
+}
+
+function sortGroupsByOrder(groups: EducationResourceGroup[]) {
+  return [...groups].sort((left, right) => left.order - right.order);
 }
 
 function mergeRecords<T extends { id: string }>(shipped: T[], patches: Array<DashboardRecordPatch<T>>, additions: T[]) {

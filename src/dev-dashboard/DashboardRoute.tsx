@@ -15,6 +15,7 @@ import { ExportDashboard } from './export/ExportDashboard';
 import { FlowDashboard } from './flows/FlowDashboard';
 import { validateDashboardFlows } from './flows/flowValidation';
 import { defaultFeaturedImageId } from '../content/resources/featuredImages';
+import { DEFAULT_EDUCATION_GROUP_ID } from '../content/resources/groups';
 import type { EducationResourceGroup } from '../content/resources/groups';
 
 function upsertPatchById<T extends { id: string }>(
@@ -74,6 +75,10 @@ function updateRecordAtIndex<T>(records: T[], index: number, patch: Partial<T>) 
   return records.map((record, recordIndex) => (recordIndex === index ? { ...record, ...patch } : record));
 }
 
+function findGroupIndex(groups: EducationResourceGroup[], groupId: string) {
+  return groups.findIndex((group) => group.id === groupId);
+}
+
 export function DashboardRoute() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('flows');
   const shipped = useMemo(() => getShippedDashboardContent(), []);
@@ -111,6 +116,8 @@ export function DashboardRoute() {
     flows: mergedDrafts.flows,
     educationMaterials: mergedDrafts.educationMaterials,
     educationGroups: mergedDrafts.educationGroups,
+    defaultGroupOrder: mergedDrafts.defaultGroupOrder,
+    removedEducationGroupIds: draftState.removedGroupIds ?? [],
   };
 
   return (
@@ -133,7 +140,7 @@ export function DashboardRoute() {
           <EducationDashboard
             resources={mergedDrafts.educationMaterials}
             groups={mergedDrafts.educationGroups}
-            shippedGroups={shipped.educationGroups}
+            defaultGroupOrder={mergedDrafts.defaultGroupOrder}
             onResourceChange={(resourceIndex, resourceId, patch) =>
               updateDraftState((current) => {
                 const addedIndex = resourceIndex - shipped.educationMaterials.length;
@@ -169,7 +176,7 @@ export function DashboardRoute() {
             }
             onGroupChange={(groupIndex, groupId, patch) =>
               updateDraftState((current) => {
-                const addedIndex = groupIndex - shipped.educationGroups.length;
+                const addedIndex = findGroupIndex(current.addedGroups, groupId);
 
                 if (addedIndex >= 0) {
                   return {
@@ -178,9 +185,12 @@ export function DashboardRoute() {
                   };
                 }
 
+                const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                if (shippedIndex < 0) return current;
+
                 return {
                   ...current,
-                  groupPatches: upsertPatchById(current.groupPatches, groupId, groupIndex, patch),
+                  groupPatches: upsertPatchById(current.groupPatches, groupId, shippedIndex, patch),
                 };
               })
             }
@@ -190,19 +200,121 @@ export function DashboardRoute() {
                 addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups)],
               }))
             }
-            onGroupRemove={(groupIndex, _groupId) =>
+            onGroupRemove={(_groupIndex, groupId) =>
               updateDraftState((current) => {
-                const addedIndex = groupIndex - shipped.educationGroups.length;
-                if (addedIndex < 0) return current;
+                const addedIndex = findGroupIndex(current.addedGroups, groupId);
+                const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                if (addedIndex < 0 && shippedIndex < 0) return current;
 
-                return {
+                const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
+                const assignedResources = currentMergedDrafts.educationMaterials.flatMap((resource, resourceIndex) =>
+                  resource.group === groupId ? [{ resource, resourceIndex }] : [],
+                );
+                let next: typeof current = {
                   ...current,
                   addedGroups: current.addedGroups.filter((_, index) => index !== addedIndex),
+                  groupPatches: current.groupPatches.filter((patch) => patch.id !== groupId),
+                  removedGroupIds:
+                    shippedIndex >= 0
+                      ? [...new Set([...(current.removedGroupIds ?? []), groupId])]
+                      : current.removedGroupIds,
                 };
+
+                assignedResources.forEach(({ resource, resourceIndex }) => {
+                  const addedMaterialIndex = resourceIndex - shipped.educationMaterials.length;
+
+                  if (addedMaterialIndex >= 0) {
+                    next = {
+                      ...next,
+                      addedEducationMaterials: updateRecordAtIndex(next.addedEducationMaterials, addedMaterialIndex, {
+                        group: DEFAULT_EDUCATION_GROUP_ID,
+                      }),
+                    };
+                    return;
+                  }
+
+                  next = {
+                    ...next,
+                    educationMaterialPatches: upsertPatchById(
+                      next.educationMaterialPatches,
+                      resource.id,
+                      resourceIndex,
+                      { group: DEFAULT_EDUCATION_GROUP_ID },
+                    ),
+                  };
+                });
+
+                return next;
               })
             }
             onGroupMove={(groupIndex, direction) =>
               updateDraftState((current) => {
+                if (groupIndex === 0 && direction === -1) {
+                  const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
+                  const groups = currentMergedDrafts.educationGroups;
+                  if (groups.length === 0) return current;
+
+                  const firstGroup = groups[0];
+                  const defaultGroupOrder = current.defaultGroupOrder ?? 0;
+                  if (!firstGroup || firstGroup.order <= defaultGroupOrder) return current;
+
+                  const firstAddedIndex = findGroupIndex(current.addedGroups, firstGroup.id);
+                  if (firstAddedIndex >= 0) {
+                    return {
+                      ...current,
+                      defaultGroupOrder: firstGroup.order,
+                      addedGroups: updateRecordAtIndex(current.addedGroups, firstAddedIndex, {
+                        order: defaultGroupOrder,
+                      }),
+                    };
+                  }
+
+                  const firstShippedIndex = findGroupIndex(shipped.educationGroups, firstGroup.id);
+                  if (firstShippedIndex < 0) return current;
+
+                  return {
+                    ...current,
+                    defaultGroupOrder: firstGroup.order,
+                    groupPatches: upsertPatchById(current.groupPatches, firstGroup.id, firstShippedIndex, {
+                      order: defaultGroupOrder,
+                    }),
+                  };
+                }
+
+                if (groupIndex === -1) {
+                  const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
+                  const groups = currentMergedDrafts.educationGroups;
+                  if (groups.length === 0) return current;
+
+                  const defaultGroupOrder = current.defaultGroupOrder ?? 0;
+                  const adjacentGroup = direction === -1 ? groups[groups.length - 1] : groups[0];
+                  if (!adjacentGroup) return current;
+                  if (direction === -1 && defaultGroupOrder <= adjacentGroup.order) return current;
+                  if (direction === 1 && defaultGroupOrder >= adjacentGroup.order) return current;
+
+                  const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
+                  if (adjacentAddedIndex >= 0) {
+                    return {
+                      ...current,
+                      defaultGroupOrder: adjacentGroup.order,
+                      addedGroups: updateRecordAtIndex(current.addedGroups, adjacentAddedIndex, {
+                        order: defaultGroupOrder,
+                      }),
+                    };
+                  }
+
+                  const adjacentShippedIndex = findGroupIndex(shipped.educationGroups, adjacentGroup.id);
+                  if (adjacentShippedIndex < 0) return current;
+
+                  return {
+                    ...current,
+                    defaultGroupOrder: adjacentGroup.order,
+                    groupPatches: upsertPatchById(current.groupPatches, adjacentGroup.id, adjacentShippedIndex, {
+                      order: defaultGroupOrder,
+                    }),
+                  };
+                }
+
                 const nextIndex = groupIndex + direction;
                 if (
                   nextIndex < 0 ||
@@ -215,18 +327,23 @@ export function DashboardRoute() {
 
                 const currentGroup = mergedDrafts.educationGroups[groupIndex];
                 const adjacentGroup = mergedDrafts.educationGroups[nextIndex];
-                const currentAddedIndex = groupIndex - shipped.educationGroups.length;
-                const adjacentAddedIndex = nextIndex - shipped.educationGroups.length;
+                const currentAddedIndex = findGroupIndex(current.addedGroups, currentGroup.id);
+                const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
                 let next = current;
 
-                function applyShippedPatch(index: number, groupId: string, patch: Partial<EducationResourceGroup>) {
+                function applyShippedPatch(groupId: string, patch: Partial<EducationResourceGroup>) {
+                  const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                  if (shippedIndex < 0) return;
+
                   next = {
                     ...next,
-                    groupPatches: upsertPatchById(next.groupPatches, groupId, index, patch),
+                    groupPatches: upsertPatchById(next.groupPatches, groupId, shippedIndex, patch),
                   };
                 }
 
                 function applyLocalGroup(index: number, patch: Partial<EducationResourceGroup>) {
+                  if (index < 0) return;
+
                   next = {
                     ...next,
                     addedGroups: updateRecordAtIndex(next.addedGroups, index, patch),
@@ -236,13 +353,13 @@ export function DashboardRoute() {
                 if (currentAddedIndex >= 0) {
                   applyLocalGroup(currentAddedIndex, { order: adjacentGroup.order });
                 } else {
-                  applyShippedPatch(groupIndex, currentGroup.id, { order: adjacentGroup.order });
+                  applyShippedPatch(currentGroup.id, { order: adjacentGroup.order });
                 }
 
                 if (adjacentAddedIndex >= 0) {
                   applyLocalGroup(adjacentAddedIndex, { order: currentGroup.order });
                 } else {
-                  applyShippedPatch(nextIndex, adjacentGroup.id, { order: currentGroup.order });
+                  applyShippedPatch(adjacentGroup.id, { order: currentGroup.order });
                 }
 
                 return next;

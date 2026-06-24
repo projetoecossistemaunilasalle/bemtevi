@@ -50,12 +50,6 @@ describe('Router', () => {
     expect(screen.getByRole('heading', { name: /biblioteca de educação/i })).toBeInTheDocument();
   });
 
-  it('renders the privacy route', () => {
-    renderRoute('/privacidade');
-
-    expect(screen.getByRole('heading', { name: /privacidade/i })).toBeInTheDocument();
-  });
-
   it('does not render the dashboard route by default', () => {
     renderRoute('/dashboard');
 

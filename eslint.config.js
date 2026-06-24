@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', 'node_modules.win', 'node_modules.wsl', '.pnpm-store'],
+    ignores: ['dist', 'coverage', 'node_modules', 'node_modules.win', 'node_modules.wsl', '.pnpm-store', '.worktrees'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

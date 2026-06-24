@@ -91,6 +91,62 @@ const scoringFlow: GuidedFlow = {
   },
 };
 
+const scoringResumeFlow: GuidedFlow = {
+  id: 'scoring-resume-flow',
+  version: '1.0.0',
+  locale: 'pt-BR',
+  title: 'Fluxo de pontuação suspenso',
+  type: 'guided_conversation',
+  status: 'draft',
+  entry: {
+    nodeId: 'q1',
+    enteringPhrases: ['Quero testar pontuação suspensa'],
+    transitionMessage: 'Vamos salvar a pontuação antes de trocar de fluxo.',
+  },
+  nodes: {
+    q1: {
+      id: 'q1',
+      kind: 'choice',
+      text: 'Você quer registrar um ponto?',
+      options: [
+        {
+          id: 'yes',
+          label: 'Sim',
+          next: 'after-score',
+          effects: [{ kind: 'score', scoreKey: 'fixture-resume-score', value: 1 }],
+        },
+        { id: 'no', label: 'Não', next: 'after-score' },
+      ],
+    },
+    'after-score': {
+      id: 'after-score',
+      kind: 'choice',
+      text: 'A pontuação já foi registrada. O que deseja fazer?',
+      options: [{ id: 'score-branch', label: 'Ir para pontuação', next: 'score-branch' }],
+    },
+    'score-branch': {
+      id: 'score-branch',
+      kind: 'score_branch',
+      text: 'Calculando o retorno salvo.',
+      scoreKey: 'fixture-resume-score',
+      branches: [
+        { id: 'low', min: 0, max: 0, next: 'low-result' },
+        { id: 'high', min: 1, max: 20, next: 'high-result' },
+      ],
+    },
+    'low-result': {
+      id: 'low-result',
+      kind: 'result',
+      text: 'Resultado baixo.',
+    },
+    'high-result': {
+      id: 'high-result',
+      kind: 'result',
+      text: 'Resultado alto.',
+    },
+  },
+};
+
 const secondFlow: GuidedFlow = {
   id: 'second-flow',
   version: '1.0.0',
@@ -475,6 +531,37 @@ describe('flow runtime', () => {
     expect(nextState.scores['fixture-score']).toBe(1);
     expect(nextState.activeNodeId).toBe('high-result');
     expect(nextState.transcript.map((message) => message.text)).toContain('Resultado alto.');
+  });
+
+  it('restores suspended scores before resuming a score branch', () => {
+    const flows = [scoringResumeFlow, secondFlow];
+    let state = createInitialFlowState(scoringResumeFlow, flows);
+
+    state = advanceFlow(state, flows, 'Sim');
+
+    expect(state.activeFlowId).toBe('scoring-resume-flow');
+    expect(state.activeNodeId).toBe('after-score');
+    expect(state.scores['fixture-resume-score']).toBe(1);
+
+    const suspended = suspendFlow(state);
+
+    expect(suspended.suspendedFlows['scoring-resume-flow']?.scores).toEqual({ 'fixture-resume-score': 1 });
+
+    state = advanceFlow(suspended, flows, 'Quero trocar de assunto');
+
+    expect(state.activeFlowId).toBe('second-flow');
+    expect(state.scores).toEqual({});
+
+    const resumed = resumeFlow({ ...state, scores: { 'fixture-resume-score': 0 } }, 'scoring-resume-flow');
+
+    expect(resumed.activeFlowId).toBe('scoring-resume-flow');
+    expect(resumed.activeNodeId).toBe('after-score');
+    expect(resumed.scores).toEqual({ 'fixture-resume-score': 1 });
+
+    const branchedState = advanceFlow(resumed, flows, 'Ir para pontuação');
+
+    expect(branchedState.activeNodeId).toBe('high-result');
+    expect(branchedState.transcript.map((message) => message.text)).toContain('Resultado alto.');
   });
 
   it('resolves score branches using zero when the score key has not been set', () => {

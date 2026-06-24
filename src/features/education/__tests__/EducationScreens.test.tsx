@@ -208,6 +208,72 @@ describe('EducationLibraryScreen', () => {
     expect(screen.getByText('Material Named')).toBeInTheDocument();
   });
 
+  it('renders geral according to the default group order', () => {
+    const resource = resourcesContent.resources[0];
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          defaultGroupOrder: 2,
+          addedGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
+          addedEducationMaterials: [
+            { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
+            { ...resource, id: 'mat-named', title: 'Material Pinned', group: 'first-group' },
+          ],
+        }),
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const pinnedHeading = screen.getByRole('heading', { name: 'Primeiro Grupo' });
+    const pinnedMaterial = screen.getByText('Material Pinned');
+    const geralMaterial = screen.getByText('Material Geral');
+
+    expect(pinnedHeading.compareDocumentPosition(pinnedMaterial)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(pinnedMaterial.compareDocumentPosition(geralMaterial)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('separates geral from a previous named group without rendering a geral heading', () => {
+    const resource = resourcesContent.resources[0];
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          defaultGroupOrder: 2,
+          addedGroups: [{ id: 'auto-group', title: 'Autocuidado', order: 1 }],
+          addedEducationMaterials: [
+            { ...resource, id: 'mat-autocuidado', title: 'Material Autocuidado', group: 'auto-group' },
+            { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
+          ],
+        }),
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const separator = screen.getByRole('separator', { name: 'Separador entre grupos de materiais' });
+    const autocuidadoHeading = screen.getByRole('heading', { name: 'Autocuidado' });
+    const geralMaterial = screen.getByText('Material Geral');
+
+    expect(separator).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Geral' })).not.toBeInTheDocument();
+    expect(autocuidadoHeading.compareDocumentPosition(separator)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(separator.compareDocumentPosition(geralMaterial)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('sorts resources within groups by groupOrder with stable tie-breaking', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(

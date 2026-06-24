@@ -85,7 +85,9 @@ export function OrientationScreen() {
     if (strictMatch) return [];
 
     if (!normalizedInput) {
-      return options.filter((option) => option.kind === 'node_option' || option.kind === 'flow_start');
+      return options.filter(
+        (option) => option.kind === 'node_option' || option.kind === 'flow_start' || option.kind === 'resume_flow',
+      );
     }
 
     return options.filter((option) => option.label.toLocaleLowerCase('pt-BR').includes(normalizedInput));

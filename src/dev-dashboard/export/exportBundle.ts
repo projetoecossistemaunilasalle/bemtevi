@@ -11,6 +11,8 @@ export interface DashboardDraftContent {
   flows: GuidedFlow[];
   educationMaterials: EducationResource[];
   educationGroups: EducationResourceGroup[];
+  defaultGroupOrder?: number;
+  removedEducationGroupIds?: string[];
 }
 
 export interface DashboardExportBundle {
@@ -40,6 +42,8 @@ export function buildExportBundle({
       flows: changedRecords(shipped.flows, drafts.flows),
       educationMaterials: changedRecords(shipped.educationMaterials, drafts.educationMaterials),
       educationGroups: changedRecords(shipped.educationGroups, drafts.educationGroups),
+      defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
+      removedEducationGroupIds: drafts.removedEducationGroupIds ?? [],
     },
     validation,
   };

@@ -17,6 +17,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    exclude: ['**/node_modules/**', '**/node_modules.win/**', '**/node_modules.wsl/**', '**/dist/**', '**/coverage/**'],
+    exclude: [
+      '**/node_modules/**',
+      '**/node_modules.win/**',
+      '**/node_modules.wsl/**',
+      '**/.worktrees/**',
+      '**/dist/**',
+      '**/coverage/**',
+    ],
   },
 });

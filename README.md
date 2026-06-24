@@ -7,7 +7,7 @@ The app does not diagnose, does not replace professional care, and should not co
 ## Current Shape
 
 - React 19, Vite, TypeScript, Tailwind CSS v4.
-- React Router routes for `/`, `/orientacao`, `/apoio`, `/contatos`, `/educacao`, `/educacao/:resourceId`, and `/privacidade`.
+- React Router routes for `/`, `/orientacao`, `/apoio`, `/contatos`, `/educacao`, and `/educacao/:resourceId`.
 - PWA manifest and GitHub Pages subpath support through `/SeCuida-Prototipo/`.
 - Feature folders under `src/features`.
 - Domain logic under `src/domain`.

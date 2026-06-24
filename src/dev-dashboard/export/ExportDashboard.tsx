@@ -52,7 +52,8 @@ export function ExportDashboard({
       <div className="rounded-lg bg-surface-container-low p-4">
         <p className="font-body-md text-on-surface-variant">
           Fluxos no arquivo: {bundle.changes.flows.length}. Materiais no arquivo:{' '}
-          {bundle.changes.educationMaterials.length}. Grupos no arquivo: {bundle.changes.educationGroups.length}.
+          {bundle.changes.educationMaterials.length}. Grupos no arquivo: {bundle.changes.educationGroups.length}. Grupos
+          removidos no arquivo: {bundle.changes.removedEducationGroupIds.length}.
         </p>
       </div>
       <button

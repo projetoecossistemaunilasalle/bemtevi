@@ -8,7 +8,7 @@ const dashboardRouteModules = import.meta.glob<DashboardRouteModule>('../dev-das
 const dashboardRouteLoader = dashboardRouteModules['../dev-dashboard/DashboardRoute.tsx'];
 
 export function isDevDashboardEnabled() {
-  return import.meta.env.VITE_ENABLE_DEV_DASHBOARD === 'true';
+  return import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_DASHBOARD === 'true';
 }
 
 export function hasDevDashboardModule() {
