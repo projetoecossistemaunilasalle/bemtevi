@@ -381,7 +381,18 @@ describe('DashboardRoute', () => {
   it('renders an empty state with an action to create the first material', () => {
     const onResourceAdd = vi.fn();
 
-    render(<EducationDashboard resources={[]} groups={[]} onResourceChange={vi.fn()} onResourceAdd={onResourceAdd} />);
+    render(
+      <EducationDashboard
+        resources={[]}
+        groups={[]}
+        shippedGroups={[]}
+        onResourceChange={vi.fn()}
+        onResourceAdd={onResourceAdd}
+        onGroupChange={vi.fn()}
+        onGroupAdd={vi.fn()}
+        onGroupRemove={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText('Nenhum material disponível.')).toBeInTheDocument();
 

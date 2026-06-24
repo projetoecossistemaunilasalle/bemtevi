@@ -15,6 +15,7 @@ import { ExportDashboard } from './export/ExportDashboard';
 import { FlowDashboard } from './flows/FlowDashboard';
 import { validateDashboardFlows } from './flows/flowValidation';
 import { defaultFeaturedImageId } from '../content/resources/featuredImages';
+import type { EducationResourceGroup } from '../content/resources/groups';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -51,6 +52,19 @@ function createLocalEducationMaterial(existingCount: number) {
       },
     ],
     review: { status: 'pending_review' as const, reviewedBy: null, reviewedAt: null, notes: '' },
+  };
+}
+
+function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shippedGroupsCount: number) {
+  let suffix = 1;
+  while (existingAddedGroups.some((g) => g.id === `group-local-${suffix}`)) {
+    suffix++;
+  }
+
+  return {
+    id: `group-local-${suffix}`,
+    title: 'Novo grupo',
+    order: existingAddedGroups.length + shippedGroupsCount + 1,
   };
 }
 
@@ -91,6 +105,7 @@ export function DashboardRoute() {
   const drafts = {
     flows: mergedDrafts.flows,
     educationMaterials: mergedDrafts.educationMaterials,
+    educationGroups: mergedDrafts.educationGroups,
   };
 
   return (
@@ -113,6 +128,7 @@ export function DashboardRoute() {
           <EducationDashboard
             resources={mergedDrafts.educationMaterials}
             groups={mergedDrafts.educationGroups}
+            shippedGroups={shipped.educationGroups}
             onResourceChange={(resourceIndex, resourceId, patch) =>
               updateDraftState((current) => {
                 const addedIndex = resourceIndex - shipped.educationMaterials.length;
@@ -145,6 +161,40 @@ export function DashboardRoute() {
                   ),
                 ],
               }))
+            }
+            onGroupChange={(groupIndex, groupId, patch) =>
+              updateDraftState((current) => {
+                const addedIndex = groupIndex - shipped.educationGroups.length;
+
+                if (addedIndex >= 0) {
+                  return {
+                    ...current,
+                    addedGroups: updateRecordAtIndex(current.addedGroups, addedIndex, patch),
+                  };
+                }
+
+                return {
+                  ...current,
+                  groupPatches: upsertPatchById(current.groupPatches, groupId, groupIndex, patch),
+                };
+              })
+            }
+            onGroupAdd={() =>
+              updateDraftState((current) => ({
+                ...current,
+                addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups.length)],
+              }))
+            }
+            onGroupRemove={(groupIndex, groupId) =>
+              updateDraftState((current) => {
+                const addedIndex = groupIndex - shipped.educationGroups.length;
+                if (addedIndex < 0) return current;
+
+                return {
+                  ...current,
+                  addedGroups: current.addedGroups.filter((_, index) => index !== addedIndex),
+                };
+              })
             }
           />
         )}

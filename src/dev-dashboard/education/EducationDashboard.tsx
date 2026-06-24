@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
+import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
 import type {
   EducationResource,
   EducationResourceBlock,
@@ -22,15 +23,24 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
 export function EducationDashboard({
   resources,
   groups,
+  shippedGroups,
   onResourceChange,
   onResourceAdd,
+  onGroupChange,
+  onGroupAdd,
+  onGroupRemove,
 }: {
   resources: EducationResource[];
   groups: EducationResourceGroup[];
+  shippedGroups: EducationResourceGroup[];
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
   onResourceAdd: () => void;
+  onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
+  onGroupAdd: () => void;
+  onGroupRemove: (groupIndex: number, groupId: string) => void;
 }) {
   const [selectedResourceIndex, setSelectedResourceIndex] = useState(0);
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
   const selectedResource = resources[selectedResourceIndex] ?? resources[0];
   const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
@@ -92,6 +102,14 @@ export function EducationDashboard({
 
   function updateBody(body: EducationResourceBlock[]) {
     onResourceChange(selectedResourceIndex, selectedResource.id, { body });
+  }
+
+  function updateGroupSelection(groupId: string | undefined) {
+    if (groupId === undefined || groupId === DEFAULT_EDUCATION_GROUP_ID) {
+      onResourceChange(selectedResourceIndex, selectedResource.id, { group: undefined });
+    } else {
+      onResourceChange(selectedResourceIndex, selectedResource.id, { group: groupId });
+    }
   }
 
   function updateBlock(blockId: string, patch: Partial<EducationResourceBlock>) {
@@ -252,6 +270,41 @@ export function EducationDashboard({
               </label>
             )}
           </fieldset>
+          <label className="flex flex-col gap-2">
+            <span className="font-label-md text-on-surface">Grupo do material</span>
+            <select
+              aria-label="Grupo do material"
+              className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+              value={selectedResource.group ?? DEFAULT_EDUCATION_GROUP_ID}
+              onChange={(event) => updateGroupSelection(event.target.value || undefined)}
+            >
+              <option value="">Geral</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.title}
+                </option>
+              ))}
+            </select>
+            <FieldHint>Categoria que agrupa este material junto com outros relacionados.</FieldHint>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="font-label-md text-on-surface">Ordem no grupo</span>
+            <input
+              aria-label="Ordem no grupo"
+              type="number"
+              min="1"
+              className="min-h-11 rounded-lg border border-outline-variant bg-surface px-3"
+              value={selectedResource.groupOrder ?? 0}
+              onChange={(event) =>
+                onResourceChange(selectedResourceIndex, selectedResource.id, {
+                  groupOrder: parseInt(event.target.value, 10) || 0,
+                })
+              }
+            />
+            <FieldHint>Posição de exibição dentro do grupo (menor = primeiro).</FieldHint>
+          </label>
+
           <div>
             <h3 className="font-headline-sm text-on-surface">Tags</h3>
             <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
@@ -358,6 +411,75 @@ export function EducationDashboard({
               Adicionar bloco
             </button>
           </div>
+        </section>
+
+        <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+          <button
+            type="button"
+            onClick={() => setGroupsExpanded((prev) => !prev)}
+            className="flex items-center justify-between font-headline-sm text-on-surface"
+          >
+            <span>Grupos de materiais</span>
+            <span className="font-label-md">{groupsExpanded ? 'Ocultar' : 'Mostrar'}</span>
+          </button>
+          {groupsExpanded && (
+            <div className="mt-3 flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                {groups.map((group, groupIndex) => {
+                  const isShipped = groupIndex < shippedGroups.length;
+                  return (
+                    <div key={`${group.id}-${groupIndex}`} className="grid gap-2 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto_auto]">
+                      <div className="flex flex-col gap-1">
+                        <label className="flex flex-col gap-1">
+                          <span className="font-label-sm text-on-surface-variant">Título</span>
+                          <input
+                            aria-label={`Título do grupo ${group.title}`}
+                            className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                            value={group.title}
+                            onChange={(event) =>
+                              onGroupChange(groupIndex, group.id, { title: event.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1">
+                          <span className="font-label-sm text-on-surface-variant">Ordem</span>
+                          <input
+                            aria-label={`Ordem do grupo ${group.title}`}
+                            type="number"
+                            min="1"
+                            className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
+                            value={group.order}
+                            onChange={(event) =>
+                              onGroupChange(groupIndex, group.id, {
+                                order: parseInt(event.target.value, 10) || 0,
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                      {!isShipped && (
+                        <button
+                          type="button"
+                          onClick={() => onGroupRemove(groupIndex, group.id)}
+                          className="self-end rounded-full bg-error-container px-3 py-2 font-label-md text-on-error-container"
+                        >
+                          Remover
+                        </button>
+                      )}
+                      {isShipped && <div className="self-end px-3 py-2 font-label-sm text-on-surface-variant">Enviado</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={onGroupAdd}
+                className="min-h-11 self-start rounded-full bg-primary px-4 font-label-md text-on-primary"
+              >
+                Novo grupo
+              </button>
+            </div>
+          )}
         </section>
 
         <ValidationSummary result={validation} />
