@@ -266,10 +266,10 @@
           "next": "q18",
           "effects": [
             {
-              "kind": "safety_interrupt",
-              "message": "Agradecemos sua coragem em responder com sinceridade. Pensamentos assim merecem atenção e acolhimento profissional. Vamos te direcionar para recursos de apoio imediato. Você não está sozinho(a).",
-              "destination": "/apoio",
-              "blockResume": true
+              "kind": "deferred_safety",
+              "flagKey": "self_harm_ideation",
+              "message": "Obrigado por responder com sinceridade. Como você marcou um sinal que merece cuidado imediato, vamos abrir a página de apoio agora. Você não está sozinho(a).",
+              "destination": "/apoio"
             }
           ]
         },

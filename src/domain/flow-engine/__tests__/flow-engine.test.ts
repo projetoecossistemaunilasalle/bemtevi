@@ -863,21 +863,31 @@ describe('flow runtime', () => {
     );
   });
 
-  it('routes SRQ-20 Q17 affirmative through generic JSON safety interruption', () => {
+  it('runs SRQ-20 Q17 affirmative through deferred support routing after the final result', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 
     state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
     state = advanceFlow(state, flowRegistry.flows, 'Continuar');
 
-    for (let index = 0; index < 16; index += 1) {
+    for (let question = 1; question <= 16; question++) {
       state = advanceFlow(state, flowRegistry.flows, 'Não');
     }
 
     state = advanceFlow(state, flowRegistry.flows, 'Sim');
 
+    expect(state.activeNodeId).toBe('q18');
+    expect(state.pendingNavigation).toBeUndefined();
+    expect(state.safetyFlags.self_harm_ideation).toBe(true);
+
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+
+    expect(state.activeNodeId).toBe('low-distress-result');
     expect(state.pendingNavigation).toBe('/apoio');
-    expect(state.safetyFlags['block-resume:srq20']).toBe(true);
-    expect(state.activeFlowId).toBeUndefined();
+    expect(state.transcript.map((message) => message.text)).toContain(
+      'Obrigado por responder com sinceridade. Como você marcou um sinal que merece cuidado imediato, vamos abrir a página de apoio agora. Você não está sozinho(a).',
+    );
   });
 
   it('starts a target flow from a neutral flow option without suspending the neutral flow', () => {
