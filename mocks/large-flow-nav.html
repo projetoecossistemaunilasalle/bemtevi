@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SeCuida Mock · Navegação para fluxos grandes (SRQ-20)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./mock-styles.css" />
+  <style>
+    /* Layout specific to this mock: two-column editor + outline */
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 760px) {
+      .editor-layout { grid-template-columns: 1fr; }
+    }
+    .outline {
+      position: sticky;
+      top: 16px;
+      background: var(--color-surface-container-lowest);
+      border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+    .outline h3 {
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--color-on-surface-variant);
+      margin: 0 0 4px;
+    }
+    .outline-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 13px;
+      color: var(--color-on-surface);
+    }
+    .outline-item:hover { background: var(--color-surface-container-low); }
+    .outline-item.active {
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+    }
+    .outline-num {
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+      min-width: 18px;
+    }
+    .outline-label { flex: 1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .outline-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 4px;
+      border-radius: 6px;
+    }
+    .badge-score { background: #fff3cd; color: #5c4300; }
+    .badge-safety { background: var(--color-error); color: var(--color-on-error); }
+    .badge-branch { background: var(--color-primary-container); color: var(--color-on-primary-container); }
+
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .chip-filter {
+      display:inline-flex; align-items:center; gap:6px;
+      border-radius:9999px; padding:6px 12px;
+      font-family:'Source Sans 3',sans-serif; font-size:13px; font-weight:600;
+      background:var(--color-surface-container-low); color:var(--color-on-surface-variant);
+      border:1px solid transparent; cursor:pointer;
+    }
+    .chip-filter.active {
+      background: var(--color-secondary-container); color: var(--color-on-secondary-container);
+    }
+    .search-wrap { position:relative; flex:1; min-width:180px; }
+    .search-wrap input { padding-left:32px; }
+    .search-wrap svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--color-on-surface-variant); }
+
+    .node-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .node-preview { color:var(--color-on-surface-variant); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+    details.node > summary { list-style:none; cursor:pointer; }
+    details.node > summary::-webkit-details-marker { display:none; }
+    details.node[open] .chev { transform: rotate(180deg); }
+    .chev { transition: transform .15s ease; }
+  </style>
+</head>
+<body>
+<div class="mock-shell">
+
+  <div class="mock-banner">
+    ⚠️ <span>Mock estático — busca, filtros e recolher/expandir funcionam; edição não salva.</span>
+  </div>
+
+  <nav class="mock-nav">
+    <a href="./option-effects.html">1 · Editor de opções</a>
+    <a href="./score-declaration.html">2 · Declaração de pontuação</a>
+    <a href="./large-flow-nav.html" class="current">3 · Navegação p/ fluxos grandes</a>
+    <a href="./redirections-view.html">4 · Visão de redirecionamentos</a>
+  </nav>
+
+  <div>
+    <h1 class="font-headline-sm" style="font-size:24px">Navegação para fluxos grandes · SRQ-20</h1>
+    <p class="font-body-md text-muted" style="margin-top:4px">
+      O SRQ-20 tem 22 etapas — o accordion atual vira uma lista longa e difícil de navegar. Esta UI adiciona:
+      <strong>contagem</strong>, <strong>busca</strong>, <strong>filtros por tipo/redirecionamento</strong>,
+      <strong>recolher/expandir tudo</strong> e um <strong>mini-outline lateral clicável</strong> com badges
+      (<span class="outline-badge badge-score">+pt</span> pontua · <span class="outline-badge badge-safety">⚠</span> segurança · <span class="outline-badge badge-branch">⇄</span> ramificação).
+    </p>
+  </div>
+
+  <div class="editor-layout">
+
+    <!-- ============ MINI-OUTLINE SIDEBAR ============ -->
+    <aside class="outline" id="outline">
+      <h3>Etapas (22)</h3>
+      <!-- generated by JS -->
+    </aside>
+
+    <!-- ============ MAIN EDITOR COLUMN ============ -->
+    <div style="display:flex; flex-direction:column; gap:12px">
+
+      <!-- toolbar -->
+      <div class="card" style="padding:12px; gap:8px">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input class="inp-sm" id="search" placeholder="Buscar etapa…" oninput="applyFilters()" />
+          </div>
+          <button class="chip-filter" onclick="toggleFilter(this,'result')">Resultado</button>
+          <button class="chip-filter" onclick="toggleFilter(this,'safety')">⚠ Segurança</button>
+          <button class="chip-filter" onclick="toggleFilter(this,'branch')">⇄ Ramificação</button>
+        </div>
+        <div class="toolbar" style="justify-content:space-between">
+          <span class="field-hint" id="count-label">22 etapas</span>
+          <div class="row">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="collapseAll()">Recolher todas</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="expandAll()">Expandir todas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- nodes (22 of them) -->
+      <div id="nodes" style="display:flex; flex-direction:column; gap:12px"></div>
+
+    </div>
+  </div>
+
+  <p class="field-hint text-muted" style="text-align:center">
+    Mock 3/4 · <a class="btn-link btn-link-primary" href="./redirections-view.html">Próximo: visão de redirecionamentos →</a>
+  </p>
+</div>
+
+<script>
+  // ---- SRQ-20 node data (abbreviated) ----
+  var NODES = [
+    { id:'consent', n:1, kind:'choice', text:'Antes de começar: suas respostas ficam apenas nesta conversa…', badge:null },
+    { id:'q1',  n:2,  kind:'choice', text:'Você tem se sentido nervoso(a), tenso(a) ou preocupado(a)…', badge:'score' },
+    { id:'q2',  n:3,  kind:'choice', text:'Você tem tido dificuldade para dormir…', badge:'score' },
+    { id:'q3',  n:4,  kind:'choice', text:'Você tem sentido medo ou receio de algo…', badge:'score' },
+    { id:'q4',  n:5,  kind:'choice', text:'Você tem sentido o estômago ruim, com dor…', badge:'score' },
+    { id:'q5',  n:6,  kind:'choice', text:'Você tem tido tonturas ou sensação de cabeça leve?', badge:'score' },
+    { id:'q6',  n:7,  kind:'choice', text:'Suas mãos tremem mesmo quando você não está fazendo esforço?', badge:'score' },
+    { id:'q7',  n:8,  kind:'choice', text:'Você tem tido menos vontade de comer…', badge:'score' },
+    { id:'q8',  n:9,  kind:'choice', text:'Você tem chorado com mais facilidade do que antes…', badge:'score' },
+    { id:'q9',  n:10, kind:'choice', text:'Tem sido difícil sentir prazer ou alegria…', badge:'score' },
+    { id:'q10', n:11, kind:'choice', text:'Você tem tido dificuldade para tomar decisões…', badge:'score' },
+    { id:'q11', n:12, kind:'choice', text:'As tarefas do dia a dia têm parecido mais difíceis…', badge:'score' },
+    { id:'q12', n:13, kind:'choice', text:'Você sente que seu trabalho não está fazendo diferença…', badge:'score' },
+    { id:'q13', n:14, kind:'choice', text:'Você tem perdido o interesse por coisas…', badge:'score' },
+    { id:'q14', n:15, kind:'choice', text:'Você tem se sentido sem valor ou como se não fosse capaz?', badge:'score' },
+    { id:'q15', n:16, kind:'choice', text:'Você tem se sentido exausto(a), sem energia…', badge:'score' },
+    { id:'q16', n:17, kind:'choice', text:'Você tem sentido alguma sensação desagradável no estômago…', badge:'score' },
+    { id:'q17', n:18, kind:'choice', text:'Você já teve pensamentos de que seria melhor estar morto(a)…', badge:'safety' },
+    { id:'q18', n:19, kind:'choice', text:'Você tem dormido mal — acorda cansado(a)…', badge:'score' },
+    { id:'q19', n:20, kind:'choice', text:'Você tem se sentido preocupado(a) com coisas do dia a dia…', badge:'score' },
+    { id:'q20', n:21, kind:'choice', text:'Você se cansa com facilidade, mesmo com atividades…', badge:'score' },
+    { id:'score', n:22, kind:'branch', text:'Vou organizar suas respostas de forma cuidadosa.', badge:'branch' },
+  ];
+
+  var KIND_LABEL = { choice:'Pergunta com opções', branch:'Ramificação por pontuação', result:'Resultado final' };
+  var BADGE = {
+    score: { cls:'badge-score', text:'+pt', title:'Esta opção soma pontos' },
+    safety:{ cls:'badge-safety', text:'⚠', title:'Contém interrupção de segurança' },
+    branch:{ cls:'badge-branch', text:'⇄', title:'Ramifica por pontuação' },
+  };
+
+  function renderOutline() {
+    var el = document.getElementById('outline');
+    var html = '<h3>Etapas (' + NODES.length + ')</h3>';
+    NODES.forEach(function (node) {
+      var b = node.badge ? BADGE[node.badge] : null;
+      html += '<button class="outline-item" data-id="' + node.id + '" onclick="jumpTo(\'' + node.id + '\')" title="' + node.text + '">' +
+        '<span class="outline-num">' + node.n + '</span>' +
+        '<span class="outline-label">' + node.id + '</span>' +
+        (b ? '<span class="outline-badge ' + b.cls + '" title="' + b.title + '">' + b.text + '</span>' : '') +
+        '</button>';
+    });
+    el.innerHTML = html;
+  }
+
+  function renderNodes() {
+    var container = document.getElementById('nodes');
+    var html = '';
+    NODES.forEach(function (node) {
+      var b = node.badge ? BADGE[node.badge] : null;
+      html +=
+        '<details class="node" data-id="' + node.id + '" data-kind="' + node.kind + '" data-badge="' + (node.badge||'') + '" data-text="' + escapeAttr(node.text) + '">' +
+          '<summary class="node-header" id="head-' + node.id + '">' +
+            '<span style="display:flex; flex-direction:column; gap:6px; min-width:0; flex:1">' +
+              '<span class="node-title">' +
+                '<span class="font-label-lg">Etapa ' + node.n + ' — ' + node.id + '</span>' +
+                '<span class="pill pill-surface">' + KIND_LABEL[node.kind] + '</span>' +
+                (b ? '<span class="pill" style="background:' + (node.badge==='safety'?'var(--color-error)':'var(--color-warning-container)') + ';color:' + (node.badge==='safety'?'var(--color-on-error)':'var(--color-on-warning-container)') + '">' + b.text + ' ' + (node.badge==='safety'?'segurança':'pontos') + '</span>' : '') +
+              '</span>' +
+              '<span class="font-body-md node-preview">' + escapeHtml(node.text) + '</span>' +
+            '</span>' +
+            '<svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>' +
+          '</summary>' +
+          '<div class="node-body">' +
+            '<div class="field"><span class="field-label">Texto da etapa</span><textarea class="inp">' + escapeHtml(node.text) + '</textarea></div>' +
+            '<p class="field-hint text-muted">… opções e redirecionamentos apareceriam aqui (ver Mock 1) …</p>' +
+            '<div class="row-between">' +
+              '<div class="row"><button class="btn btn-secondary btn-sm" type="button">↑ Mover</button><button class="btn btn-secondary btn-sm" type="button">↓ Mover</button></div>' +
+              '<button class="btn btn-danger btn-sm" type="button">Remover etapa</button>' +
+            '</div>' +
+          '</div>' +
+        '</details>';
+    });
+    container.innerHTML = html;
+    // open q17 and score by default to showcase content
+    document.querySelector('details[data-id="q17"]').open = true;
+    document.querySelector('details[data-id="score"]').open = true;
+  }
+
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+  // ---- search + filter ----
+  function applyFilters() {
+    var q = document.getElementById('search').value.toLowerCase().trim();
+    var activeFilters = Array.prototype.map.call(document.querySelectorAll('.chip-filter.active'), function(c){ return c.getAttribute('onclick').match(/'(\w+)'/)[1]; });
+    var visible = 0;
+    document.querySelectorAll('details.node').forEach(function (d) {
+      var text = (d.getAttribute('data-text')||'').toLowerCase();
+      var id = (d.getAttribute('data-id')||'').toLowerCase();
+      var kind = d.getAttribute('data-kind');
+      var badge = d.getAttribute('data-badge');
+      var matchesText = !q || text.indexOf(q) !== -1 || id.indexOf(q) !== -1;
+      var matchesFilter = true;
+      if (activeFilters.length) {
+        matchesFilter = activeFilters.every(function (f) {
+          if (f === 'result') return kind === 'result';
+          if (f === 'safety') return badge === 'safety';
+          if (f === 'branch') return kind === 'branch';
+          return true;
+        });
+      }
+      var show = matchesText && matchesFilter;
+      d.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    document.getElementById('count-label').textContent = visible + (visible === 1 ? ' etapa' : ' etapas') + (q || activeFilters.length ? ' (filtradas)' : '');
+  }
+
+  function toggleFilter(btn, key) {
+    btn.classList.toggle('active');
+    applyFilters();
+  }
+
+  function collapseAll(){ document.querySelectorAll('details.node').forEach(function(d){ d.open = false; }); }
+  function expandAll(){ document.querySelectorAll('details.node').forEach(function(d){ d.open = true; }); }
+
+  function jumpTo(id) {
+    var d = document.querySelector('details[data-id="' + id + '"]');
+    if (!d) return;
+    // un-filter so the target is reachable
+    document.getElementById('search').value = '';
+    document.querySelectorAll('.chip-filter.active').forEach(function(c){ c.classList.remove('active'); });
+    applyFilters();
+    d.open = true;
+    document.getElementById('head-' + id).scrollIntoView({ behavior:'smooth', block:'start' });
+    document.querySelectorAll('.outline-item').forEach(function(i){ i.classList.remove('active'); });
+    var oi = document.querySelector('.outline-item[data-id="' + id + '"]');
+    if (oi) oi.classList.add('active');
+  }
+
+  renderOutline();
+  renderNodes();
+  applyFilters();
+</script>
+</body>
+</html>

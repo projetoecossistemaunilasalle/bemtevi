@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SeCuida Mock · Visão de redirecionamentos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./mock-styles.css" />
+  <style>
+    .tab-bar { display:flex; gap:8px; }
+    .tab {
+      border:none; background:var(--color-surface-container-low); color:var(--color-on-surface-variant);
+      border-radius:9999px 9999px 0 0; padding:10px 18px; font-family:'Source Sans 3',sans-serif;
+      font-size:14px; font-weight:600; cursor:pointer; border-bottom:3px solid transparent;
+    }
+    .tab.active { background:var(--color-surface-container-lowest); color:var(--color-primary); border-bottom-color:var(--color-primary); }
+
+    .redirect-group { display:flex; flex-direction:column; gap:8px; }
+    .redirect-row {
+      display:flex; align-items:flex-start; gap:12px;
+      background:var(--color-surface-container-lowest);
+      border:1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+      border-radius:10px; padding:12px;
+    }
+    .redirect-row.danger {
+      border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+      background: color-mix(in srgb, var(--color-error-container) 20%, transparent);
+    }
+    .redirect-icon {
+      flex-shrink:0; width:32px; height:32px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; font-weight:700;
+    }
+    .icon-safety { background:var(--color-error); color:var(--color-on-error); }
+    .icon-flow   { background:var(--color-secondary-container); color:var(--color-on-secondary-container); }
+    .icon-nav    { background:var(--color-primary-container); color:var(--color-on-primary-container); }
+    .icon-end    { background:var(--color-surface-container-high); color:var(--color-on-surface); }
+    .icon-branch { background:var(--color-warning-container); color:var(--color-on-warning-container); }
+
+    .redirect-main { flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .redirect-origin { font-family:'Source Sans 3',sans-serif; font-size:12px; color:var(--color-on-surface-variant); font-weight:600; }
+    .redirect-arrow { color:var(--color-on-surface-variant); font-weight:700; }
+    .redirect-actions { display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+
+    .branch-table { width:100%; border-collapse:collapse; margin-top:6px; font-size:13px; }
+    .branch-table th { text-align:left; padding:6px 8px; color:var(--color-on-surface-variant); font-weight:600; border-bottom:1px solid var(--color-outline-variant); }
+    .branch-table td { padding:6px 8px; border-bottom:1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent); }
+    .branch-table td.num { font-variant-numeric:tabular-nums; font-weight:600; }
+
+    .empty-state {
+      text-align:center; padding:32px 16px; color:var(--color-on-surface-variant);
+      border:2px dashed color-mix(in srgb, var(--color-outline-variant) 70%, transparent); border-radius:12px;
+    }
+  </style>
+</head>
+<body>
+<div class="mock-shell">
+
+  <div class="mock-banner">
+    ⚠️ <span>Mock estático (não-funcional) — somente para validar o visual.</span>
+  </div>
+
+  <nav class="mock-nav">
+    <a href="./option-effects.html">1 · Editor de opções</a>
+    <a href="./score-declaration.html">2 · Declaração de pontuação</a>
+    <a href="./large-flow-nav.html">3 · Navegação p/ fluxos grandes</a>
+    <a href="./redirections-view.html" class="current">4 · Visão de redirecionamentos</a>
+  </nav>
+
+  <div>
+    <h1 class="font-headline-sm" style="font-size:24px">Visão de redirecionamentos</h1>
+    <p class="font-body-md text-muted" style="margin-top:4px">
+      Uma nova aba que lista, num só lugar, <strong>todos</strong> os redirecionamentos do fluxo. Hoje esses comportamentos
+      estão espalhados pelas etapas e só o SRQ-20 tem alguns deles. Cada linha é clicável → abre a etapa de origem no editor.
+    </p>
+  </div>
+
+  <!-- ============ TAB BAR (showing where this sits) ============ -->
+  <div class="card" style="padding:0; overflow:hidden">
+    <div class="tab-bar" style="padding:0 12px; border-bottom:1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent)">
+      <button class="tab" type="button">Editor</button>
+      <button class="tab" type="button">Testar conversa</button>
+      <button class="tab" type="button">Mapa visual</button>
+      <button class="tab active" type="button">Redirecionamentos</button>
+    </div>
+
+    <div style="padding:20px; display:flex; flex-direction:column; gap:20px">
+
+      <div class="row-between">
+        <div>
+          <h2 class="font-headline-sm">SRQ-20 · 5 redirecionamentos</h2>
+          <p class="field-hint">Tudo o que tira a pessoa do caminho linear de etapas.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button">↻ Atualizar</button>
+      </div>
+
+      <!-- SAFETY INTERRUPTS (most prominent, red) -->
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-error">⚠ Interrupções de segurança</span>
+          <span class="field-hint">Tiram a pessoa do fluxo imediatamente — revise com cuidado.</span>
+        </div>
+
+        <div class="redirect-row danger">
+          <div class="redirect-icon icon-safety">⚠</div>
+          <div class="redirect-main">
+            <span class="redirect-origin">Etapa 18 · q17 → opção "Sim"</span>
+            <p class="font-body-md" style="margin:2px 0">"Agradecemos sua coragem em responder com sinceridade…"</p>
+            <span class="redirect-origin"><span class="redirect-arrow">→ leva a</span> <strong>/apoio</strong> · bloqueia retomar</span>
+          </div>
+          <div class="redirect-actions">
+            <button class="btn btn-secondary btn-sm" type="button">Editar etapa</button>
+            <button class="btn-link btn-link-error" type="button">Remover redirecionamento</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCORE BRANCHES -->
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-warning-container">⇄ Ramificações por pontuação</span>
+          <span class="field-hint">Decidem o resultado final com base na pontuação acumulada.</span>
+        </div>
+
+        <div class="redirect-row">
+          <div class="redirect-icon icon-branch">⇄</div>
+          <div class="redirect-main">
+            <span class="redirect-origin">Etapa 22 · srq20-score · chave <strong>srq20</strong> (máx 20)</span>
+            <table class="branch-table">
+              <thead><tr><th>De</th><th>Até</th><th>Vai para</th></tr></thead>
+              <tbody>
+                <tr><td class="num">0</td><td class="num">6</td><td>low-distress-result</td></tr>
+                <tr><td class="num">7</td><td class="num">20</td><td>possible-distress-result</td></tr>
+              </tbody>
+            </table>
+            <span class="field-hint" style="color:var(--color-primary)">✓ Faixas cobrem 0–20 sem lacunas nem sobreposição.</span>
+          </div>
+          <div class="redirect-actions">
+            <button class="btn btn-secondary btn-sm" type="button">Editar etapa</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCORE EFFECTS (summary) -->
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-surface">+pt Pontuações acumuladas</span>
+          <span class="field-hint">19 opções somam +1 na chave "srq20".</span>
+        </div>
+        <div class="redirect-row">
+          <div class="redirect-icon icon-branch">Σ</div>
+          <div class="redirect-main">
+            <span class="redirect-origin">Chave <strong>srq20</strong> · 19 opções somam pontos</span>
+            <p class="field-hint" style="margin:0">q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, q16, q18, q19, q20 — todas "Sim" somam +1</p>
+          </div>
+          <div class="redirect-actions">
+            <button class="btn-link btn-link-primary" type="button">Ver opções</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- (sections below would appear if the flow had them; shown empty for context) -->
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-secondary-container">↗ Navegações de tela</span>
+          <span class="field-hint">Levam a /apoio, /contatos ou /educacao.</span>
+        </div>
+        <div class="empty-state" style="padding:16px">
+          Nenhuma navegação de tela neste fluxo.
+        </div>
+      </div>
+
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-secondary-container">⇨ Inícios de outro fluxo</span>
+          <span class="field-hint">Suspensam o fluxo atual e começam outro.</span>
+        </div>
+        <div class="empty-state" style="padding:16px">
+          Nenhum início de outro fluxo neste fluxo.
+        </div>
+      </div>
+
+      <div class="redirect-group">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-surface">■ Encerramentos</span>
+          <span class="field-hint">Terminam a conversa com uma mensagem.</span>
+        </div>
+        <div class="empty-state" style="padding:16px">
+          Nenhum encerramento neste fluxo.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ EMPTY STATE CONTRAST: work-stress ============ -->
+  <div class="card" style="padding:0; overflow:hidden">
+    <div class="tab-bar" style="padding:0 12px; border-bottom:1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent)">
+      <button class="tab" type="button">Editor</button>
+      <button class="tab" type="button">Testar conversa</button>
+      <button class="tab" type="button">Mapa visual</button>
+      <button class="tab active" type="button">Redirecionamentos</button>
+    </div>
+    <div style="padding:20px">
+      <h2 class="font-headline-sm">Sobrecarga na escola</h2>
+      <p class="field-hint" style="margin-bottom:16px">Exemplo de um fluxo simples, sem redirecionamentos.</p>
+      <div class="empty-state">
+        <p class="font-label-lg" style="margin-bottom:4px">Este fluxo não tem redirecionamentos</p>
+        <p class="font-body-md text-muted" style="margin:0">Todas as opções apenas avançam para a próxima etapa. Para criar ramificações por pontuação, ative a pontuação nos dados do fluxo.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="field-hint text-muted" style="text-align:center">
+    Mock 4/4 · <a class="btn-link btn-link-primary" href="./option-effects.html">← Voltar ao Mock 1</a>
+  </p>
+</div>
+</body>
+</html>

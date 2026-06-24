@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SeCuida Mock · Editor de opções (efeitos/redirecionamentos)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./mock-styles.css" />
+</head>
+<body>
+<div class="mock-shell">
+
+  <div class="mock-banner">
+    ⚠️ <span>Mock estático (não-funcional) — somente para validar o visual. O fluxo de dados real ainda não existe.</span>
+  </div>
+
+  <nav class="mock-nav">
+    <a href="./option-effects.html" class="current">1 · Editor de opções</a>
+    <a href="./score-declaration.html">2 · Declaração de pontuação</a>
+    <a href="./large-flow-nav.html">3 · Navegação p/ fluxos grandes</a>
+    <a href="./redirections-view.html">4 · Visão de redirecionamentos</a>
+  </nav>
+
+  <div>
+    <h1 class="font-headline-sm" style="font-size:24px">Editor de opções · efeitos &amp; redirecionamentos</h1>
+    <p class="font-body-md text-muted" style="margin-top:4px">
+      Hoje o editor só oferece "Ir para etapa" e "Começar outro fluxo". Esta é a UI para os <strong>5 tipos de ação</strong> que o motor já suporta.
+      Use o seletor <em>"Ação principal"</em> abaixo para alternar entre os formulários.
+    </p>
+  </div>
+
+  <!-- ============ NODE CARD ============ -->
+  <section class="card">
+    <div class="row-between">
+      <h2 class="font-headline-sm">Etapa 17 — q17</h2>
+      <span class="pill pill-secondary-container">Pergunta com opções</span>
+    </div>
+    <p class="font-body-md text-muted">
+      Você já teve pensamentos de que seria melhor estar morto(a) ou de se machucar?
+    </p>
+
+    <!-- ============ OPTION CARD ============ -->
+    <div class="option-card">
+      <div class="row-between">
+        <p class="font-label-md">Opção 1 — "Sim"</p>
+        <button class="btn-link btn-link-error" type="button">Remover opção</button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Texto da opção</span>
+        <input class="inp-sm" value="Sim" />
+      </div>
+
+      <!-- ============ EFFECT / REDIRECT BLOCK ============ -->
+      <div class="effect-card">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-primary">↪ Redirecionamento</span>
+          <span class="field-hint">O que acontece quando a pessoa escolhe esta opção</span>
+        </div>
+
+        <!-- ACTION SELECTOR — toggles the 5 forms -->
+        <div class="field">
+          <span class="field-label">Ação principal</span>
+          <select class="inp-sm" id="action-select" onchange="showAction()">
+            <option value="next">Ir para a próxima etapa</option>
+            <option value="flow_start">Começar outro fluxo</option>
+            <option value="navigate">Navegar para uma tela (Apoio, Contatos, Educação)</option>
+            <option value="end_flow">Encerrar a conversa com uma mensagem</option>
+            <option value="safety" selected>⚠️ Interrupção de segurança (levar ao apoio)</option>
+          </select>
+        </div>
+
+        <!-- ── FORM: next ── -->
+        <div class="action-form" data-action="next" hidden>
+          <div class="field">
+            <span class="field-label">Próxima etapa</span>
+            <select class="inp-sm">
+              <option>Etapa 2 — q1</option>
+              <option>Etapa 3 — q2</option>
+              <option>Etapa 18 — q18</option>
+              <option>Resultado — declined-result</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── FORM: flow_start ── -->
+        <div class="action-form" data-action="flow_start" hidden>
+          <div class="field">
+            <span class="field-label">Fluxo de destino</span>
+            <select class="inp-sm">
+              <option>SRQ-20</option>
+              <option>Sobrecarga na escola</option>
+              <option>Descanso e recuperação</option>
+              <option>Fluxo neutro</option>
+            </select>
+            <span class="field-hint">A conversa atual é suspensa e a pessoa entra no fluxo escolhido.</span>
+          </div>
+        </div>
+
+        <!-- ── FORM: navigate ── -->
+        <div class="action-form" data-action="navigate" hidden>
+          <div class="field">
+            <span class="field-label">Tela de destino</span>
+            <select class="inp-sm">
+              <option>/apoio — Apoio imediato</option>
+              <option>/contatos — Contatos de apoio</option>
+              <option>/educacao — Materiais educativos</option>
+            </select>
+            <span class="field-hint">A conversa é encerrada e a pessoa é levada a esta tela.</span>
+          </div>
+        </div>
+
+        <!-- ── FORM: end_flow ── -->
+        <div class="action-form" data-action="end_flow" hidden>
+          <div class="field">
+            <span class="field-label">Mensagem de encerramento</span>
+            <textarea class="inp" rows="2">Tudo bem por agora. Você pode voltar quando quiser.</textarea>
+            <span class="field-hint">A conversa termina mostrando esta mensagem.</span>
+          </div>
+        </div>
+
+        <!-- ── FORM: safety_interrupt (the one SRQ-20 uses) ── -->
+        <div class="action-form" data-action="safety">
+          <div class="field">
+            <span class="field-label">Mensagem de acolhimento</span>
+            <textarea class="inp" rows="2">Agradecemos sua coragem em responder com sinceridade. Pensamentos assim merecem atenção e acolhimento profissional. Vamos te direcionar para recursos de apoio imediato. Você não está sozinho(a).</textarea>
+            <span class="field-hint">Exibida antes de redirecionar — use um tom acolhedor e sem julgamento.</span>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <span class="field-label">Destino</span>
+              <select class="inp-sm">
+                <option>/apoio</option>
+                <option>/contatos</option>
+              </select>
+            </div>
+            <label class="row" style="margin-top:26px; cursor:pointer">
+              <input type="checkbox" checked />
+              <span class="field-label" style="font-weight:400">Bloquear retomar este fluxo</span>
+            </label>
+          </div>
+          <p class="field-hint" style="color:var(--color-on-error-container)">
+            ⚠️ Uso sensível: tira a pessoa do fluxo imediatamente. Reserve para respostas de risco.
+          </p>
+        </div>
+
+        <!-- ============ SCORE SECTION (only shown when the flow has declared scores) ============ -->
+        <div style="border-top:1px dashed var(--color-outline-variant); padding-top:12px; display:flex; flex-direction:column; gap:8px">
+          <div class="row-between">
+            <span class="field-label">Pontuação (opcional)</span>
+            <button class="btn btn-secondary btn-sm btn-wfit" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Adicionar pontuação
+            </button>
+          </div>
+          <div class="row" style="gap:8px">
+            <select class="inp-sm" style="max-width:240px">
+              <option>Sofrimento (SRQ-20) · srq20</option>
+            </select>
+            <select class="inp-sm" style="max-width:110px">
+              <option>+1</option>
+              <option>+2</option>
+              <option>−1</option>
+            </select>
+            <button class="btn btn-danger btn-sm" type="button">Remover</button>
+          </div>
+          <span class="field-hint">Aparece somente porque este fluxo tem pontuação declarada. Fluxos sem pontuação não veem esta seção.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OPTION 2 (plain next, no effects) ============ -->
+    <div class="option-card">
+      <div class="row-between">
+        <p class="font-label-md">Opção 2 — "Não"</p>
+        <button class="btn-link btn-link-error" type="button">Remover opção</button>
+      </div>
+      <div class="field">
+        <span class="field-label">Texto da opção</span>
+        <input class="inp-sm" value="Não" />
+      </div>
+      <div class="effect-card">
+        <div class="row" style="gap:8px">
+          <span class="pill pill-primary">↪ Redirecionamento</span>
+          <span class="field-hint">O que acontece quando a pessoa escolhe esta opção</span>
+        </div>
+        <div class="field">
+          <span class="field-label">Ação principal</span>
+          <select class="inp-sm">
+            <option selected>Ir para a próxima etapa</option>
+            <option>Começar outro fluxo</option>
+            <option>Navegar para uma tela (Apoio, Contatos, Educação)</option>
+            <option>Encerrar a conversa com uma mensagem</option>
+            <option>⚠️ Interrupção de segurança (levar ao apoio)</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">Próxima etapa</span>
+          <select class="inp-sm">
+            <option>Etapa 18 — q18</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-between">
+      <button class="btn btn-secondary btn-sm btn-wfit" type="button">+ Adicionar opção nesta etapa</button>
+      <div class="row">
+        <button class="btn btn-secondary btn-sm" type="button">↑ Mover etapa</button>
+        <button class="btn btn-secondary btn-sm" type="button">↓ Mover etapa</button>
+        <button class="btn btn-danger btn-sm" type="button">Remover etapa</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="field-hint text-muted" style="text-align:center">
+    Mock 1/4 · <a class="btn-link btn-link-primary" href="./score-declaration.html">Próximo: declaração de pontuação →</a>
+  </p>
+</div>
+
+<script>
+  function showAction() {
+    var v = document.getElementById('action-select').value;
+    document.querySelectorAll('.action-form').forEach(function (el) {
+      el.hidden = el.getAttribute('data-action') !== v;
+    });
+    // toggle safety styling on the effect card
+    var card = document.querySelector('.effect-card');
+    // (keeps the dashed safety look only on the safety form for clarity)
+  }
+  showAction();
+</script>
+</body>
+</html>

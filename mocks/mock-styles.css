@@ -1,0 +1,448 @@
+/*
+ * Shared styles for the SeCuida dashboard mocks.
+ * Mirrors the real design tokens from src/index.css so the mocks look
+ * like the actual app. Loaded via <link> from each mock HTML file.
+ */
+:root {
+  --color-background: #f9f9ff;
+  --color-on-background: #111c2c;
+  --color-primary: #006a43;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #188557;
+  --color-on-primary-container: #f6fff6;
+  --color-secondary: #425e91;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #a8c4fe;
+  --color-on-secondary-container: #345083;
+  --color-surface: #f9f9ff;
+  --color-on-surface: #111c2c;
+  --color-surface-variant: #d8e3fa;
+  --color-on-surface-variant: #3e4942;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f3ff;
+  --color-surface-container: #e7eeff;
+  --color-surface-container-high: #dee8ff;
+  --color-outline: #6e7a71;
+  --color-outline-variant: #bdcabf;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-warning: #7a5900;
+  --color-on-warning: #ffffff;
+  --color-warning-container: #ffdf9e;
+  --color-on-warning-container: #5c4300;
+
+  --stack-sm: 0.5rem;
+  --stack-md: 1.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  padding: 24px;
+}
+
+.mock-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-md);
+}
+
+/* Typography utilities (match src/index.css) */
+.font-headline-sm {
+  font-family: 'Atkinson Hyperlegible Next', sans-serif;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+.font-label-lg {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+.font-label-md {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.font-label-sm {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  margin: 0;
+}
+.font-body-md {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  margin: 0;
+}
+.text-muted {
+  color: var(--color-on-surface-variant);
+}
+
+/* Cards / sections (match FlowEditor.tsx section classes) */
+.card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Pills / badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.pill-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.pill-primary-container {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+.pill-secondary-container {
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+.pill-surface {
+  background: var(--color-surface-container-low);
+  color: var(--color-on-surface-variant);
+}
+.pill-error {
+  background: var(--color-error);
+  color: var(--color-on-error);
+}
+.pill-warning-container {
+  background: var(--color-warning-container);
+  color: var(--color-on-warning-container);
+}
+
+/* Inputs (match fieldStyles.ts inputClass / inputClassSm) */
+.inp,
+.inp-sm,
+select.inp,
+select.inp-sm,
+textarea.inp {
+  width: 100%;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  background: var(--color-surface-container-lowest);
+  padding: 10px 12px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-on-surface);
+  outline: none;
+}
+.inp-sm {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+textarea.inp {
+  resize: vertical;
+  min-height: 80px;
+}
+.inp:focus,
+.inp-sm:focus,
+select.inp:focus,
+select.inp-sm:focus,
+textarea.inp:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* Field wrapper (mimics <Field> from src/dev-dashboard/components/Field.tsx) */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-label {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+.field-hint {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: color-mix(in srgb, var(--color-on-surface-variant) 90%, transparent);
+}
+
+/* Buttons (match design-system/components/Button.tsx — pill style) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9999px;
+  padding: 10px 20px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 88%, black);
+}
+.btn-secondary {
+  background: var(--color-surface-container-low);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+}
+.btn-secondary:hover {
+  background: var(--color-surface-container);
+  border-color: var(--color-on-surface-variant);
+}
+.btn-danger {
+  background: var(--color-error);
+  color: var(--color-on-error);
+}
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--color-error) 88%, black);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary);
+}
+.btn-ghost:hover {
+  background: var(--color-surface-container-low);
+}
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.btn-wfit {
+  width: fit-content;
+}
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.btn-link-primary {
+  color: var(--color-primary);
+}
+.btn-link-error {
+  color: var(--color-error);
+}
+
+/* Option card (the inline editor for one choice option) */
+.option-card {
+  background: var(--color-surface-container-low);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Effect card — the "redirect" block inside an option */
+.effect-card {
+  border: 1px solid var(--color-outline-variant);
+  border-left: 4px solid var(--color-secondary);
+  border-radius: 8px;
+  background: var(--color-surface-container-lowest);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.effect-card.safety {
+  border-left-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error-container) 25%, transparent);
+}
+
+/* Accordion node (mimics FlowEditor.tsx node article) */
+.node {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
+  border-left: 4px solid var(--color-secondary);
+  background: var(--color-surface-container-lowest);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.node.expanded {
+  border-color: var(--color-outline-variant);
+  border-left-color: var(--color-primary);
+}
+.node-header {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.node-header:hover {
+  background: var(--color-surface-container-low);
+}
+.node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+}
+
+/* Inline helper layouts */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr auto;
+  gap: 8px;
+  align-items: end;
+}
+@media (max-width: 640px) {
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mock banner (so it's clear these are non-functional previews) */
+.mock-banner {
+  background: var(--color-warning-container);
+  color: var(--color-on-warning-container);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mock-banner a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* Nav between mocks */
+.mock-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mock-nav a {
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  background: var(--color-surface-container-low);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  text-decoration: none;
+}
+.mock-nav a:hover {
+  background: var(--color-surface-container);
+}
+.mock-nav a.current {
+  background: var(--color-secondary);
+  color: var(--color-on-secondary);
+}
+
+/* Misc */
+.scrollbox {
+  max-height: 460px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-bubble {
+  border-radius: 16px;
+  padding: 12px 16px;
+  max-width: 80%;
+}
+.chat-bubble.bot {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  background: #eef8f3;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
