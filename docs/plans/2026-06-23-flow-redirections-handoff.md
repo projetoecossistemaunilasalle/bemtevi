@@ -34,56 +34,70 @@ Test count after Task 7: **220 tests pass** across 20 files. `pnpm run typecheck
 ## What was implemented (Tasks 1–7)
 
 ### Task 1 — Deferred safety domain types ✅
+
 **Commit:** `38834f5`
 
 Files:
+
 - `src/domain/flow-engine/types.ts` — added `DeferredSafetyFlowEffect`, `DeferredNavigationState`, the new variant in `FlowEffect`, and `deferredNavigation?` on `FlowRuntimeState`.
 - `src/domain/flow-engine/advanceFlow.ts` — added a `deferred_safety` branch in `applyOptionEffects` (records flag + routing target, **does not** short-circuit) and updated `advanceToNode` so reaching a `result` node with `deferredNavigation` appends the deferred message and sets `pendingNavigation`.
 - `src/domain/flow-engine/__tests__/flow-engine.test.ts` — added the spec test verbatim.
 - **`src/domain/flow-engine/validateFlow.ts`** — also modified (see deviation 1.1 below).
 
 ### Task 2 — Validate deferred safety effects ✅
+
 **Commit:** `6d451f2`
 
 Files:
+
 - `src/domain/flow-engine/validateFlow.ts` — branch placed after `safety_interrupt`, allow-list `['/apoio', '/contatos', '/educacao']`. Error message: `Flow ${flowLabel} option ${optionId} deferred safety effect must include flagKey, message, and supported destination.`
 - `src/domain/flow-engine/__tests__/flow-engine.test.ts` — added `validates deferred safety effects` test.
 
 ### Task 3 — Update SRQ-20 Q17 content ✅
+
 **Commit:** `a7be81f`
 
 Files:
+
 - `src/content/flows/srq20.json` — q17 `yes` option changed from `safety_interrupt` to `deferred_safety` with the spec message, `flagKey: "self_harm_ideation"`, `destination: "/apoio"`. `next: "q18"` preserved. No score effect.
 - `src/domain/flow-engine/__tests__/flow-engine.test.ts` — replaced old Q17 test with the new spec test (verbatim).
 - **`scripts/validate-flows.ts`** + **`scripts/__tests__/validate-flows.test.ts`** — also modified (see deviation 3.1 below).
 
 ### Task 4 — Preserve orientation UX ✅
+
 **Commit:** `baeeb22`
 
 Files:
+
 - `src/features/orientation/__tests__/OrientationScreen.test.tsx` — added test that drives SRQ-20 q1-q20 and asserts (a) `mockNavigate('/apoio')` is NOT called after Q17 yes, (b) IS called after final result. Added `vi.hoisted` + `vi.mock('react-router-dom')` for the navigate mock.
 - `src/features/orientation/OrientationScreen.tsx` — **unchanged** (the `!isRevealing` guard was already in place at line 120).
 
 ### Task 5 — Flow redirection derivation utility ✅
+
 **Commit:** `9f4397e` (amended)
 
 Files:
+
 - `src/dev-dashboard/flows/flowRedirections.ts` — exports `FlowRedirectionKind`, `FlowRedirectionRow`, `getFlowRedirections(flow)`. Handles all 7 kinds (6 effect kinds + `score_branch` as a node).
 - `src/dev-dashboard/__tests__/flowRedirections.test.ts` — 3 tests covering the spec test plus `safety_interrupt`+`navigate` and `flow_start`+`end_flow`.
 
 ### Task 6 — Render Redirections tab in dashboard ✅
+
 **Commit:** `f323c53` (amended)
 
 Files:
+
 - `src/dev-dashboard/flows/FlowRedirectionsPanel.tsx` (new) — renders the rows from `getFlowRedirections`. Empty state when no rows.
 - `src/dev-dashboard/flows/FlowDashboard.tsx` — added `activeDetailTab` (`'editor' | 'preview' | 'map' | 'redirections'`) and `expandedNodeIds` state (lifted from `FlowEditor`). 4 tab buttons with `aria-pressed`. Clicking "Editar etapa" commits expansion and switches to the editor tab.
 - `src/dev-dashboard/flows/FlowEditor.tsx` — now receives `expandedNodeIds` + `onExpandedChange` from parent (controlled for expansion). No internal `expandedNodeIds` state. `useState` is the only React import needed.
 - `src/dev-dashboard/__tests__/dashboardRoute.test.tsx` — added mock `mock-flow-srq20` (title `"SRQ-20"`, with `q17` carrying a `deferred_safety` effect and `q18` as a result node). Added the spec test and a round-trip test.
 
 ### Task 7 — Large-flow navigation filters ✅
+
 **Commit:** `202bfaf`
 
 Files:
+
 - `src/dev-dashboard/flows/FlowEditor.tsx` — added `nodeSearch` and `activeNodeFilter` state, `nodeHasDeferredSafety` helper, `visibleNodes` derivation, and toolbar JSX (search input + 4 filter buttons + visible count). Render loop changed from `nodes.map` → `visibleNodes.map`. Node titles now show as `Etapa N — nodeId` (em-dash) so reviewers see the underlying id.
 - `src/dev-dashboard/__tests__/dashboardRoute.test.tsx` — added `mock-flow-srq20` with 17 placeholder intro choice nodes + q17 (deferred_safety) + q18 + final result, so q17 = Etapa 18 and q18 = Etapa 19. Added the spec test. Updated one existing assertion from `getAllByText('Etapa 3')` to `getAllByText(/Etapa 3/)` because the title format changed.
 
@@ -120,6 +134,7 @@ These are intentional and documented by reviewers. Do not "revert" them without 
 **Plan:** Spec test used `user.click(...)` and `startOrientationWithStarter('Quero responder o SRQ-20')`.
 
 **What happened:**
+
 - The existing 24 tests in `OrientationScreen.test.tsx` all use `fireEvent`, so the implementer matched that convention. Switching to `userEvent` would be inconsistent.
 - `'Quero responder o SRQ-20'` is an `enteringPhrases` entry, not an `INTRO_STARTERS` button. Using `startOrientationWithStarter('Quero responder o SRQ-20')` would have been broken. The implementer used the autocomplete pattern that the existing `'starts SRQ-20 through chatbot autocomplete from JSON flow content'` test uses.
 
@@ -168,10 +183,12 @@ These are intentional and documented by reviewers. Do not "revert" them without 
 ### Task 8 — Add deferred safety editing UI (Plan ref: `mocks/2026-06-22-flow-redirections-implementation-plan.md` lines 941–1036)
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowEditor.tsx`
 - Test: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
 **What to do (per plan):**
+
 1. Add helpers inside `FlowEditor`:
    - `getDeferredSafetyEffect(option)` — returns the deferred_safety effect on an option, or undefined.
    - `updateOptionEffects(node, optionId, updater)` — applies an updater fn to an option's effects array; clears the array if empty.
@@ -187,6 +204,7 @@ These are intentional and documented by reviewers. Do not "revert" them without 
    ```
 
 **Spec test (verbatim):**
+
 ```tsx
 it('shows deferred safety editor separately from score editor on SRQ-20 Q17', async () => {
   const user = userEvent.setup();
@@ -203,6 +221,7 @@ it('shows deferred safety editor separately from score editor on SRQ-20 Q17', as
 ```
 
 **Things to verify before implementing:**
+
 - `updateChoiceOption` — find its signature. The plan assumes it exists with shape `updateChoiceOption(node, optionId, { effects: ... })`. If the real signature differs, adjust.
 - The note text in the plan is hardcoded to "Q17 não soma pontos no SRQ-20." If you want to make this generic, leave it as a TODO comment. The plan's exact text is fine.
 - The test requires `getByDisplayValue('self_harm_ideation')` — make sure the flag key input has that exact initial value when editing SRQ-20 q17. The flow content (`srq20.json`) already has `flagKey: "self_harm_ideation"`, so the editor should populate the input from there.
@@ -213,10 +232,12 @@ it('shows deferred safety editor separately from score editor on SRQ-20 Q17', as
 ### Task 9 — Make FlowPreview use real engine behavior (Plan ref: lines 1041–1123)
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowPreview.tsx`
 - Test: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
 **What to do (per plan):**
+
 1. Import:
    ```ts
    import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
@@ -232,6 +253,7 @@ it('shows deferred safety editor separately from score editor on SRQ-20 Q17', as
 4. Render `state.transcript` and call `chooseOption(option.label)` from option buttons.
 
 **Spec test (verbatim):**
+
 ```tsx
 it('previews deferred safety after SRQ-20 final result', async () => {
   const user = userEvent.setup();
@@ -261,6 +283,7 @@ it('previews deferred safety after SRQ-20 final result', async () => {
 ```
 
 **Things to verify before implementing:**
+
 - **`mock-flow-srq20` from Task 7 does NOT match the real SRQ-20 structure.** The test mock has 17 placeholder intro nodes + q17 + q18 + done. Real `srq20.json` has `consent`, `instructions`, `q1`–`q20`, `srq20-score`, and result nodes. The test will fail if it relies on the mock to exercise the full flow.
   - **Decision needed:** Either (a) extend `mock-flow-srq20` to mirror real SRQ-20 structure (consent/instructions/q1–q20/score/results), or (b) use the real `flowRegistry.flows` in the test instead of the mock. Option (b) is cleaner but requires the test to look up SRQ-20 from the registry.
   - The spec test phrases like "Quero responder" → "Continuar" → "Não"×16 → "Sim" suggest it expects to drive the full real flow. Verify by reading the existing `srq20.json` enteringPhrases.
@@ -276,6 +299,7 @@ it('previews deferred safety after SRQ-20 final result', async () => {
 **Files:** Only files touched by earlier tasks if verification reveals issues.
 
 **Steps:**
+
 1. `pnpm run validate:flows` — must pass.
 2. `pnpm run test` — must pass.
 3. `pnpm run lint` — must pass.
@@ -285,19 +309,19 @@ it('previews deferred safety after SRQ-20 final result', async () => {
 
 ## Key file references
 
-| File | Purpose |
-|------|---------|
-| `src/domain/flow-engine/types.ts` | `DeferredSafetyFlowEffect`, `DeferredNavigationState`, `FlowEffect` union, `FlowRuntimeState` |
-| `src/domain/flow-engine/advanceFlow.ts` | `applyOptionEffects` (line ~148), `advanceToNode` (line ~201) |
-| `src/domain/flow-engine/validateFlow.ts` | `deferred_safety` validator branch (line ~165) |
-| `src/content/flows/srq20.json` | q17 has `deferred_safety` to `/apoio` |
-| `src/features/orientation/OrientationScreen.tsx` | `!isRevealing` guard at line 120 |
-| `src/dev-dashboard/flows/flowRedirections.ts` | `getFlowRedirections`, types |
-| `src/dev-dashboard/flows/FlowRedirectionsPanel.tsx` | tab component (note: NOT `FlowRedirections.tsx`) |
-| `src/dev-dashboard/flows/FlowDashboard.tsx` | `activeDetailTab`, `expandedNodeIds`, 4 tabs |
-| `src/dev-dashboard/flows/FlowEditor.tsx` | search/filter toolbar; receives `expandedNodeIds` from parent |
-| `src/dev-dashboard/flows/FlowPreview.tsx` | currently has simplified routing — Task 9 will refactor |
-| `scripts/validate-flows.ts` | content-level validator (includes q17 rule) |
+| File                                                | Purpose                                                                                       |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `src/domain/flow-engine/types.ts`                   | `DeferredSafetyFlowEffect`, `DeferredNavigationState`, `FlowEffect` union, `FlowRuntimeState` |
+| `src/domain/flow-engine/advanceFlow.ts`             | `applyOptionEffects` (line ~148), `advanceToNode` (line ~201)                                 |
+| `src/domain/flow-engine/validateFlow.ts`            | `deferred_safety` validator branch (line ~165)                                                |
+| `src/content/flows/srq20.json`                      | q17 has `deferred_safety` to `/apoio`                                                         |
+| `src/features/orientation/OrientationScreen.tsx`    | `!isRevealing` guard at line 120                                                              |
+| `src/dev-dashboard/flows/flowRedirections.ts`       | `getFlowRedirections`, types                                                                  |
+| `src/dev-dashboard/flows/FlowRedirectionsPanel.tsx` | tab component (note: NOT `FlowRedirections.tsx`)                                              |
+| `src/dev-dashboard/flows/FlowDashboard.tsx`         | `activeDetailTab`, `expandedNodeIds`, 4 tabs                                                  |
+| `src/dev-dashboard/flows/FlowEditor.tsx`            | search/filter toolbar; receives `expandedNodeIds` from parent                                 |
+| `src/dev-dashboard/flows/FlowPreview.tsx`           | currently has simplified routing — Task 9 will refactor                                       |
+| `scripts/validate-flows.ts`                         | content-level validator (includes q17 rule)                                                   |
 
 ## Test conventions to remember
 

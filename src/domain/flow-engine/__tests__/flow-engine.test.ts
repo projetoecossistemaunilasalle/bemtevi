@@ -728,8 +728,7 @@ describe('flow runtime', () => {
                 {
                   kind: 'deferred_safety',
                   flagKey: 'self_harm_ideation',
-                  message:
-                    'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
+                  message: 'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
                   destination: '/apoio',
                 },
               ],
@@ -755,8 +754,7 @@ describe('flow runtime', () => {
     expect(state.safetyFlags.self_harm_ideation).toBe(true);
     expect(state.deferredNavigation).toEqual({
       destination: '/apoio',
-      message:
-        'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
+      message: 'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
       reason: 'self_harm_ideation',
     });
 

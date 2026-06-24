@@ -38,6 +38,7 @@
 ### Task 1: Add Deferred Safety Domain Types
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/types.ts`
 - Modify: `src/domain/flow-engine/advanceFlow.ts`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
@@ -176,10 +177,7 @@ function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string
   return {
     ...nextState,
     pendingNavigation: nextState.deferredNavigation.destination,
-    transcript: [
-      ...nextState.transcript,
-      createMessage('bot', nextState.deferredNavigation.message, flow.id, node.id),
-    ],
+    transcript: [...nextState.transcript, createMessage('bot', nextState.deferredNavigation.message, flow.id, node.id)],
   };
 }
 ```
@@ -198,9 +196,11 @@ git commit -m "feat: add deferred safety routing to flow engine"
 ```
 
 ---
+
 ### Task 2: Validate Deferred Safety Effects
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/validateFlow.ts`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
@@ -286,6 +286,7 @@ git commit -m "test: validate deferred safety flow effects"
 ### Task 3: Update SRQ-20 Q17 Content
 
 **Files:**
+
 - Modify: `src/content/flows/srq20.json`
 - Test: `src/domain/flow-engine/__tests__/flow-engine.test.ts`
 
@@ -373,6 +374,7 @@ git commit -m "fix: defer SRQ-20 safety routing until final result"
 ### Task 4: Preserve Orientation UX Until Final Message Is Visible
 
 **Files:**
+
 - Modify: `src/features/orientation/OrientationScreen.tsx`
 - Test: `src/features/orientation/__tests__/OrientationScreen.test.tsx`
 
@@ -445,9 +447,11 @@ git commit -m "test: cover deferred SRQ-20 support navigation in orientation"
 ```
 
 ---
+
 ### Task 5: Add Flow Redirection Derivation Utility
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/flowRedirections.ts`
 - Test: `src/dev-dashboard/__tests__/flowRedirections.test.ts`
 
@@ -696,6 +700,7 @@ git commit -m "feat: derive flow redirection audit rows"
 ### Task 6: Render Redirections Tab in Dashboard
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/FlowRedirections.tsx`
 - Modify: `src/dev-dashboard/flows/FlowDashboard.tsx`
 - Modify: `src/dev-dashboard/flows/FlowEditor.tsx`
@@ -758,7 +763,9 @@ export function FlowRedirections({ flow, onEditNode }: { flow: GuidedFlow; onEdi
       {rows.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-outline-variant/70 p-6 text-center">
           <p className="font-label-lg text-on-surface">Este fluxo não tem redirecionamentos</p>
-          <p className="mt-1 font-body-md text-on-surface-variant">Todas as opções apenas avançam para a próxima etapa.</p>
+          <p className="mt-1 font-body-md text-on-surface-variant">
+            Todas as opções apenas avançam para a próxima etapa.
+          </p>
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -828,9 +835,11 @@ git commit -m "feat: add flow redirections dashboard tab"
 ```
 
 ---
+
 ### Task 7: Add Large-Flow Navigation to Flow Editor
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowEditor.tsx`
 - Test: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
@@ -867,7 +876,10 @@ const [nodeSearch, setNodeSearch] = useState('');
 const [activeNodeFilter, setActiveNodeFilter] = useState<'all' | 'result' | 'safety' | 'branch'>('all');
 
 function nodeHasDeferredSafety(node: FlowNode) {
-  return node.kind === 'choice' && node.options.some((option) => option.effects?.some((effect) => effect.kind === 'deferred_safety'));
+  return (
+    node.kind === 'choice' &&
+    node.options.some((option) => option.effects?.some((effect) => effect.kind === 'deferred_safety'))
+  );
 }
 
 const visibleNodes = nodes.filter((node) => {
@@ -908,7 +920,9 @@ Render toolbar before the `Etapas` list:
         type="button"
         onClick={() => setActiveNodeFilter(filter as typeof activeNodeFilter)}
         className={`rounded-full px-3 py-1 font-label-sm ${
-          activeNodeFilter === filter ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface text-on-surface'
+          activeNodeFilter === filter
+            ? 'bg-secondary-container text-on-secondary-container'
+            : 'bg-surface text-on-surface'
         }`}
       >
         {label}
@@ -941,6 +955,7 @@ git commit -m "feat: add large flow navigation filters"
 ### Task 8: Add Deferred Safety Editing UI
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowEditor.tsx`
 - Test: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
@@ -981,7 +996,9 @@ function getDeferredSafetyEffect(option: ChoiceFlowNode['options'][number]) {
 function updateOptionEffects(
   node: ChoiceFlowNode,
   optionId: string,
-  updater: (effects: NonNullable<ChoiceFlowNode['options'][number]['effects']>) => ChoiceFlowNode['options'][number]['effects'],
+  updater: (
+    effects: NonNullable<ChoiceFlowNode['options'][number]['effects']>,
+  ) => ChoiceFlowNode['options'][number]['effects'],
 ) {
   const option = node.options.find((item) => item.id === optionId);
   const nextEffects = updater(option?.effects ?? []);
@@ -1018,7 +1035,8 @@ For SRQ-20 Q17 specifically, render this note if the option has deferred safety 
 
 ```tsx
 <p className="font-body-sm text-on-surface-variant md:col-span-3">
-  Q17 não soma pontos no SRQ-20. Ela fica separada da pontuação para não esconder uma regra de segurança dentro do cálculo.
+  Q17 não soma pontos no SRQ-20. Ela fica separada da pontuação para não esconder uma regra de segurança dentro do
+  cálculo.
 </p>
 ```
 
@@ -1040,6 +1058,7 @@ git commit -m "feat: edit deferred safety routing in flow dashboard"
 ### Task 9: Make Flow Preview Use Real Engine Behavior
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowPreview.tsx`
 - Test: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
@@ -1126,6 +1145,7 @@ git commit -m "fix: preview flows through real engine"
 ### Task 10: Full Verification
 
 **Files:**
+
 - Modify only files touched by earlier tasks if verification reveals issues.
 
 - [ ] **Step 1: Run full flow validation**

@@ -14,12 +14,12 @@ e têm uma navegação no topo para pular entre os quatro.
 
 ## Os quatro mocks
 
-| # | Arquivo | O que mostra |
-|---|---------|--------------|
-| 1 | `option-effects.html` | Editor de opção cobrindo os tipos de ação/redirecionamento que o motor já suporta (`next`, `flow_start`, `navigate`, `end_flow`, `safety_interrupt`) + o novo **encaminhamento de segurança ao final** para o SRQ-20 + seção de pontuação. Hoje o editor só faz `next` e `flow_start`. |
-| 2 | `score-declaration.html` | O painel **opt-in de pontuação** no topo do editor. Mostra os dois estados: desativado (work-stress, nada de score) e ativado (SRQ-20, com identificador / nome de exibição / pontuação máxima). |
-| 3 | `large-flow-nav.html` | Resposta ao "SRQ-20 é difícil de editar": contagem, **busca**, **filtros por tipo/redirecionamento**, **recolher/expandir tudo** e um **mini-outline lateral clicável** com badges e prévias curtas de texto. Renderiza as perguntas, a ramificação de pontuação e os resultados finais do SRQ-20. |
-| 4 | `redirections-view.html` | Nova aba **"Redirecionamentos"** listando, num só lugar, todos os redirecionamentos e efeitos auditáveis do fluxo (encaminhamento de segurança ao final, ramificação por pontuação, pontuações, navegações, inícios de fluxo, encerramentos) — cada item clicável leva à etapa de origem. Mostra também o estado vazio (work-stress). |
+| #   | Arquivo                  | O que mostra                                                                                                                                                                                                                                                                                                                          |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `option-effects.html`    | Editor de opção cobrindo os tipos de ação/redirecionamento que o motor já suporta (`next`, `flow_start`, `navigate`, `end_flow`, `safety_interrupt`) + o novo **encaminhamento de segurança ao final** para o SRQ-20 + seção de pontuação. Hoje o editor só faz `next` e `flow_start`.                                                |
+| 2   | `score-declaration.html` | O painel **opt-in de pontuação** no topo do editor. Mostra os dois estados: desativado (work-stress, nada de score) e ativado (SRQ-20, com identificador / nome de exibição / pontuação máxima).                                                                                                                                      |
+| 3   | `large-flow-nav.html`    | Resposta ao "SRQ-20 é difícil de editar": contagem, **busca**, **filtros por tipo/redirecionamento**, **recolher/expandir tudo** e um **mini-outline lateral clicável** com badges e prévias curtas de texto. Renderiza as perguntas, a ramificação de pontuação e os resultados finais do SRQ-20.                                    |
+| 4   | `redirections-view.html` | Nova aba **"Redirecionamentos"** listando, num só lugar, todos os redirecionamentos e efeitos auditáveis do fluxo (encaminhamento de segurança ao final, ramificação por pontuação, pontuações, navegações, inícios de fluxo, encerramentos) — cada item clicável leva à etapa de origem. Mostra também o estado vazio (work-stress). |
 
 ## Contexto do plano
 
