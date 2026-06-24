@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { ChoiceFlowNode, DeferredSafetyFlowEffect, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
@@ -37,7 +38,35 @@ export function FlowEditor({
     }
   }, [selectedNodeId]);
 
-  const nodes = Object.values(flow.nodes);
+  function getOrderedNodes(): FlowNode[] {
+    if (flow.nodeOrder) {
+      const nodeMap = flow.nodes;
+      const ordered = flow.nodeOrder
+        .filter((id) => nodeMap[id])
+        .map((id) => nodeMap[id]);
+      Object.values(nodeMap).forEach((node) => {
+        if (!flow.nodeOrder?.includes(node.id)) {
+          ordered.push(node);
+        }
+      });
+      return ordered;
+    }
+    return Object.values(flow.nodes);
+  }
+
+  function handleMoveNode(nodeId: string, direction: 'up' | 'down') {
+    const currentOrder = getOrderedNodes().map((n) => n.id);
+    const currentIndex = currentOrder.indexOf(nodeId);
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+
+    const newOrder = [...currentOrder];
+    [newOrder[currentIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[currentIndex]];
+    onChange({ nodeOrder: newOrder });
+  }
+
+  const nodes = getOrderedNodes();
   const existingScoreKeys = useMemo(() => {
     const keys = new Set<string>();
     Object.values(flow.nodes).forEach((node) => {
@@ -348,6 +377,8 @@ export function FlowEditor({
             visibleNodes.map((node, index) => {
               const globalIndex = nodes.findIndex((n) => n.id === node.id);
               const stepNum = globalIndex !== -1 ? globalIndex + 1 : index + 1;
+              const isFirst = globalIndex === 0;
+              const isLast = globalIndex === nodes.length - 1;
               const stepTitle = `Etapa ${stepNum} — ${node.text ? getNodePreview(node.text) : node.id}`;
               const stepLabel = `Etapa ${stepNum}`.toLowerCase();
               const panelId = `flow-node-${flow.id}-${node.id}`;
@@ -389,6 +420,32 @@ export function FlowEditor({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={isFirst}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveNode(node.id, 'up');
+                          }}
+                          aria-label={`Mover ${stepTitle} para cima`}
+                          className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isLast}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveNode(node.id, 'down');
+                          }}
+                          aria-label={`Mover ${stepTitle} para baixo`}
+                          className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                      </div>
                       {isSelected && (
                         <>
                           <Button
