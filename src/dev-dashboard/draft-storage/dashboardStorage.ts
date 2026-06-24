@@ -77,11 +77,7 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
       drafts.educationMaterialPatches,
       drafts.addedEducationMaterials,
     ),
-    educationGroups: mergeRecords(
-      shipped.educationGroups,
-      drafts.groupPatches,
-      drafts.addedGroups,
-    ),
+    educationGroups: mergeRecords(shipped.educationGroups, drafts.groupPatches, drafts.addedGroups),
   };
 }
 

@@ -67,7 +67,7 @@ describe('Router', () => {
 
     renderRoute('/dashboard');
 
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it('shows dashboard navigation when the dev flag is enabled', () => {

@@ -4,10 +4,7 @@ import { supportContacts } from '../support/contacts';
 import { canoasServices } from '../services/canoas-services';
 import { resourcesContent } from '../resources/resources';
 import { flowRegistry } from '../flows/registry';
-import {
-  educationResourceGroups,
-  DEFAULT_EDUCATION_GROUP_ID,
-} from '../resources/groups';
+import { educationResourceGroups, DEFAULT_EDUCATION_GROUP_ID } from '../resources/groups';
 import type { EducationResourceGroup } from '../resources/groups';
 
 describe('Home copy', () => {

@@ -62,9 +62,10 @@ describe('validateDashboardEducation', () => {
   });
 
   it('rejects unknown featured image catalog IDs', () => {
-    const result = validateDashboardEducation([
-      { ...baseResource, featuredImage: { kind: 'catalog', imageId: 'unknown-image' } },
-    ], []);
+    const result = validateDashboardEducation(
+      [{ ...baseResource, featuredImage: { kind: 'catalog', imageId: 'unknown-image' } }],
+      [],
+    );
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -75,9 +76,10 @@ describe('validateDashboardEducation', () => {
   });
 
   it('rejects invalid external featured image URLs', () => {
-    const result = validateDashboardEducation([
-      { ...baseResource, featuredImage: { kind: 'external', imageUrl: 'not-a-url' } },
-    ], []);
+    const result = validateDashboardEducation(
+      [{ ...baseResource, featuredImage: { kind: 'external', imageUrl: 'not-a-url' } }],
+      [],
+    );
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -88,9 +90,10 @@ describe('validateDashboardEducation', () => {
   });
 
   it('rejects empty paragraph body blocks', () => {
-    const result = validateDashboardEducation([
-      { ...baseResource, body: [{ id: 'overview', kind: 'paragraph', text: '   ' }] },
-    ], []);
+    const result = validateDashboardEducation(
+      [{ ...baseResource, body: [{ id: 'overview', kind: 'paragraph', text: '   ' }] }],
+      [],
+    );
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -101,9 +104,10 @@ describe('validateDashboardEducation', () => {
   });
 
   it('rejects body image blocks with invalid URLs', () => {
-    const result = validateDashboardEducation([
-      { ...baseResource, body: [{ id: 'image-one', kind: 'image', imageUrl: 'image.png' }] },
-    ], []);
+    const result = validateDashboardEducation(
+      [{ ...baseResource, body: [{ id: 'image-one', kind: 'image', imageUrl: 'image.png' }] }],
+      [],
+    );
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -114,9 +118,10 @@ describe('validateDashboardEducation', () => {
   });
 
   it('rejects video blocks with invalid URLs', () => {
-    const result = validateDashboardEducation([
-      { ...baseResource, body: [{ id: 'video-one', kind: 'video', title: 'Vídeo', url: 'video' }] },
-    ], []);
+    const result = validateDashboardEducation(
+      [{ ...baseResource, body: [{ id: 'video-one', kind: 'video', title: 'Vídeo', url: 'video' }] }],
+      [],
+    );
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -134,15 +139,11 @@ describe('validateDashboardEducation', () => {
       ];
       const result = validateDashboardEducation([baseResource], groups);
 
-      expect(result.errors).toContainEqual(
-        expect.objectContaining({ id: 'duplicate-group-id:my-group' }),
-      );
+      expect(result.errors).toContainEqual(expect.objectContaining({ id: 'duplicate-group-id:my-group' }));
     });
 
     it('detects reserved group id "geral"', () => {
-      const groups: EducationResourceGroup[] = [
-        { id: DEFAULT_EDUCATION_GROUP_ID, title: 'Geral', order: 1 },
-      ];
+      const groups: EducationResourceGroup[] = [{ id: DEFAULT_EDUCATION_GROUP_ID, title: 'Geral', order: 1 }];
       const result = validateDashboardEducation([baseResource], groups);
 
       expect(result.errors).toContainEqual(
@@ -151,14 +152,10 @@ describe('validateDashboardEducation', () => {
     });
 
     it('warns when a group has an empty title', () => {
-      const groups: EducationResourceGroup[] = [
-        { id: 'empty-title-group', title: '   ', order: 1 },
-      ];
+      const groups: EducationResourceGroup[] = [{ id: 'empty-title-group', title: '   ', order: 1 }];
       const result = validateDashboardEducation([baseResource], groups);
 
-      expect(result.warnings).toContainEqual(
-        expect.objectContaining({ id: 'empty-group-title:empty-title-group' }),
-      );
+      expect(result.warnings).toContainEqual(expect.objectContaining({ id: 'empty-group-title:empty-title-group' }));
     });
 
     it('warns when a resource references a non-existent group', () => {
@@ -167,16 +164,11 @@ describe('validateDashboardEducation', () => {
         shippedGroups,
       );
 
-      expect(result.warnings).toContainEqual(
-        expect.objectContaining({ id: 'dangling-group:bad-ref' }),
-      );
+      expect(result.warnings).toContainEqual(expect.objectContaining({ id: 'dangling-group:bad-ref' }));
     });
 
     it('does not warn when group is undefined', () => {
-      const result = validateDashboardEducation(
-        [{ ...baseResource, group: undefined }],
-        shippedGroups,
-      );
+      const result = validateDashboardEducation([{ ...baseResource, group: undefined }], shippedGroups);
 
       expect(result.warnings).not.toContainEqual(
         expect.objectContaining({ id: expect.stringMatching(/^dangling-group:/) }),
@@ -195,10 +187,7 @@ describe('validateDashboardEducation', () => {
     });
 
     it('does not warn when group references a known shipped group', () => {
-      const result = validateDashboardEducation(
-        [{ ...baseResource, group: 'auto-cuidado' }],
-        shippedGroups,
-      );
+      const result = validateDashboardEducation([{ ...baseResource, group: 'auto-cuidado' }], shippedGroups);
 
       expect(result.warnings).not.toContainEqual(
         expect.objectContaining({ id: expect.stringMatching(/^dangling-group:/) }),

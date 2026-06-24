@@ -428,7 +428,10 @@ export function EducationDashboard({
                 {groups.map((group, groupIndex) => {
                   const isShipped = groupIndex < shippedGroups.length;
                   return (
-                    <div key={`${group.id}-${groupIndex}`} className="grid gap-2 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto_auto]">
+                    <div
+                      key={`${group.id}-${groupIndex}`}
+                      className="grid gap-2 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto_auto]"
+                    >
                       <div className="flex flex-col gap-1">
                         <label className="flex flex-col gap-1">
                           <span className="font-label-sm text-on-surface-variant">Título</span>
@@ -436,9 +439,7 @@ export function EducationDashboard({
                             aria-label={`Título do grupo ${group.title}`}
                             className="min-h-10 rounded-lg border border-outline-variant bg-surface px-3"
                             value={group.title}
-                            onChange={(event) =>
-                              onGroupChange(groupIndex, group.id, { title: event.target.value })
-                            }
+                            onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
                           />
                         </label>
                         <label className="flex flex-col gap-1">
@@ -466,7 +467,9 @@ export function EducationDashboard({
                           Remover
                         </button>
                       )}
-                      {isShipped && <div className="self-end px-3 py-2 font-label-sm text-on-surface-variant">Enviado</div>}
+                      {isShipped && (
+                        <div className="self-end px-3 py-2 font-label-sm text-on-surface-variant">Enviado</div>
+                      )}
                     </div>
                   );
                 })}
