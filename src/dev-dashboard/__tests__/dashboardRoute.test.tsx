@@ -56,64 +56,115 @@ vi.mock('../content/shippedContent', () => ({
         },
       },
       {
-        id: 'mock-flow-srq20',
+        id: 'srq20',
         version: '1.0.0',
         locale: 'pt-BR',
         title: 'SRQ-20',
         type: 'guided_conversation',
         status: 'draft',
         entry: {
-          nodeId: 'intro1',
+          nodeId: 'consent',
           enteringPhrases: ['Quero responder o SRQ-20'],
-          transitionMessage: 'Este é o SRQ-20.',
+          transitionMessage:
+            'Este é o SRQ-20, um questionário de rastreio. Ele ajuda a identificar sinais de sofrimento, mas não faz diagnóstico.',
         },
         nodes: {
+          consent: {
+            id: 'consent',
+            kind: 'choice',
+            text: 'Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?',
+            options: [
+              { id: 'accept', label: 'Quero responder', next: 'instructions' },
+              { id: 'decline', label: 'Agora não', next: 'declined-result' },
+            ],
+          },
+          instructions: {
+            id: 'instructions',
+            kind: 'choice',
+            text: 'Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias. Se você acha que a questão se aplica a você e teve o problema descrito nos últimos 30 dias, responda SIM. Se a questão não se aplica a você ou você não teve o problema nos últimos 30 dias, responda NÃO. Observação: o diagnóstico definitivo só pode ser fornecido por um profissional.',
+            options: [{ id: 'continue', label: 'Continuar', next: 'q1' }],
+          },
           ...Object.fromEntries(
-            Array.from({ length: 17 }, (_, index) => {
-              const nodeId = `intro${index + 1}`;
-              const nextId = index === 16 ? 'q17' : `intro${index + 2}`;
+            Array.from({ length: 20 }, (_, index) => {
+              const nodeId = `q${index + 1}`;
+              const nextId = index === 19 ? 'srq20-score' : `q${index + 2}`;
+              const isQ17 = nodeId === 'q17';
+              const texts = {
+                q1: 'Você tem dores de cabeça frequentes?',
+                q2: 'Tem falta de apetite?',
+                q3: 'Dorme mal?',
+                q4: 'Assusta-se com facilidade?',
+                q5: 'Tem tremores nas mãos?',
+                q6: 'Sente-se nervoso(a), tenso(a) ou preocupado(a)?',
+                q7: 'Tem má digestão?',
+                q8: 'Tem dificuldades de pensar com clareza?',
+                q9: 'Tem se sentido triste ultimamente?',
+                q10: 'Tem chorado mais do que de costume?',
+                q11: 'Encontra dificuldades para realizar com satisfação suas atividades diárias?',
+                q12: 'Tem dificuldades para tomar decisões?',
+                q13: 'Tem dificuldades no serviço? Seu trabalho é penoso, causa-lhe sofrimento?',
+                q14: 'É incapaz de desempenhar um papel útil em sua vida?',
+                q15: 'Tem perdido o interesse pelas coisas?',
+                q16: 'Você se sente uma pessoa inútil, sem prestímo?',
+                q17: 'Tem tido ideia de acabar com a vida?',
+                q18: 'Sente-se cansado(a) o tempo todo?',
+                q19: 'Você se cansa com facilidade?',
+                q20: 'Tem sensações desagradáveis no estômago?',
+              };
               return [
                 nodeId,
                 {
                   id: nodeId,
                   kind: 'choice',
-                  text: `Etapa introdutória ${index + 1}`,
-                  options: [{ id: 'next', label: 'Continuar', next: nextId }],
+                  text: texts[nodeId] ?? `Questão ${index + 1}`,
+                  options: [
+                    {
+                      id: 'yes',
+                      label: 'Sim',
+                      next: nextId,
+                      effects: isQ17
+                        ? [
+                            {
+                              kind: 'deferred_safety',
+                              flagKey: 'self_harm_ideation',
+                              message:
+                                'Obrigado por responder com sinceridade. Como você marcou um sinal que merece cuidado imediato, vamos abrir a página de apoio agora. Você não está sozinho(a).',
+                              destination: '/apoio',
+                            },
+                          ]
+                        : [{ kind: 'score', scoreKey: 'srq20', value: 1 }],
+                    },
+                    { id: 'no', label: 'Não', next: nextId },
+                  ],
                 },
               ];
             }),
           ),
-          q17: {
-            id: 'q17',
-            kind: 'choice',
-            text: 'Tem tido ideia de acabar com a vida?',
-            options: [
-              {
-                id: 'yes',
-                label: 'Sim',
-                next: 'q18',
-                effects: [
-                  {
-                    kind: 'deferred_safety',
-                    flagKey: 'self_harm_ideation',
-                    message: 'Apoio.',
-                    destination: '/apoio',
-                  },
-                ],
-              },
-              { id: 'no', label: 'Não', next: 'q18' },
+          'srq20-score': {
+            id: 'srq20-score',
+            kind: 'score_branch',
+            text: 'Vou organizar suas respostas de forma cuidadosa.',
+            scoreKey: 'srq20',
+            branches: [
+              { id: 'low-distress', min: 0, max: 6, next: 'low-distress-result' },
+              { id: 'possible-distress', min: 7, max: 20, next: 'possible-distress-result' },
             ],
           },
-          q18: {
-            id: 'q18',
-            kind: 'choice',
-            text: 'Sente-se cansado(a) o tempo todo?',
-            options: [
-              { id: 'yes', label: 'Sim', next: 'done' },
-              { id: 'no', label: 'Não', next: 'done' },
-            ],
+          'declined-result': {
+            id: 'declined-result',
+            kind: 'result',
+            text: 'Tudo bem. Você pode responder o SRQ-20 em outro momento ou seguir com uma orientação mais breve.',
           },
-          done: { id: 'done', kind: 'result', text: 'Finalizado.' },
+          'low-distress-result': {
+            id: 'low-distress-result',
+            kind: 'result',
+            text: 'Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia.',
+          },
+          'possible-distress-result': {
+            id: 'possible-distress-result',
+            kind: 'result',
+            text: 'Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento.',
+          },
         },
       },
     ],
@@ -241,7 +292,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 1 — start' }));
     fireEvent.change(screen.getByLabelText('Texto da etapa 1'), {
       target: { value: 'Texto editado da etapa inicial' },
     });
@@ -264,7 +315,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2 — done' }));
     fireEvent.change(screen.getByLabelText('Tipo da etapa 2'), {
       target: { value: 'choice' },
     });
@@ -276,7 +327,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Opção editada na segunda etapa')).toBeInTheDocument();
 
     const finalStepButton = screen.getByRole('button', { name: 'Adicionar etapa' });
-    const etapaToggles = screen.getAllByRole('button', { name: /^Abrir etapa \d+$/ });
+    const etapaToggles = screen.getAllByRole('button', { name: /^Abrir etapa \d+ — \w+$/ });
     const lastEtapaToggle = etapaToggles[etapaToggles.length - 1];
 
     expect(lastEtapaToggle.compareDocumentPosition(finalStepButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
@@ -292,17 +343,17 @@ describe('DashboardRoute', () => {
     expect(screen.queryByLabelText('Texto da etapa 1')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Texto da etapa 2')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Texto da etapa 3')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Abrir etapa 1' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: 'Abrir etapa 2' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: 'Abrir etapa 3' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Abrir etapa 1 — start' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Abrir etapa 2 — done' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Abrir etapa 3 — q18' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Pergunta com opções')).toBeInTheDocument();
     expect(screen.getByText('2 opções')).toBeInTheDocument();
     expect(screen.getAllByText('Resultado final').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2 — done' }));
 
     expect(screen.getByLabelText('Texto da etapa 2')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Fechar etapa 2' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Fechar etapa 2 — done' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('renders a visual flow map with readable step names and connections', () => {
@@ -350,8 +401,21 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Editor' }));
     await user.click(screen.getByRole('button', { name: /Apoio ao final/i }));
 
-    expect(screen.getByText(/Etapa 18 — q17/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Etapa 19 — q18/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Etapa 19 — q17/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Etapa 20 — q18/i)).not.toBeInTheDocument();
+  });
+
+  it('shows deferred safety editor separately from score editor on SRQ-20 Q17', async () => {
+    const user = userEvent.setup();
+    render(<DashboardRoute />);
+
+    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.click(screen.getByRole('button', { name: 'Editor' }));
+    await user.click(screen.getByRole('button', { name: /Etapa 19 — q17/i }));
+
+    expect(screen.getAllByText('Encaminhamento de segurança').length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue('self_harm_ideation')).toBeInTheDocument();
+    expect(screen.getByText(/Q17 não soma pontos/i)).toBeInTheDocument();
   });
 
   it('clears the mock chat so a different path can be tested', () => {
@@ -369,6 +433,32 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Limpar conversa' }));
 
     expect(screen.queryByText('Este é outro fluxo.')).not.toBeInTheDocument();
+  });
+
+  it('previews deferred safety after SRQ-20 final result', async () => {
+    const user = userEvent.setup();
+    render(<DashboardRoute />);
+
+    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.click(screen.getByRole('button', { name: 'Testar conversa' }));
+
+    await user.click(screen.getByRole('button', { name: 'Quero responder' }));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    for (let question = 1; question <= 16; question++) {
+      await user.click(screen.getByRole('button', { name: 'Não' }));
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Sim' }));
+
+    expect(screen.getByText(/Sente-se cansado/i)).toBeInTheDocument();
+    expect(screen.queryByText(/vamos abrir a página de apoio agora/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Não' }));
+    await user.click(screen.getByRole('button', { name: 'Não' }));
+    await user.click(screen.getByRole('button', { name: 'Não' }));
+
+    expect(screen.getByText(/vamos abrir a página de apoio agora/i)).toBeInTheDocument();
   });
 
   it('updates a local education title draft', () => {

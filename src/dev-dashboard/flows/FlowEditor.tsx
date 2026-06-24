@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { ChoiceFlowNode, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import type { ChoiceFlowNode, DeferredSafetyFlowEffect, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
@@ -150,6 +150,22 @@ export function FlowEditor({
     });
   }
 
+  function getDeferredSafetyEffect(option: ChoiceFlowNode['options'][number]) {
+    return option.effects?.find((effect): effect is DeferredSafetyFlowEffect => effect.kind === 'deferred_safety');
+  }
+
+  function updateOptionEffects(
+    node: ChoiceFlowNode,
+    optionId: string,
+    updater: (
+      effects: NonNullable<ChoiceFlowNode['options'][number]['effects']>,
+    ) => ChoiceFlowNode['options'][number]['effects'],
+  ) {
+    const option = node.options.find((item) => item.id === optionId);
+    const nextEffects = updater(option?.effects ?? []);
+    updateChoiceOption(node, optionId, { effects: nextEffects?.length ? nextEffects : undefined });
+  }
+
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
       <h2 className="font-headline-sm text-on-surface">Dados do fluxo</h2>
@@ -289,7 +305,7 @@ export function FlowEditor({
                     type="button"
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
-                    aria-label={`${isExpanded ? 'Fechar' : 'Abrir'} ${stepLabel}`}
+                    aria-label={`${isExpanded ? 'Fechar' : 'Abrir'} ${stepLabel} — ${node.id}`}
                     onClick={() => toggleNode(node.id)}
                     className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                   >
@@ -447,6 +463,111 @@ export function FlowEditor({
                                 </select>
                               </label>
                             )}
+                            <div className="md:col-span-3 mt-2 border-t border-outline-variant/40 pt-2">
+                              <p className="font-label-md text-on-surface">Encaminhamento de segurança</p>
+                              <p className="font-body-sm text-on-surface-variant">
+                                Marca um sinal sensível e encaminha ao apoio depois do resultado final.
+                              </p>
+                              {getDeferredSafetyEffect(option) ? (
+                                <div className="mt-2 grid gap-2 md:grid-cols-3">
+                                  <label className="flex flex-col gap-1">
+                                    <span className="font-label-sm text-on-surface">Flag key</span>
+                                    <input
+                                      aria-label={`Flag key da opção ${optionIndex + 1} da ${stepLabel}`}
+                                      className={inputClassSm}
+                                      value={getDeferredSafetyEffect(option)?.flagKey ?? ''}
+                                      onChange={(event) =>
+                                        updateOptionEffects(node, option.id, (effects) =>
+                                          effects.map((effect) =>
+                                            effect.kind === 'deferred_safety'
+                                              ? { ...effect, flagKey: event.target.value }
+                                              : effect,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                  <label className="flex flex-col gap-1">
+                                    <span className="font-label-sm text-on-surface">Destino</span>
+                                    <select
+                                      aria-label={`Destino de segurança da opção ${optionIndex + 1} da ${stepLabel}`}
+                                      className={inputClassSm}
+                                      value={getDeferredSafetyEffect(option)?.destination ?? '/apoio'}
+                                      onChange={(event) =>
+                                        updateOptionEffects(node, option.id, (effects) =>
+                                          effects.map((effect) =>
+                                            effect.kind === 'deferred_safety'
+                                              ? {
+                                                  ...effect,
+                                                  destination: event.target
+                                                    .value as DeferredSafetyFlowEffect['destination'],
+                                                }
+                                              : effect,
+                                          ),
+                                        )
+                                      }
+                                    >
+                                      <option value="/apoio">/apoio — Apoio imediato</option>
+                                      <option value="/contatos">/contatos — Contatos de apoio</option>
+                                      <option value="/educacao">/educacao — Materiais educativos</option>
+                                    </select>
+                                  </label>
+                                  <label className="flex flex-col gap-1">
+                                    <span className="font-label-sm text-on-surface">Mensagem</span>
+                                    <textarea
+                                      aria-label={`Mensagem de segurança da opção ${optionIndex + 1} da ${stepLabel}`}
+                                      className={textareaClass}
+                                      value={getDeferredSafetyEffect(option)?.message ?? ''}
+                                      onChange={(event) =>
+                                        updateOptionEffects(node, option.id, (effects) =>
+                                          effects.map((effect) =>
+                                            effect.kind === 'deferred_safety'
+                                              ? { ...effect, message: event.target.value }
+                                              : effect,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                  <div className="md:col-span-3">
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      onClick={() =>
+                                        updateOptionEffects(node, option.id, (effects) =>
+                                          effects.filter((effect) => effect.kind !== 'deferred_safety'),
+                                        )
+                                      }
+                                    >
+                                      Remover encaminhamento
+                                    </Button>
+                                  </div>
+                                  {flow.id === 'srq20' &&
+                                    node.id === 'q17' &&
+                                    !option.effects?.some((effect) => effect.kind === 'score') && (
+                                      <p className="md:col-span-3 font-body-sm text-on-surface-variant">
+                                        Q17 não soma pontos no SRQ-20. Ela fica separada da pontuação para não esconder
+                                        uma regra de segurança dentro do cálculo.
+                                      </p>
+                                    )}
+                                </div>
+                              ) : (
+                                <div className="mt-2">
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() =>
+                                      updateOptionEffects(node, option.id, (effects) => [
+                                        ...effects,
+                                        { kind: 'deferred_safety', flagKey: '', message: '', destination: '/apoio' },
+                                      ])
+                                    }
+                                  >
+                                    Ativar
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

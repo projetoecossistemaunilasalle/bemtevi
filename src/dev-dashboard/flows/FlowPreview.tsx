@@ -1,57 +1,22 @@
 import { useState } from 'react';
 import { RotateCcw, X } from 'lucide-react';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
+import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
+import { createInitialFlowState } from '../../domain/flow-engine/loadFlows';
+import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
 import { Button } from '../../design-system/components/Button';
 
-interface PreviewMessage {
-  id: string;
-  author: 'bot' | 'user';
-  text: string;
-}
-
-interface PreviewOption {
-  id: string;
-  label: string;
-  next?: string;
-  effects?: Array<{ kind: string; flowId?: string }>;
-}
-
 export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFlow[] }) {
-  const [activeFlowId, setActiveFlowId] = useState(flow.id);
-  const [activeNodeId, setActiveNodeId] = useState(flow.entry.nodeId);
-  const [messages, setMessages] = useState<PreviewMessage[]>(() => createInitialMessages(flow));
+  const [state, setState] = useState(() => createInitialFlowState(flow, flows));
 
-  const activeFlow = flows.find((item) => item.id === activeFlowId) ?? flow;
-  const activeNode = activeFlow.nodes[activeNodeId];
+  const options = resolveOptions(state, flows).filter((option) => option.kind === 'node_option');
 
-  function chooseOption(option: PreviewOption) {
-    const flowStart = option.effects?.find((effect) => effect.kind === 'flow_start');
-    const nextFlow = flowStart ? flows.find((item) => item.id === flowStart.flowId) : null;
-    const nextNodeId = nextFlow?.entry.nodeId ?? option.next;
-    const nextFlowForNode = nextFlow ?? activeFlow;
-    const nextNode = nextNodeId ? nextFlowForNode.nodes[nextNodeId] : null;
-
-    setMessages((current) => [
-      ...current,
-      { id: `user-${current.length}`, author: 'user', text: option.label },
-      ...(nextFlow
-        ? [{ id: `transition-${current.length}`, author: 'bot' as const, text: nextFlow.entry.transitionMessage }]
-        : []),
-      {
-        id: `bot-${current.length}`,
-        author: 'bot',
-        text: nextNode?.text ?? 'Este caminho ainda precisa ser corrigido.',
-      },
-    ]);
-
-    if (nextFlow) setActiveFlowId(nextFlow.id);
-    if (nextNodeId) setActiveNodeId(nextNodeId);
+  function chooseOption(label: string) {
+    setState((current) => advanceFlow(current, flows, label));
   }
 
   function clearChat() {
-    setMessages(createInitialMessages(flow));
-    setActiveFlowId(flow.id);
-    setActiveNodeId(flow.entry.nodeId);
+    setState(() => createInitialFlowState(flow, flows));
   }
 
   return (
@@ -69,11 +34,11 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
         </Button>
       </div>
       <div className="flex max-h-[420px] flex-col gap-3 overflow-auto">
-        {messages.map((message) => (
+        {state.transcript.map((message) => (
           <div
             key={message.id}
             className={`rounded-2xl px-4 py-3 ${
-              message.author === 'bot'
+              message.sender === 'bot'
                 ? 'self-start rounded-bl-sm bg-[#EEF8F3]'
                 : 'self-end rounded-br-sm bg-primary text-on-primary'
             }`}
@@ -81,7 +46,7 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
             <p className="font-body-md">{message.text}</p>
           </div>
         ))}
-        {messages.length > 2 && (
+        {state.transcript.length > 2 && (
           <div className="flex justify-center py-2">
             <Button variant="ghost" size="sm" onClick={clearChat}>
               <X aria-hidden="true" className="h-4 w-4" />
@@ -90,10 +55,10 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
           </div>
         )}
       </div>
-      {activeNode?.kind === 'choice' && (
+      {options.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {activeNode.options.map((option) => (
-            <Button key={option.id} variant="secondary" size="sm" onClick={() => chooseOption(option)}>
+          {options.map((option) => (
+            <Button key={option.id} variant="secondary" size="sm" onClick={() => chooseOption(option.label)}>
               {option.label}
             </Button>
           ))}
@@ -101,17 +66,4 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
       )}
     </section>
   );
-}
-
-function createInitialMessages(flow: GuidedFlow): PreviewMessage[] {
-  const firstNode = flow.nodes[flow.entry.nodeId];
-
-  return [
-    { id: 'transition', author: 'bot', text: flow.entry.transitionMessage },
-    {
-      id: 'first-node',
-      author: 'bot',
-      text: firstNode?.text ?? 'A etapa inicial deste fluxo ainda precisa ser corrigida.',
-    },
-  ];
 }
