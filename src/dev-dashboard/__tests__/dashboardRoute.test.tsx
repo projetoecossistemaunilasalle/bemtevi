@@ -259,13 +259,19 @@ describe('DashboardRoute', () => {
     // The Master checklist list on the left sidebar
     expect(screen.getByRole('heading', { name: /Etapas /i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /consent/i })).toBeInTheDocument();
-    
-    // Renders ONLY the selected stage (consent) in detail area, others (like instructions) are not visible
-    expect(screen.getAllByText('Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias.'))
-      .not.toBeInTheDocument();
-  });
 
+    // Renders ONLY the selected stage (consent) in detail area, others (like instructions) are not visible
+    expect(
+      screen.getAllByText(
+        'Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(
+        'Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias.',
+      ),
+    ).not.toBeInTheDocument();
+  });
 
   it('renders pt-BR education helper text', async () => {
     render(
@@ -338,7 +344,7 @@ describe('DashboardRoute', () => {
 
     // Click on the second stage (done) in the master outline list
     fireEvent.click(screen.getByRole('button', { name: /done/i }));
-    
+
     fireEvent.change(screen.getByLabelText('Tipo da etapa 2'), {
       target: { value: 'choice' },
     });
@@ -429,9 +435,45 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Editor' }));
     await user.click(screen.getByRole('button', { name: /Etapa 19 — q17/i }));
 
+    // Open drawer
+    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+
     expect(screen.getAllByText('Encaminhamento de segurança').length).toBeGreaterThan(0);
     expect(screen.getByDisplayValue('self_harm_ideation')).toBeInTheDocument();
     expect(screen.getByText(/Q17 não soma pontos/i)).toBeInTheDocument();
+  });
+
+  it('shows destination target inline and opens drawer for advanced configuration', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+    const select = screen.queryByRole('combobox', { name: 'Selecionar fluxo' });
+    if (select) {
+      await user.selectOptions(select, 'srq20');
+    } else {
+      await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    }
+    await user.click(screen.getByRole('button', { name: 'Editor' }));
+
+    const stageButton =
+      screen.queryByRole('button', { name: /Etapa 18 — q17/i }) ||
+      screen.getByRole('button', { name: /Etapa 19 — q17/i });
+    await user.click(stageButton);
+
+    // Green footer badge with destination select inline
+    expect(screen.getByLabelText(/Ação principal da opção/i)).toBeInTheDocument();
+
+    // Score and Safety fields are NOT visible on the main card initially
+    expect(screen.queryByLabelText(/Flag key/i)).not.toBeInTheDocument();
+
+    // Click settings button to open the slide-over drawer
+    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+
+    // Now drawer fields are visible
+    expect(screen.getByLabelText(/Flag key/i)).toBeInTheDocument();
   });
 
   it('clears the mock chat so a different path can be tested', () => {
