@@ -34,7 +34,7 @@ export function FlowDashboard({
 }) {
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(() => flows[0]?.id ?? null);
   const [activeDetailTab, setActiveDetailTab] = useState<FlowDetailTab>('editor');
-  
+
   // Lifted States
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [nodeSearch, setNodeSearch] = useState('');
@@ -43,7 +43,7 @@ export function FlowDashboard({
   const selectedIndex = useMemo(() => flows.findIndex((flow) => flow.id === selectedFlowId), [flows, selectedFlowId]);
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedFlow = flows[effectiveIndex];
-  
+
   const nodes = useMemo(() => (selectedFlow ? Object.values(selectedFlow.nodes) : []), [selectedFlow]);
 
   function nodeHasDeferredSafety(node: FlowNode) {
@@ -114,7 +114,9 @@ export function FlowDashboard({
         <h2 className="font-headline-sm text-on-surface mb-3">Fluxos</h2>
         {flows.length > 1 ? (
           <div className="mb-4 flex flex-col gap-1">
-            <label htmlFor="flow-select" className="font-label-md text-on-surface-variant">Selecionar fluxo</label>
+            <label htmlFor="flow-select" className="font-label-md text-on-surface-variant">
+              Selecionar fluxo
+            </label>
             <select
               id="flow-select"
               aria-label="Selecionar fluxo"
@@ -131,16 +133,14 @@ export function FlowDashboard({
           </div>
         ) : (
           <div className="mb-4">
-            <div className="mt-2 font-label-md text-on-surface-variant">
-              {selectedFlow.title}
-            </div>
+            <div className="mt-2 font-label-md text-on-surface-variant">{selectedFlow.title}</div>
           </div>
         )}
 
         {activeDetailTab === 'editor' && (
           <div className="mt-4 flex flex-col gap-4">
             <h3 className="font-headline-sm text-on-surface">Etapas do fluxo</h3>
-            
+
             <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low p-3">
               <input
                 aria-label="Buscar etapa"
@@ -194,7 +194,9 @@ export function FlowDashboard({
                     }`}
                   >
                     <span className="block font-medium truncate">{node.id}</span>
-                    <span className={`text-xs block truncate ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant'}`}>
+                    <span
+                      className={`text-xs block truncate ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant'}`}
+                    >
                       {nodeTitle}
                     </span>
                   </button>
