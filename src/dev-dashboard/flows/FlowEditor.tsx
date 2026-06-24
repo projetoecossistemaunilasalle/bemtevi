@@ -179,7 +179,8 @@ export function FlowEditor({
     const option = node.options.find((opt) => opt.id === optionId);
     if (option && existingScoreKeys.length > 0) {
       const isSrq20Q17 = flow.id === 'srq20' && node.id === 'q17';
-      if (!isSrq20Q17) {
+      const isScoringOption = option.id === 'yes' || option.label.toLowerCase() === 'sim';
+      if (!isSrq20Q17 && isScoringOption) {
         const hasScore = option.effects?.some((effect) => effect.kind === 'score');
         if (!hasScore) {
           // Auto-initialize score effect

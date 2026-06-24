@@ -52,8 +52,10 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
 
     const record = parsed as Record<string, unknown>;
     const version = record.schemaVersion;
+    let state: DashboardDraftState;
+
     if (version === '1.0.0') {
-      return {
+      state = {
         ...(record as Record<string, unknown>),
         schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
         groupPatches: (record.groupPatches ?? []) as DashboardRecordPatch<EducationResourceGroup>[],
@@ -62,13 +64,33 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         removedGroupIds: (record.removedGroupIds ?? []) as string[],
         removedFlowIds: (record.removedFlowIds ?? []) as string[],
       } as DashboardDraftState;
+    } else if (version !== DASHBOARD_DRAFT_SCHEMA_VERSION) {
+      return createEmptyDashboardDraftState();
+    } else {
+      const result = parsed as DashboardDraftState;
+      state = {
+        ...result,
+        removedFlowIds: result.removedFlowIds ?? [],
+      };
     }
-    if (version !== DASHBOARD_DRAFT_SCHEMA_VERSION) return createEmptyDashboardDraftState();
-    const result = parsed as DashboardDraftState;
-    return {
-      ...result,
-      removedFlowIds: result.removedFlowIds ?? [],
-    };
+
+    // Sanitize flow drafts to clean up any legacy/accidental empty effects on load
+    if (Array.isArray(state.flowPatches)) {
+      state.flowPatches = state.flowPatches.map((patchRecord) => {
+        if (patchRecord.patch) {
+          return {
+            ...patchRecord,
+            patch: sanitizeFlow(patchRecord.patch as GuidedFlow),
+          };
+        }
+        return patchRecord;
+      });
+    }
+    if (Array.isArray(state.addedFlows)) {
+      state.addedFlows = state.addedFlows.map(sanitizeFlow);
+    }
+
+    return state;
   } catch {
     return createEmptyDashboardDraftState();
   }
@@ -102,6 +124,67 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     ),
     educationGroups: sortGroupsByOrder(educationGroups),
     defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
+  };
+}
+
+export function sanitizeFlow(flow: GuidedFlow): GuidedFlow {
+  if (!flow.nodes) return flow;
+  const nextNodes = { ...flow.nodes };
+
+  for (const nodeId in nextNodes) {
+    const node = nextNodes[nodeId];
+    if (node.kind === 'choice' && Array.isArray(node.options)) {
+      const nextOptions = node.options.map((option) => {
+        if (!Array.isArray(option.effects)) return option;
+
+        const nextEffects = option.effects.filter((effect) => {
+          if (effect.kind === 'score') {
+            return (
+              typeof effect.scoreKey === 'string' &&
+              effect.scoreKey.trim().length > 0 &&
+              typeof effect.value === 'number' &&
+              !isNaN(effect.value)
+            );
+          }
+          if (effect.kind === 'deferred_safety') {
+            return (
+              typeof effect.flagKey === 'string' &&
+              effect.flagKey.trim().length > 0 &&
+              typeof effect.message === 'string' &&
+              effect.message.trim().length > 0 &&
+              ['/apoio', '/contatos', '/educacao'].includes(effect.destination)
+            );
+          }
+          if (effect.kind === 'safety_interrupt') {
+            return (
+              typeof effect.message === 'string' &&
+              effect.message.trim().length > 0 &&
+              typeof effect.destination === 'string' &&
+              effect.destination.trim().length > 0
+            );
+          }
+          return true; // Keep other kinds of effects (like flow_start)
+        });
+
+        const cleanedOption = { ...option };
+        if (nextEffects.length > 0) {
+          cleanedOption.effects = nextEffects;
+        } else {
+          delete cleanedOption.effects;
+        }
+        return cleanedOption;
+      });
+
+      nextNodes[nodeId] = {
+        ...node,
+        options: nextOptions,
+      };
+    }
+  }
+
+  return {
+    ...flow,
+    nodes: nextNodes,
   };
 }
 
