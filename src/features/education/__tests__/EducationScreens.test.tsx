@@ -172,10 +172,7 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    const headings = screen.getAllByRole('heading').map((h) => h.textContent);
-    // 'geral' has no heading, then order: 10, 20, 30
-    // Filter out page title heading
-    const groupHeadings = headings.filter((h) => h !== 'Biblioteca de educação');
+    const groupHeadings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(groupHeadings).toEqual(['Grupo A', 'Grupo M', 'Grupo Z']);
   });
 
@@ -202,10 +199,8 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    const headings = screen.getAllByRole('heading');
-    // geral has no heading; named group heading should appear
-    // Filter out page title heading
-    const groupHeadings = headings.filter((h) => h.textContent !== 'Biblioteca de educação');
+    // geral has no heading (h2); named group heading should appear
+    const groupHeadings = screen.getAllByRole('heading', { level: 2 });
     expect(groupHeadings).toHaveLength(1);
     expect(groupHeadings[0].textContent).toBe('Primeiro Grupo');
     // geral resources should still be visible
@@ -237,11 +232,13 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    const titles = screen.getAllByRole('heading').map((h) => h.textContent);
-    // Sorted: 1, 2, 3, then undefined (geral has no heading so we look at card headings)
-    // Filter out page title heading
-    const groupTitles = titles.filter((t) => t !== 'Biblioteca de educação');
-    expect(groupTitles).toEqual(['Primeiro', 'Segundo', 'Terceiro', 'Sem order']);
+    // geral has no h2 heading; check resource card titles (h3) instead
+    // Filter out the shipped resource that also renders in geral
+    const resourceTitles = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent)
+      .filter((t) => t !== resource.title);
+    expect(resourceTitles).toEqual(['Primeiro', 'Segundo', 'Terceiro', 'Sem order']);
   });
 
   it('falls back dangling group references to geral', () => {
