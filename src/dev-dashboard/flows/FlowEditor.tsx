@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 import type { ChoiceFlowNode, DeferredSafetyFlowEffect, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
@@ -8,25 +6,23 @@ import { inputClass, inputClassSm, textareaClass } from '../components/fieldStyl
 import { getFlowNodeLabel, getFlowNodeTitle } from './flowDisplay';
 import { flowPurposeLabels } from './flowLabels';
 
-type NodeFilter = 'all' | 'result' | 'safety' | 'branch';
-
 export function FlowEditor({
   flow,
   flows,
   onChange,
-  expandedNodeIds,
-  onExpandedChange,
+  selectedNodeId,
+  nodeSearch,
+  activeNodeFilter,
 }: {
   flow: GuidedFlow;
   flows: GuidedFlow[];
   onChange: (patch: Partial<GuidedFlow>) => void;
-  expandedNodeIds: Record<string, boolean>;
-  onExpandedChange: (ids: Record<string, boolean>) => void;
+  selectedNodeId: string | null;
+  nodeSearch: string;
+  activeNodeFilter: 'all' | 'result' | 'safety' | 'branch';
 }) {
   const nodes = Object.values(flow.nodes);
   const firstNodeId = nodes[0]?.id ?? flow.entry.nodeId;
-  const [nodeSearch, setNodeSearch] = useState('');
-  const [activeNodeFilter, setActiveNodeFilter] = useState<NodeFilter>('all');
 
   function nodeHasDeferredSafety(node: FlowNode) {
     return (
@@ -49,18 +45,7 @@ export function FlowEditor({
     return true;
   });
 
-  function isNodeExpanded(nodeId: string) {
-    return Boolean(expandedNodeIds[`${flow.id}:${nodeId}`]);
-  }
-
-  function toggleNode(nodeId: string) {
-    const expandedKey = `${flow.id}:${nodeId}`;
-
-    onExpandedChange({
-      ...expandedNodeIds,
-      [expandedKey]: !expandedNodeIds[expandedKey],
-    });
-  }
+  const activeNode = visibleNodes.find((node) => node.id === selectedNodeId) || visibleNodes[0];
 
   function updateEntry(patch: Partial<GuidedFlow['entry']>) {
     onChange({ entry: { ...flow.entry, ...patch } });
@@ -150,20 +135,26 @@ export function FlowEditor({
     });
   }
 
-  function getDeferredSafetyEffect(option: ChoiceFlowNode['options'][number]) {
-    return option.effects?.find((effect): effect is DeferredSafetyFlowEffect => effect.kind === 'deferred_safety');
-  }
-
   function updateOptionEffects(
     node: ChoiceFlowNode,
     optionId: string,
-    updater: (
-      effects: NonNullable<ChoiceFlowNode['options'][number]['effects']>,
-    ) => ChoiceFlowNode['options'][number]['effects'],
+    update: (effects: ChoiceFlowNode['options'][number]['effects']) => ChoiceFlowNode['options'][number]['effects'],
   ) {
     const option = node.options.find((item) => item.id === optionId);
-    const nextEffects = updater(option?.effects ?? []);
-    updateChoiceOption(node, optionId, { effects: nextEffects?.length ? nextEffects : undefined });
+    if (!option) return;
+
+    const currentEffects = option.effects ?? [];
+    const nextEffects = update(currentEffects);
+
+    updateChoiceOption(node, optionId, {
+      effects: nextEffects?.length ? nextEffects : undefined,
+    });
+  }
+
+  function getDeferredSafetyEffect(option: ChoiceFlowNode['options'][number]) {
+    return option.effects?.find(
+      (effect): effect is DeferredSafetyFlowEffect => effect.kind === 'deferred_safety',
+    );
   }
 
   return (
@@ -181,6 +172,7 @@ export function FlowEditor({
 
       <Field label="Uso do fluxo" hint="Define onde este fluxo aparece no app e como ele pode ser iniciado.">
         <select
+          aria-label="Uso do fluxo"
           className={inputClass}
           value={flow.purpose ?? 'common'}
           onChange={(event) =>
@@ -195,144 +187,96 @@ export function FlowEditor({
         </select>
       </Field>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="font-headline-sm text-on-surface">Frases de entrada</h3>
-        <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
-        <ul className="flex flex-col gap-3">
-          {flow.entry.enteringPhrases.map((phrase, phraseIndex) => (
-            <li key={`${phrase}-${phraseIndex}`}>
-              <textarea
-                aria-label={`Frase de entrada ${phraseIndex + 1}`}
-                className={textareaClass}
-                value={phrase}
-                onChange={(event) => updateEnteringPhrase(phraseIndex, event.target.value)}
-              />
-            </li>
-          ))}
-        </ul>
-        <Button variant="secondary" size="sm" onClick={addEnteringPhrase} className="w-fit">
-          Adicionar frase de entrada
-        </Button>
-      </div>
 
-      <Field
-        label="Mensagem antes do fluxo"
-        hint="Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo."
-      >
-        <textarea
-          aria-label="Mensagem antes do fluxo"
-          className={textareaClass}
-          value={flow.entry.transitionMessage}
-          onChange={(event) => updateEntry({ transitionMessage: event.target.value })}
-        />
-      </Field>
+      <div className="flex flex-col gap-4 border-t border-outline-variant/60 pt-4">
+        <h3 className="font-headline-sm text-on-surface">Configuração de entrada</h3>
 
-      <Field
-        label="Primeira etapa"
-        hint="Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui."
-      >
-        <select
-          aria-label="Primeira etapa"
-          className={inputClass}
-          value={flow.entry.nodeId}
-          onChange={(event) => updateEntry({ nodeId: event.target.value })}
+        <div className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Frases de entrada</span>
+          <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
+          <ul className="flex flex-col gap-3">
+            {flow.entry.enteringPhrases.map((phrase, phraseIndex) => (
+              <li key={`${phrase}-${phraseIndex}`}>
+                <textarea
+                  aria-label={`Frase de entrada ${phraseIndex + 1}`}
+                  className={textareaClass}
+                  value={phrase}
+                  onChange={(event) => updateEnteringPhrase(phraseIndex, event.target.value)}
+                />
+              </li>
+            ))}
+          </ul>
+          <Button variant="secondary" size="sm" onClick={addEnteringPhrase} className="w-fit">
+            Adicionar frase de entrada
+          </Button>
+        </div>
+
+        <Field
+          label="Mensagem antes do fluxo"
+          hint="Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo."
         >
-          {nodes.map((node) => (
-            <option key={node.id} value={node.id}>
-              {getFlowNodeLabel(node, nodes)}
-            </option>
-          ))}
-        </select>
-      </Field>
+          <textarea
+            aria-label="Mensagem antes do fluxo"
+            className={textareaClass}
+            value={flow.entry.transitionMessage}
+            onChange={(event) => updateEntry({ transitionMessage: event.target.value })}
+          />
+        </Field>
+
+        <Field
+          label="Primeira etapa"
+          hint="Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui."
+        >
+          <select
+            aria-label="Primeira etapa"
+            className={inputClass}
+            value={flow.entry.nodeId}
+            onChange={(event) => updateEntry({ nodeId: event.target.value })}
+          >
+            {nodes.map((node) => (
+              <option key={node.id} value={node.id}>
+                {getFlowNodeLabel(node, nodes)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
 
       <section className="flex flex-col gap-stack-sm">
         <h3 className="font-headline-sm text-on-surface">Etapas</h3>
 
-        <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low p-3">
-          <input
-            aria-label="Buscar etapa"
-            className={inputClassSm}
-            placeholder="Buscar etapa..."
-            value={nodeSearch}
-            onChange={(event) => setNodeSearch(event.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ['all', 'Todas'],
-                ['result', 'Resultado'],
-                ['safety', 'Apoio ao final'],
-                ['branch', 'Ramificação'],
-              ] as Array<[NodeFilter, string]>
-            ).map(([filter, label]) => (
-              <button
-                key={filter}
-                type="button"
-                onClick={() => setActiveNodeFilter(filter)}
-                className={`rounded-full px-3 py-1 font-label-sm ${
-                  activeNodeFilter === filter
-                    ? 'bg-secondary-container text-on-secondary-container'
-                    : 'bg-surface text-on-surface'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="font-body-sm text-on-surface-variant">
-            {visibleNodes.length} {visibleNodes.length === 1 ? 'etapa visível' : 'etapas visíveis'}
-          </p>
-        </div>
-
         <div className="flex flex-col gap-3">
-          {visibleNodes.map((node) => {
-            const stepTitle = getFlowNodeTitle(node.id, nodes);
-            const stepLabel = stepTitle.toLowerCase();
-            const isExpanded = isNodeExpanded(node.id);
-            const panelId = `flow-node-${flow.id}-${node.id}`;
+          {activeNode ? (
+            (() => {
+              const node = activeNode;
+              const stepTitle = getFlowNodeTitle(node.id, nodes);
+              const stepLabel = stepTitle.toLowerCase();
+              const panelId = `flow-node-${flow.id}-${node.id}`;
 
-            return (
-              <article
-                key={node.id}
-                className={`overflow-hidden rounded-lg border border-l-4 bg-surface-container-lowest shadow-sm ${
-                  isExpanded
-                    ? 'border-outline-variant border-l-primary'
-                    : 'border-outline-variant/70 border-l-secondary'
-                }`}
-              >
-                <h4>
-                  <button
-                    type="button"
-                    aria-expanded={isExpanded}
-                    aria-controls={panelId}
-                    aria-label={`${isExpanded ? 'Fechar' : 'Abrir'} ${stepLabel} — ${node.id}`}
-                    onClick={() => toggleNode(node.id)}
-                    className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
-                  >
-                    <span className="flex min-w-0 flex-1 flex-col gap-2">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-label-lg text-on-surface">{`${stepTitle} — ${node.id}`}</span>
-                        <span className="rounded-full bg-surface-container-low px-3 py-1 font-label-sm text-on-surface-variant">
-                          {getNodeKindLabel(node)}
+              return (
+                <article
+                  key={node.id}
+                  className="overflow-hidden rounded-lg border border-l-4 bg-surface-container-lowest shadow-sm border-outline-variant border-l-primary"
+                >
+                  <h4>
+                    <div className="flex w-full items-start justify-between gap-3 p-4 text-left">
+                      <span className="flex min-w-0 flex-1 flex-col gap-2">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-label-lg text-on-surface">{`${stepTitle} — ${node.id}`}</span>
+                          <span className="rounded-full bg-surface-container-low px-3 py-1 font-label-sm text-on-surface-variant">
+                            {getNodeKindLabel(node)}
+                          </span>
+                          <span className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container">
+                            {getNodeCountLabel(node)}
+                          </span>
                         </span>
-                        <span className="rounded-full bg-secondary-container px-3 py-1 font-label-sm text-on-secondary-container">
-                          {getNodeCountLabel(node)}
+                        <span className="line-clamp-2 font-body-md text-on-surface-variant">
+                          {getNodePreview(node.text)}
                         </span>
                       </span>
-                      <span className="line-clamp-2 font-body-md text-on-surface-variant">
-                        {getNodePreview(node.text)}
-                      </span>
-                    </span>
-                    <ChevronDown
-                      aria-hidden="true"
-                      className={`mt-1 h-5 w-5 shrink-0 text-on-surface-variant transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                </h4>
+                    </div>
+                  </h4>
 
-                {isExpanded && (
                   <div id={panelId} className="flex flex-col gap-3 border-t border-outline-variant/60 p-3">
                     <label className="flex flex-col gap-2">
                       <span className="font-label-sm text-on-surface">Tipo da etapa</span>
@@ -478,7 +422,7 @@ export function FlowEditor({
                                       value={getDeferredSafetyEffect(option)?.flagKey ?? ''}
                                       onChange={(event) =>
                                         updateOptionEffects(node, option.id, (effects) =>
-                                          effects.map((effect) =>
+                                          effects?.map((effect) =>
                                             effect.kind === 'deferred_safety'
                                               ? { ...effect, flagKey: event.target.value }
                                               : effect,
@@ -495,7 +439,7 @@ export function FlowEditor({
                                       value={getDeferredSafetyEffect(option)?.destination ?? '/apoio'}
                                       onChange={(event) =>
                                         updateOptionEffects(node, option.id, (effects) =>
-                                          effects.map((effect) =>
+                                          effects?.map((effect) =>
                                             effect.kind === 'deferred_safety'
                                               ? {
                                                   ...effect,
@@ -520,7 +464,7 @@ export function FlowEditor({
                                       value={getDeferredSafetyEffect(option)?.message ?? ''}
                                       onChange={(event) =>
                                         updateOptionEffects(node, option.id, (effects) =>
-                                          effects.map((effect) =>
+                                          effects?.map((effect) =>
                                             effect.kind === 'deferred_safety'
                                               ? { ...effect, message: event.target.value }
                                               : effect,
@@ -535,7 +479,7 @@ export function FlowEditor({
                                       size="sm"
                                       onClick={() =>
                                         updateOptionEffects(node, option.id, (effects) =>
-                                          effects.filter((effect) => effect.kind !== 'deferred_safety'),
+                                          effects?.filter((effect) => effect.kind !== 'deferred_safety'),
                                         )
                                       }
                                     >
@@ -558,7 +502,7 @@ export function FlowEditor({
                                     size="sm"
                                     onClick={() =>
                                       updateOptionEffects(node, option.id, (effects) => [
-                                        ...effects,
+                                        ...(effects ?? []),
                                         { kind: 'deferred_safety', flagKey: '', message: '', destination: '/apoio' },
                                       ])
                                     }
@@ -573,10 +517,14 @@ export function FlowEditor({
                       </div>
                     )}
                   </div>
-                )}
-              </article>
-            );
-          })}
+                </article>
+              );
+            })()
+          ) : (
+            <p className="font-body-md text-on-surface-variant p-4 text-center bg-surface-container-lowest rounded-lg border border-outline-variant/50">
+              Nenhuma etapa correspondente aos filtros.
+            </p>
+          )}
         </div>
         <Button variant="secondary" onClick={addResultNode} className="w-fit">
           Adicionar etapa

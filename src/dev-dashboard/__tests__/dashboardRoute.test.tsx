@@ -246,6 +246,27 @@ describe('DashboardRoute', () => {
     expect(screen.getByLabelText('Frase de entrada 1').tagName).toBe('TEXTAREA');
   });
 
+  it('renders stages in Master-Detail view and highlights the active stage', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Selecionar fluxo' }), 'srq20');
+    await user.click(screen.getByRole('button', { name: 'Editor' }));
+
+    // The Master checklist list on the left sidebar
+    expect(screen.getByRole('heading', { name: /Etapas /i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /consent/i })).toBeInTheDocument();
+    
+    // Renders ONLY the selected stage (consent) in detail area, others (like instructions) are not visible
+    expect(screen.getAllByText('Antes de começar: suas respostas ficam apenas nesta conversa. O SRQ-20 não substitui uma avaliação profissional. Você quer responder agora?').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias.'))
+      .not.toBeInTheDocument();
+  });
+
+
   it('renders pt-BR education helper text', async () => {
     render(
       <MemoryRouter>
@@ -282,7 +303,7 @@ describe('DashboardRoute', () => {
     const titleInput = screen.getByLabelText('Título do fluxo');
     fireEvent.change(titleInput, { target: { value: 'Fluxo editado localmente' } });
 
-    expect(screen.getByDisplayValue('Fluxo editado localmente')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Título do fluxo' })).toHaveValue('Fluxo editado localmente');
   });
 
   it('edits and expands a flow locally', () => {
@@ -292,7 +313,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 1 — start' }));
+    // In Master-Detail layout, first stage is selected by default, so we can edit it directly
     fireEvent.change(screen.getByLabelText('Texto da etapa 1'), {
       target: { value: 'Texto editado da etapa inicial' },
     });
@@ -315,7 +336,9 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2 — done' }));
+    // Click on the second stage (done) in the master outline list
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    
     fireEvent.change(screen.getByLabelText('Tipo da etapa 2'), {
       target: { value: 'choice' },
     });
@@ -327,33 +350,26 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Opção editada na segunda etapa')).toBeInTheDocument();
 
     const finalStepButton = screen.getByRole('button', { name: 'Adicionar etapa' });
-    const etapaToggles = screen.getAllByRole('button', { name: /^Abrir etapa \d+ — \w+$/ });
-    const lastEtapaToggle = etapaToggles[etapaToggles.length - 1];
-
-    expect(lastEtapaToggle.compareDocumentPosition(finalStepButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(finalStepButton).toBeInTheDocument();
   });
 
-  it('starts with every etapa collapsed and shows clear collapsed summaries', () => {
+  it('starts with only the first etapa active and displays details for selected stage', () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
     );
 
-    expect(screen.queryByLabelText('Texto da etapa 1')).not.toBeInTheDocument();
+    // First stage (start) is open by default
+    expect(screen.getByLabelText('Texto da etapa 1')).toBeInTheDocument();
     expect(screen.queryByLabelText('Texto da etapa 2')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Texto da etapa 3')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Abrir etapa 1 — start' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: 'Abrir etapa 2 — done' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: 'Abrir etapa 3 — q18' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByText('Pergunta com opções')).toBeInTheDocument();
-    expect(screen.getByText('2 opções')).toBeInTheDocument();
-    expect(screen.getAllByText('Resultado final').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2 — done' }));
+    // Click on the second stage (done) in the outline list
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
 
+    // Now the second stage (done) is open, and first stage (start) is hidden
     expect(screen.getByLabelText('Texto da etapa 2')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Fechar etapa 2 — done' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByLabelText('Texto da etapa 1')).not.toBeInTheDocument();
   });
 
   it('renders a visual flow map with readable step names and connections', () => {
@@ -397,7 +413,7 @@ describe('DashboardRoute', () => {
     const user = userEvent.setup();
     render(<DashboardRoute />);
 
-    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Selecionar fluxo' }), 'srq20');
     await user.click(screen.getByRole('button', { name: 'Editor' }));
     await user.click(screen.getByRole('button', { name: /Apoio ao final/i }));
 
@@ -409,7 +425,7 @@ describe('DashboardRoute', () => {
     const user = userEvent.setup();
     render(<DashboardRoute />);
 
-    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Selecionar fluxo' }), 'srq20');
     await user.click(screen.getByRole('button', { name: 'Editor' }));
     await user.click(screen.getByRole('button', { name: /Etapa 19 — q17/i }));
 
@@ -439,7 +455,7 @@ describe('DashboardRoute', () => {
     const user = userEvent.setup();
     render(<DashboardRoute />);
 
-    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Selecionar fluxo' }), 'srq20');
     await user.click(screen.getByRole('button', { name: 'Testar conversa' }));
 
     await user.click(screen.getByRole('button', { name: 'Quero responder' }));
