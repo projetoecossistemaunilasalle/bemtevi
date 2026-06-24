@@ -109,6 +109,7 @@ export interface GuidedFlow {
   status: ContentStatus;
   entry: FlowEntry;
   nodes: Record<string, FlowNode>;
+  nodeOrder?: string[];
 }
 
 export interface ChatMessage {
