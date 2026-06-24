@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
 
@@ -63,7 +63,7 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
             Simule o fluxo para verificar o caminho das mensagens.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={clearChat} aria-label="Limpar conversa" className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={clearChat} aria-label="Limpar" className="shrink-0">
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
           Limpar
         </Button>
@@ -81,6 +81,14 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
             <p className="font-body-md">{message.text}</p>
           </div>
         ))}
+        {messages.length > 2 && (
+          <div className="flex justify-center py-2">
+            <Button variant="ghost" size="sm" onClick={clearChat}>
+              <X aria-hidden="true" className="h-4 w-4" />
+              Limpar conversa
+            </Button>
+          </div>
+        )}
       </div>
       {activeNode?.kind === 'choice' && (
         <div className="flex flex-wrap gap-2">

@@ -246,6 +246,22 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('começa o fluxo "Segundo fluxo"')).toBeInTheDocument();
   });
 
+  it('clears the mock chat so a different path can be tested', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Testar conversa')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ir para outro fluxo' }));
+    expect(screen.getByText('Este é outro fluxo.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar conversa' }));
+
+    expect(screen.queryByText('Este é outro fluxo.')).not.toBeInTheDocument();
+  });
+
   it('updates a local education title draft', () => {
     render(
       <MemoryRouter>
