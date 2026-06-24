@@ -7,6 +7,16 @@ import { validateDashboardFlows } from './flowValidation';
 import { FlowEditor } from './FlowEditor';
 import { FlowMap } from './FlowMap';
 import { FlowPreview } from './FlowPreview';
+import { FlowRedirections } from './FlowRedirectionsPanel';
+
+type FlowDetailTab = 'editor' | 'preview' | 'map' | 'redirections';
+
+const flowDetailTabs: Array<{ id: FlowDetailTab; label: string }> = [
+  { id: 'editor', label: 'Editor' },
+  { id: 'preview', label: 'Testar conversa' },
+  { id: 'map', label: 'Mapa visual' },
+  { id: 'redirections', label: 'Redirecionamentos' },
+];
 
 export function FlowDashboard({
   flows,
@@ -20,7 +30,8 @@ export function FlowDashboard({
   onFlowAdd?: () => void;
 }) {
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(() => flows[0]?.id ?? null);
-  const [mapVisible, setMapVisible] = useState(false);
+  const [activeDetailTab, setActiveDetailTab] = useState<FlowDetailTab>('editor');
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Record<string, boolean>>({});
   const selectedIndex = useMemo(() => flows.findIndex((flow) => flow.id === selectedFlowId), [flows, selectedFlowId]);
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedFlow = flows[effectiveIndex];
@@ -46,6 +57,12 @@ export function FlowDashboard({
     );
   }
 
+  function handleEditNode(nodeId: string) {
+    const expandedKey = `${selectedFlow.id}:${nodeId}`;
+    setExpandedNodeIds((current) => ({ ...current, [expandedKey]: true }));
+    setActiveDetailTab('editor');
+  }
+
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <aside className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
@@ -68,29 +85,45 @@ export function FlowDashboard({
         </div>
       </aside>
       <div className="flex flex-col gap-stack-md">
-        <FlowPreview key={`${selectedFlow.id}-${effectiveIndex}`} flow={selectedFlow} flows={flows} />
+        <div
+          aria-label="Detalhes do fluxo"
+          className="flex flex-wrap gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-2"
+        >
+          {flowDetailTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-pressed={activeDetailTab === tab.id}
+              onClick={() => setActiveDetailTab(tab.id)}
+              className={`min-h-9 rounded-full px-4 font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                activeDetailTab === tab.id
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        <FlowEditor
-          flow={selectedFlow}
-          flows={flows}
-          onChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
-        />
-
-        {mapVisible ? (
-          <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-headline-sm text-on-surface">Mapa visual</h2>
-              <Button variant="secondary" size="sm" onClick={() => setMapVisible(false)}>
-                Ocultar mapa
-              </Button>
-            </div>
-            <FlowMap flow={selectedFlow} flows={flows} />
-          </section>
-        ) : (
-          <Button variant="secondary" onClick={() => setMapVisible(true)}>
-            Mapa visual
-          </Button>
+        {activeDetailTab === 'editor' && (
+          <FlowEditor
+            key={`${selectedFlow.id}-${effectiveIndex}`}
+            flow={selectedFlow}
+            flows={flows}
+            expandedNodeIds={expandedNodeIds}
+            onExpandedChange={setExpandedNodeIds}
+            onChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
+          />
         )}
+
+        {activeDetailTab === 'preview' && (
+          <FlowPreview key={`${selectedFlow.id}-${effectiveIndex}`} flow={selectedFlow} flows={flows} />
+        )}
+
+        {activeDetailTab === 'map' && <FlowMap flow={selectedFlow} flows={flows} />}
+
+        {activeDetailTab === 'redirections' && <FlowRedirections flow={selectedFlow} onEditNode={handleEditNode} />}
 
         <ValidationSummary result={validation} />
       </div>

@@ -26,12 +26,21 @@ vi.mock('../content/shippedContent', () => ({
               {
                 id: 'handoff',
                 label: 'Ir para outro fluxo',
-                next: 'done',
-                effects: [{ kind: 'flow_start', flowId: 'mock-flow-two' }],
+                next: 'q18',
+                effects: [
+                  { kind: 'flow_start', flowId: 'mock-flow-two' },
+                  {
+                    kind: 'deferred_safety',
+                    flagKey: 'precisa_apoio',
+                    message: 'Vamos apoiar você.',
+                    destination: '/apoio',
+                  },
+                ],
               },
             ],
           },
           done: { id: 'done', kind: 'result', text: 'Finalizado.' },
+          q18: { id: 'q18', kind: 'result', text: 'Resultado com apoio.' },
         },
       },
       {
@@ -90,6 +99,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('São frases que uma pessoa pode escolher para começar este fluxo.')).toBeInTheDocument();
     expect(screen.getByText('Mapa visual')).toBeInTheDocument();
     expect(screen.getByText('Testar conversa')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Testar conversa' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ir para outro fluxo' }));
     expect(screen.getByText('Este é outro fluxo.')).toBeInTheDocument();
   });
@@ -220,11 +230,13 @@ describe('DashboardRoute', () => {
 
     expect(screen.queryByLabelText('Texto da etapa 1')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Texto da etapa 2')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Texto da etapa 3')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Abrir etapa 1' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: 'Abrir etapa 2' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Abrir etapa 3' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Pergunta com opções')).toBeInTheDocument();
     expect(screen.getByText('2 opções')).toBeInTheDocument();
-    expect(screen.getByText('Resultado final')).toBeInTheDocument();
+    expect(screen.getAllByText('Resultado final').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir etapa 2' }));
 
@@ -246,6 +258,29 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('começa o fluxo "Segundo fluxo"')).toBeInTheDocument();
   });
 
+  it('shows deferred safety routing in the flow redirections tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardRoute />);
+
+    await user.click(screen.getByRole('button', { name: 'Redirecionamentos' }));
+
+    expect(screen.getAllByText('Encaminhamento de segurança ao final').length).toBeGreaterThan(0);
+    expect(screen.getByText(/continua para q18/i)).toBeInTheDocument();
+    expect(screen.getByText(/depois abre \/apoio/i)).toBeInTheDocument();
+  });
+
+  it('round-trips from a redirections row to the focused node in the editor tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardRoute />);
+
+    await user.click(screen.getByRole('button', { name: 'Redirecionamentos' }));
+    await user.click(screen.getAllByRole('button', { name: 'Editar etapa' })[0]);
+
+    expect(screen.getByRole('button', { name: 'Editor' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Texto da etapa 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Texto da opção 1 da etapa 1')).toBeInTheDocument();
+  });
+
   it('clears the mock chat so a different path can be tested', () => {
     render(
       <MemoryRouter>
@@ -254,6 +289,7 @@ describe('DashboardRoute', () => {
     );
 
     expect(screen.getByText('Testar conversa')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Testar conversa' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ir para outro fluxo' }));
     expect(screen.getByText('Este é outro fluxo.')).toBeInTheDocument();
 

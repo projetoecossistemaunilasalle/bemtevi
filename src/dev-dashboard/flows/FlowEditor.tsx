@@ -1,5 +1,4 @@
 import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
 import type { ChoiceFlowNode, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
@@ -12,14 +11,17 @@ export function FlowEditor({
   flow,
   flows,
   onChange,
+  expandedNodeIds,
+  onExpandedChange,
 }: {
   flow: GuidedFlow;
   flows: GuidedFlow[];
   onChange: (patch: Partial<GuidedFlow>) => void;
+  expandedNodeIds: Record<string, boolean>;
+  onExpandedChange: (ids: Record<string, boolean>) => void;
 }) {
   const nodes = Object.values(flow.nodes);
   const firstNodeId = nodes[0]?.id ?? flow.entry.nodeId;
-  const [expandedNodeIds, setExpandedNodeIds] = useState<Record<string, boolean>>({});
 
   function isNodeExpanded(nodeId: string) {
     return Boolean(expandedNodeIds[`${flow.id}:${nodeId}`]);
@@ -28,10 +30,10 @@ export function FlowEditor({
   function toggleNode(nodeId: string) {
     const expandedKey = `${flow.id}:${nodeId}`;
 
-    setExpandedNodeIds((current) => ({
-      ...current,
-      [expandedKey]: !current[expandedKey],
-    }));
+    onExpandedChange({
+      ...expandedNodeIds,
+      [expandedKey]: !expandedNodeIds[expandedKey],
+    });
   }
 
   function updateEntry(patch: Partial<GuidedFlow['entry']>) {
