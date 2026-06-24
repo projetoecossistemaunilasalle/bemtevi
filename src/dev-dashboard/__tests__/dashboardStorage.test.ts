@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
-import type { EducationResourceGroup } from '../../content/resources/groups';
 import type { DashboardDraftState } from '../draft-storage/dashboardStorage';
 import {
   DASHBOARD_DRAFT_SCHEMA_VERSION,
@@ -62,7 +61,9 @@ describe('dashboardStorage', () => {
       flowPatches: [{ id: 'flow-one', sourceIndex: 0, patch: { title: 'Edited flow' } }],
     };
 
-    expect(mergeDashboardDrafts({ flows: [shippedFlow], educationMaterials: [shippedMaterial], educationGroups: [] }, draft)).toEqual({
+    expect(
+      mergeDashboardDrafts({ flows: [shippedFlow], educationMaterials: [shippedMaterial], educationGroups: [] }, draft),
+    ).toEqual({
       flows: [{ ...shippedFlow, title: 'Edited flow' }],
       educationMaterials: [shippedMaterial],
       educationGroups: [],
@@ -77,10 +78,10 @@ describe('dashboardStorage', () => {
       flowPatches: [{ id: 'duplicate-flow', sourceIndex: 1, patch: { title: 'Edited second flow' } }],
     };
 
-    expect(mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft).flows).toEqual([
-      firstFlow,
-      { ...secondFlow, title: 'Edited second flow' },
-    ]);
+    expect(
+      mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft)
+        .flows,
+    ).toEqual([firstFlow, { ...secondFlow, title: 'Edited second flow' }]);
   });
 
   it('applies legacy patches without source index to the first matching shipped record', () => {
@@ -91,10 +92,10 @@ describe('dashboardStorage', () => {
       flowPatches: [{ id: 'legacy-flow', patch: { title: 'Legacy edited flow' } }],
     };
 
-    expect(mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft).flows).toEqual([
-      { ...firstFlow, title: 'Legacy edited flow' },
-      secondFlow,
-    ]);
+    expect(
+      mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft)
+        .flows,
+    ).toEqual([{ ...firstFlow, title: 'Legacy edited flow' }, secondFlow]);
   });
 
   it('includes educationGroups in shipped content', () => {

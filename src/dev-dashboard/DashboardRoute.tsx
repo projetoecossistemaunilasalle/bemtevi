@@ -96,7 +96,10 @@ export function DashboardRoute() {
       mergedDrafts.flows,
       mergedDrafts.educationMaterials.map((resource) => resource.id),
     );
-    const educationValidation = validateDashboardEducation(mergedDrafts.educationMaterials, mergedDrafts.educationGroups);
+    const educationValidation = validateDashboardEducation(
+      mergedDrafts.educationMaterials,
+      mergedDrafts.educationGroups,
+    );
 
     return {
       errors: [...flowValidation.errors, ...educationValidation.errors],
@@ -186,7 +189,7 @@ export function DashboardRoute() {
                 addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups)],
               }))
             }
-            onGroupRemove={(groupIndex, groupId) =>
+            onGroupRemove={(groupIndex, _groupId) =>
               updateDraftState((current) => {
                 const addedIndex = groupIndex - shipped.educationGroups.length;
                 if (addedIndex < 0) return current;

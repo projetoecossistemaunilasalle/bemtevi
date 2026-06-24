@@ -270,7 +270,6 @@ describe('EducationLibraryScreen', () => {
   });
 
   it('sets isPreviewingDrafts true when only groups have drafts', async () => {
-    const resource = resourcesContent.resources[0];
     localStorage.setItem(
       'secuida:dev-dashboard:drafts:v1',
       JSON.stringify(
