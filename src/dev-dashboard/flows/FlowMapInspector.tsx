@@ -72,8 +72,20 @@ export function FlowMapInspector({
           onClick={onClose}
           className="shrink-0 rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-container"
         >
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
@@ -94,7 +106,9 @@ export function FlowMapInspector({
         />
       </div>
 
-      {node.kind === 'choice' && <ChoiceOptionsSection node={node} nodes={nodes} flows={flows} onRemoveEffect={onRemoveEffect} />}
+      {node.kind === 'choice' && (
+        <ChoiceOptionsSection node={node} nodes={nodes} flows={flows} onRemoveEffect={onRemoveEffect} />
+      )}
 
       {node.kind === 'score_branch' && <ScoreBranchSection node={node} nodes={nodes} />}
 
@@ -122,19 +136,15 @@ function ChoiceOptionsSection({
     <div className="flex flex-col gap-2">
       <p className="font-label-sm text-xs text-on-surface-variant">Opções</p>
       {node.options.map((option) => {
-        const destTitle =
-          option.effects?.some((e) => e.kind === 'flow_start')
-            ? `→ fluxo "${getFlowStartTargetTitle(
-                (option.effects.find((e) => e.kind === 'flow_start') as { flowId: string }).flowId,
-                flows,
-              )}"`
-            : `→ ${getFlowNodeTitle(option.next, nodes)}`;
+        const destTitle = option.effects?.some((e) => e.kind === 'flow_start')
+          ? `→ fluxo "${getFlowStartTargetTitle(
+              (option.effects.find((e) => e.kind === 'flow_start') as { flowId: string }).flowId,
+              flows,
+            )}"`
+          : `→ ${getFlowNodeTitle(option.next, nodes)}`;
 
         return (
-          <div
-            key={option.id}
-            className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
-          >
+          <div key={option.id} className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
             <div className="flex items-center justify-between gap-1">
               <p className="font-label-md text-sm text-on-surface">{option.label}</p>
               <p className="font-body-md text-xs text-on-surface-variant">{destTitle}</p>
@@ -143,7 +153,8 @@ function ChoiceOptionsSection({
               <div className="mt-1 flex flex-wrap gap-1">
                 {option.effects.map((effect, effectIndex) => {
                   const colorClass = effectColors[effect.kind] ?? 'bg-surface-container text-on-surface';
-                  const label = effectLabels[effect.kind]?.(effect as unknown as Record<string, unknown>) ?? effect.kind;
+                  const label =
+                    effectLabels[effect.kind]?.(effect as unknown as Record<string, unknown>) ?? effect.kind;
                   return (
                     <span
                       key={effectIndex}

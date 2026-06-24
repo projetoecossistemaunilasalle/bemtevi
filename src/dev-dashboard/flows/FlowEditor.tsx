@@ -41,9 +41,7 @@ export function FlowEditor({
   const nodes = useMemo(() => {
     if (flow.nodeOrder) {
       const nodeMap = flow.nodes;
-      const ordered = flow.nodeOrder
-        .filter((id) => nodeMap[id])
-        .map((id) => nodeMap[id]);
+      const ordered = flow.nodeOrder.filter((id) => nodeMap[id]).map((id) => nodeMap[id]);
       Object.values(nodeMap).forEach((node) => {
         if (!flow.nodeOrder?.includes(node.id)) {
           ordered.push(node);
@@ -262,7 +260,7 @@ export function FlowEditor({
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
       <section className="bg-white rounded-xl border border-outline-variant/40 shadow-sm overflow-hidden mb-4">
-        <div 
+        <div
           role="button"
           tabIndex={0}
           className="px-5 py-3.5 bg-surface-container-low flex justify-between items-center cursor-pointer select-none"
@@ -294,75 +292,76 @@ export function FlowEditor({
             </Field>
 
             <Field label="Uso do fluxo" hint="Define onde este fluxo aparece no app e como ele pode ser iniciado.">
-               <select
-                 aria-label="Uso do fluxo"
-                 className={inputClass}
-                 value={flow.purpose ?? 'common'}
-                 onChange={(event) =>
-                   onChange({
-                     purpose: event.target.value === 'common' ? undefined : (event.target.value as GuidedFlow['purpose']),
-                   })
-                 }
-               >
-                 <option value="common">{flowPurposeLabels.common}</option>
-                 <option value="orientation_entry">{flowPurposeLabels.orientation_entry}</option>
-                 <option value="post_flow_routing">{flowPurposeLabels.post_flow_routing}</option>
-               </select>
-             </Field>
+              <select
+                aria-label="Uso do fluxo"
+                className={inputClass}
+                value={flow.purpose ?? 'common'}
+                onChange={(event) =>
+                  onChange({
+                    purpose:
+                      event.target.value === 'common' ? undefined : (event.target.value as GuidedFlow['purpose']),
+                  })
+                }
+              >
+                <option value="common">{flowPurposeLabels.common}</option>
+                <option value="orientation_entry">{flowPurposeLabels.orientation_entry}</option>
+                <option value="post_flow_routing">{flowPurposeLabels.post_flow_routing}</option>
+              </select>
+            </Field>
 
-             <div className="flex flex-col gap-4 border-t border-outline-variant/60 pt-4">
-               <h3 className="font-headline-sm text-on-surface">Configuração de entrada</h3>
+            <div className="flex flex-col gap-4 border-t border-outline-variant/60 pt-4">
+              <h3 className="font-headline-sm text-on-surface">Configuração de entrada</h3>
 
-               <div className="flex flex-col gap-2">
-                 <span className="font-label-md text-on-surface">Frases de entrada</span>
-                 <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
-                 <ul className="flex flex-col gap-3">
-                   {flow.entry.enteringPhrases.map((phrase, phraseIndex) => (
-                     <li key={`${phrase}-${phraseIndex}`}>
-                       <textarea
-                         aria-label={`Frase de entrada ${phraseIndex + 1}`}
-                         className={textareaClass}
-                         value={phrase}
-                         onChange={(event) => updateEnteringPhrase(phraseIndex, event.target.value)}
-                       />
-                     </li>
-                   ))}
-                 </ul>
-                 <Button variant="secondary" size="sm" onClick={addEnteringPhrase} className="w-fit">
-                   Adicionar frase de entrada
-                 </Button>
-               </div>
+              <div className="flex flex-col gap-2">
+                <span className="font-label-md text-on-surface">Frases de entrada</span>
+                <FieldHint>São frases que uma pessoa pode escolher para começar este fluxo.</FieldHint>
+                <ul className="flex flex-col gap-3">
+                  {flow.entry.enteringPhrases.map((phrase, phraseIndex) => (
+                    <li key={`${phrase}-${phraseIndex}`}>
+                      <textarea
+                        aria-label={`Frase de entrada ${phraseIndex + 1}`}
+                        className={textareaClass}
+                        value={phrase}
+                        onChange={(event) => updateEnteringPhrase(phraseIndex, event.target.value)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="secondary" size="sm" onClick={addEnteringPhrase} className="w-fit">
+                  Adicionar frase de entrada
+                </Button>
+              </div>
 
-               <Field
-                 label="Mensagem antes do fluxo"
-                 hint="Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo."
-               >
-                 <textarea
-                   aria-label="Mensagem antes do fluxo"
-                   className={textareaClass}
-                   value={flow.entry.transitionMessage}
-                   onChange={(event) => updateEntry({ transitionMessage: event.target.value })}
-                 />
-               </Field>
+              <Field
+                label="Mensagem antes do fluxo"
+                hint="Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo."
+              >
+                <textarea
+                  aria-label="Mensagem antes do fluxo"
+                  className={textareaClass}
+                  value={flow.entry.transitionMessage}
+                  onChange={(event) => updateEntry({ transitionMessage: event.target.value })}
+                />
+              </Field>
 
-               <Field
-                 label="Primeira etapa"
-                 hint="Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui."
-               >
-                 <select
-                   aria-label="Primeira etapa"
-                   className={inputClass}
-                   value={flow.entry.nodeId}
-                   onChange={(event) => updateEntry({ nodeId: event.target.value })}
-                 >
-                   {nodes.map((node) => (
-                     <option key={node.id} value={node.id}>
-                       {getFlowNodeLabel(node, nodes)}
-                     </option>
-                   ))}
-                 </select>
-               </Field>
-             </div>
+              <Field
+                label="Primeira etapa"
+                hint="Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui."
+              >
+                <select
+                  aria-label="Primeira etapa"
+                  className={inputClass}
+                  value={flow.entry.nodeId}
+                  onChange={(event) => updateEntry({ nodeId: event.target.value })}
+                >
+                  {nodes.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {getFlowNodeLabel(node, nodes)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
           </div>
         )}
       </section>
@@ -391,7 +390,7 @@ export function FlowEditor({
                   }`}
                 >
                   <div className="flex w-full items-start justify-between gap-3 p-4 select-none">
-                    <div 
+                    <div
                       role="button"
                       tabIndex={0}
                       className="flex min-w-0 flex-1 flex-col gap-2 cursor-pointer text-left"
@@ -406,9 +405,7 @@ export function FlowEditor({
                       }}
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-label-lg text-on-surface font-bold">
-                          {stepTitle}
-                        </h4>
+                        <h4 className="font-label-lg text-on-surface font-bold">{stepTitle}</h4>
                         <span className="rounded-full bg-surface-container-low px-3 py-1 font-label-sm text-on-surface-variant">
                           {getNodeKindLabel(node)}
                         </span>
@@ -529,7 +526,10 @@ export function FlowEditor({
                             </Button>
                           </div>
                           {node.options.map((option, optionIndex) => (
-                            <div key={option.id} className="flex flex-col gap-2 rounded-lg bg-surface-container-low p-3">
+                            <div
+                              key={option.id}
+                              className="flex flex-col gap-2 rounded-lg bg-surface-container-low p-3"
+                            >
                               <div className="flex items-end gap-2">
                                 <label className="flex flex-1 flex-col gap-1">
                                   <span className="font-label-sm text-on-surface">Texto da opção</span>
@@ -573,7 +573,9 @@ export function FlowEditor({
                                   }
                                   className={`${inputClassSm} text-on-surface bg-surface border-none rounded`}
                                   value={option.next}
-                                  onChange={(event) => updateChoiceOption(node, option.id, { next: event.target.value })}
+                                  onChange={(event) =>
+                                    updateChoiceOption(node, option.id, { next: event.target.value })
+                                  }
                                 >
                                   {nodes.map((targetNode) => (
                                     <option key={targetNode.id} value={targetNode.id}>
@@ -629,9 +631,7 @@ export function FlowEditor({
                 }
               }}
             >
-              <div
-                className="h-full w-full max-w-md overflow-y-auto bg-surface-container-lowest p-6 shadow-2xl flex flex-col gap-4 border-l border-outline-variant"
-              >
+              <div className="h-full w-full max-w-md overflow-y-auto bg-surface-container-lowest p-6 shadow-2xl flex flex-col gap-4 border-l border-outline-variant">
                 <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
                   <h3 className="font-headline-sm text-on-surface font-semibold">Configurações Avançadas</h3>
                   <button
@@ -726,13 +726,15 @@ export function FlowEditor({
                             value={scoreEffect.scoreKey}
                             onChange={(event) =>
                               updateOptionEffects(editNode as ChoiceFlowNode, editOption.id, (effects) =>
-                                 effects?.map((effect) =>
+                                effects?.map((effect) =>
                                   effect.kind === 'score' ? { ...effect, scoreKey: event.target.value } : effect,
                                 ),
                               )
                             }
                           />
-                          <FieldHint>A chave agrupa pontos do questionário (ex: 'srq20' para somar todas as respostas Sim).</FieldHint>
+                          <FieldHint>
+                            A chave agrupa pontos do questionário (ex: 'srq20' para somar todas as respostas Sim).
+                          </FieldHint>
                         </label>
                         <label className="flex flex-col gap-1">
                           <span className="font-label-sm text-on-surface">Valor</span>

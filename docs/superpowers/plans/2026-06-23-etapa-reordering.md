@@ -13,6 +13,7 @@
 ## Task 1: Add `nodeOrder` to GuidedFlow type
 
 **Files:**
+
 - Modify: `src/domain/flow-engine/types.ts:102-112`
 
 - [ ] **Step 1: Add the `nodeOrder` field**
@@ -51,6 +52,7 @@ git commit -m "feat: add nodeOrder field to GuidedFlow type"
 ## Task 2: Add reorder logic and buttons to FlowEditor
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowEditor.tsx`
 
 - [ ] **Step 1: Add ArrowUp/ArrowDown imports**
@@ -69,9 +71,7 @@ Inside the `FlowEditor` component, after the existing `const nodes = Object.valu
 function getOrderedNodes(): FlowNode[] {
   if (flow.nodeOrder) {
     const nodeMap = flow.nodes;
-    const ordered = flow.nodeOrder
-      .filter((id) => nodeMap[id])
-      .map((id) => nodeMap[id]);
+    const ordered = flow.nodeOrder.filter((id) => nodeMap[id]).map((id) => nodeMap[id]);
     Object.values(nodeMap).forEach((node) => {
       if (!flow.nodeOrder?.includes(node.id)) {
         ordered.push(node);

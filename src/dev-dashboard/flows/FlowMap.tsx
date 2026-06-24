@@ -1,12 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  type NodeMouseHandler,
-} from '@xyflow/react';
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState, type NodeMouseHandler } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import type { GuidedFlow, FlowNode } from '../../domain/flow-engine/types';
@@ -20,12 +13,8 @@ function nodeColor(node: FlowNode): { border: string; bg: string; text: string }
   if (node.kind === 'score_branch') return { border: '#7a5900', bg: '#ffdf9e', text: '#5c4300' };
   if (node.kind !== 'choice') return { border: '#bdcabf', bg: '#ffffff', text: '#111c2c' };
 
-  const hasSafetyInterrupt = node.options.some((o) =>
-    o.effects?.some((e) => e.kind === 'safety_interrupt'),
-  );
-  const hasDeferredSafety = node.options.some((o) =>
-    o.effects?.some((e) => e.kind === 'deferred_safety'),
-  );
+  const hasSafetyInterrupt = node.options.some((o) => o.effects?.some((e) => e.kind === 'safety_interrupt'));
+  const hasDeferredSafety = node.options.some((o) => o.effects?.some((e) => e.kind === 'deferred_safety'));
 
   if (hasSafetyInterrupt) return { border: '#ba1a1a', bg: '#ffdad6', text: '#93000a' };
   if (hasDeferredSafety) return { border: '#7a5900', bg: '#fff8e8', text: '#5c4300' };
@@ -43,14 +32,17 @@ function ChoiceNodeComponent({ data }: { data: FlowNodeData }) {
       className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="break-all font-medium leading-tight">{node.text.slice(0, 80)}{node.text.length > 80 ? '…' : ''}</p>
+        <p className="break-all font-medium leading-tight">
+          {node.text.slice(0, 80)}
+          {node.text.length > 80 ? '…' : ''}
+        </p>
         {hasScore && (
-          <span className="ml-1 shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-800">+pts</span>
+          <span className="ml-1 shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-800">
+            +pts
+          </span>
         )}
       </div>
-      <p className="mt-1 text-[10px] opacity-60">
-        {node.kind === 'choice' ? `${node.options.length} opções` : ''}
-      </p>
+      <p className="mt-1 text-[10px] opacity-60">{node.kind === 'choice' ? `${node.options.length} opções` : ''}</p>
     </div>
   );
 }
@@ -81,8 +73,13 @@ function ResultNodeComponent({ data }: { data: FlowNodeData }) {
       className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="break-all leading-tight text-on-surface-variant">{node.text.slice(0, 60)}{node.text.length > 60 ? '…' : ''}</p>
-        <span className="ml-1 shrink-0 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant">FIM</span>
+        <p className="break-all leading-tight text-on-surface-variant">
+          {node.text.slice(0, 60)}
+          {node.text.length > 60 ? '…' : ''}
+        </p>
+        <span className="ml-1 shrink-0 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant">
+          FIM
+        </span>
       </div>
     </div>
   );
@@ -107,17 +104,12 @@ export function FlowMap({
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
   onEditNode: (nodeId: string) => void;
 }) {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildFlowGraph(flow),
-    [flow],
-  );
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildFlowGraph(flow), [flow]);
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  const selectedNode = selectedNodeId
-    ? Object.values(flow.nodes).find((n) => n.id === selectedNodeId) ?? null
-    : null;
+  const selectedNode = selectedNodeId ? (Object.values(flow.nodes).find((n) => n.id === selectedNodeId) ?? null) : null;
 
   const handleNodeClick: NodeMouseHandler = useCallback((_event, rfNode) => {
     setSelectedNodeId(rfNode.id);

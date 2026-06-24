@@ -20,12 +20,12 @@ Replaces both tabs with a single **"Mapa visual"** tab built on [React Flow](htt
 
 ## Decisions
 
-| Question | Decision |
-|---|---|
-| Approach | Interactive graph (React Flow) |
-| Library | `@xyflow/react` + `@dagrejs/dagre` for auto-layout |
-| Layout direction | Top-to-bottom |
-| Tab structure | Replace "Mapa visual" + "Redirecionamentos" with one "Mapa visual" tab |
+| Question                | Decision                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| Approach                | Interactive graph (React Flow)                                                            |
+| Library                 | `@xyflow/react` + `@dagrejs/dagre` for auto-layout                                        |
+| Layout direction        | Top-to-bottom                                                                             |
+| Tab structure           | Replace "Mapa visual" + "Redirecionamentos" with one "Mapa visual" tab                    |
 | Inspector editing scope | Light: text editing + effect removal only; full editing via "Editar completamente" button |
 
 ---
@@ -35,6 +35,7 @@ Replaces both tabs with a single **"Mapa visual"** tab built on [React Flow](htt
 ### Dependencies
 
 #### [NEW] `@xyflow/react` and `@dagrejs/dagre`
+
 Added to `package.json` dependencies. React Flow provides the graph canvas, zoom/pan, custom node rendering, and edge routing. Dagre provides the automatic top-to-bottom layout algorithm.
 
 ---
@@ -75,6 +76,7 @@ const flowDetailTabs = [
 The current `FlowMap` renders a plain `<ul>` of articles. It is replaced with a React Flow canvas.
 
 **Responsibilities:**
+
 - Build a dagre-computed layout from the flow's nodes
 - Render custom node components per `node.kind`
 - Render custom edge components for special effect paths
@@ -83,37 +85,38 @@ The current `FlowMap` renders a plain `<ul>` of articles. It is replaced with a 
 - Render `FlowMapInspector` conditionally when a node is selected
 
 **Layout computation** (`buildFlowGraph` utility function in the same file or a colocated `flowMapLayout.ts`):
+
 1. Iterate `flow.nodes` to create RF node objects with computed `x`/`y` via dagre
 2. Iterate `flow.nodes` → options to create RF edge objects, tagged by edge type (normal, safety_interrupt, deferred_safety, flow_start)
 3. Return `{ nodes, edges }` ready for `useNodesState`/`useEdgesState`
 
 **Custom node types:**
 
-| RF node type | Triggers |
-|---|---|
-| `choiceNode` | `kind === 'choice'` |
+| RF node type      | Triggers                  |
+| ----------------- | ------------------------- |
+| `choiceNode`      | `kind === 'choice'`       |
 | `scoreBranchNode` | `kind === 'score_branch'` |
-| `resultNode` | `kind === 'result'` |
+| `resultNode`      | `kind === 'result'`       |
 
 **Node visual rules:**
 
-| Condition | Node border | Badge shown |
-|---|---|---|
-| Normal choice | `outline-variant` | none |
-| Has `score` effect on any option | `outline-variant` | green `+N pts` per affected option |
-| Has `deferred_safety` effect | amber / `warning` | `⚠` amber border |
-| Has `safety_interrupt` effect | `error` (red) | `⚠` red border |
-| `score_branch` | `secondary` (yellow) | `⇄` + branch count |
-| `result` | muted / `outline-variant` | `FIM` pill |
+| Condition                        | Node border               | Badge shown                        |
+| -------------------------------- | ------------------------- | ---------------------------------- |
+| Normal choice                    | `outline-variant`         | none                               |
+| Has `score` effect on any option | `outline-variant`         | green `+N pts` per affected option |
+| Has `deferred_safety` effect     | amber / `warning`         | `⚠` amber border                   |
+| Has `safety_interrupt` effect    | `error` (red)             | `⚠` red border                     |
+| `score_branch`                   | `secondary` (yellow)      | `⇄` + branch count                 |
+| `result`                         | muted / `outline-variant` | `FIM` pill                         |
 
 **Edge visual rules:**
 
-| Edge kind | Style |
-|---|---|
-| Normal `next` | solid, `outline-variant` color, standard arrow |
-| `safety_interrupt` branch | dashed, `error` color |
-| `deferred_safety` path | dashed, amber/`warning` color |
-| `flow_start` handoff | dashed, `primary` blue |
+| Edge kind                 | Style                                          |
+| ------------------------- | ---------------------------------------------- |
+| Normal `next`             | solid, `outline-variant` color, standard arrow |
+| `safety_interrupt` branch | dashed, `error` color                          |
+| `deferred_safety` path    | dashed, amber/`warning` color                  |
+| `flow_start` handoff      | dashed, `primary` blue                         |
 
 ---
 
@@ -124,14 +127,15 @@ The current `FlowMap` renders a plain `<ul>` of articles. It is replaced with a 
 A right-side panel component rendered inside `FlowMap` when a node is selected.
 
 **Props:**
+
 ```ts
 interface FlowMapInspectorProps {
   node: FlowNode;
-  nodes: FlowNode[];        // for resolving node titles
-  flows: GuidedFlow[];      // for resolving flow_start targets
-  onTextChange: (text: string) => void;     // saves on blur
+  nodes: FlowNode[]; // for resolving node titles
+  flows: GuidedFlow[]; // for resolving flow_start targets
+  onTextChange: (text: string) => void; // saves on blur
   onRemoveEffect: (optionId: string, effectIndex: number) => void;
-  onEditFully: () => void;  // triggers parent to switch to editor tab
+  onEditFully: () => void; // triggers parent to switch to editor tab
   onClose: () => void;
 }
 ```
@@ -139,6 +143,7 @@ interface FlowMapInspectorProps {
 **Layout:** Fixed ~320px right panel inside the map container (`absolute right-0 top-0 h-full`). The React Flow canvas has `padding-right: 320px` when the inspector is open.
 
 **Content:**
+
 1. Close button (`×`) top-right
 2. Node title (resolved human label) + kind badge
 3. `<textarea>` with node text — `onBlur` calls `onTextChange`
@@ -170,11 +175,13 @@ No longer needed by the UI, but can be kept as a utility (it has no side effects
 ## Verification Plan
 
 ### Automated Tests
+
 - Update `dashboardRoute.test.tsx`: remove assertions about the "Redirecionamentos" tab button existing; add assertions that clicking "Mapa visual" renders the React Flow canvas container (`data-testid="flow-map-canvas"`)
 - Add tests for `FlowMapInspector`: clicking "Editar completamente" calls `onEditFully`; editing text and blurring calls `onTextChange`; clicking `×` on an effect chip calls `onRemoveEffect`
 - Add test for layout computation: given a known flow with N nodes and M edges, `buildFlowGraph` returns N RF nodes and M RF edges
 
 ### Manual Verification
+
 - Open the dashboard on the SRQ-20 flow (which has score effects, deferred safety, and a score_branch node) and confirm:
   - All nodes appear with correct colors
   - Clicking a node opens the inspector with correct text

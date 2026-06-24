@@ -5,6 +5,7 @@
 **Goal:** Refactor the flow editor dashboard by making all stages list vertically as collapsible/expandable cards with sidebar scroll-anchoring, adding visual effect badges to the sidebar, making the flow selector prominent with a delete action, adding a stage delete action with confirmation, auto-activating scoring when a flow has score keys, explaining the score key field, and dismissing the drawer on backdrop click.
 
 **Architecture:**
+
 1. Update `DashboardDraftState` and the draft storage merging utility to support filtering out deleted flows using `removedFlowIds`.
 2. Re-style the flow selector in `FlowDashboard` as a sidebar list with a "+ Criar Novo Fluxo" button and a delete action with a toggle-confirmation state.
 3. Add `+pts` (score), `⚠` (deferred safety), and `⇄` (flow start redirection) badges to the stage outline sidebar.
@@ -21,13 +22,15 @@
 ### Task 1: Prominent Flow Selector & Delete Flow Action
 
 **Files:**
+
 - Modify: [dashboardStorage.ts](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/draft-storage/dashboardStorage.ts)
 - Modify: [DashboardRoute.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/DashboardRoute.tsx)
 - Modify: [FlowDashboard.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/flows/FlowDashboard.tsx)
 - Test: [dashboardRoute.test.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/__tests__/dashboardRoute.test.tsx)
 
 - [ ] **Step 1: Write the failing test**
-  Add a test verifying that flows are listed prominently, flows can be deleted with confirmation, and new flows can be created.
+      Add a test verifying that flows are listed prominently, flows can be deleted with confirmation, and new flows can be created.
+
   ```tsx
   it('displays flow list in sidebar, allows adding and deleting a flow with confirmation', async () => {
     const user = userEvent.setup();
@@ -43,28 +46,28 @@
 
     // Verify list displays flows
     expect(screen.getByRole('button', { name: /SRQ-20/i })).toBeInTheDocument();
-    
+
     // Select 'mock-flow' (second option in flows)
     await user.click(screen.getByRole('button', { name: /Fluxo de teste/i }));
 
     // Click delete flow button next to mock-flow
     await user.click(screen.getByRole('button', { name: /Remover fluxo Fluxo de teste/i }));
-    
+
     // Confirmation button is shown
     const confirmBtn = screen.getByRole('button', { name: /Confirmar exclusão de Fluxo de teste/i });
     expect(confirmBtn).toBeInTheDocument();
-    
+
     // Click confirm
     await user.click(confirmBtn);
-    
+
     // Flow is gone
     expect(screen.queryByRole('button', { name: /Fluxo de teste/i })).not.toBeInTheDocument();
   });
   ```
 
 - [ ] **Step 2: Run test to verify it fails**
-  Run: `pnpm run test dashboardRoute`
-  Expected: FAIL
+      Run: `pnpm run test dashboardRoute`
+      Expected: FAIL
 
 - [ ] **Step 3: Update dashboardStorage.ts and DashboardRoute.tsx**
   1. Add `removedFlowIds?: string[]` to `DashboardDraftState` in `dashboardStorage.ts`.
@@ -79,8 +82,8 @@
   5. Add a "+ Criar Novo Fluxo" button in the selector container wired to trigger `onFlowAdd()`.
 
 - [ ] **Step 5: Run test to verify it passes**
-  Run: `pnpm run test dashboardRoute`
-  Expected: PASS
+      Run: `pnpm run test dashboardRoute`
+      Expected: PASS
 
 - [ ] **Step 6: Commit**
   ```bash
@@ -92,12 +95,14 @@
 ### Task 2: Stage Outline Badges & Move "+ Adicionar etapa" to Sidebar
 
 **Files:**
+
 - Modify: [FlowDashboard.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/flows/FlowDashboard.tsx)
 - Modify: [FlowEditor.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/flows/FlowEditor.tsx)
 - Test: [dashboardRoute.test.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/__tests__/dashboardRoute.test.tsx)
 
 - [ ] **Step 1: Write the failing test**
-  Add a test verifying outline badges are shown for nodes containing scoring, safety warnings, and transitions, and the "Adicionar Etapa" button is in the sidebar list.
+      Add a test verifying outline badges are shown for nodes containing scoring, safety warnings, and transitions, and the "Adicionar Etapa" button is in the sidebar list.
+
   ```tsx
   it('renders visual effect badges in outline list and supports stage addition in sidebar', async () => {
     const user = userEvent.setup();
@@ -127,8 +132,8 @@
   ```
 
 - [ ] **Step 2: Run test to verify it fails**
-  Run: `pnpm run test dashboardRoute`
-  Expected: FAIL
+      Run: `pnpm run test dashboardRoute`
+      Expected: FAIL
 
 - [ ] **Step 3: Implement badges inside FlowDashboard.tsx list mapping**
   1. For each stage node in `visibleNodes.map((node) => ...)`:
@@ -143,8 +148,8 @@
   3. Move the "+ Adicionar etapa" button from the bottom of the card list in `FlowEditor.tsx` to the bottom of the stages sidebar list in `FlowDashboard.tsx`.
 
 - [ ] **Step 4: Run test to verify it passes and update existing tests**
-  Run: `pnpm run test dashboardRoute`
-  Expected: PASS
+      Run: `pnpm run test dashboardRoute`
+      Expected: PASS
 
 - [ ] **Step 5: Commit**
   ```bash
@@ -156,11 +161,13 @@
 ### Task 3: Collapsible Stage Cards in Detail Panel & Scroll-Anchoring
 
 **Files:**
+
 - Modify: [FlowEditor.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/flows/FlowEditor.tsx)
 - Test: [dashboardRoute.test.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/__tests__/dashboardRoute.test.tsx)
 
 - [ ] **Step 1: Write the failing test**
-  Add a test verifying all stages are listed, but only the active stage is expanded. The card title displays index and text preview instead of technical ID. The "Texto da etapa" editor is on top of "Tipo da etapa". Stage can be deleted with confirmation.
+      Add a test verifying all stages are listed, but only the active stage is expanded. The card title displays index and text preview instead of technical ID. The "Texto da etapa" editor is on top of "Tipo da etapa". Stage can be deleted with confirmation.
+
   ```tsx
   it('renders all stages as collapsible cards, expands active, swaps text/type position, and supports deletion with confirmation', async () => {
     const user = userEvent.setup();
@@ -176,8 +183,10 @@
     await user.click(screen.getByRole('button', { name: /Etapa 3/i }));
 
     // Active stage card header shows Etapa 3 — Você tem dores de cabeça frequentes? (ID is hidden/demoted)
-    expect(screen.getByRole('heading', { name: /Etapa 3 — Você tem dores de cabeça frequentes\?/i })).toBeInTheDocument();
-    
+    expect(
+      screen.getByRole('heading', { name: /Etapa 3 — Você tem dores de cabeça frequentes\?/i }),
+    ).toBeInTheDocument();
+
     // Verify "Texto da etapa" textarea is positioned above "Tipo da etapa" select in DOM order
     const textLabel = screen.getByText('Texto da etapa');
     const typeLabel = screen.getByText('Tipo da etapa');
@@ -188,20 +197,22 @@
 
     // Click delete stage button
     await user.click(screen.getByRole('button', { name: /Excluir etapa/i }));
-    
+
     // Confirm delete
     const confirmBtn = screen.getByRole('button', { name: /Confirmar exclusão da etapa/i });
     expect(confirmBtn).toBeInTheDocument();
     await user.click(confirmBtn);
 
     // Etapa 3 (q1) is deleted, now Etapa 3 becomes Q2
-    expect(screen.queryByRole('heading', { name: /Etapa 3 — Você tem dores de cabeça frequentes\?/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Etapa 3 — Você tem dores de cabeça frequentes\?/i }),
+    ).not.toBeInTheDocument();
   });
   ```
 
 - [ ] **Step 2: Run test to verify it fails**
-  Run: `pnpm run test dashboardRoute`
-  Expected: FAIL
+      Run: `pnpm run test dashboardRoute`
+      Expected: FAIL
 
 - [ ] **Step 3: Modify FlowEditor.tsx layout structure**
   1. Wrap flow settings ("Dados do fluxo" and "Configuração de entrada") inside a single collapsible `<details>` or styled state-based panel `Configurações Iniciais e Entrada do Fluxo ⚙️`. Collapsed by default.
@@ -213,8 +224,8 @@
   4. Ensure scroll-anchoring: When `selectedNodeId` changes, use `useEffect` or `onClick` handler to scroll to `document.getElementById('flow-node-' + selectedNodeId)` using `{ behavior: 'smooth', block: 'start' }`.
 
 - [ ] **Step 4: Run test to verify it passes**
-  Run: `pnpm run test dashboardRoute`
-  Expected: PASS
+      Run: `pnpm run test dashboardRoute`
+      Expected: PASS
 
 - [ ] **Step 5: Commit**
   ```bash
@@ -226,11 +237,13 @@
 ### Task 4: Drawer Backdrop Dismiss & Auto-Score Default Activation
 
 **Files:**
+
 - Modify: [FlowEditor.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/flows/FlowEditor.tsx)
 - Test: [dashboardRoute.test.tsx](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/dev-dashboard/__tests__/dashboardRoute.test.tsx)
 
 - [ ] **Step 1: Write the failing test**
-  Add a test verifying that clicking the drawer backdrop overlay closes it, score effects are automatically enabled/active when a flow has score keys, and helper text is displayed for the score key input.
+      Add a test verifying that clicking the drawer backdrop overlay closes it, score effects are automatically enabled/active when a flow has score keys, and helper text is displayed for the score key input.
+
   ```tsx
   it('dismisses drawer on backdrop click, auto-activates score, and displays score key description', async () => {
     const user = userEvent.setup();
@@ -263,8 +276,8 @@
   ```
 
 - [ ] **Step 2: Run test to verify it fails**
-  Run: `pnpm run test dashboardRoute`
-  Expected: FAIL
+      Run: `pnpm run test dashboardRoute`
+      Expected: FAIL
 
 - [ ] **Step 3: Modify FlowEditor.tsx drawer logic**
   1. Add `data-testid="drawer-backdrop"` and `onClick={() => setActiveOptionEdit(null)}` to the drawer outer overlay element. Add `onClick={(e) => e.stopPropagation()}` to the drawer inner container so clicks inside don't close it.
@@ -274,8 +287,8 @@
      - To do this safely: inside the drawer's `editOption` render block, if `!scoreEffect && existingScoreKeys.length > 0`, render the score fields (Chave, Valor) but initialize them with `existingScoreKeys[0]` and value `1`, updating the option effects automatically (using `updateOptionEffects`) to persist the score. This makes it active by default!
 
 - [ ] **Step 4: Run test to verify it passes**
-  Run: `pnpm run test dashboardRoute`
-  Expected: PASS
+      Run: `pnpm run test dashboardRoute`
+      Expected: PASS
 
 - [ ] **Step 5: Commit**
   ```bash
@@ -287,21 +300,21 @@
 ### Task 5: Full Project Verification
 
 - [ ] **Step 1: Run typechecks**
-  Run: `pnpm run typecheck`
-  Expected: Success without errors
+      Run: `pnpm run typecheck`
+      Expected: Success without errors
 
 - [ ] **Step 2: Run style lints**
-  Run: `pnpm run lint`
-  Expected: Success without errors
+      Run: `pnpm run lint`
+      Expected: Success without errors
 
 - [ ] **Step 3: Run all automated tests**
-  Run: `pnpm run test`
-  Expected: All 220+ tests pass
+      Run: `pnpm run test`
+      Expected: All 220+ tests pass
 
 - [ ] **Step 4: Run flow validation scripts**
-  Run: `pnpm run validate:flows`
-  Expected: Success without errors
+      Run: `pnpm run validate:flows`
+      Expected: Success without errors
 
 - [ ] **Step 5: Run production build check**
-  Run: `pnpm run build`
-  Expected: Build completes successfully
+      Run: `pnpm run build`
+      Expected: Build completes successfully

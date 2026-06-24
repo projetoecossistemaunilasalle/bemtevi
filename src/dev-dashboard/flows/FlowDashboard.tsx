@@ -143,14 +143,19 @@ export function FlowDashboard({
           >
             <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
           </svg>
-          <h2 className="font-headline-sm text-on-surface" aria-label="Fluxos">Fluxos Ativos</h2>
+          <h2 className="font-headline-sm text-on-surface" aria-label="Fluxos">
+            Fluxos Ativos
+          </h2>
         </div>
 
         <div className="mb-4 flex flex-col gap-2">
           {flows.map((flow) => {
             const isSelected = flow.id === selectedFlow.id;
             return (
-              <div key={flow.id} className="flex flex-col gap-1.5 rounded-lg border border-outline-variant/30 p-2 bg-surface-container-lowest">
+              <div
+                key={flow.id}
+                className="flex flex-col gap-1.5 rounded-lg border border-outline-variant/30 p-2 bg-surface-container-lowest"
+              >
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -270,9 +275,15 @@ export function FlowDashboard({
               {visibleNodes.map((node) => {
                 const isSelected = node.id === activeNodeId;
                 const nodeTitle = getFlowNodeTitle(node.id, nodes);
-                const hasScore = node.kind === 'choice' && node.options.some(opt => opt.effects?.some(eff => eff.kind === 'score'));
-                const hasSafety = node.kind === 'choice' && node.options.some(opt => opt.effects?.some(eff => eff.kind === 'deferred_safety'));
-                const hasHandoff = node.kind === 'choice' && node.options.some(opt => opt.effects?.some(eff => eff.kind === 'flow_start'));
+                const hasScore =
+                  node.kind === 'choice' &&
+                  node.options.some((opt) => opt.effects?.some((eff) => eff.kind === 'score'));
+                const hasSafety =
+                  node.kind === 'choice' &&
+                  node.options.some((opt) => opt.effects?.some((eff) => eff.kind === 'deferred_safety'));
+                const hasHandoff =
+                  node.kind === 'choice' &&
+                  node.options.some((opt) => opt.effects?.some((eff) => eff.kind === 'flow_start'));
                 return (
                   <button
                     key={node.id}
@@ -288,9 +299,21 @@ export function FlowDashboard({
                     <div className="flex items-center justify-between gap-1 w-full min-w-0">
                       <span className="block font-medium truncate">{node.text || node.id}</span>
                       <div className="flex items-center gap-1 shrink-0">
-                        {hasScore && <span className="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">+pts</span>}
-                        {hasSafety && <span className="bg-error-container text-error px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">⚠</span>}
-                        {hasHandoff && <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">⇄</span>}
+                        {hasScore && (
+                          <span className="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
+                            +pts
+                          </span>
+                        )}
+                        {hasSafety && (
+                          <span className="bg-error-container text-error px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
+                            ⚠
+                          </span>
+                        )}
+                        {hasHandoff && (
+                          <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
+                            ⇄
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span

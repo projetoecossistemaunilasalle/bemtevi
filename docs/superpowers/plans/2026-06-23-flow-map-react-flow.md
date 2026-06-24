@@ -12,28 +12,30 @@
 
 ## File Map
 
-| Action | File |
-|---|---|
-| Modify | `package.json` |
-| Modify | `src/dev-dashboard/flows/FlowDashboard.tsx` |
-| Rewrite | `src/dev-dashboard/flows/FlowMap.tsx` |
-| Create | `src/dev-dashboard/flows/flowMapLayout.ts` |
-| Create | `src/dev-dashboard/flows/FlowMapInspector.tsx` |
-| Delete | `src/dev-dashboard/flows/FlowRedirectionsPanel.tsx` |
-| Modify | `src/dev-dashboard/__tests__/dashboardRoute.test.tsx` |
-| Create | `src/dev-dashboard/flows/__tests__/flowMapLayout.test.ts` |
-| Create | `src/dev-dashboard/flows/__tests__/FlowMapInspector.test.tsx` |
+| Action  | File                                                          |
+| ------- | ------------------------------------------------------------- |
+| Modify  | `package.json`                                                |
+| Modify  | `src/dev-dashboard/flows/FlowDashboard.tsx`                   |
+| Rewrite | `src/dev-dashboard/flows/FlowMap.tsx`                         |
+| Create  | `src/dev-dashboard/flows/flowMapLayout.ts`                    |
+| Create  | `src/dev-dashboard/flows/FlowMapInspector.tsx`                |
+| Delete  | `src/dev-dashboard/flows/FlowRedirectionsPanel.tsx`           |
+| Modify  | `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`         |
+| Create  | `src/dev-dashboard/flows/__tests__/flowMapLayout.test.ts`     |
+| Create  | `src/dev-dashboard/flows/__tests__/FlowMapInspector.test.tsx` |
 
 ---
 
 ## Task 1: Install dependencies
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Install React Flow and dagre**
 
 Run:
+
 ```powershell
 pnpm add @xyflow/react @dagrejs/dagre
 ```
@@ -43,6 +45,7 @@ Expected: both packages appear in `package.json` `dependencies` and `node_module
 - [ ] **Step 2: Verify types are available**
 
 Run:
+
 ```powershell
 pnpm exec tsc --noEmit --project tsconfig.json 2>&1 | Select-String "xyflow|dagre"
 ```
@@ -62,6 +65,7 @@ git add package.json pnpm-lock.yaml; git commit -m "chore: add @xyflow/react and
 This module converts a `GuidedFlow` into the node/edge arrays that React Flow needs, with positions computed by dagre.
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/flowMapLayout.ts`
 - Create: `src/dev-dashboard/flows/__tests__/flowMapLayout.test.ts`
 
@@ -463,6 +467,7 @@ git add src/dev-dashboard/flows/flowMapLayout.ts src/dev-dashboard/flows/__tests
 The right-side panel that appears when a node is clicked. Handles light editing (text + effect removal) and the "Editar completamente" button.
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/FlowMapInspector.tsx`
 - Create: `src/dev-dashboard/flows/__tests__/FlowMapInspector.test.tsx`
 
@@ -666,8 +671,20 @@ export function FlowMapInspector({
           onClick={onClose}
           className="shrink-0 rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-container"
         >
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
@@ -690,7 +707,9 @@ export function FlowMapInspector({
       </div>
 
       {/* Options (choice nodes) */}
-      {node.kind === 'choice' && <ChoiceOptionsSection node={node} nodes={nodes} flows={flows} onRemoveEffect={onRemoveEffect} />}
+      {node.kind === 'choice' && (
+        <ChoiceOptionsSection node={node} nodes={nodes} flows={flows} onRemoveEffect={onRemoveEffect} />
+      )}
 
       {/* Branches (score_branch nodes) */}
       {node.kind === 'score_branch' && <ScoreBranchSection node={node} nodes={nodes} />}
@@ -720,19 +739,15 @@ function ChoiceOptionsSection({
     <div className="flex flex-col gap-2">
       <p className="font-label-sm text-xs text-on-surface-variant">Opções</p>
       {node.options.map((option) => {
-        const destTitle =
-          option.effects?.some((e) => e.kind === 'flow_start')
-            ? `→ fluxo "${getFlowStartTargetTitle(
-                (option.effects.find((e) => e.kind === 'flow_start') as { flowId: string }).flowId,
-                flows,
-              )}"`
-            : `→ ${getFlowNodeTitle(option.next, nodes)}`;
+        const destTitle = option.effects?.some((e) => e.kind === 'flow_start')
+          ? `→ fluxo "${getFlowStartTargetTitle(
+              (option.effects.find((e) => e.kind === 'flow_start') as { flowId: string }).flowId,
+              flows,
+            )}"`
+          : `→ ${getFlowNodeTitle(option.next, nodes)}`;
 
         return (
-          <div
-            key={option.id}
-            className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
-          >
+          <div key={option.id} className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
             <div className="flex items-center justify-between gap-1">
               <p className="font-label-md text-sm text-on-surface">{option.label}</p>
               <p className="font-body-md text-xs text-on-surface-variant">{destTitle}</p>
@@ -816,6 +831,7 @@ git add src/dev-dashboard/flows/FlowMapInspector.tsx src/dev-dashboard/flows/__t
 ## Task 4: Rewrite `FlowMap.tsx` with React Flow canvas
 
 **Files:**
+
 - Rewrite: `src/dev-dashboard/flows/FlowMap.tsx`
 
 React Flow requires a CSS import for default styles. Add it to the component file.
@@ -826,14 +842,7 @@ Replace the entire contents of `src/dev-dashboard/flows/FlowMap.tsx` with:
 
 ```tsx
 import { useCallback, useMemo, useState } from 'react';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  type NodeMouseHandler,
-} from '@xyflow/react';
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState, type NodeMouseHandler } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import type { GuidedFlow, FlowNode, FlowEffect } from '../../domain/flow-engine/types';
@@ -847,12 +856,8 @@ function nodeColor(node: FlowNode): { border: string; bg: string; text: string }
   if (node.kind === 'score_branch') return { border: '#7a5900', bg: '#ffdf9e', text: '#5c4300' };
   if (node.kind !== 'choice') return { border: '#bdcabf', bg: '#ffffff', text: '#111c2c' };
 
-  const hasSafetyInterrupt = node.options.some((o) =>
-    o.effects?.some((e) => e.kind === 'safety_interrupt'),
-  );
-  const hasDeferredSafety = node.options.some((o) =>
-    o.effects?.some((e) => e.kind === 'deferred_safety'),
-  );
+  const hasSafetyInterrupt = node.options.some((o) => o.effects?.some((e) => e.kind === 'safety_interrupt'));
+  const hasDeferredSafety = node.options.some((o) => o.effects?.some((e) => e.kind === 'deferred_safety'));
 
   if (hasSafetyInterrupt) return { border: '#ba1a1a', bg: '#ffdad6', text: '#93000a' };
   if (hasDeferredSafety) return { border: '#7a5900', bg: '#fff8e8', text: '#5c4300' };
@@ -870,14 +875,17 @@ function ChoiceNodeComponent({ data }: { data: FlowNodeData }) {
       className="min-w-[160px] max-w-[220px] rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="font-medium leading-tight">{node.text.slice(0, 80)}{node.text.length > 80 ? '…' : ''}</p>
+        <p className="font-medium leading-tight">
+          {node.text.slice(0, 80)}
+          {node.text.length > 80 ? '…' : ''}
+        </p>
         {hasScore && (
-          <span className="ml-1 shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-800">+pts</span>
+          <span className="ml-1 shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-800">
+            +pts
+          </span>
         )}
       </div>
-      <p className="mt-1 text-[10px] opacity-60">
-        {node.kind === 'choice' ? `${node.options.length} opções` : ''}
-      </p>
+      <p className="mt-1 text-[10px] opacity-60">{node.kind === 'choice' ? `${node.options.length} opções` : ''}</p>
     </div>
   );
 }
@@ -908,8 +916,13 @@ function ResultNodeComponent({ data }: { data: FlowNodeData }) {
       className="min-w-[160px] max-w-[220px] rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="leading-tight text-on-surface-variant">{node.text.slice(0, 60)}{node.text.length > 60 ? '…' : ''}</p>
-        <span className="ml-1 shrink-0 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant">FIM</span>
+        <p className="leading-tight text-on-surface-variant">
+          {node.text.slice(0, 60)}
+          {node.text.length > 60 ? '…' : ''}
+        </p>
+        <span className="ml-1 shrink-0 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant">
+          FIM
+        </span>
       </div>
     </div>
   );
@@ -932,17 +945,12 @@ export function FlowMap({
   flows: GuidedFlow[];
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
 }) {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildFlowGraph(flow),
-    [flow],
-  );
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildFlowGraph(flow), [flow]);
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  const selectedNode = selectedNodeId
-    ? Object.values(flow.nodes).find((n) => n.id === selectedNodeId) ?? null
-    : null;
+  const selectedNode = selectedNodeId ? (Object.values(flow.nodes).find((n) => n.id === selectedNodeId) ?? null) : null;
 
   const handleNodeClick: NodeMouseHandler = useCallback((_event, rfNode) => {
     setSelectedNodeId(rfNode.id);
@@ -1031,6 +1039,7 @@ pnpm exec tsc --noEmit
 ```
 
 Fix any type errors before continuing. Common issues:
+
 - `useNodesState`/`useEdgesState` return `[nodes, setNodes, onNodesChange]` — destructure the third element for `onNodesChange`.
 - The `style` prop on `<ReactFlow>` may need `height: '100%'` inside the parent container.
 
@@ -1047,6 +1056,7 @@ git add src/dev-dashboard/flows/FlowMap.tsx; git commit -m "feat: rewrite FlowMa
 Remove the redirections tab, update `FlowMap` props (add `onFlowChange` and `onEditNode`), and complete the `onEditFully` handler in `FlowMap`.
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowDashboard.tsx`
 - Modify: `src/dev-dashboard/flows/FlowMap.tsx` (add `onEditNode` prop)
 
@@ -1106,21 +1116,25 @@ import { FlowRedirections } from './FlowRedirectionsPanel';
 **2d. Update the `FlowMap` render** (line ~352):
 
 ```tsx
-{activeDetailTab === 'map' && (
-  <FlowMap
-    flow={selectedFlow}
-    flows={flows}
-    onFlowChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
-    onEditNode={handleEditNode}
-  />
-)}
+{
+  activeDetailTab === 'map' && (
+    <FlowMap
+      flow={selectedFlow}
+      flows={flows}
+      onFlowChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
+      onEditNode={handleEditNode}
+    />
+  );
+}
 ```
 
 **2e. Remove the redirections render block** (line ~354):
 
 ```tsx
 // Remove this line entirely:
-{activeDetailTab === 'redirections' && <FlowRedirections flow={selectedFlow} onEditNode={handleEditNode} />}
+{
+  activeDetailTab === 'redirections' && <FlowRedirections flow={selectedFlow} onEditNode={handleEditNode} />;
+}
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -1174,11 +1188,13 @@ git add -u; git commit -m "chore: remove FlowRedirectionsPanel and flowRedirecti
 ## Task 6: Update existing tests
 
 Three tests in `dashboardRoute.test.tsx` are now broken:
+
 1. `'renders a visual flow map with readable step names and connections'` — tests the old list-based FlowMap output
 2. `'shows deferred safety routing in the flow redirections tab'` — tests the removed redirections tab
 3. `'round-trips from a redirections row to the focused node in the editor tab'` — tests the removed redirections tab
 
 **Files:**
+
 - Modify: `src/dev-dashboard/__tests__/dashboardRoute.test.tsx`
 
 - [ ] **Step 1: Run the full test suite to see current failures**
@@ -1260,6 +1276,7 @@ git add src/dev-dashboard/__tests__/dashboardRoute.test.tsx; git commit -m "test
 React Flow imports its own CSS (`@xyflow/react/dist/style.css`). In jsdom, CSS imports are ignored by default, but if Vitest throws an error about unknown file types, a transform is needed.
 
 **Files:**
+
 - Potentially modify: `vitest.config.ts`
 
 - [ ] **Step 1: Run the test suite and check for CSS import errors**
@@ -1335,6 +1352,7 @@ pnpm run dev
 - [ ] **Step 2: Open the dashboard and verify the graph renders**
 
 Navigate to the dashboard and select the "SRQ-20" flow. Click "Mapa visual". Verify:
+
 - [ ] All nodes appear as boxes arranged top-to-bottom
 - [ ] Q17 node has a red/amber border (deferred safety effect)
 - [ ] Score nodes (q1–q16, q18–q20) show a green `+pts` badge
@@ -1345,6 +1363,7 @@ Navigate to the dashboard and select the "SRQ-20" flow. Click "Mapa visual". Ver
 - [ ] **Step 3: Verify the inspector panel**
 
 Click any node. Verify:
+
 - [ ] Inspector panel appears on the right side
 - [ ] Node text is shown in an editable textarea
 - [ ] Editing the text and clicking elsewhere updates the flow (visible in the Editor tab)
