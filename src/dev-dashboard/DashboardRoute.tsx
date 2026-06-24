@@ -55,16 +55,17 @@ function createLocalEducationMaterial(existingCount: number) {
   };
 }
 
-function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shippedGroupsCount: number) {
+function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shippedGroups: EducationResourceGroup[]) {
   let suffix = 1;
-  while (existingAddedGroups.some((g) => g.id === `group-local-${suffix}`)) {
+  const allGroupIds = new Set([...shippedGroups, ...existingAddedGroups].map((g) => g.id));
+  while (allGroupIds.has(`group-local-${suffix}`)) {
     suffix++;
   }
 
   return {
     id: `group-local-${suffix}`,
     title: 'Novo grupo',
-    order: existingAddedGroups.length + shippedGroupsCount + 1,
+    order: shippedGroups.length + existingAddedGroups.length + 1,
   };
 }
 
@@ -182,7 +183,7 @@ export function DashboardRoute() {
             onGroupAdd={() =>
               updateDraftState((current) => ({
                 ...current,
-                addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups.length)],
+                addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups)],
               }))
             }
             onGroupRemove={(groupIndex, groupId) =>

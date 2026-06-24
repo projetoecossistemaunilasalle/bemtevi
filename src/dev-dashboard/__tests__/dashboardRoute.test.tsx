@@ -58,7 +58,13 @@ vi.mock('../content/shippedContent', () => ({
         review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
       },
     ],
-    educationGroups: [],
+    educationGroups: [
+      {
+        id: 'mock-group',
+        title: 'Grupo de teste',
+        order: 1,
+      },
+    ],
   }),
 }));
 
@@ -399,5 +405,80 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Novo material' }));
 
     expect(onResourceAdd).toHaveBeenCalledOnce();
+  });
+
+  it('adds a new group that appears in the group management list', () => {
+    const onGroupAdd = vi.fn();
+
+    render(
+      <EducationDashboard
+        resources={[]}
+        groups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
+        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
+        onResourceChange={vi.fn()}
+        onResourceAdd={vi.fn()}
+        onGroupChange={vi.fn()}
+        onGroupAdd={onGroupAdd}
+        onGroupRemove={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grupos de materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Novo grupo' }));
+
+    expect(onGroupAdd).toHaveBeenCalledOnce();
+  });
+
+  it('editing a group title calls onGroupChange with correct arguments', () => {
+    const onGroupChange = vi.fn();
+
+    render(
+      <EducationDashboard
+        resources={[]}
+        groups={[
+          { id: 'mock-group', title: 'Grupo de teste', order: 1 },
+          { id: 'added-group', title: 'Grupo editável', order: 2 },
+        ]}
+        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
+        onResourceChange={vi.fn()}
+        onResourceAdd={vi.fn()}
+        onGroupChange={onGroupChange}
+        onGroupAdd={vi.fn()}
+        onGroupRemove={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grupos de materiais' }));
+    const groupTitleInput = screen.getByDisplayValue('Grupo editável');
+    fireEvent.change(groupTitleInput, { target: { value: 'Título do grupo editado' } });
+
+    expect(onGroupChange).toHaveBeenCalledWith(1, 'added-group', { title: 'Título do grupo editado' });
+  });
+
+  it('removing an added group removes it from the list', () => {
+    const onGroupRemove = vi.fn();
+
+    render(
+      <EducationDashboard
+        resources={[]}
+        groups={[
+          { id: 'mock-group', title: 'Grupo de teste', order: 1 },
+          { id: 'added-group', title: 'Grupo adicionado', order: 2 },
+        ]}
+        shippedGroups={[{ id: 'mock-group', title: 'Grupo de teste', order: 1 }]}
+        onResourceChange={vi.fn()}
+        onResourceAdd={vi.fn()}
+        onGroupChange={vi.fn()}
+        onGroupAdd={vi.fn()}
+        onGroupRemove={onGroupRemove}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grupos de materiais' }));
+    expect(screen.getByDisplayValue('Grupo adicionado')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover grupo' }));
+
+    expect(onGroupRemove).toHaveBeenCalledWith(1, 'added-group');
   });
 });

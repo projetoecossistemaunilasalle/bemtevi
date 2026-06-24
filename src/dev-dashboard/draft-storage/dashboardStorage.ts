@@ -41,17 +41,21 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
   if (!raw) return createEmptyDashboardDraftState();
 
   try {
-    const parsed = JSON.parse(raw) as DashboardDraftState;
-    if (parsed.schemaVersion === '1.0.0') {
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null) return createEmptyDashboardDraftState();
+
+    const record = parsed as Record<string, unknown>;
+    const version = record.schemaVersion;
+    if (version === '1.0.0') {
       return {
-        ...parsed,
+        ...(record as Record<string, unknown>),
         schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
-        groupPatches: (parsed as Record<string, unknown>).groupPatches ?? [],
-        addedGroups: (parsed as Record<string, unknown>).addedGroups ?? [],
+        groupPatches: (record.groupPatches ?? []) as DashboardRecordPatch<EducationResourceGroup>[],
+        addedGroups: (record.addedGroups ?? []) as EducationResourceGroup[],
       } as DashboardDraftState;
     }
-    if (parsed.schemaVersion !== DASHBOARD_DRAFT_SCHEMA_VERSION) return createEmptyDashboardDraftState();
-    return parsed;
+    if (version !== DASHBOARD_DRAFT_SCHEMA_VERSION) return createEmptyDashboardDraftState();
+    return parsed as DashboardDraftState;
   } catch {
     return createEmptyDashboardDraftState();
   }
