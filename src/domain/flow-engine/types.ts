@@ -87,6 +87,7 @@ export interface ScoreBranch {
   min: number;
   max: number;
   next: string;
+  navigation?: Exclude<GlobalActionTarget, 'end'>;
 }
 
 export interface ScoreBranchFlowNode {

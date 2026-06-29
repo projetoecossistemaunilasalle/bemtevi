@@ -652,6 +652,31 @@ describe('flow runtime', () => {
     expect(nextState.transcript.map((message) => message.text)).toContain('Resultado baixo.');
   });
 
+  it('sets score branch navigation after showing the branch result', () => {
+    const navigationFlow: GuidedFlow = {
+      ...scoringFlow,
+      nodes: {
+        ...scoringFlow.nodes,
+        'score-branch': {
+          id: 'score-branch',
+          kind: 'score_branch',
+          text: 'Calculando o melhor retorno.',
+          scoreKey: 'fixture-score',
+          branches: [
+            { id: 'low', min: 0, max: 0, next: 'low-result' },
+            { id: 'high', min: 1, max: 20, next: 'high-result', navigation: '/apoio' },
+          ],
+        },
+      },
+    };
+
+    const nextState = advanceFlow(createInitialFlowState(navigationFlow, [navigationFlow]), [navigationFlow], 'Sim');
+
+    expect(nextState.activeNodeId).toBe('high-result');
+    expect(nextState.transcript.map((message) => message.text)).toContain('Resultado alto.');
+    expect(nextState.pendingNavigation).toBe('/apoio');
+  });
+
   it('handles safety interruption as a generic JSON option effect', () => {
     const safetyFlow: GuidedFlow = {
       ...scoringFlow,

@@ -1,5 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { ChoiceFlowNode, DeferredSafetyFlowEffect, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import type {
+  ChoiceFlowNode,
+  DeferredSafetyFlowEffect,
+  FlowNode,
+  GlobalActionTarget,
+  GuidedFlow,
+  ScoreBranchFlowNode,
+} from '../../domain/flow-engine/types';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
@@ -187,6 +194,17 @@ export function FlowEditor({
 
     if (kind === 'result') {
       replaceNode({ id: node.id, kind: 'result', text: node.text });
+      return;
+    }
+
+    if (kind === 'score_branch') {
+      replaceNode({
+        id: node.id,
+        kind: 'score_branch',
+        text: node.text,
+        scoreKey: existingScoreKeys[0] ?? '',
+        branches: [{ id: 'faixa_1', min: 0, max: 0, next: firstNodeId }],
+      });
     }
   }
 
@@ -255,6 +273,37 @@ export function FlowEditor({
 
   function getDeferredSafetyEffect(option: ChoiceFlowNode['options'][number]) {
     return option.effects?.find((effect): effect is DeferredSafetyFlowEffect => effect.kind === 'deferred_safety');
+  }
+
+  function updateScoreBranchNode(node: ScoreBranchFlowNode, patch: Partial<ScoreBranchFlowNode>) {
+    replaceNode({ ...node, ...patch });
+  }
+
+  function updateScoreBranchRange(
+    node: ScoreBranchFlowNode,
+    branchId: string,
+    patch: Partial<ScoreBranchFlowNode['branches'][number]>,
+  ) {
+    updateScoreBranchNode(node, {
+      branches: node.branches.map((branch) => (branch.id === branchId ? { ...branch, ...patch } : branch)),
+    });
+  }
+
+  function addScoreBranchRange(node: ScoreBranchFlowNode) {
+    const branchId = createUniqueId('faixa', Object.fromEntries(node.branches.map((branch) => [branch.id, branch])));
+    updateScoreBranchNode(node, {
+      branches: [...node.branches, { id: branchId, min: 0, max: 0, next: firstNodeId }],
+    });
+  }
+
+  function removeScoreBranchRange(node: ScoreBranchFlowNode, branchId: string) {
+    updateScoreBranchNode(node, {
+      branches: node.branches.filter((branch) => branch.id !== branchId),
+    });
+  }
+
+  function parseOptionalNavigation(value: string) {
+    return value === '' ? undefined : (value as Exclude<GlobalActionTarget, 'end'>);
   }
 
   return (
@@ -506,9 +555,7 @@ export function FlowEditor({
                         >
                           <option value="choice">Pergunta com opções</option>
                           <option value="result">Resultado final</option>
-                          {node.kind === 'score_branch' && (
-                            <option value="score_branch">Ramificação por pontuação</option>
-                          )}
+                          <option value="score_branch">Ramificação por pontuação</option>
                         </select>
                       </label>
 
@@ -586,6 +633,138 @@ export function FlowEditor({
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {node.kind === 'score_branch' && (
+                        <div className="flex flex-col gap-4 rounded-lg border border-outline-variant/50 bg-surface-container-low p-3">
+                          <Field
+                            label="Pontuação usada"
+                            hint="Use a mesma chave configurada nas opções que somam pontos."
+                          >
+                            <input
+                              aria-label="Pontuação usada"
+                              className={inputClassSm}
+                              value={node.scoreKey}
+                              onChange={(event) => updateScoreBranchNode(node, { scoreKey: event.target.value })}
+                            />
+                          </Field>
+
+                          {existingScoreKeys.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              <span className="text-xs text-on-surface-variant font-medium">Chaves existentes:</span>
+                              {existingScoreKeys.map((key) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  className="px-2.5 py-1 text-xs font-label-sm bg-secondary-container text-on-secondary-container hover:bg-secondary-container/85 rounded-md transition-colors"
+                                  onClick={() => updateScoreBranchNode(node, { scoreKey: key })}
+                                >
+                                  {key}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="font-label-md text-on-surface">Faixas de redirecionamento</p>
+                              <Button variant="secondary" size="sm" onClick={() => addScoreBranchRange(node)}>
+                                Adicionar faixa
+                              </Button>
+                            </div>
+
+                            {node.branches.map((branch) => (
+                              <div
+                                key={branch.id}
+                                className="grid gap-2 rounded-lg bg-surface-container-lowest p-3 md:grid-cols-2"
+                              >
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">Nome da faixa</span>
+                                  <input
+                                    aria-label={`Nome da faixa ${branch.id}`}
+                                    className={inputClassSm}
+                                    value={branch.id}
+                                    onChange={(event) =>
+                                      updateScoreBranchRange(node, branch.id, { id: event.target.value })
+                                    }
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">Destino do resultado</span>
+                                  <select
+                                    aria-label={`Destino de resultado da faixa ${branch.id}`}
+                                    className={inputClassSm}
+                                    value={branch.next}
+                                    onChange={(event) =>
+                                      updateScoreBranchRange(node, branch.id, { next: event.target.value })
+                                    }
+                                  >
+                                    {nodes.map((targetNode) => (
+                                      <option key={targetNode.id} value={targetNode.id}>
+                                        {getFlowNodeLabel(targetNode, nodes)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">Mínimo</span>
+                                  <input
+                                    type="number"
+                                    aria-label={`Mínimo da faixa ${branch.id}`}
+                                    className={inputClassSm}
+                                    value={branch.min}
+                                    onChange={(event) =>
+                                      updateScoreBranchRange(node, branch.id, { min: Number(event.target.value) })
+                                    }
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">Máximo</span>
+                                  <input
+                                    type="number"
+                                    aria-label={`Máximo da faixa ${branch.id}`}
+                                    className={inputClassSm}
+                                    value={branch.max}
+                                    onChange={(event) =>
+                                      updateScoreBranchRange(node, branch.id, { max: Number(event.target.value) })
+                                    }
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1 md:col-span-2">
+                                  <span className="font-label-sm text-on-surface">
+                                    Destino de página após o resultado
+                                  </span>
+                                  <select
+                                    aria-label={`Destino de página da faixa ${branch.id}`}
+                                    className={inputClassSm}
+                                    value={branch.navigation ?? ''}
+                                    onChange={(event) =>
+                                      updateScoreBranchRange(node, branch.id, {
+                                        navigation: parseOptionalNavigation(event.target.value),
+                                      })
+                                    }
+                                  >
+                                    <option value="">Não abrir página automaticamente</option>
+                                    <option value="/apoio">/apoio — Apoio imediato</option>
+                                    <option value="/contatos">/contatos — Contatos de apoio</option>
+                                    <option value="/educacao">/educacao — Materiais educativos</option>
+                                  </select>
+                                </label>
+                                {node.branches.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    className="w-fit md:col-span-2"
+                                    onClick={() => removeScoreBranchRange(node, branch.id)}
+                                  >
+                                    Remover faixa
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

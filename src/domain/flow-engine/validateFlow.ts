@@ -142,6 +142,12 @@ function validateScoreBranchNode(flowLabel: string, node: ScoreBranchFlowNode, n
         `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} points to missing node ${branch.next}.`,
       );
     }
+
+    if (branch.navigation !== undefined && !['/apoio', '/contatos', '/educacao'].includes(String(branch.navigation))) {
+      errors.push(
+        `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} navigation must be a supported destination.`,
+      );
+    }
   });
 }
 

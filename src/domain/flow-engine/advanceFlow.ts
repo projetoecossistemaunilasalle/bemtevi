@@ -202,7 +202,12 @@ function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string
   const node = flow.nodes[nodeId];
 
   if (node.kind === 'score_branch') {
-    return advanceToNode(state, flow, resolveScoreBranchNextNode(state, node));
+    const branch = resolveScoreBranch(state, node);
+    const branchedState = advanceToNode(state, flow, branch.next);
+
+    return branch.navigation && !branchedState.pendingNavigation
+      ? { ...branchedState, pendingNavigation: branch.navigation }
+      : branchedState;
   }
 
   const nextState = {
@@ -220,7 +225,7 @@ function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string
   };
 }
 
-function resolveScoreBranchNextNode(state: FlowRuntimeState, node: Extract<FlowNode, { kind: 'score_branch' }>) {
+function resolveScoreBranch(state: FlowRuntimeState, node: Extract<FlowNode, { kind: 'score_branch' }>) {
   const score = state.scores[node.scoreKey] ?? 0;
   const branch = node.branches.find((candidate) => score >= candidate.min && score <= candidate.max);
 
@@ -228,7 +233,7 @@ function resolveScoreBranchNextNode(state: FlowRuntimeState, node: Extract<FlowN
     throw new Error(`No score branch found for ${node.scoreKey} score ${score}.`);
   }
 
-  return branch.next;
+  return branch;
 }
 
 function advanceFreeTextIfAvailable(

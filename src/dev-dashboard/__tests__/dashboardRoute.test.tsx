@@ -1273,6 +1273,29 @@ describe('DashboardRoute', () => {
     expect(screen.queryByRole('button', { name: /^Fluxo de teste$/i })).not.toBeInTheDocument();
   });
 
+  it('edits score branch ranges and page redirects directly', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
+    await user.click(screen.getByRole('button', { name: 'Editor' }));
+    await user.click(screen.getByRole('button', { name: 'Ramificação' }));
+    await user.click(screen.getAllByRole('button', { name: /Vou organizar suas respostas/i })[0]);
+
+    expect(screen.getByLabelText('Pontuação usada')).toHaveValue('srq20');
+
+    fireEvent.change(screen.getByLabelText('Mínimo da faixa possible-distress'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Destino de página da faixa possible-distress'), {
+      target: { value: '/apoio' },
+    });
+
+    expect(screen.getByLabelText('Mínimo da faixa possible-distress')).toHaveValue(8);
+    expect(screen.getByLabelText('Destino de página da faixa possible-distress')).toHaveValue('/apoio');
+  });
   it('renders visual effect badges in outline list and supports stage addition in sidebar', async () => {
     const user = userEvent.setup();
     render(

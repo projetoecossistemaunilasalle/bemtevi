@@ -1,5 +1,5 @@
 import { validateFlow } from '../../domain/flow-engine/validateFlow';
-import type { FlowEffect, GuidedFlow } from '../../domain/flow-engine/types';
+import type { FlowEffect, GuidedFlow, ScoreBranchFlowNode } from '../../domain/flow-engine/types';
 import { createValidationResult, type DashboardValidationIssue } from '../validation/validationTypes';
 import { findDuplicateIds } from '../validation/duplicateIds';
 
@@ -32,6 +32,8 @@ export function validateDashboardFlows(flows: GuidedFlow[], resourceIds: string[
   });
 
   flows.forEach((flow) => {
+    const scoringKeys = collectScoringKeys(flow);
+
     Object.values(flow.nodes).forEach((node) => {
       if (!allowedNodeKinds.has(node.kind)) {
         issues.push({
@@ -49,6 +51,10 @@ export function validateDashboardFlows(flows: GuidedFlow[], resourceIds: string[
             issues.push(...validateEffect(flow.id, node.id, option.id, effect, flowIds));
           });
         });
+      }
+
+      if (node.kind === 'score_branch') {
+        issues.push(...validateScoreBranch(flow.id, node, scoringKeys));
       }
 
       if (node.kind === 'result') {
@@ -114,4 +120,66 @@ function validateEffect(
   }
 
   return [];
+}
+
+function collectScoringKeys(flow: GuidedFlow) {
+  const keys = new Set<string>();
+
+  Object.values(flow.nodes).forEach((node) => {
+    if (node.kind !== 'choice') return;
+
+    node.options.forEach((option) => {
+      option.effects?.forEach((effect) => {
+        if (effect.kind === 'score' && effect.scoreKey.trim()) {
+          keys.add(effect.scoreKey);
+        }
+      });
+    });
+  });
+
+  return keys;
+}
+
+function validateScoreBranch(
+  flowId: string,
+  node: ScoreBranchFlowNode,
+  scoringKeys: Set<string>,
+): DashboardValidationIssue[] {
+  const issues: DashboardValidationIssue[] = [];
+
+  if (!scoringKeys.has(node.scoreKey)) {
+    issues.push({
+      level: 'warning',
+      area: 'flows',
+      id: `unused-score-key:${flowId}:${node.id}:${node.scoreKey}`,
+      message: `Esta ramificação usa a pontuação "${node.scoreKey}", mas nenhuma opção soma pontos nessa chave.`,
+      path: `${flowId}.nodes.${node.id}.scoreKey`,
+    });
+  }
+
+  const sortedBranches = [...node.branches].sort((a, b) => a.min - b.min || a.max - b.max);
+  sortedBranches.forEach((branch, index) => {
+    if (branch.navigation !== undefined && !allowedNavigateDestinations.has(branch.navigation)) {
+      issues.push({
+        level: 'error',
+        area: 'flows',
+        id: `invalid-score-branch-navigation:${flowId}:${node.id}:${branch.id}`,
+        message: `A faixa "${branch.id}" tenta abrir um destino que não é permitido: ${branch.navigation}.`,
+        path: `${flowId}.nodes.${node.id}.branches.${branch.id}.navigation`,
+      });
+    }
+
+    const previousBranch = sortedBranches[index - 1];
+    if (previousBranch && branch.min <= previousBranch.max) {
+      issues.push({
+        level: 'warning',
+        area: 'flows',
+        id: `overlapping-score-range:${flowId}:${node.id}:${branch.id}`,
+        message: `A faixa "${branch.id}" sobrepõe outra faixa de pontuação neste redirecionamento.`,
+        path: `${flowId}.nodes.${node.id}.branches.${branch.id}`,
+      });
+    }
+  });
+
+  return issues;
 }
