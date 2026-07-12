@@ -506,9 +506,8 @@ export function DashboardRoute() {
 
                 return {
                   ...current,
-                  contactPatches: current.contactPatches.filter(
-                    (patch) => patch.id !== origin.id || patch.sourceIndex !== origin.sourceIndex,
-                  ),
+                  contactPatches: current.contactPatches.filter((patch) => patch.id !== origin.id),
+                  addedContacts: current.addedContacts.filter((contact) => contact.id !== origin.id),
                   removedContactIds: [...new Set([...(current.removedContactIds ?? []), origin.id])],
                 };
               })

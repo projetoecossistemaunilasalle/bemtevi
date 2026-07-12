@@ -359,9 +359,12 @@ describe('DashboardRoute', () => {
     expect(flowsTab).toHaveAttribute('tabindex', '0');
     expect(materialsTab).toHaveAttribute('tabindex', '-1');
     expect(flowsTab).toHaveAttribute('id', 'dashboard-tab-flows');
-    expect(flowsTab).toHaveAttribute('aria-controls', 'dashboard-panel-flows');
-    expect(flowsPanel).toHaveAttribute('id', 'dashboard-panel-flows');
+    expect(flowsPanel).toHaveAttribute('id', 'dashboard-tabpanel');
     expect(flowsPanel).toHaveAttribute('aria-labelledby', 'dashboard-tab-flows');
+    [flowsTab, materialsTab, contactsTab, exportTab].forEach((tab) => {
+      expect(tab).toHaveAttribute('aria-controls', 'dashboard-tabpanel');
+      expect(document.getElementById(tab.getAttribute('aria-controls') ?? '')).toBe(flowsPanel);
+    });
 
     flowsTab.focus();
     fireEvent.keyDown(flowsTab, { key: 'ArrowRight' });
@@ -426,6 +429,15 @@ describe('DashboardRoute', () => {
       phoneHref: 'tel:5133332222',
     };
     shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact(), duplicateContact);
+    const initialDraft = createEmptyDashboardDraftState();
+    initialDraft.addedContacts = [
+      {
+        ...createDefaultShippedContact(),
+        name: 'Contato local ocultado pelo mesmo tombstone',
+        review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
+      },
+    ];
+    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
 
     render(
       <MemoryRouter>
@@ -465,13 +477,8 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Segundo contato editado' }));
 
     draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.contactPatches).toEqual([
-      {
-        id: 'canoas-caps-praca-brasil',
-        sourceIndex: 0,
-        patch: { name: 'Primeiro contato editado' },
-      },
-    ]);
+    expect(draft.contactPatches).toEqual([]);
+    expect(draft.addedContacts).toEqual([]);
     expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
   });
 

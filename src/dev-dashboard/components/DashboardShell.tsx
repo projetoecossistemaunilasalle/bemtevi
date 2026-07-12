@@ -67,7 +67,7 @@ export function DashboardShell({
             type="button"
             role="tab"
             aria-selected={activeTab === tab.id}
-            aria-controls={`dashboard-panel-${tab.id}`}
+            aria-controls="dashboard-tabpanel"
             tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(event) => handleTabKeyDown(event, tabIndex)}
@@ -81,7 +81,7 @@ export function DashboardShell({
           </button>
         ))}
       </div>
-      <section id={`dashboard-panel-${activeTab}`} role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`}>
+      <section id="dashboard-tabpanel" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`}>
         {children}
       </section>
     </div>
