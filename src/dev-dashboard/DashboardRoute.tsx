@@ -115,6 +115,29 @@ function findGroupIndex(groups: EducationResourceGroup[], groupId: string) {
   return groups.findIndex((group) => group.id === groupId);
 }
 
+type ContactOrigin =
+  | { kind: 'shipped'; sourceIndex: number; id: string }
+  | { kind: 'added'; addedIndex: number; id: string };
+
+function resolveContactOrigin(
+  shippedContacts: Array<{ id: string }>,
+  addedContacts: Array<{ id: string }>,
+  removedContactIds: readonly string[],
+  mergedIndex: number,
+): ContactOrigin | undefined {
+  const removedIds = new Set(removedContactIds);
+  const origins: ContactOrigin[] = [];
+
+  shippedContacts.forEach((contact, sourceIndex) => {
+    if (!removedIds.has(contact.id)) origins.push({ kind: 'shipped', sourceIndex, id: contact.id });
+  });
+  addedContacts.forEach((contact, addedIndex) => {
+    if (!removedIds.has(contact.id)) origins.push({ kind: 'added', addedIndex, id: contact.id });
+  });
+
+  return origins[mergedIndex];
+}
+
 export function DashboardRoute() {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
   const shipped = useMemo(() => getShippedDashboardContent(), []);
@@ -433,23 +456,26 @@ export function DashboardRoute() {
           <ContactsDashboard
             services={mergedDrafts.contacts}
             validation={contactValidation}
-            onServiceChange={(_serviceIndex, serviceId, patch) =>
+            onServiceChange={(serviceIndex, serviceId, patch) =>
               updateDraftState((current) => {
-                const addedIndex = current.addedContacts.findIndex((service) => service.id === serviceId);
+                const origin = resolveContactOrigin(
+                  shipped.contacts,
+                  current.addedContacts,
+                  current.removedContactIds ?? [],
+                  serviceIndex,
+                );
+                if (!origin || origin.id !== serviceId) return current;
 
-                if (addedIndex >= 0) {
+                if (origin.kind === 'added') {
                   return {
                     ...current,
-                    addedContacts: updateRecordAtIndex(current.addedContacts, addedIndex, patch),
+                    addedContacts: updateRecordAtIndex(current.addedContacts, origin.addedIndex, patch),
                   };
                 }
 
-                const shippedIndex = shipped.contacts.findIndex((service) => service.id === serviceId);
-                if (shippedIndex < 0) return current;
-
                 return {
                   ...current,
-                  contactPatches: upsertPatchById(current.contactPatches, serviceId, shippedIndex, patch),
+                  contactPatches: upsertPatchById(current.contactPatches, origin.id, origin.sourceIndex, patch),
                 };
               })
             }
@@ -461,23 +487,29 @@ export function DashboardRoute() {
               }));
               return newService.id;
             }}
-            onServiceRemove={(_serviceIndex, serviceId) =>
+            onServiceRemove={(serviceIndex, serviceId) =>
               updateDraftState((current) => {
-                const addedIndex = current.addedContacts.findIndex((service) => service.id === serviceId);
-                if (addedIndex >= 0) {
+                const origin = resolveContactOrigin(
+                  shipped.contacts,
+                  current.addedContacts,
+                  current.removedContactIds ?? [],
+                  serviceIndex,
+                );
+                if (!origin || origin.id !== serviceId) return current;
+
+                if (origin.kind === 'added') {
                   return {
                     ...current,
-                    addedContacts: current.addedContacts.filter((service) => service.id !== serviceId),
+                    addedContacts: current.addedContacts.filter((_, index) => index !== origin.addedIndex),
                   };
                 }
 
-                const shippedIndex = shipped.contacts.findIndex((service) => service.id === serviceId);
-                if (shippedIndex < 0) return current;
-
                 return {
                   ...current,
-                  contactPatches: current.contactPatches.filter((patch) => patch.id !== serviceId),
-                  removedContactIds: [...new Set([...(current.removedContactIds ?? []), serviceId])],
+                  contactPatches: current.contactPatches.filter(
+                    (patch) => patch.id !== origin.id || patch.sourceIndex !== origin.sourceIndex,
+                  ),
+                  removedContactIds: [...new Set([...(current.removedContactIds ?? []), origin.id])],
                 };
               })
             }

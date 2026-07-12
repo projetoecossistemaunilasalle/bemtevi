@@ -1,9 +1,35 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { DashboardRoute } from '../DashboardRoute';
+import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorage';
 import { EducationDashboard } from '../education/EducationDashboard';
+
+const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
+
+function createDefaultShippedContact(): ServiceDirectoryEntry {
+  return {
+    id: 'canoas-caps-praca-brasil',
+    name: 'CAPS II Praça Brasil',
+    type: 'CAPS',
+    badgeTone: 'primary',
+    city: 'Canoas',
+    state: 'RS',
+    address: 'Av. Getúlio Vargas, 7071 - Centro, Canoas - RS',
+    phoneDisplay: '(51) 3236-1500',
+    phoneHref: 'tel:5132361500',
+    hours: 'Segunda a sexta, 08:00 - 18:00',
+    notes: 'Atendimento por acolhimento.',
+    review: {
+      status: 'approved',
+      reviewedBy: 'Equipe SeCuida',
+      reviewedAt: '2026-07-01T12:00:00.000Z',
+      notes: 'Contato conferido com a rede municipal.',
+    },
+  };
+}
 
 vi.mock('../content/shippedContent', () => ({
   getShippedDashboardContent: () => ({
@@ -192,33 +218,14 @@ vi.mock('../content/shippedContent', () => ({
         order: 2,
       },
     ],
-    contacts: [
-      {
-        id: 'canoas-caps-praca-brasil',
-        name: 'CAPS II Praça Brasil',
-        type: 'CAPS',
-        badgeTone: 'primary',
-        city: 'Canoas',
-        state: 'RS',
-        address: 'Av. Getúlio Vargas, 7071 - Centro, Canoas - RS',
-        phoneDisplay: '(51) 3236-1500',
-        phoneHref: 'tel:5132361500',
-        hours: 'Segunda a sexta, 08:00 - 18:00',
-        notes: 'Atendimento por acolhimento.',
-        review: {
-          status: 'approved',
-          reviewedBy: 'Equipe SeCuida',
-          reviewedAt: '2026-07-01T12:00:00.000Z',
-          notes: 'Contato conferido com a rede municipal.',
-        },
-      },
-    ],
+    contacts: shippedContacts,
   }),
 }));
 
 describe('DashboardRoute', () => {
   beforeEach(() => {
     localStorage.clear();
+    shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact());
   });
 
   it('renders pt-BR flow editor helper text', () => {
@@ -336,6 +343,48 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
   });
 
+  it('supports roving keyboard navigation and links each tab to its panel', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    const flowsTab = screen.getByRole('tab', { name: 'Fluxos' });
+    const materialsTab = screen.getByRole('tab', { name: 'Materiais' });
+    const contactsTab = screen.getByRole('tab', { name: 'Contatos' });
+    const exportTab = screen.getByRole('tab', { name: 'Exportar' });
+    const flowsPanel = screen.getByRole('tabpanel', { name: 'Fluxos' });
+
+    expect(flowsTab).toHaveAttribute('tabindex', '0');
+    expect(materialsTab).toHaveAttribute('tabindex', '-1');
+    expect(flowsTab).toHaveAttribute('id', 'dashboard-tab-flows');
+    expect(flowsTab).toHaveAttribute('aria-controls', 'dashboard-panel-flows');
+    expect(flowsPanel).toHaveAttribute('id', 'dashboard-panel-flows');
+    expect(flowsPanel).toHaveAttribute('aria-labelledby', 'dashboard-tab-flows');
+
+    flowsTab.focus();
+    fireEvent.keyDown(flowsTab, { key: 'ArrowRight' });
+    expect(materialsTab).toHaveFocus();
+    expect(materialsTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(materialsTab, { key: 'End' });
+    expect(exportTab).toHaveFocus();
+    expect(exportTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(exportTab, { key: 'ArrowLeft' });
+    expect(contactsTab).toHaveFocus();
+    expect(contactsTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(contactsTab, { key: 'Home' });
+    expect(flowsTab).toHaveFocus();
+    expect(flowsTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(flowsTab, { key: 'ArrowLeft' });
+    expect(exportTab).toHaveFocus();
+    expect(exportTab).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('persists shipped contact edits by source index and derives the phone href', () => {
     render(
       <MemoryRouter>
@@ -366,6 +415,126 @@ describe('DashboardRoute', () => {
         },
       },
     ]);
+  });
+
+  it('routes duplicate shipped contact edits and removal through the selected original source index', () => {
+    const duplicateContact = {
+      ...createDefaultShippedContact(),
+      name: 'CAPS duplicado selecionado',
+      address: 'Rua Dois, 200 - Centro, Canoas - RS',
+      phoneDisplay: '(51) 3333-2222',
+      phoneHref: 'tel:5133332222',
+    };
+    shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact(), duplicateContact);
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
+      target: { value: 'Primeiro contato editado' },
+    });
+    fireEvent.click(
+      within(screen.getByRole('list', { name: 'Contatos disponíveis' })).getByRole('button', {
+        name: /CAPS duplicado selecionado/,
+      }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
+      target: { value: 'Segundo contato editado' },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Segundo contato editado');
+    let draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    expect(draft.contactPatches).toEqual([
+      {
+        id: 'canoas-caps-praca-brasil',
+        sourceIndex: 0,
+        patch: { name: 'Primeiro contato editado' },
+      },
+      {
+        id: 'canoas-caps-praca-brasil',
+        sourceIndex: 1,
+        patch: { name: 'Segundo contato editado' },
+      },
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover contato Segundo contato editado' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Segundo contato editado' }));
+
+    draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    expect(draft.contactPatches).toEqual([
+      {
+        id: 'canoas-caps-praca-brasil',
+        sourceIndex: 0,
+        patch: { name: 'Primeiro contato editado' },
+      },
+    ]);
+    expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
+  });
+
+  it('routes a shared contact id by the selected shipped or added origin', () => {
+    const draftState = createEmptyDashboardDraftState();
+    draftState.addedContacts = [
+      {
+        ...createDefaultShippedContact(),
+        name: 'Contato local com ID repetido',
+        review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
+      },
+    ];
+    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(draftState));
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
+      target: { value: 'Contato publicado editado' },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato publicado editado');
+    let storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    expect(storedDraft.contactPatches).toEqual([
+      {
+        id: 'canoas-caps-praca-brasil',
+        sourceIndex: 0,
+        patch: { name: 'Contato publicado editado' },
+      },
+    ]);
+    expect(storedDraft.addedContacts[0].name).toBe('Contato local com ID repetido');
+
+    fireEvent.click(
+      within(screen.getByRole('list', { name: 'Contatos disponíveis' })).getByRole('button', {
+        name: /Contato local com ID repetido/,
+      }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
+      target: { value: 'Contato local selecionado' },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato local selecionado');
+    storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    expect(storedDraft.addedContacts[0].name).toBe('Contato local selecionado');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover contato Contato local selecionado' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Contato local selecionado' }));
+
+    storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    expect(storedDraft.addedContacts).toEqual([]);
+    expect(storedDraft.contactPatches).toEqual([
+      {
+        id: 'canoas-caps-praca-brasil',
+        sourceIndex: 0,
+        patch: { name: 'Contato publicado editado' },
+      },
+    ]);
+    expect(storedDraft.removedContactIds).toEqual([]);
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato publicado editado');
   });
 
   it('adds, selects, edits, and removes a local contact through two-stage confirmation', () => {
