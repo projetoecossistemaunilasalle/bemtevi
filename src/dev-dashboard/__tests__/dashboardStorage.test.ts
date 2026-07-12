@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
+import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import { canoasServices } from '../../content/services/canoas-services';
 import type { DashboardDraftState } from '../draft-storage/dashboardStorage';
 import {
   DASHBOARD_DRAFT_SCHEMA_VERSION,
@@ -19,10 +21,31 @@ const emptyDraft: DashboardDraftState = {
   addedFlows: [],
   addedEducationMaterials: [],
   addedGroups: [],
+  contactPatches: [],
+  addedContacts: [],
   defaultGroupOrder: 0,
   removedGroupIds: [],
   removedFlowIds: [],
+  removedContactIds: [],
   updatedAt: '2026-05-22T00:00:00.000Z',
+};
+
+const contact: ServiceDirectoryEntry = {
+  id: 'contact-one',
+  name: 'Contact one',
+  type: 'CAPS',
+  badgeTone: 'primary',
+  city: 'Canoas',
+  state: 'RS',
+  address: 'Rua Um, 123',
+  phoneDisplay: '(51) 3000-0000',
+  phoneHref: 'tel:5130000000',
+  review: {
+    status: 'pending_review',
+    reviewedBy: null,
+    reviewedAt: null,
+    notes: '',
+  },
 };
 
 describe('dashboardStorage', () => {
@@ -39,17 +62,28 @@ describe('dashboardStorage', () => {
       addedFlows: [],
       addedEducationMaterials: [],
       addedGroups: [],
+      contactPatches: [],
+      addedContacts: [],
       defaultGroupOrder: 0,
       removedGroupIds: [],
       removedFlowIds: [],
+      removedContactIds: [],
       updatedAt: null,
     });
   });
 
-  it('saves and loads dashboard drafts', () => {
-    saveDashboardDrafts(emptyDraft);
+  it('saves and loads v3 dashboard drafts', () => {
+    const v3Draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { name: 'Edited contact' } }],
+      addedContacts: [{ ...contact, id: 'local-contact' }],
+      removedContactIds: ['removed-contact'],
+    };
 
-    expect(loadDashboardDrafts()).toEqual(emptyDraft);
+    saveDashboardDrafts(v3Draft);
+
+    expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('3.0.0');
+    expect(loadDashboardDrafts()).toEqual(v3Draft);
   });
 
   it('clears dashboard drafts', () => {
@@ -68,11 +102,15 @@ describe('dashboardStorage', () => {
     };
 
     expect(
-      mergeDashboardDrafts({ flows: [shippedFlow], educationMaterials: [shippedMaterial], educationGroups: [] }, draft),
+      mergeDashboardDrafts(
+        { flows: [shippedFlow], educationMaterials: [shippedMaterial], educationGroups: [], contacts: [] },
+        draft,
+      ),
     ).toEqual({
       flows: [{ ...shippedFlow, title: 'Edited flow' }],
       educationMaterials: [shippedMaterial],
       educationGroups: [],
+      contacts: [],
       defaultGroupOrder: 0,
     });
   });
@@ -86,8 +124,10 @@ describe('dashboardStorage', () => {
     };
 
     expect(
-      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [shippedGroup, keptGroup] }, draft)
-        .educationGroups,
+      mergeDashboardDrafts(
+        { flows: [], educationMaterials: [], educationGroups: [shippedGroup, keptGroup], contacts: [] },
+        draft,
+      ).educationGroups,
     ).toEqual([keptGroup]);
   });
 
@@ -98,7 +138,8 @@ describe('dashboardStorage', () => {
     };
 
     expect(
-      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [] }, draft).defaultGroupOrder,
+      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [], contacts: [] }, draft)
+        .defaultGroupOrder,
     ).toBe(2);
   });
 
@@ -111,8 +152,10 @@ describe('dashboardStorage', () => {
     };
 
     expect(
-      mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft)
-        .flows,
+      mergeDashboardDrafts(
+        { flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [], contacts: [] },
+        draft,
+      ).flows,
     ).toEqual([firstFlow, { ...secondFlow, title: 'Edited second flow' }]);
   });
 
@@ -125,9 +168,36 @@ describe('dashboardStorage', () => {
     };
 
     expect(
-      mergeDashboardDrafts({ flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [] }, draft)
-        .flows,
+      mergeDashboardDrafts(
+        { flows: [firstFlow, secondFlow], educationMaterials: [], educationGroups: [], contacts: [] },
+        draft,
+      ).flows,
     ).toEqual([{ ...firstFlow, title: 'Legacy edited flow' }, secondFlow]);
+  });
+
+  it('merges patched, added, and removed contacts by source index', () => {
+    const firstDuplicate = { ...contact, name: 'First duplicate' };
+    const secondDuplicate = { ...contact, name: 'Second duplicate' };
+    const removedContact = { ...contact, id: 'removed-contact', name: 'Removed contact' };
+    const addedContact = { ...contact, id: 'local-contact', name: 'Added contact' };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [{ id: contact.id, sourceIndex: 1, patch: { name: 'Edited second duplicate' } }],
+      addedContacts: [addedContact],
+      removedContactIds: [removedContact.id],
+    };
+
+    expect(
+      mergeDashboardDrafts(
+        {
+          flows: [],
+          educationMaterials: [],
+          educationGroups: [],
+          contacts: [firstDuplicate, secondDuplicate, removedContact],
+        },
+        draft,
+      ).contacts,
+    ).toEqual([firstDuplicate, { ...secondDuplicate, name: 'Edited second duplicate' }, addedContact]);
   });
 
   it('includes educationGroups in shipped content', () => {
@@ -136,16 +206,23 @@ describe('dashboardStorage', () => {
     expect(shipped.educationGroups.length).toBeGreaterThan(0);
   });
 
-  it('includes groupPatches and addedGroups in draft state', () => {
+  it('includes Canoas services in shipped contacts', () => {
+    expect(getShippedDashboardContent().contacts).toEqual(canoasServices.services);
+  });
+
+  it('includes group and contact draft collections in draft state', () => {
     const draft = loadDashboardDrafts();
     expect(draft.groupPatches).toEqual([]);
     expect(draft.addedGroups).toEqual([]);
     expect(draft.defaultGroupOrder).toBe(0);
     expect(draft.removedGroupIds).toEqual([]);
     expect(draft.removedFlowIds).toEqual([]);
+    expect(draft.contactPatches).toEqual([]);
+    expect(draft.addedContacts).toEqual([]);
+    expect(draft.removedContactIds).toEqual([]);
   });
 
-  it('migrates v1 localStorage value to v2 preserving existing fields', () => {
+  it('migrates v1 localStorage value to v3 preserving existing fields', () => {
     const v1Draft = {
       schemaVersion: '1.0.0',
       flowPatches: [{ id: 'flow-one', sourceIndex: 0, patch: { title: 'Edited' } }],
@@ -169,9 +246,61 @@ describe('dashboardStorage', () => {
     expect(loaded.defaultGroupOrder).toBe(0);
     expect(loaded.removedGroupIds).toEqual([]);
     expect(loaded.removedFlowIds).toEqual([]);
+    expect(loaded.contactPatches).toEqual([]);
+    expect(loaded.addedContacts).toEqual([]);
+    expect(loaded.removedContactIds).toEqual([]);
   });
 
-  it('resets to empty v2 draft for unknown schema version', () => {
+  it('migrates v2 localStorage value to v3 preserving existing fields', () => {
+    const v2Draft = {
+      schemaVersion: '2.0.0',
+      flowPatches: [{ id: 'flow-one', sourceIndex: 0, patch: { title: 'Edited flow' } }],
+      educationMaterialPatches: [{ id: 'material-one', sourceIndex: 0, patch: { title: 'Edited material' } }],
+      groupPatches: [{ id: 'group-one', sourceIndex: 0, patch: { title: 'Edited group' } }],
+      addedFlows: [{ id: 'local-flow', title: 'Local flow' } as GuidedFlow],
+      addedEducationMaterials: [{ id: 'local-material', title: 'Local material' } as EducationResource],
+      addedGroups: [{ id: 'local-group', title: 'Local group', order: 4 }],
+      defaultGroupOrder: 3,
+      removedGroupIds: ['removed-group'],
+      removedFlowIds: ['removed-flow'],
+      updatedAt: '2026-06-15T00:00:00.000Z',
+    };
+    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(v2Draft));
+
+    expect(loadDashboardDrafts()).toEqual({
+      ...v2Draft,
+      schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
+      contactPatches: [],
+      addedContacts: [],
+      removedContactIds: [],
+    });
+  });
+
+  it('defaults absent v3 contact and removal collections', () => {
+    const incompleteV3Draft = {
+      schemaVersion: '3.0.0',
+      flowPatches: [],
+      educationMaterialPatches: [],
+      groupPatches: [],
+      addedFlows: [],
+      addedEducationMaterials: [],
+      addedGroups: [],
+      defaultGroupOrder: 0,
+      updatedAt: null,
+    };
+    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(incompleteV3Draft));
+
+    expect(loadDashboardDrafts()).toEqual({
+      ...incompleteV3Draft,
+      removedGroupIds: [],
+      removedFlowIds: [],
+      contactPatches: [],
+      addedContacts: [],
+      removedContactIds: [],
+    });
+  });
+
+  it('resets to empty v3 draft for unknown schema version', () => {
     const unknownDraft = {
       schemaVersion: '0.0.0',
       flowPatches: [{ id: 'flow-one', sourceIndex: 0, patch: { title: 'Edited' } }],
@@ -190,6 +319,9 @@ describe('dashboardStorage', () => {
     expect(loaded.defaultGroupOrder).toBe(0);
     expect(loaded.removedGroupIds).toEqual([]);
     expect(loaded.removedFlowIds).toEqual([]);
+    expect(loaded.contactPatches).toEqual([]);
+    expect(loaded.addedContacts).toEqual([]);
+    expect(loaded.removedContactIds).toEqual([]);
     expect(loaded.updatedAt).toBeNull();
   });
 });

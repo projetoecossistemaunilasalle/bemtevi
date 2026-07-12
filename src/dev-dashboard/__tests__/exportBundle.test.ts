@@ -29,7 +29,7 @@ const material: EducationResource = {
 describe('buildExportBundle', () => {
   it('excludes unchanged shipped records', () => {
     const bundle = buildExportBundle({
-      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [] },
+      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [], contacts: [] },
       drafts: { flows: [flow], educationMaterials: [material], educationGroups: [] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-05-22T00:00:00.000Z',
@@ -46,7 +46,7 @@ describe('buildExportBundle', () => {
     const changedFlow = { ...flow, title: 'Fluxo atualizado' };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [] },
+      shipped: { flows: [flow], educationMaterials: [material], educationGroups: [], contacts: [] },
       drafts: { flows: [changedFlow], educationMaterials: [], educationGroups: [] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-05-22T00:00:00.000Z',
@@ -63,7 +63,7 @@ describe('buildExportBundle', () => {
     };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [material], educationGroups: [] },
+      shipped: { flows: [], educationMaterials: [material], educationGroups: [], contacts: [] },
       drafts: { flows: [], educationMaterials: [changedMaterial], educationGroups: [] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-06-05T00:00:00.000Z',
@@ -76,7 +76,7 @@ describe('buildExportBundle', () => {
     const group: EducationResourceGroup = { id: 'auto-cuidado', title: 'Autocuidado', order: 1 };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [], educationGroups: [group] },
+      shipped: { flows: [], educationMaterials: [], educationGroups: [group], contacts: [] },
       drafts: { flows: [], educationMaterials: [], educationGroups: [group] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-06-15T00:00:00.000Z',
@@ -90,7 +90,7 @@ describe('buildExportBundle', () => {
     const changedGroup: EducationResourceGroup = { id: 'auto-cuidado', title: 'Autocuidado Alterado', order: 1 };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [], educationGroups: [shippedGroup] },
+      shipped: { flows: [], educationMaterials: [], educationGroups: [shippedGroup], contacts: [] },
       drafts: { flows: [], educationMaterials: [], educationGroups: [changedGroup] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-06-15T00:00:00.000Z',
@@ -103,7 +103,7 @@ describe('buildExportBundle', () => {
     const shippedGroup: EducationResourceGroup = { id: 'auto-cuidado', title: 'Autocuidado', order: 1 };
 
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [], educationGroups: [shippedGroup] },
+      shipped: { flows: [], educationMaterials: [], educationGroups: [shippedGroup], contacts: [] },
       drafts: {
         flows: [],
         educationMaterials: [],
@@ -122,7 +122,7 @@ describe('buildExportBundle', () => {
 
   it('exports with schema version 2.0.0', () => {
     const bundle = buildExportBundle({
-      shipped: { flows: [], educationMaterials: [], educationGroups: [] },
+      shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [] },
       drafts: { flows: [], educationMaterials: [], educationGroups: [] },
       validation: { errors: [], warnings: [] },
       exportedAt: '2026-06-15T00:00:00.000Z',

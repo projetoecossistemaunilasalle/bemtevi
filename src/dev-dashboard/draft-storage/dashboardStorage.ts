@@ -1,10 +1,11 @@
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
+import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import type { DashboardShippedContent } from '../content/shippedContent';
 
 const STORAGE_KEY = 'secuida:dev-dashboard:drafts:v1';
-export const DASHBOARD_DRAFT_SCHEMA_VERSION = '2.0.0' as const;
+export const DASHBOARD_DRAFT_SCHEMA_VERSION = '3.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {
   id: string;
@@ -17,12 +18,15 @@ export interface DashboardDraftState {
   flowPatches: Array<DashboardRecordPatch<GuidedFlow>>;
   educationMaterialPatches: Array<DashboardRecordPatch<EducationResource>>;
   groupPatches: Array<DashboardRecordPatch<EducationResourceGroup>>;
+  contactPatches: Array<DashboardRecordPatch<ServiceDirectoryEntry>>;
   addedFlows: GuidedFlow[];
   addedEducationMaterials: EducationResource[];
   addedGroups: EducationResourceGroup[];
+  addedContacts: ServiceDirectoryEntry[];
   defaultGroupOrder?: number;
   removedGroupIds?: string[];
   removedFlowIds?: string[];
+  removedContactIds: string[];
   updatedAt: string | null;
 }
 
@@ -32,12 +36,15 @@ export function createEmptyDashboardDraftState(): DashboardDraftState {
     flowPatches: [],
     educationMaterialPatches: [],
     groupPatches: [],
+    contactPatches: [],
     addedFlows: [],
     addedEducationMaterials: [],
     addedGroups: [],
+    addedContacts: [],
     defaultGroupOrder: 0,
     removedGroupIds: [],
     removedFlowIds: [],
+    removedContactIds: [],
     updatedAt: null,
   };
 }
@@ -54,7 +61,7 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
     const version = record.schemaVersion;
     let state: DashboardDraftState;
 
-    if (version === '1.0.0') {
+    if (version === '1.0.0' || version === '2.0.0') {
       state = {
         ...(record as Record<string, unknown>),
         schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
@@ -63,6 +70,9 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         defaultGroupOrder: (record.defaultGroupOrder ?? 0) as number,
         removedGroupIds: (record.removedGroupIds ?? []) as string[],
         removedFlowIds: (record.removedFlowIds ?? []) as string[],
+        contactPatches: [],
+        addedContacts: [],
+        removedContactIds: [],
       } as DashboardDraftState;
     } else if (version !== DASHBOARD_DRAFT_SCHEMA_VERSION) {
       return createEmptyDashboardDraftState();
@@ -70,7 +80,11 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
       const result = parsed as DashboardDraftState;
       state = {
         ...result,
+        contactPatches: result.contactPatches ?? [],
+        addedContacts: result.addedContacts ?? [],
+        removedGroupIds: result.removedGroupIds ?? [],
         removedFlowIds: result.removedFlowIds ?? [],
+        removedContactIds: result.removedContactIds ?? [],
       };
     }
 
@@ -115,6 +129,11 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     (flow) => !removedFlowIds.has(flow.id),
   );
 
+  const removedContactIds = new Set(drafts.removedContactIds ?? []);
+  const contacts = mergeRecords(shipped.contacts, drafts.contactPatches, drafts.addedContacts).filter(
+    (contact) => !removedContactIds.has(contact.id),
+  );
+
   return {
     flows,
     educationMaterials: mergeRecords(
@@ -123,6 +142,7 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
       drafts.addedEducationMaterials,
     ),
     educationGroups: sortGroupsByOrder(educationGroups),
+    contacts,
     defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
   };
 }
