@@ -157,6 +157,42 @@ describe('buildExportBundle', () => {
     expect(bundle.changes.contacts).toEqual([changedContact]);
   });
 
+  it('compares duplicate contact IDs by occurrence', () => {
+    const firstContact = { ...contact, name: 'CAPS primeiro' };
+    const secondContact = { ...contact, name: 'CAPS segundo', address: 'Rua Dois, 200 - Canoas - RS' };
+    const changedSecondContact = { ...secondContact, name: 'CAPS segundo editado' };
+
+    const bundle = buildExportBundle({
+      shipped: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [firstContact, secondContact],
+      },
+      drafts: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [firstContact, changedSecondContact],
+      },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-07-12T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.contacts).toEqual([changedSecondContact]);
+  });
+
+  it('exports extra same-ID occurrences as additions', () => {
+    const bundle = buildExportBundle({
+      shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [contact] },
+      drafts: { flows: [], educationMaterials: [], educationGroups: [], contacts: [contact, contact] },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-07-12T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.contacts).toEqual([contact]);
+  });
+
   it('exports added contacts as complete records', () => {
     const bundle = buildExportBundle({
       shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [] },

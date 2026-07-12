@@ -55,7 +55,19 @@ export function buildExportBundle({
 }
 
 function changedRecords<T extends { id: string }>(shipped: T[], drafts: T[]) {
-  const shippedById = new Map(shipped.map((record) => [record.id, normalizeForComparison(record)]));
+  const shippedById = new Map<string, string[]>();
+  const draftOccurrencesById = new Map<string, number>();
 
-  return drafts.filter((draft) => shippedById.get(draft.id) !== normalizeForComparison(draft));
+  shipped.forEach((record) => {
+    const occurrences = shippedById.get(record.id) ?? [];
+    occurrences.push(normalizeForComparison(record));
+    shippedById.set(record.id, occurrences);
+  });
+
+  return drafts.filter((draft) => {
+    const occurrence = draftOccurrencesById.get(draft.id) ?? 0;
+    draftOccurrencesById.set(draft.id, occurrence + 1);
+
+    return shippedById.get(draft.id)?.[occurrence] !== normalizeForComparison(draft);
+  });
 }
