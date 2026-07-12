@@ -43,7 +43,10 @@ export function ExportDashboard({
     changeCounts.materials.removed +
     changeCounts.groups.added +
     changeCounts.groups.patched +
-    changeCounts.groups.removed;
+    changeCounts.groups.removed +
+    changeCounts.contacts.added +
+    changeCounts.contacts.patched +
+    changeCounts.contacts.removed;
   const hasChanges = totalChanges > 0;
   const hasStaleExport = exportedAt !== null && draftUpdatedAt !== null && draftUpdatedAt > exportedAt;
 
@@ -93,7 +96,7 @@ export function ExportDashboard({
         </div>
       ) : (
         <div className="rounded-lg bg-surface-container-low p-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ChangeStat
               label="Fluxos"
               added={changeCounts.flows.added}
@@ -117,6 +120,12 @@ export function ExportDashboard({
               added={0}
               patched={0}
               removed={drafts.removedEducationGroupIds?.length ?? 0}
+            />
+            <ChangeStat
+              label="Contatos"
+              added={changeCounts.contacts.added}
+              patched={changeCounts.contacts.patched}
+              removed={changeCounts.contacts.removed}
             />
           </div>
         </div>
@@ -178,6 +187,8 @@ function computeChangeCounts(
   const draftMaterialIds = new Set(drafts.educationMaterials.map((m) => m.id));
   const shippedGroupIds = new Set(shipped.educationGroups.map((g) => g.id));
   const draftGroupIds = new Set(drafts.educationGroups.map((g) => g.id));
+  const shippedContactIds = new Set(shipped.contacts.map((contact) => contact.id));
+  const draftContactIds = new Set(drafts.contacts.map((contact) => contact.id));
 
   return {
     flows: {
@@ -194,6 +205,11 @@ function computeChangeCounts(
       added: bundle.changes.educationGroups.filter((g) => !shippedGroupIds.has(g.id)).length,
       patched: bundle.changes.educationGroups.filter((g) => shippedGroupIds.has(g.id)).length,
       removed: shipped.educationGroups.filter((g) => !draftGroupIds.has(g.id)).length,
+    },
+    contacts: {
+      added: bundle.changes.contacts.filter((contact) => !shippedContactIds.has(contact.id)).length,
+      patched: bundle.changes.contacts.filter((contact) => shippedContactIds.has(contact.id)).length,
+      removed: shipped.contacts.filter((contact) => !draftContactIds.has(contact.id)).length,
     },
   };
 }

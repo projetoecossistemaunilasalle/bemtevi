@@ -420,6 +420,25 @@ describe('DashboardRoute', () => {
     ]);
   });
 
+  it('summarizes edited contacts and enables contact-only exports', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
+      target: { value: 'CAPS II Centro' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
+
+    const contactsStat = screen.getByText('Contatos', { selector: 'p' }).parentElement;
+    expect(contactsStat).not.toBeNull();
+    expect(within(contactsStat!).getByText('1 editado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeEnabled();
+  });
+
   it('routes duplicate shipped contact edits and removal through the selected original source index', () => {
     const duplicateContact = {
       ...createDefaultShippedContact(),
