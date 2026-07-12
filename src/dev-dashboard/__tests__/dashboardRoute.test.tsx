@@ -411,6 +411,7 @@ describe('DashboardRoute', () => {
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
+        sourceIdUnique: true,
         patch: {
           name: 'CAPS II Centro',
           phoneDisplay: '(51) 99999-8888',
@@ -483,11 +484,13 @@ describe('DashboardRoute', () => {
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
+        sourceIdUnique: false,
         patch: { name: 'Primeiro contato editado' },
       },
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 1,
+        sourceIdUnique: false,
         patch: { name: 'Segundo contato editado' },
       },
     ]);
@@ -529,6 +532,7 @@ describe('DashboardRoute', () => {
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
+        sourceIdUnique: true,
         patch: { name: 'Contato publicado editado' },
       },
     ]);
@@ -556,6 +560,7 @@ describe('DashboardRoute', () => {
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
+        sourceIdUnique: true,
         patch: { name: 'Contato publicado editado' },
       },
     ]);

@@ -183,7 +183,9 @@ describe('dashboardStorage', () => {
     const addedContact = { ...contact, id: 'local-contact', name: 'Added contact' };
     const draft: DashboardDraftState = {
       ...emptyDraft,
-      contactPatches: [{ id: contact.id, sourceIndex: 1, patch: { name: 'Edited second duplicate' } }],
+      contactPatches: [
+        { id: contact.id, sourceIndex: 1, sourceIdUnique: false, patch: { name: 'Edited second duplicate' } },
+      ],
       addedContacts: [addedContact],
       removedContactIds: [removedContact.id],
     };
@@ -212,7 +214,7 @@ describe('dashboardStorage', () => {
     };
     const draft: DashboardDraftState = {
       ...emptyDraft,
-      contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { name: editedContact.name } }],
+      contactPatches: [{ id: contact.id, sourceIndex: 0, sourceIdUnique: true, patch: { name: editedContact.name } }],
     };
 
     const merged = mergeDashboardDrafts(shipped, draft);
@@ -226,6 +228,29 @@ describe('dashboardStorage', () => {
     expect(merged.contacts).toEqual([insertedContact, editedContact]);
     expect(exportBundle.changes.contacts).toEqual([editedContact]);
   });
+
+  it.each([false, undefined])(
+    'does not transfer a duplicate-origin contact patch after shipped duplicates collapse (%s)',
+    (sourceIdUnique) => {
+      const survivor = { ...contact, name: 'Surviving duplicate' };
+      const draft: DashboardDraftState = {
+        ...emptyDraft,
+        contactPatches: [
+          {
+            id: contact.id,
+            sourceIndex: 1,
+            ...(sourceIdUnique === undefined ? {} : { sourceIdUnique }),
+            patch: { name: 'Edited removed duplicate' },
+          },
+        ],
+      };
+
+      expect(
+        mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [], contacts: [survivor] }, draft)
+          .contacts,
+      ).toEqual([survivor]);
+    },
+  );
 
   it('does not fall back by id when indexed patch occurrences are ambiguous', () => {
     const firstDuplicate = { ...contact, name: 'First duplicate' };

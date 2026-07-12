@@ -27,12 +27,16 @@ function upsertPatchById<T extends { id: string }>(
   id: string,
   sourceIndex: number,
   patch: Partial<T>,
+  sourceIdUnique?: boolean,
 ) {
   const existingIndex = records.findIndex((record) => record.id === id && record.sourceIndex === sourceIndex);
-  if (existingIndex === -1) return [...records, { id, sourceIndex, patch }];
+  const uniquenessMetadata = sourceIdUnique === undefined ? {} : { sourceIdUnique };
+  if (existingIndex === -1) return [...records, { id, sourceIndex, ...uniquenessMetadata, patch }];
 
   return records.map((record, index) =>
-    index === existingIndex ? { id, sourceIndex, patch: { ...record.patch, ...patch } } : record,
+    index === existingIndex
+      ? { ...record, id, sourceIndex, ...uniquenessMetadata, patch: { ...record.patch, ...patch } }
+      : record,
   );
 }
 
@@ -475,7 +479,13 @@ export function DashboardRoute() {
 
                 return {
                   ...current,
-                  contactPatches: upsertPatchById(current.contactPatches, origin.id, origin.sourceIndex, patch),
+                  contactPatches: upsertPatchById(
+                    current.contactPatches,
+                    origin.id,
+                    origin.sourceIndex,
+                    patch,
+                    shipped.contacts.filter((contact) => contact.id === origin.id).length === 1,
+                  ),
                 };
               })
             }

@@ -10,6 +10,7 @@ export const DASHBOARD_DRAFT_SCHEMA_VERSION = '3.0.0' as const;
 export interface DashboardRecordPatch<T extends { id: string }> {
   id: string;
   sourceIndex?: number;
+  sourceIdUnique?: boolean;
   patch: Partial<T>;
 }
 
@@ -227,10 +228,14 @@ function mergeRecords<T extends { id: string }>(shipped: T[], patches: Array<Das
   return [
     ...shipped.map((record, sourceIndex) => {
       const exactPatch = patchesBySource.get(`${record.id}:${sourceIndex}`);
+      const uniqueIdPatch = indexedPatchesById.get(record.id);
       const fallbackPatch =
-        exactPatch || shippedIdCounts.get(record.id) !== 1 || indexedPatchIdCounts.get(record.id) !== 1
+        exactPatch ||
+        shippedIdCounts.get(record.id) !== 1 ||
+        indexedPatchIdCounts.get(record.id) !== 1 ||
+        uniqueIdPatch?.sourceIdUnique !== true
           ? undefined
-          : indexedPatchesById.get(record.id);
+          : uniqueIdPatch;
       const candidatePatch = exactPatch ?? fallbackPatch;
       const indexedPatch = candidatePatch && !usedIndexedPatches.has(candidatePatch) ? candidatePatch : undefined;
       const legacyPatch =
