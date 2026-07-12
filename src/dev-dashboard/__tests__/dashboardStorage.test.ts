@@ -300,6 +300,36 @@ describe('dashboardStorage', () => {
     });
   });
 
+  it('normalizes malformed v3 contact collections before merge', () => {
+    const malformedV3Draft = {
+      schemaVersion: '3.0.0',
+      flowPatches: [],
+      educationMaterialPatches: [],
+      groupPatches: [],
+      contactPatches: { id: contact.id, patch: { name: 'Invalid patch collection' } },
+      addedFlows: [],
+      addedEducationMaterials: [],
+      addedGroups: [],
+      addedContacts: 'invalid additions',
+      defaultGroupOrder: 0,
+      removedGroupIds: [],
+      removedFlowIds: [],
+      removedContactIds: { id: contact.id },
+      updatedAt: null,
+    };
+    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(malformedV3Draft));
+
+    const loaded = loadDashboardDrafts();
+
+    expect(loaded.contactPatches).toEqual([]);
+    expect(loaded.addedContacts).toEqual([]);
+    expect(loaded.removedContactIds).toEqual([]);
+    expect(
+      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [], contacts: [contact] }, loaded)
+        .contacts,
+    ).toEqual([contact]);
+  });
+
   it('resets to empty v3 draft for unknown schema version', () => {
     const unknownDraft = {
       schemaVersion: '0.0.0',

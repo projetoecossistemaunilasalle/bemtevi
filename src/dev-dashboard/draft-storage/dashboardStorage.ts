@@ -80,11 +80,11 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
       const result = parsed as DashboardDraftState;
       state = {
         ...result,
-        contactPatches: result.contactPatches ?? [],
-        addedContacts: result.addedContacts ?? [],
+        contactPatches: Array.isArray(result.contactPatches) ? result.contactPatches : [],
+        addedContacts: Array.isArray(result.addedContacts) ? result.addedContacts : [],
         removedGroupIds: result.removedGroupIds ?? [],
         removedFlowIds: result.removedFlowIds ?? [],
-        removedContactIds: result.removedContactIds ?? [],
+        removedContactIds: Array.isArray(result.removedContactIds) ? result.removedContactIds : [],
       };
     }
 
