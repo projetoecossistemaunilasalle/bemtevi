@@ -12,6 +12,7 @@ import {
   saveDashboardDrafts,
 } from '../draft-storage/dashboardStorage';
 import { getShippedDashboardContent } from '../content/shippedContent';
+import { buildExportBundle } from '../export/exportBundle';
 
 const emptyDraft: DashboardDraftState = {
   schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
@@ -198,6 +199,56 @@ describe('dashboardStorage', () => {
         draft,
       ).contacts,
     ).toEqual([firstDuplicate, { ...secondDuplicate, name: 'Edited second duplicate' }, addedContact]);
+  });
+
+  it('keeps a unique indexed contact patch after shipped contacts are reordered', () => {
+    const insertedContact = { ...contact, id: 'contact-two', name: 'Contact two' };
+    const editedContact = { ...contact, name: 'Edited contact' };
+    const shipped = {
+      flows: [],
+      educationMaterials: [],
+      educationGroups: [],
+      contacts: [insertedContact, contact],
+    };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { name: editedContact.name } }],
+    };
+
+    const merged = mergeDashboardDrafts(shipped, draft);
+    const exportBundle = buildExportBundle({
+      shipped,
+      drafts: merged,
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-07-12T00:00:00.000Z',
+    });
+
+    expect(merged.contacts).toEqual([insertedContact, editedContact]);
+    expect(exportBundle.changes.contacts).toEqual([editedContact]);
+  });
+
+  it('does not fall back by id when indexed patch occurrences are ambiguous', () => {
+    const firstDuplicate = { ...contact, name: 'First duplicate' };
+    const secondDuplicate = { ...contact, name: 'Second duplicate' };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [
+        { id: contact.id, sourceIndex: 1, patch: { name: 'Edited second duplicate' } },
+        { id: contact.id, sourceIndex: 2, patch: { name: 'Orphaned duplicate patch' } },
+      ],
+    };
+
+    expect(
+      mergeDashboardDrafts(
+        {
+          flows: [],
+          educationMaterials: [],
+          educationGroups: [],
+          contacts: [firstDuplicate, secondDuplicate],
+        },
+        draft,
+      ).contacts,
+    ).toEqual([firstDuplicate, { ...secondDuplicate, name: 'Edited second duplicate' }]);
   });
 
   it('includes educationGroups in shipped content', () => {

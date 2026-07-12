@@ -217,7 +217,8 @@ describe('ContactsDashboard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remover contato UBS Norte' }));
     expect(onServiceRemove).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Confirmar: Remover contato UBS Norte' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar: Remover contato UBS Norte' })).toHaveClass('min-h-11');
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveClass('min-h-11');
 
     await user.click(screen.getByRole('button', { name: 'Confirmar: Remover contato UBS Norte' }));
 

@@ -213,29 +213,43 @@ function sortGroupsByOrder(groups: EducationResourceGroup[]) {
 }
 
 function mergeRecords<T extends { id: string }>(shipped: T[], patches: Array<DashboardRecordPatch<T>>, additions: T[]) {
-  const patchesBySource = new Map(
-    patches
-      .filter((record) => typeof record.sourceIndex === 'number')
-      .map((record) => [`${record.id}:${record.sourceIndex}`, record.patch]),
-  );
+  const indexedPatches = patches.filter((record) => typeof record.sourceIndex === 'number');
+  const patchesBySource = new Map(indexedPatches.map((record) => [`${record.id}:${record.sourceIndex}`, record]));
+  const shippedIdCounts = countRecordsById(shipped);
+  const indexedPatchIdCounts = countRecordsById(indexedPatches);
+  const indexedPatchesById = new Map(indexedPatches.map((record) => [record.id, record]));
   const legacyPatchesById = new Map(
     patches.filter((record) => typeof record.sourceIndex !== 'number').map((record) => [record.id, record.patch]),
   );
+  const usedIndexedPatches = new Set<DashboardRecordPatch<T>>();
   const usedLegacyPatchIds = new Set<string>();
 
   return [
     ...shipped.map((record, sourceIndex) => {
-      const sourcePatch = patchesBySource.get(`${record.id}:${sourceIndex}`);
+      const exactPatch = patchesBySource.get(`${record.id}:${sourceIndex}`);
+      const fallbackPatch =
+        exactPatch || shippedIdCounts.get(record.id) !== 1 || indexedPatchIdCounts.get(record.id) !== 1
+          ? undefined
+          : indexedPatchesById.get(record.id);
+      const candidatePatch = exactPatch ?? fallbackPatch;
+      const indexedPatch = candidatePatch && !usedIndexedPatches.has(candidatePatch) ? candidatePatch : undefined;
       const legacyPatch =
-        sourcePatch || usedLegacyPatchIds.has(record.id) ? undefined : legacyPatchesById.get(record.id);
+        indexedPatch || usedLegacyPatchIds.has(record.id) ? undefined : legacyPatchesById.get(record.id);
 
+      if (indexedPatch) usedIndexedPatches.add(indexedPatch);
       if (legacyPatch) usedLegacyPatchIds.add(record.id);
 
       return {
         ...record,
-        ...(sourcePatch ?? legacyPatch),
+        ...(indexedPatch?.patch ?? legacyPatch),
       };
     }),
     ...additions,
   ];
+}
+
+function countRecordsById(records: Array<{ id: string }>) {
+  const counts = new Map<string, number>();
+  records.forEach((record) => counts.set(record.id, (counts.get(record.id) ?? 0) + 1));
+  return counts;
 }

@@ -56,7 +56,7 @@ export function ConfirmButton({
             onConfirm();
           }}
           // The danger styling makes the second click visually distinct.
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-error px-4 py-2 font-label-md text-on-error shadow-sm transition-colors hover:bg-error/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-error px-4 py-2 font-label-md text-on-error shadow-sm transition-colors hover:bg-error/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
           aria-label={ariaLabel ? `Confirmar: ${ariaLabel}` : prompt}
         >
           {confirmLabel ?? prompt}
@@ -67,7 +67,7 @@ export function ConfirmButton({
             setArmed(false);
             onCancel?.();
           }}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-surface-container-low px-3 py-2 font-label-md text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-surface-container-low px-3 py-2 font-label-md text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           {cancelLabel}
         </button>
