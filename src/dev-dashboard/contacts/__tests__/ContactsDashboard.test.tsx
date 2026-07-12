@@ -144,6 +144,23 @@ describe('ContactsDashboard', () => {
     expect(name).toHaveValue('UBS Harmonia');
   });
 
+  it('targets the selected index when contacts share the same id', async () => {
+    const duplicateIdService = { ...ubsService, id: capsService.id };
+    const { user, onServiceChange, onServiceRemove } = renderDashboard([capsService, duplicateIdService]);
+
+    await user.click(serviceButton('UBS Norte'));
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('UBS Norte');
+
+    const name = screen.getByRole('textbox', { name: 'Nome' });
+    await user.clear(name);
+    await user.type(name, 'UBS Duplicada');
+    expect(onServiceChange).toHaveBeenLastCalledWith(1, capsService.id, { name: 'UBS Duplicada' });
+
+    await user.click(screen.getByRole('button', { name: 'Remover contato UBS Duplicada' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar: Remover contato UBS Duplicada' }));
+    expect(onServiceRemove).toHaveBeenCalledWith(1, capsService.id);
+  });
+
   it('offers common service suggestions and derives the badge tone when type changes', async () => {
     const { user, onServiceChange } = renderDashboard();
     const type = screen.getByRole('combobox', { name: 'Tipo de serviço' });
@@ -221,6 +238,18 @@ describe('ContactsDashboard', () => {
     expect(screen.getByRole('button', { name: 'Confirmar: Remover contato UBS Norte' })).toBeInTheDocument();
   });
 
+  it('cancels an armed removal when focus moves outside the confirmation controls', async () => {
+    const { user, onServiceRemove } = renderDashboard();
+    await user.click(screen.getByRole('button', { name: 'Remover contato CAPS Centro' }));
+    expect(screen.getByRole('button', { name: 'Confirmar: Remover contato CAPS Centro' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('textbox', { name: 'Nome' }));
+
+    expect(screen.queryByRole('button', { name: 'Confirmar: Remover contato CAPS Centro' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remover contato CAPS Centro' })).toBeInTheDocument();
+    expect(onServiceRemove).not.toHaveBeenCalled();
+  });
+
   it('selects the previous contact when removing the last item', async () => {
     const { user } = renderDashboard();
     await user.click(serviceButton('UBS Norte'));
@@ -229,6 +258,22 @@ describe('ContactsDashboard', () => {
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS Centro');
     expect(serviceButton('CAPS Centro')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('moves focus to the neighboring contact after removal', async () => {
+    const { user } = renderDashboard();
+    await user.click(screen.getByRole('button', { name: 'Remover contato CAPS Centro' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar: Remover contato CAPS Centro' }));
+
+    expect(serviceButton('UBS Norte')).toHaveFocus();
+  });
+
+  it('moves focus to the add action after removing the only contact', async () => {
+    const { user } = renderDashboard([capsService]);
+    await user.click(screen.getByRole('button', { name: 'Remover contato CAPS Centro' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar: Remover contato CAPS Centro' }));
+
+    expect(screen.getByRole('button', { name: 'Novo contato' })).toHaveFocus();
   });
 
   it('shows a calm empty state while keeping the add action available', () => {

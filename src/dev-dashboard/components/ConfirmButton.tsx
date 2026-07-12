@@ -1,5 +1,5 @@
 import { Button } from '../../design-system/components/Button';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * A two-click inline confirm button. The first click arms the button (label
@@ -32,11 +32,24 @@ export function ConfirmButton({
   'aria-label'?: string;
 }) {
   const [armed, setArmed] = useState(false);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (armed) confirmButtonRef.current?.focus();
+  }, [armed]);
 
   if (armed) {
     return (
-      <span className="inline-flex items-center gap-2">
+      <span
+        className="inline-flex items-center gap-2"
+        onBlur={(event) => {
+          const nextFocus = event.relatedTarget;
+          if (nextFocus instanceof Node && event.currentTarget.contains(nextFocus)) return;
+          setArmed(false);
+        }}
+      >
         <button
+          ref={confirmButtonRef}
           type="button"
           onClick={() => {
             setArmed(false);

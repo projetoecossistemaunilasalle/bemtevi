@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { Button } from '../../design-system/components/Button';
@@ -11,6 +11,11 @@ import type { DashboardValidationResult } from '../validation/validationTypes';
 import { badgeToneForServiceType, normalizePhoneHref } from './contactDrafts';
 
 const serviceTypeSuggestions = ['CAPS', 'UBS', 'CRAS', 'CREAS', 'Universidade', 'Outro'];
+
+interface ServiceSelection {
+  index: number;
+  id: string;
+}
 
 export function ContactsDashboard({
   services,
@@ -26,13 +31,24 @@ export function ContactsDashboard({
   onServiceRemove: (index: number, id: string) => void;
 }) {
   const fieldId = useId();
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(() => services[0]?.id ?? null);
-  const selectedIndex = services.findIndex(({ id }) => id === selectedServiceId);
+  const addActionRef = useRef<HTMLDivElement>(null);
+  const serviceButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [selection, setSelection] = useState<ServiceSelection | null>(() =>
+    services[0] ? { index: 0, id: services[0].id } : null,
+  );
+  const serviceAtSelectedIndex = selection ? services[selection.index] : undefined;
+  const selectedIndex =
+    selection && serviceAtSelectedIndex?.id === selection.id
+      ? selection.index
+      : selection
+        ? services.findIndex(({ id }) => id === selection.id)
+        : -1;
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : services.length > 0 ? 0 : -1;
   const selectedService = effectiveIndex >= 0 ? services[effectiveIndex] : undefined;
 
   function addService() {
-    setSelectedServiceId(onServiceAdd());
+    const id = onServiceAdd();
+    setSelection({ index: services.length, id });
   }
 
   function changeService(patch: Partial<ServiceDirectoryEntry>) {
@@ -42,9 +58,21 @@ export function ContactsDashboard({
 
   function removeService() {
     if (!selectedService) return;
-    const neighbor = services[effectiveIndex + 1] ?? services[effectiveIndex - 1];
-    setSelectedServiceId(neighbor?.id ?? null);
+    const nextService = services[effectiveIndex + 1];
+    const previousService = services[effectiveIndex - 1];
+    const neighbor = nextService ?? previousService;
+    const focusIndex = nextService ? effectiveIndex : previousService ? effectiveIndex - 1 : null;
+
+    setSelection(neighbor && focusIndex !== null ? { index: focusIndex, id: neighbor.id } : null);
     onServiceRemove(effectiveIndex, selectedService.id);
+
+    queueMicrotask(() => {
+      if (focusIndex === null) {
+        addActionRef.current?.querySelector('button')?.focus();
+        return;
+      }
+      serviceButtonRefs.current[focusIndex]?.focus();
+    });
   }
 
   return (
@@ -56,10 +84,12 @@ export function ContactsDashboard({
 
       <div className="grid gap-stack-md lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-          <Button type="button" className="w-full" onClick={addService}>
-            <Plus aria-hidden="true" className="h-5 w-5" />
-            Novo contato
-          </Button>
+          <div ref={addActionRef}>
+            <Button type="button" className="w-full" onClick={addService}>
+              <Plus aria-hidden="true" className="h-5 w-5" />
+              Novo contato
+            </Button>
+          </div>
 
           {services.length === 0 ? (
             <p className="rounded-lg bg-surface-container-low p-3 font-body-md text-on-surface-variant">
@@ -74,9 +104,12 @@ export function ContactsDashboard({
               return (
                 <li key={`${service.id}-${serviceIndex}`}>
                   <button
+                    ref={(button) => {
+                      serviceButtonRefs.current[serviceIndex] = button;
+                    }}
                     type="button"
                     aria-pressed={isSelected}
-                    onClick={() => setSelectedServiceId(service.id)}
+                    onClick={() => setSelection({ index: serviceIndex, id: service.id })}
                     className={`flex min-h-11 w-full flex-col justify-center rounded-lg px-3 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                       isSelected
                         ? 'bg-primary text-on-primary shadow-sm'
@@ -99,7 +132,7 @@ export function ContactsDashboard({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-headline-sm text-on-surface">Editar {selectedService.name || 'contato sem nome'}</h3>
               <ConfirmButton
-                key={selectedService.id}
+                key={`${effectiveIndex}-${selectedService.id}`}
                 prompt="Remover contato"
                 onConfirm={removeService}
                 aria-label={`Remover contato ${selectedService.name || 'sem nome'}`}
