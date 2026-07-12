@@ -252,6 +252,26 @@ describe('dashboardStorage', () => {
     },
   );
 
+  it('does not apply an exact-index duplicate-origin patch after shipped duplicates collapse', () => {
+    const survivor = { ...contact, name: 'Ambiguous surviving duplicate' };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [
+        {
+          id: contact.id,
+          sourceIndex: 0,
+          sourceIdUnique: false,
+          patch: { name: 'Edited historical duplicate' },
+        },
+      ],
+    };
+
+    expect(
+      mergeDashboardDrafts({ flows: [], educationMaterials: [], educationGroups: [], contacts: [survivor] }, draft)
+        .contacts,
+    ).toEqual([survivor]);
+  });
+
   it('does not fall back by id when indexed patch occurrences are ambiguous', () => {
     const firstDuplicate = { ...contact, name: 'First duplicate' };
     const secondDuplicate = { ...contact, name: 'Second duplicate' };

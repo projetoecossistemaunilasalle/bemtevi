@@ -227,7 +227,9 @@ function mergeRecords<T extends { id: string }>(shipped: T[], patches: Array<Das
 
   return [
     ...shipped.map((record, sourceIndex) => {
-      const exactPatch = patchesBySource.get(`${record.id}:${sourceIndex}`);
+      const sourcePatch = patchesBySource.get(`${record.id}:${sourceIndex}`);
+      const exactPatch =
+        sourcePatch?.sourceIdUnique === false && shippedIdCounts.get(record.id) === 1 ? undefined : sourcePatch;
       const uniqueIdPatch = indexedPatchesById.get(record.id);
       const fallbackPatch =
         exactPatch ||
