@@ -191,6 +191,7 @@ vi.mock('../content/shippedContent', () => ({
         order: 2,
       },
     ],
+    contacts: [],
   }),
 }));
 
