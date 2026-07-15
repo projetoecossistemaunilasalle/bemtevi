@@ -1,11 +1,11 @@
 import type { EducationResource } from '../../domain/resources/types';
-import { getShippedDashboardContent } from '../../dev-dashboard/content/shippedContent';
 import {
   createEmptyDashboardDraftState,
   loadDashboardDrafts,
   mergeDashboardDrafts,
 } from '../../dev-dashboard/draft-storage/dashboardStorage';
 import type { EducationResourceGroup } from '../../content/resources/groups';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 
 export interface EducationResourcePreviewState {
   resources: EducationResource[];
@@ -15,8 +15,7 @@ export interface EducationResourcePreviewState {
   isPreviewingDrafts: boolean;
 }
 
-export function resolveEducationResourcesForPreview(): EducationResourcePreviewState {
-  const shipped = getShippedDashboardContent();
+export function resolveEducationResourcesForPreview(baseline: PublishedContentPayload): EducationResourcePreviewState {
   const drafts = safeLoadDrafts();
   const hasEducationDrafts =
     drafts.educationMaterialPatches.length > 0 ||
@@ -27,20 +26,20 @@ export function resolveEducationResourcesForPreview(): EducationResourcePreviewS
 
   if (!hasEducationDrafts) {
     return {
-      resources: shipped.educationMaterials,
-      groups: shipped.educationGroups,
-      defaultGroupOrder: 0,
+      resources: baseline.educationMaterials,
+      groups: baseline.educationGroups,
+      defaultGroupOrder: baseline.defaultGroupOrder,
       changedResourceIds: [],
       isPreviewingDrafts: false,
     };
   }
 
-  const merged = mergeDashboardDrafts(shipped, drafts);
+  const merged = mergeDashboardDrafts(baseline, drafts);
   const resources = merged.educationMaterials;
   const groups = merged.educationGroups;
   const defaultGroupOrder = merged.defaultGroupOrder;
-  const changedResourceIds = resolveChangedEducationResourceIds(shipped.educationMaterials, resources);
-  const shippedGroupIds = shipped.educationGroups.map((g) => g.id);
+  const changedResourceIds = resolveChangedEducationResourceIds(baseline.educationMaterials, resources);
+  const shippedGroupIds = baseline.educationGroups.map((g) => g.id);
   const hasGroupChanges = groups.some((g) => !shippedGroupIds.includes(g.id)) || merged.defaultGroupOrder !== 0;
 
   return {

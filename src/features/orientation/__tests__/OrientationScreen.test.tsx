@@ -1,6 +1,10 @@
+import type { ReactElement } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PublishedContentContext } from '../../../app/content/PublishedContentContext';
+import { getBundledContent } from '../../../app/content/bundledContent';
+import type { PublishedContentPayload } from '../../../app/content/publishedContent';
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 
@@ -16,11 +20,47 @@ import { OrientationScreen } from '../OrientationScreen';
 
 const TYPING_DELAY_MS = 1200;
 
-function renderOrientation() {
-  render(
+function buildContentValue(payload: PublishedContentPayload) {
+  const snapshot = {
+    schemaVersion: '1.0.0',
+    revision: 1,
+    payload,
+    publishedAt: '2026-07-15T00:00:00.000Z',
+    publishedBy: 'admin',
+  } as const;
+  return {
+    content: payload,
+    snapshot,
+    source: 'database' as const,
+    status: 'ready' as const,
+    loadError: null,
+    refresh: async () => {},
+    publish: async () => snapshot,
+  };
+}
+
+function renderWithContent(ui: ReactElement, payload: PublishedContentPayload = getBundledContent()) {
+  return render(
+    <PublishedContentContext.Provider value={buildContentValue(payload)}>{ui}</PublishedContentContext.Provider>,
+  );
+}
+
+function buildDatabaseFlowsPayload(transitionMessage: string): PublishedContentPayload {
+  const bundled = getBundledContent();
+  const flows = bundled.flows.map((flow) =>
+    flow.id === 'orientation-understand-feelings'
+      ? { ...flow, entry: { ...flow.entry, transitionMessage } }
+      : flow,
+  );
+  return { ...bundled, flows };
+}
+
+function renderOrientation(payload: PublishedContentPayload = getBundledContent()) {
+  return renderWithContent(
     <MemoryRouter>
       <OrientationScreen />
     </MemoryRouter>,
+    payload,
   );
 }
 
@@ -440,5 +480,40 @@ describe('OrientationScreen', () => {
 
     expect(screen.getByText(/Obrigado por responder com sinceridade/i)).toBeInTheDocument();
     expect(mockNavigate).toHaveBeenCalledWith('/apoio');
+  });
+
+  it('uses database flows for a newly started orientation conversation', () => {
+    const payload = buildDatabaseFlowsPayload('Mensagem inicial vinda do banco de dados.');
+    renderOrientation(payload);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Mensagem inicial vinda do banco de dados.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps an already-started orientation on its original flow snapshot after provider refresh', () => {
+    const payloadA = buildDatabaseFlowsPayload('Mensagem do banco A.');
+    const { rerender } = renderOrientation(payloadA);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Mensagem do banco A.')).toBeInTheDocument();
+
+    const payloadB = buildDatabaseFlowsPayload('Mensagem do banco B.');
+    rerender(
+      <PublishedContentContext.Provider value={buildContentValue(payloadB)}>
+        <MemoryRouter>
+          <OrientationScreen />
+        </MemoryRouter>
+      </PublishedContentContext.Provider>,
+    );
+
+    expect(screen.getByText('Mensagem do banco A.')).toBeInTheDocument();
+    expect(screen.queryByText('Mensagem do banco B.')).not.toBeInTheDocument();
   });
 });

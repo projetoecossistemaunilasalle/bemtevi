@@ -1,10 +1,57 @@
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { PublishedContentContext } from '../../../app/content/PublishedContentContext';
+import { getBundledContent } from '../../../app/content/bundledContent';
+import type { PublishedContentPayload } from '../../../app/content/publishedContent';
 import { resourcesContent } from '../../../content/resources/resources';
 import { EducationLibraryScreen } from '../EducationLibraryScreen';
 import { ResourceDetailScreen } from '../ResourceDetailScreen';
+
+const baseRender = render;
+
+function buildContentValue(payload: PublishedContentPayload) {
+  const snapshot = {
+    schemaVersion: '1.0.0',
+    revision: 1,
+    payload,
+    publishedAt: '2026-07-15T00:00:00.000Z',
+    publishedBy: 'admin',
+  } as const;
+  return {
+    content: payload,
+    snapshot,
+    source: 'database' as const,
+    status: 'ready' as const,
+    loadError: null,
+    refresh: async () => {},
+    publish: async () => snapshot,
+  };
+}
+
+function renderWithContent(ui: ReactElement, payload: PublishedContentPayload = getBundledContent()) {
+  return baseRender(
+    <PublishedContentContext.Provider value={buildContentValue(payload)}>{ui}</PublishedContentContext.Provider>,
+  );
+}
+
+function buildDatabaseEducationPayload(): PublishedContentPayload {
+  const bundled = getBundledContent();
+  const dbResource = {
+    ...bundled.educationMaterials[0],
+    id: 'db-recurso',
+    title: 'Recurso do Banco de Dados',
+    group: 'db-grupo',
+  };
+  const dbGroup = { id: 'db-grupo', title: 'Grupo do Banco de Dados', order: 1 };
+  return {
+    ...bundled,
+    educationMaterials: [...bundled.educationMaterials, dbResource],
+    educationGroups: [...bundled.educationGroups, dbGroup],
+  };
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -29,7 +76,7 @@ describe('EducationLibraryScreen', () => {
     const user = userEvent.setup();
     const resource = resourcesContent.resources[0];
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -50,7 +97,7 @@ describe('EducationLibraryScreen', () => {
   it('renders the library thumbnail without blend or opacity effects', () => {
     const resource = resourcesContent.resources[0];
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -83,7 +130,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -114,7 +161,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -147,7 +194,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -179,7 +226,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -206,7 +253,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -239,7 +286,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -271,7 +318,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -305,7 +352,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -335,7 +382,7 @@ describe('EducationLibraryScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
           <Route path="/educacao" element={<EducationLibraryScreen />} />
@@ -361,7 +408,7 @@ describe('EducationLibraryScreen', () => {
     );
 
     const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-    const preview = resolveEducationResourcesForPreview();
+    const preview = resolveEducationResourcesForPreview(getBundledContent());
 
     expect(preview.isPreviewingDrafts).toBe(true);
   });
@@ -371,7 +418,7 @@ describe('ResourceDetailScreen', () => {
   it('falls back to the first resource when the id is unknown', () => {
     const resource = resourcesContent.resources[0];
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao/recurso-inexistente']}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -401,7 +448,7 @@ describe('ResourceDetailScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -421,7 +468,7 @@ describe('ResourceDetailScreen', () => {
   it('renders the respiration images as body content, not only as metadata', () => {
     const resource = resourcesContent.resources[0];
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -447,7 +494,7 @@ describe('ResourceDetailScreen', () => {
       throw new Error('Expected a seeded YouTube video block with a title.');
     }
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -491,7 +538,7 @@ describe('ResourceDetailScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao/video-block-with-description']}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -527,7 +574,7 @@ describe('ResourceDetailScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -557,7 +604,7 @@ describe('ResourceDetailScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -586,7 +633,7 @@ describe('ResourceDetailScreen', () => {
       ),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={['/educacao/preview-added-material']}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -620,7 +667,7 @@ describe('ResourceDetailScreen', () => {
       }),
     );
 
-    render(
+    renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
         <Routes>
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
@@ -654,7 +701,7 @@ it('resolves local dashboard education drafts for preview', async () => {
   );
 
   const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-  const preview = resolveEducationResourcesForPreview();
+  const preview = resolveEducationResourcesForPreview(getBundledContent());
 
   expect(preview.isPreviewingDrafts).toBe(true);
   expect(preview.changedResourceIds).toEqual([resource.id]);
@@ -682,7 +729,7 @@ it('ignores unchanged education patches when computing preview warning state', a
   );
 
   const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-  const preview = resolveEducationResourcesForPreview();
+  const preview = resolveEducationResourcesForPreview(getBundledContent());
 
   expect(preview.isPreviewingDrafts).toBe(false);
   expect(preview.changedResourceIds).toEqual([]);
@@ -706,5 +753,36 @@ describe('resolveVideoEmbed', () => {
       kind: 'link',
       url: 'https://example.com/video',
     });
+  });
+});
+
+describe('published content provider', () => {
+  it('renders published education resources and groups', () => {
+    const payload = buildDatabaseEducationPayload();
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+      payload,
+    );
+
+    expect(screen.getByText('Recurso do Banco de Dados')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Grupo do Banco de Dados' })).toBeInTheDocument();
+  });
+
+  it('resolves published resource details by route id', () => {
+    const payload = buildDatabaseEducationPayload();
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao/db-recurso']}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+      payload,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Recurso do Banco de Dados' })).toBeInTheDocument();
   });
 });

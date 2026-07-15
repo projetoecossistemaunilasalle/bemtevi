@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PublishedContentContext } from '../content/PublishedContentContext';
+import { getBundledContent } from '../content/bundledContent';
 import { AdminAuthProvider } from '../auth/AdminAuthProvider';
 import { AdminAuthError, type AdminAccount, type AdminAuthService } from '../auth/adminAuth';
 import { Router } from '../router';
@@ -32,10 +34,30 @@ afterEach(() => {
 });
 
 function renderRoute(initialEntry: string, authService = createAuthService()) {
+  const payload = getBundledContent();
+  const snapshot = {
+    schemaVersion: '1.0.0',
+    revision: 1,
+    payload,
+    publishedAt: '2026-07-15T00:00:00.000Z',
+    publishedBy: 'admin',
+  } as const;
+  const contentValue = {
+    content: payload,
+    snapshot,
+    source: 'bundled' as const,
+    status: 'ready' as const,
+    loadError: null,
+    refresh: async () => {},
+    publish: async () => snapshot,
+  };
+
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <AdminAuthProvider service={authService}>
-        <Router />
+        <PublishedContentContext.Provider value={contentValue}>
+          <Router />
+        </PublishedContentContext.Provider>
       </AdminAuthProvider>
     </MemoryRouter>,
   );

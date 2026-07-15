@@ -1,9 +1,13 @@
 import { MapPin } from 'lucide-react';
+import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { canoasServices } from '../../content/services/canoas-services';
 import { Page } from '../../design-system/components/Page';
 import { ServiceCard } from '../../design-system/components/ServiceCard';
 
 export function ContactsScreen() {
+  const { content } = usePublishedContent();
+  const services = content.contacts;
+
   return (
     <Page>
       <section className="mb-stack-sm">
@@ -17,7 +21,7 @@ export function ContactsScreen() {
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-stack-md">
-        {canoasServices.services.map((service) => (
+        {services.map((service) => (
           <ServiceCard key={service.id} service={service} />
         ))}
       </div>

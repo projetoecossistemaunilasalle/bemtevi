@@ -1,6 +1,10 @@
+import type { ReactElement } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PublishedContentContext } from '../../../app/content/PublishedContentContext';
+import { getBundledContent } from '../../../app/content/bundledContent';
+import type { PublishedContentPayload } from '../../../app/content/publishedContent';
 
 const mockedFlowRegistry = vi.hoisted(() => ({
   flows: [
@@ -86,14 +90,45 @@ vi.mock('../../../content/flows/registry', () => ({
 }));
 
 import { OrientationScreen } from '../OrientationScreen';
+import type { GuidedFlow } from '../../../domain/flow-engine/types';
 
 const TYPING_DELAY_MS = 1200;
 
+function buildContentValue(payload: PublishedContentPayload) {
+  const snapshot = {
+    schemaVersion: '1.0.0',
+    revision: 1,
+    payload,
+    publishedAt: '2026-07-15T00:00:00.000Z',
+    publishedBy: 'admin',
+  } as const;
+  return {
+    content: payload,
+    snapshot,
+    source: 'bundled' as const,
+    status: 'ready' as const,
+    loadError: null,
+    refresh: async () => {},
+    publish: async () => snapshot,
+  };
+}
+
+function renderWithContent(ui: ReactElement, payload: PublishedContentPayload) {
+  return render(
+    <PublishedContentContext.Provider value={buildContentValue(payload)}>{ui}</PublishedContentContext.Provider>,
+  );
+}
+
 function renderOrientation() {
-  render(
+  const payload: PublishedContentPayload = {
+    ...getBundledContent(),
+    flows: mockedFlowRegistry.flows as GuidedFlow[],
+  };
+  renderWithContent(
     <MemoryRouter>
       <OrientationScreen />
     </MemoryRouter>,
+    payload,
   );
 }
 

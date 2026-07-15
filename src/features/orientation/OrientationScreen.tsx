@@ -1,15 +1,13 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Send, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { flowRegistry } from '../../content/flows/registry';
+import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowStateFromRegistry, createMessage, getActiveFlow } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
-import type { ChatMessage, FlowRuntimeState, RuntimeOption } from '../../domain/flow-engine/types';
+import type { ChatMessage, FlowRuntimeState, GuidedFlow, RuntimeOption } from '../../domain/flow-engine/types';
 
 const TYPING_DELAY_MS = 1200;
-
-const flows = flowRegistry.flows;
 
 const INTRO_STARTERS = [
   {
@@ -65,6 +63,9 @@ const typingIndicatorStyle = (
 
 export function OrientationScreen() {
   const navigate = useNavigate();
+  const { content } = usePublishedContent();
+  const [conversationFlows, setConversationFlows] = useState<GuidedFlow[] | null>(null);
+  const flows = conversationFlows ?? content.flows;
   const logRef = useRef<HTMLDivElement | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
@@ -75,7 +76,7 @@ export function OrientationScreen() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRevealing = hasStarted && (state === null || visibleCount < state.transcript.length);
 
-  const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing]);
+  const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing, flows]);
   const visibleOptions = useMemo(() => {
     const normalizedInput = inputValue.trim().toLocaleLowerCase('pt-BR');
     const strictMatch = options.find(
@@ -101,7 +102,7 @@ export function OrientationScreen() {
     const activeNode = activeFlow.nodes[activeNodeId];
 
     return activeNode.kind === 'choice' && activeNode.freeText !== undefined;
-  }, [state, isRevealing]);
+  }, [state, isRevealing, flows]);
 
   const exactOption = options.find(
     (option) => option.label.toLocaleLowerCase('pt-BR') === inputValue.trim().toLocaleLowerCase('pt-BR'),
@@ -162,6 +163,7 @@ export function OrientationScreen() {
     setInputValue('');
     setState(null);
     setVisibleCount(0);
+    setConversationFlows(content.flows);
     setHasStarted(true);
   }
 

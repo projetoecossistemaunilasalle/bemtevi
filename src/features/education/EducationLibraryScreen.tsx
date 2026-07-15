@@ -2,6 +2,7 @@ import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
 import { BookOpen, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
+import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { Badge } from '../../design-system/components/Badge';
 import { Button } from '../../design-system/components/Button';
@@ -11,7 +12,8 @@ import { PageHeader } from '../../design-system/components/PageHeader';
 
 export function EducationLibraryScreen() {
   const navigate = useNavigate();
-  const { resources, groups, defaultGroupOrder, isPreviewingDrafts } = resolveEducationResourcesForPreview();
+  const { content } = usePublishedContent();
+  const { resources, groups, defaultGroupOrder, isPreviewingDrafts } = resolveEducationResourcesForPreview(content);
 
   // Determine group for each resource
   const groupAssignments = resources.map((resource) => {
