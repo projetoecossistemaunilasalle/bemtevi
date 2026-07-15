@@ -3,9 +3,11 @@ import { CheckCircle2 } from 'lucide-react';
 import type { DashboardDraftContent } from './exportBundle';
 import type { DashboardShippedContent } from '../content/shippedContent';
 import type { DashboardValidationResult } from '../validation/validationTypes';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { buildExportBundle } from './exportBundle';
 import { createZip } from './createZip';
 import { extractImagesFromDrafts } from './extractImages';
+import { computeChangeSummary } from '../publishing/changeSummary';
 import { Button } from '../../design-system/components/Button';
 
 const LAST_EXPORTED_AT_KEY = 'secuida:dev-dashboard:lastExportedAt';
@@ -33,21 +35,24 @@ export function ExportDashboard({
     [drafts, shipped, validation],
   );
   const hasErrors = validation.errors.length > 0;
-  const changeCounts = useMemo(() => computeChangeCounts(bundle, shipped, drafts), [bundle, shipped, drafts]);
-  const totalChanges =
-    changeCounts.flows.added +
-    changeCounts.flows.patched +
-    changeCounts.flows.removed +
-    changeCounts.materials.added +
-    changeCounts.materials.patched +
-    changeCounts.materials.removed +
-    changeCounts.groups.added +
-    changeCounts.groups.patched +
-    changeCounts.groups.removed +
-    changeCounts.contacts.added +
-    changeCounts.contacts.patched +
-    changeCounts.contacts.removed;
-  const hasChanges = totalChanges > 0;
+  const changeCounts = useMemo(() => {
+    const baseline: PublishedContentPayload = {
+      flows: shipped.flows,
+      educationMaterials: shipped.educationMaterials,
+      educationGroups: shipped.educationGroups,
+      contacts: shipped.contacts,
+      defaultGroupOrder: shipped.defaultGroupOrder ?? 0,
+    };
+    const draft: PublishedContentPayload = {
+      flows: drafts.flows,
+      educationMaterials: drafts.educationMaterials,
+      educationGroups: drafts.educationGroups,
+      contacts: drafts.contacts,
+      defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
+    };
+    return computeChangeSummary(baseline, draft);
+  }, [bundle, shipped, drafts]);
+  const hasChanges = changeCounts.total > 0;
   const hasStaleExport = exportedAt !== null && draftUpdatedAt !== null && draftUpdatedAt > exportedAt;
 
   async function downloadBundle() {
@@ -100,31 +105,31 @@ export function ExportDashboard({
             <ChangeStat
               label="Fluxos"
               added={changeCounts.flows.added}
-              patched={changeCounts.flows.patched}
+              edited={changeCounts.flows.edited}
               removed={changeCounts.flows.removed}
             />
             <ChangeStat
               label="Materiais"
               added={changeCounts.materials.added}
-              patched={changeCounts.materials.patched}
+              edited={changeCounts.materials.edited}
               removed={changeCounts.materials.removed}
             />
             <ChangeStat
               label="Grupos"
               added={changeCounts.groups.added}
-              patched={changeCounts.groups.patched}
+              edited={changeCounts.groups.edited}
               removed={changeCounts.groups.removed}
             />
             <ChangeStat
               label="Grupos removidos"
               added={0}
-              patched={0}
+              edited={0}
               removed={drafts.removedEducationGroupIds?.length ?? 0}
             />
             <ChangeStat
               label="Contatos"
               added={changeCounts.contacts.added}
-              patched={changeCounts.contacts.patched}
+              edited={changeCounts.contacts.edited}
               removed={changeCounts.contacts.removed}
             />
           </div>
@@ -152,20 +157,20 @@ export function ExportDashboard({
 function ChangeStat({
   label,
   added,
-  patched,
+  edited,
   removed,
 }: {
   label: string;
   added: number;
-  patched: number;
+  edited: number;
   removed: number;
 }) {
-  const total = added + patched + removed;
+  const total = added + edited + removed;
   if (total === 0) return <p className="font-label-md text-on-surface-variant">{label}: 0</p>;
 
   const parts: string[] = [];
   if (added > 0) parts.push(`${added} adicionado${added === 1 ? '' : 's'}`);
-  if (patched > 0) parts.push(`${patched} editado${patched === 1 ? '' : 's'}`);
+  if (edited > 0) parts.push(`${edited} editado${edited === 1 ? '' : 's'}`);
   if (removed > 0) parts.push(`${removed} removido${removed === 1 ? '' : 's'}`);
 
   return (
@@ -174,42 +179,4 @@ function ChangeStat({
       <p className="font-label-md text-on-surface">{parts.join(', ')}</p>
     </div>
   );
-}
-
-function computeChangeCounts(
-  bundle: ReturnType<typeof buildExportBundle>,
-  shipped: DashboardShippedContent,
-  drafts: DashboardDraftContent,
-) {
-  const shippedFlowIds = new Set(shipped.flows.map((f) => f.id));
-  const draftFlowIds = new Set(drafts.flows.map((f) => f.id));
-  const shippedMaterialIds = new Set(shipped.educationMaterials.map((m) => m.id));
-  const draftMaterialIds = new Set(drafts.educationMaterials.map((m) => m.id));
-  const shippedGroupIds = new Set(shipped.educationGroups.map((g) => g.id));
-  const draftGroupIds = new Set(drafts.educationGroups.map((g) => g.id));
-  const shippedContactIds = new Set(shipped.contacts.map((contact) => contact.id));
-  const draftContactIds = new Set(drafts.contacts.map((contact) => contact.id));
-
-  return {
-    flows: {
-      added: bundle.changes.flows.filter((f) => !shippedFlowIds.has(f.id)).length,
-      patched: bundle.changes.flows.filter((f) => shippedFlowIds.has(f.id)).length,
-      removed: shipped.flows.filter((f) => !draftFlowIds.has(f.id)).length,
-    },
-    materials: {
-      added: bundle.changes.educationMaterials.filter((m) => !shippedMaterialIds.has(m.id)).length,
-      patched: bundle.changes.educationMaterials.filter((m) => shippedMaterialIds.has(m.id)).length,
-      removed: shipped.educationMaterials.filter((m) => !draftMaterialIds.has(m.id)).length,
-    },
-    groups: {
-      added: bundle.changes.educationGroups.filter((g) => !shippedGroupIds.has(g.id)).length,
-      patched: bundle.changes.educationGroups.filter((g) => shippedGroupIds.has(g.id)).length,
-      removed: shipped.educationGroups.filter((g) => !draftGroupIds.has(g.id)).length,
-    },
-    contacts: {
-      added: bundle.changes.contacts.filter((contact) => !shippedContactIds.has(contact.id)).length,
-      patched: bundle.changes.contacts.filter((contact) => shippedContactIds.has(contact.id)).length,
-      removed: shipped.contacts.filter((contact) => !draftContactIds.has(contact.id)).length,
-    },
-  };
 }
