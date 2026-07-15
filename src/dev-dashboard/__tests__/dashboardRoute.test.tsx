@@ -449,6 +449,29 @@ describe('DashboardRoute', () => {
     expect(exportTab).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('scrolls to a flow stage only after the stage is clicked', () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    localStorage.setItem('secuida:dev-dashboard:active-tab', 'education');
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Fluxos' }));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    const flowList = screen.getByRole('heading', { name: 'Fluxos' }).closest('aside');
+    expect(flowList).not.toBeNull();
+    fireEvent.click(within(flowList!).getByRole('button', { name: 'Etapa 2 — Finalizado.' }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
   it('persists shipped contact edits by source index and derives the phone href', () => {
     render(
       <MemoryRouter>
@@ -1969,6 +1992,7 @@ describe('DashboardRoute', () => {
       'secuida:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
+        baseRevision: 3,
         flowPatches: [],
         educationMaterialPatches: [],
         groupPatches: [],
@@ -2002,8 +2026,13 @@ describe('DashboardRoute', () => {
 
     await waitFor(() => expect(screen.getByText('Publicado na revisão 4.')).toBeInTheDocument());
     expect(dashboardMocks.publish).toHaveBeenCalledTimes(1);
-    const [payload, publisherId] = dashboardMocks.publish.mock.calls[0] as [PublishedContentPayload, string];
+    const [payload, publisherId, expectedRevision] = dashboardMocks.publish.mock.calls[0] as [
+      PublishedContentPayload,
+      string,
+      number | null,
+    ];
     expect(publisherId).toBe('admin-id');
+    expect(expectedRevision).toBe(3);
     expect(payload.contacts[0].name).toBe('CAPS II Praça Brasil (editado)');
     expect(payload.flows.length).toBeGreaterThan(0);
     expect(payload.educationMaterials.length).toBeGreaterThan(0);

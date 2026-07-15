@@ -38,6 +38,7 @@ export function FlowDashboard({
 
   // Lifted States
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [nodeScrollRequest, setNodeScrollRequest] = useState<{ nodeId: string; requestId: number } | null>(null);
   const [nodeSearch, setNodeSearch] = useState('');
   const [activeNodeFilter, setActiveNodeFilter] = useState<NodeFilter>('all');
 
@@ -65,7 +66,7 @@ export function FlowDashboard({
       },
     };
     onFlowChange(effectiveIndex, selectedFlow.id, { nodes: updatedNodes });
-    setSelectedNodeId(nodeId); // auto-select the new stage
+    selectNode(nodeId);
   }
 
   const visibleNodes = useMemo(() => {
@@ -116,11 +117,17 @@ export function FlowDashboard({
   function handleSelectFlow(flowId: string) {
     setSelectedFlowId(flowId);
     setSelectedNodeId(null);
+    setNodeScrollRequest(null);
     setConfirmDeleteFlowId(null);
   }
 
-  function handleEditNode(nodeId: string) {
+  function selectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
+    setNodeScrollRequest((request) => ({ nodeId, requestId: (request?.requestId ?? 0) + 1 }));
+  }
+
+  function handleEditNode(nodeId: string) {
+    selectNode(nodeId);
     setActiveDetailTab('editor');
   }
 
@@ -288,7 +295,7 @@ export function FlowDashboard({
                   <button
                     key={node.id}
                     type="button"
-                    onClick={() => setSelectedNodeId(node.id)}
+                    onClick={() => selectNode(node.id)}
                     aria-label={`${nodeTitle} — ${node.text || node.id}`}
                     className={`w-full rounded-lg px-3 py-2 text-left font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                       isSelected
@@ -360,9 +367,10 @@ export function FlowDashboard({
             flows={flows}
             onChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
             selectedNodeId={activeNodeId}
+            scrollRequest={nodeScrollRequest}
             nodeSearch={nodeSearch}
             activeNodeFilter={activeNodeFilter}
-            onSelectNodeId={setSelectedNodeId}
+            onSelectNodeId={(nodeId) => (nodeId ? selectNode(nodeId) : setSelectedNodeId(null))}
           />
         )}
 

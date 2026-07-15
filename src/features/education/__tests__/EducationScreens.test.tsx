@@ -412,6 +412,56 @@ describe('EducationLibraryScreen', () => {
 
     expect(preview.isPreviewingDrafts).toBe(true);
   });
+
+  it('previews a local default group order of zero against a nonzero database baseline', async () => {
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          schemaVersion: '4.0.0',
+          defaultGroupOrder: 0,
+          contactPatches: [],
+          addedContacts: [],
+          removedContactIds: [],
+        }),
+      ),
+    );
+    const baseline = { ...getBundledContent(), defaultGroupOrder: 5 };
+
+    const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
+    const preview = resolveEducationResourcesForPreview(baseline);
+
+    expect(preview.defaultGroupOrder).toBe(0);
+    expect(preview.isPreviewingDrafts).toBe(true);
+  });
+
+  it('marks edits and removals of database groups as local previews', async () => {
+    const baseline = getBundledContent();
+    const firstGroup = baseline.educationGroups[0];
+    const secondGroup = baseline.educationGroups[1];
+    expect(firstGroup).toBeDefined();
+    expect(secondGroup).toBeDefined();
+    localStorage.setItem(
+      'secuida:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          schemaVersion: '4.0.0',
+          groupPatches: [{ id: firstGroup.id, sourceIndex: 0, patch: { title: 'Grupo editado' } }],
+          removedGroupIds: [secondGroup.id],
+          contactPatches: [],
+          addedContacts: [],
+          removedContactIds: [],
+        }),
+      ),
+    );
+
+    const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
+    const preview = resolveEducationResourcesForPreview(baseline);
+
+    expect(preview.groups.find((group) => group.id === firstGroup.id)?.title).toBe('Grupo editado');
+    expect(preview.groups.some((group) => group.id === secondGroup.id)).toBe(false);
+    expect(preview.isPreviewingDrafts).toBe(true);
+  });
 });
 
 describe('ResourceDetailScreen', () => {

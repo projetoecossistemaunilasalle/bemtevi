@@ -20,6 +20,7 @@ export function FlowEditor({
   flows,
   onChange,
   selectedNodeId,
+  scrollRequest,
   nodeSearch,
   activeNodeFilter,
   onSelectNodeId,
@@ -28,6 +29,7 @@ export function FlowEditor({
   flows: GuidedFlow[];
   onChange: (patch: Partial<GuidedFlow>) => void;
   selectedNodeId: string | null;
+  scrollRequest: { nodeId: string; requestId: number } | null;
   nodeSearch: string;
   activeNodeFilter: 'all' | 'result' | 'safety' | 'branch';
   onSelectNodeId: (nodeId: string | null) => void;
@@ -37,13 +39,13 @@ export function FlowEditor({
   const [initialConfigCollapsed, setInitialConfigCollapsed] = useState(true);
 
   useEffect(() => {
-    if (selectedNodeId) {
-      const element = document.getElementById(`flow-node-${selectedNodeId}`);
+    if (scrollRequest) {
+      const element = document.getElementById(`flow-node-${scrollRequest.nodeId}`);
       if (element && typeof element.scrollIntoView === 'function') {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }, [selectedNodeId]);
+  }, [scrollRequest]);
 
   const nodes = useMemo(() => {
     if (flow.nodeOrder) {

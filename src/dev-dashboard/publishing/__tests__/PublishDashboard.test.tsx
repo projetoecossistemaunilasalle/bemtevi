@@ -153,7 +153,7 @@ describe('PublishDashboard', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() => expect(publish).toHaveBeenCalledWith(draftWithChanges, 'admin-id'));
+    await waitFor(() => expect(publish).toHaveBeenCalledWith(draftWithChanges, 'admin-id', 4));
     await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(5)));
   });
 

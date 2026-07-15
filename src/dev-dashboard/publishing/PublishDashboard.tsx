@@ -13,6 +13,7 @@ interface PublishDashboardProps {
   draft: PublishedContentPayload;
   validation: DashboardValidationResult;
   draftUpdatedAt: string | null;
+  expectedRevision?: number | null;
   onPublished(snapshot: PublishedContentSnapshot): void;
 }
 
@@ -41,7 +42,14 @@ function messageForPublishError(error: unknown) {
   }
 }
 
-export function PublishDashboard({ baseline, draft, validation, draftUpdatedAt, onPublished }: PublishDashboardProps) {
+export function PublishDashboard({
+  baseline,
+  draft,
+  validation,
+  draftUpdatedAt,
+  expectedRevision,
+  onPublished,
+}: PublishDashboardProps) {
   const { snapshot, publish } = usePublishedContent();
   const { account } = useAdminAuth();
   const [state, setState] = useState<PublishState>({ kind: 'idle' });
@@ -63,7 +71,8 @@ export function PublishDashboard({ baseline, draft, validation, draftUpdatedAt, 
 
     setState({ kind: 'pending' });
     try {
-      const next = await publish(draft, account.id);
+      const publicationRevision = expectedRevision === undefined ? (snapshot?.revision ?? null) : expectedRevision;
+      const next = await publish(draft, account.id, publicationRevision);
       setState({ kind: 'success', publishedAt: next.publishedAt, revision: next.revision });
       onPublished(next);
     } catch (error) {

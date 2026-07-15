@@ -32,12 +32,14 @@ export function PublishedContentProvider({
 
   const active = useRef(true);
   const snapshotRef = useRef<PublishedContentSnapshot | null>(null);
+  const refreshSequenceRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const refreshSequence = ++refreshSequenceRef.current;
     try {
       const next = await repository.loadPublishedContent();
-      if (!active.current) return;
-      if (next) {
+      if (!active.current || refreshSequence !== refreshSequenceRef.current) return;
+      if (next && (snapshotRef.current === null || next.revision >= snapshotRef.current.revision)) {
         snapshotRef.current = next;
         setContent(next.payload);
         setSnapshot(next);
@@ -46,24 +48,31 @@ export function PublishedContentProvider({
       setStatus('ready');
       setLoadError(null);
     } catch (error) {
-      if (!active.current) return;
+      if (!active.current || refreshSequence !== refreshSequenceRef.current) return;
       setStatus('fallback');
       setLoadError(error as PublishedContentRepositoryError | PublishedContentValidationError);
     }
   }, [repository]);
 
   const publish = useCallback(
-    async (payload: PublishedContentPayload, publisherId: string): Promise<PublishedContentSnapshot> => {
+    async (
+      payload: PublishedContentPayload,
+      publisherId: string,
+      expectedRevision = snapshotRef.current?.revision ?? null,
+    ): Promise<PublishedContentSnapshot> => {
       const result = await repository.publishContent({
         payload,
-        expectedRevision: snapshotRef.current?.revision ?? null,
+        expectedRevision,
         publisherId,
       });
       if (!active.current) return result;
-      snapshotRef.current = result;
-      setContent(result.payload);
-      setSnapshot(result);
-      setSource('database');
+      refreshSequenceRef.current += 1;
+      if (snapshotRef.current === null || result.revision >= snapshotRef.current.revision) {
+        snapshotRef.current = result;
+        setContent(result.payload);
+        setSnapshot(result);
+        setSource('database');
+      }
       setStatus('ready');
       setLoadError(null);
       return result;

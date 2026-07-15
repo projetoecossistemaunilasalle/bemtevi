@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PUBLISHED_CONTENT_SCHEMA_VERSION,
@@ -189,6 +189,66 @@ describe('PublishedContentProvider', () => {
     expect(screen.getByTestId('load-error')).toHaveTextContent('');
   });
 
+  it('publishes against an explicitly supplied draft revision after a refresh', async () => {
+    const nextPayload = dbPayload('Draft Contact');
+    const repository = createFakeRepository({
+      loadPublishedContent: vi
+        .fn()
+        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 4 Contact'), 4))
+        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 5 Contact'), 5)),
+      publishContent: vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'conflict')),
+    });
+
+    render(
+      <PublishedContentProvider repository={repository}>
+        <Probe />
+      </PublishedContentProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('4'));
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('5'));
+
+    await expect(latest!.publish(nextPayload, 'admin-id', 4)).rejects.toMatchObject({ code: 'conflict' });
+    expect(repository.publishContent).toHaveBeenCalledWith({
+      payload: nextPayload,
+      expectedRevision: 4,
+      publisherId: 'admin-id',
+    });
+  });
+
+  it('does not let a delayed refresh replace a newer published revision', async () => {
+    const delayedRefresh = deferred<PublishedContentSnapshot | null>();
+    const nextPayload = dbPayload('Published Contact');
+    const repository = createFakeRepository({
+      loadPublishedContent: vi
+        .fn()
+        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 4 Contact'), 4))
+        .mockImplementationOnce(() => delayedRefresh.promise),
+      publishContent: vi.fn().mockResolvedValue(makeSnapshot(nextPayload, 5)),
+    });
+
+    render(
+      <PublishedContentProvider repository={repository}>
+        <Probe />
+      </PublishedContentProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('4'));
+    act(() => window.dispatchEvent(new Event('focus')));
+
+    await act(async () => {
+      await latest!.publish(nextPayload, 'admin-id');
+    });
+    expect(screen.getByTestId('revision')).toHaveTextContent('5');
+
+    delayedRefresh.resolve(makeSnapshot(dbPayload('Stale Contact'), 4));
+    await act(async () => delayedRefresh.promise);
+
+    expect(screen.getByTestId('revision')).toHaveTextContent('5');
+    expect(screen.getByTestId('contact')).toHaveTextContent('Published Contact');
+  });
+
   it('does not replace content when publication fails', async () => {
     const error = new PublishedContentRepositoryError('conflict', 'conflito de revisão');
     const nextPayload = dbPayload('Next Contact');
@@ -203,7 +263,7 @@ describe('PublishedContentProvider', () => {
       </PublishedContentProvider>,
     );
 
-    expect(await screen.findByTestId('source')).toHaveTextContent('database');
+    await waitFor(() => expect(screen.getByTestId('source')).toHaveTextContent('database'));
 
     await expect(latest!.publish(nextPayload, 'admin-id')).rejects.toThrow('conflito de revisão');
 

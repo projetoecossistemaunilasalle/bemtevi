@@ -157,7 +157,7 @@ function resolveContactOrigin(
 
 export function DashboardRoute() {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
-  const { content: baseline } = usePublishedContent();
+  const { content: baseline, snapshot } = usePublishedContent();
   const publishMode = getDashboardPublishMode();
   const shipped = baseline;
   const [draftState, setDraftState] = useState(() => loadDashboardDrafts());
@@ -170,8 +170,10 @@ export function DashboardRoute() {
 
   function updateDraftState(updater: (current: typeof draftState) => typeof draftState) {
     setDraftState((current) => {
+      const baseRevision = current.baseRevision === undefined ? (snapshot?.revision ?? null) : current.baseRevision;
       const next = {
         ...updater(current),
+        baseRevision,
         updatedAt: new Date().toISOString(),
       };
 
@@ -553,6 +555,7 @@ export function DashboardRoute() {
               draft={publishedDraft}
               validation={validation}
               draftUpdatedAt={draftState.updatedAt}
+              expectedRevision={draftState.baseRevision ?? null}
               onPublished={() => setDraftState(resetDashboardDrafts())}
             />
           ) : (

@@ -24,6 +24,7 @@ export interface DashboardDraftState {
   addedEducationMaterials: EducationResource[];
   addedGroups: EducationResourceGroup[];
   addedContacts: ServiceDirectoryEntry[];
+  baseRevision?: number | null;
   defaultGroupOrder?: number;
   removedGroupIds?: string[];
   removedFlowIds?: string[];
@@ -51,6 +52,24 @@ export function createEmptyDashboardDraftState(): DashboardDraftState {
 
 function preserveNonZeroDefaultGroupOrder(value: unknown): number | undefined {
   return typeof value === 'number' && value !== 0 ? value : undefined;
+}
+
+function hasDashboardChanges(state: DashboardDraftState) {
+  return (
+    [
+      state.flowPatches,
+      state.educationMaterialPatches,
+      state.groupPatches,
+      state.contactPatches,
+      state.addedFlows,
+      state.addedEducationMaterials,
+      state.addedGroups,
+      state.addedContacts,
+      state.removedGroupIds,
+      state.removedFlowIds,
+      state.removedContactIds,
+    ].some((records) => Array.isArray(records) && records.length > 0) || state.defaultGroupOrder !== undefined
+  );
 }
 
 export function loadDashboardDrafts(storage: Storage = localStorage): DashboardDraftState {
@@ -113,6 +132,9 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
     }
     if (Array.isArray(state.addedFlows)) {
       state.addedFlows = state.addedFlows.map(sanitizeFlow);
+    }
+    if (state.baseRevision !== null && (!Number.isSafeInteger(state.baseRevision) || Number(state.baseRevision) <= 0)) {
+      state.baseRevision = hasDashboardChanges(state) ? null : undefined;
     }
 
     return state;

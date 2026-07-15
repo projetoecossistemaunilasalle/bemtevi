@@ -13,7 +13,11 @@ export interface PublishedContentContextValue {
   status: PublishedContentStatus;
   loadError: PublishedContentRepositoryError | PublishedContentValidationError | null;
   refresh(): Promise<void>;
-  publish(payload: PublishedContentPayload, publisherId: string): Promise<PublishedContentSnapshot>;
+  publish(
+    payload: PublishedContentPayload,
+    publisherId: string,
+    expectedRevision?: number | null,
+  ): Promise<PublishedContentSnapshot>;
 }
 
 export const PublishedContentContext = createContext<PublishedContentContextValue | null>(null);

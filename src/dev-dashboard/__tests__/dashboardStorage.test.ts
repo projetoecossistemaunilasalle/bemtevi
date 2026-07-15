@@ -84,7 +84,26 @@ describe('dashboardStorage', () => {
     saveDashboardDrafts(v3Draft);
 
     expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('4.0.0');
-    expect(loadDashboardDrafts()).toEqual(v3Draft);
+    expect(loadDashboardDrafts()).toEqual({ ...v3Draft, baseRevision: null });
+  });
+
+  it('persists the database revision on which a draft is based', () => {
+    const draft = { ...emptyDraft, baseRevision: 7 };
+
+    saveDashboardDrafts(draft);
+
+    expect(loadDashboardDrafts().baseRevision).toBe(7);
+  });
+
+  it('marks a pre-revision non-empty draft as conflict-only instead of rebasing it', () => {
+    const legacyDraft = {
+      ...emptyDraft,
+      contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { name: 'Legacy edit' } }],
+    };
+    delete (legacyDraft as Partial<DashboardDraftState>).baseRevision;
+    saveDashboardDrafts(legacyDraft);
+
+    expect(loadDashboardDrafts().baseRevision).toBeNull();
   });
 
   it('clears dashboard drafts', () => {
@@ -386,6 +405,7 @@ describe('dashboardStorage', () => {
     expect(loadDashboardDrafts()).toEqual({
       ...v2Draft,
       schemaVersion: DASHBOARD_DRAFT_SCHEMA_VERSION,
+      baseRevision: null,
       contactPatches: [],
       addedContacts: [],
       removedContactIds: [],

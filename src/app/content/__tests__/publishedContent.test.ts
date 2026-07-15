@@ -84,6 +84,28 @@ describe('published content validation', () => {
     }
   });
 
+  it('rejects malformed education body blocks before screens render them', () => {
+    const payload = getBundledContent();
+    payload.educationMaterials[0] = {
+      ...payload.educationMaterials[0],
+      body: [null] as never,
+    };
+
+    expect(() => parsePayload(payload)).toThrow(PublishedContentValidationError);
+    expect(() => parsePayload(payload)).toThrow(/body/i);
+  });
+
+  it('rejects non-string education list items before the detail screen trims them', () => {
+    const payload = getBundledContent();
+    payload.educationMaterials[0] = {
+      ...payload.educationMaterials[0],
+      body: [{ id: 'invalid-list', kind: 'list', items: [null] as never }],
+    };
+
+    expect(() => parsePayload(payload)).toThrow(PublishedContentValidationError);
+    expect(() => parsePayload(payload)).toThrow(/body/i);
+  });
+
   it('rejects a row with an empty published_at', () => {
     const row = {
       id: 'current' as const,

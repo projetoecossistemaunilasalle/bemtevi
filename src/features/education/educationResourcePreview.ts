@@ -6,6 +6,7 @@ import {
 } from '../../dev-dashboard/draft-storage/dashboardStorage';
 import type { EducationResourceGroup } from '../../content/resources/groups';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
+import { normalizeForComparison } from '../../dev-dashboard/content/normalize';
 
 export interface EducationResourcePreviewState {
   resources: EducationResource[];
@@ -22,7 +23,8 @@ export function resolveEducationResourcesForPreview(baseline: PublishedContentPa
     drafts.addedEducationMaterials.length > 0 ||
     drafts.groupPatches.length > 0 ||
     drafts.addedGroups.length > 0 ||
-    (drafts.defaultGroupOrder !== undefined && drafts.defaultGroupOrder !== 0);
+    (drafts.removedGroupIds?.length ?? 0) > 0 ||
+    drafts.defaultGroupOrder !== undefined;
 
   if (!hasEducationDrafts) {
     return {
@@ -39,8 +41,9 @@ export function resolveEducationResourcesForPreview(baseline: PublishedContentPa
   const groups = merged.educationGroups;
   const defaultGroupOrder = merged.defaultGroupOrder;
   const changedResourceIds = resolveChangedEducationResourceIds(baseline.educationMaterials, resources);
-  const shippedGroupIds = baseline.educationGroups.map((g) => g.id);
-  const hasGroupChanges = groups.some((g) => !shippedGroupIds.includes(g.id)) || merged.defaultGroupOrder !== 0;
+  const hasGroupChanges =
+    normalizeForComparison(groups) !== normalizeForComparison(baseline.educationGroups) ||
+    merged.defaultGroupOrder !== baseline.defaultGroupOrder;
 
   return {
     resources,

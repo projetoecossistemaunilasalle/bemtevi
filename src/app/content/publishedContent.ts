@@ -42,6 +42,7 @@ export class PublishedContentValidationError extends Error {
 
 const SUPPORTED_AUDIENCES = ['teachers', 'public_school_teachers', 'general'] as const;
 const SUPPORTED_BADGE_TONES = ['primary', 'secondary', 'neutral'] as const;
+const SUPPORTED_EDUCATION_BLOCK_KINDS = ['paragraph', 'heading', 'list', 'image', 'video', 'sourceLink'] as const;
 const PAYLOAD_KEYS: (keyof PublishedContentPayload)[] = [
   'flows',
   'educationMaterials',
@@ -106,8 +107,26 @@ function validateEducationMaterials(materials: unknown): EducationResource[] {
     if (!isRecord(material.review)) {
       throw new PublishedContentValidationError(`Recurso "${label}" precisa de um objeto "review".`);
     }
-    if (material.body !== undefined && !Array.isArray(material.body)) {
-      throw new PublishedContentValidationError(`Recurso "${label}" tem "body" inválido.`);
+    if (material.body !== undefined) {
+      if (!Array.isArray(material.body)) {
+        throw new PublishedContentValidationError(`Recurso "${label}" tem "body" inválido.`);
+      }
+      material.body.forEach((block) => {
+        if (
+          !isRecord(block) ||
+          !isNonEmptyString(block.id) ||
+          !SUPPORTED_EDUCATION_BLOCK_KINDS.includes(block.kind as (typeof SUPPORTED_EDUCATION_BLOCK_KINDS)[number])
+        ) {
+          throw new PublishedContentValidationError(`Recurso "${label}" tem bloco de "body" inválido.`);
+        }
+        if (
+          block.kind === 'list' &&
+          block.items !== undefined &&
+          (!Array.isArray(block.items) || block.items.some((item) => typeof item !== 'string'))
+        ) {
+          throw new PublishedContentValidationError(`Recurso "${label}" tem bloco de "body" inválido.`);
+        }
+      });
     }
     return material as unknown as EducationResource;
   });
