@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
+import { AdminAuthProvider } from './auth/AdminAuthProvider';
 
 export function Providers({ children }: { children: ReactNode }) {
-  return children;
+  return <AdminAuthProvider>{children}</AdminAuthProvider>;
 }

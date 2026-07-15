@@ -47,6 +47,25 @@ describe('EducationLibraryScreen', () => {
     expect(screen.getByText('Aplicação prática')).toBeInTheDocument();
   });
 
+  it('renders the library thumbnail without blend or opacity effects', () => {
+    const resource = resourcesContent.resources[0];
+
+    render(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const thumbnail = document.querySelector(`img[src="${resource.imageUrl}"]`);
+
+    expect(thumbnail).toBeInstanceOf(HTMLImageElement);
+    expect(thumbnail).not.toHaveClass('opacity-90');
+    expect(thumbnail).not.toHaveClass('mix-blend-multiply');
+    expect(thumbnail).not.toHaveAttribute('src', expect.stringContaining('respiracao'));
+  });
+
   it('shows the preview warning when at least one material was actually added', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
@@ -397,6 +416,27 @@ describe('ResourceDetailScreen', () => {
 
     expect(visibleBadgeTexts).toEqual([resource.source, 'Respiração', 'Sala de aula']);
     expect(visibleBadgeTexts).not.toContain('Material educativo');
+  });
+
+  it('renders the respiration images as body content, not only as metadata', () => {
+    const resource = resourcesContent.resources[0];
+
+    render(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('img', { name: 'Exercício de respiração passo 1.' })).toHaveAttribute(
+      'src',
+      '/SeCuida-Prototipo/respiracao1.jpg',
+    );
+    expect(screen.getByRole('img', { name: 'Exercício de respiração passo 2.' })).toHaveAttribute(
+      'src',
+      '/SeCuida-Prototipo/respiracao2.jpg',
+    );
   });
 
   it('renders YouTube block titles before the iframe and omits the seeded mock description', () => {

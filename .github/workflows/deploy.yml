@@ -36,6 +36,8 @@ jobs:
       - run: pnpm build
         env:
           VITE_ENABLE_DEV_DASHBOARD: 'true'
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+          VITE_NEON_DATA_API_URL: ${{ vars.VITE_NEON_DATA_API_URL }}
       - run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3

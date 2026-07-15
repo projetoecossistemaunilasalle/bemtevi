@@ -5,5 +5,6 @@ export const routes = {
   contacts: '/contatos',
   education: '/educacao',
   educationDetail: '/educacao/:resourceId',
+  login: '/login',
   dashboard: '/dashboard',
 } as const;

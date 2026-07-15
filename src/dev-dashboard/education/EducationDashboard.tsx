@@ -41,6 +41,17 @@ function isUploadedImageValue(value: string | undefined) {
   return value?.trimStart().startsWith('data:') ?? false;
 }
 
+function isPublicImagePath(value: string | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed.startsWith('/') && !trimmed.startsWith('//');
+}
+
+function publicImageInputLabel(value: string | undefined) {
+  const name = value?.split('/').pop() ?? '';
+  return `Imagem interna (${name})`;
+}
+
 function uploadedImageInputLabel(fileName: string | undefined) {
   const label = fileName?.trim() || 'Base64';
   return `Imagem enviada (${label})`;
@@ -239,11 +250,15 @@ export function EducationDashboard({
                   <input
                     aria-label="URL da miniatura da biblioteca"
                     className={`${inputClass} flex-1`}
-                    disabled={isUploadedImageValue(selectedResource.imageUrl)}
+                    disabled={
+                      isUploadedImageValue(selectedResource.imageUrl) || isPublicImagePath(selectedResource.imageUrl)
+                    }
                     value={
                       isUploadedImageValue(selectedResource.imageUrl)
                         ? uploadedImageInputLabel(selectedResource.imageFileName)
-                        : (selectedResource.imageUrl ?? '')
+                        : isPublicImagePath(selectedResource.imageUrl)
+                          ? publicImageInputLabel(selectedResource.imageUrl)
+                          : (selectedResource.imageUrl ?? '')
                     }
                     onChange={(event) => changeField({ imageUrl: event.target.value })}
                   />

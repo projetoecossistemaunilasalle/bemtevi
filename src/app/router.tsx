@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { RequireAdmin, RequireAnonymousAdmin } from './auth/RequireAdmin';
 import { canShowDevDashboard, createDevDashboardRoute } from './devDashboard';
 import { routes } from './routes';
 import { AppShell } from './shell/AppShell';
@@ -9,6 +10,7 @@ import { ResourceDetailScreen } from '../features/education/ResourceDetailScreen
 import { HomeScreen } from '../features/home/HomeScreen';
 import { OrientationScreen } from '../features/orientation/OrientationScreen';
 import { SupportScreen } from '../features/support/SupportScreen';
+import { AdminLoginScreen } from '../features/admin-login/AdminLoginScreen';
 
 const DevDashboardRoute = createDevDashboardRoute();
 
@@ -22,16 +24,29 @@ export function Router() {
         <Route path={routes.contacts} element={<ContactsScreen />} />
         <Route path={routes.education} element={<EducationLibraryScreen />} />
         <Route path={routes.educationDetail} element={<ResourceDetailScreen />} />
+        {canShowDevDashboard() && (
+          <Route
+            path={routes.login}
+            element={
+              <RequireAnonymousAdmin>
+                <AdminLoginScreen />
+              </RequireAnonymousAdmin>
+            }
+          />
+        )}
         {canShowDevDashboard() && DevDashboardRoute && (
           <Route
             path={routes.dashboard}
             element={
-              <Suspense fallback={null}>
-                <DevDashboardRoute />
-              </Suspense>
+              <RequireAdmin>
+                <Suspense fallback={null}>
+                  <DevDashboardRoute />
+                </Suspense>
+              </RequireAdmin>
             }
           />
         )}
+        <Route path="*" element={<Navigate to={routes.home} replace />} />
       </Route>
     </Routes>
   );

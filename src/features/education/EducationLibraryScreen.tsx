@@ -81,11 +81,7 @@ export function EducationLibraryScreen() {
                       </div>
                       {resource.imageUrl ? (
                         <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-surface-container-low flex items-center justify-center border border-outline-variant/20">
-                          <img
-                            alt=""
-                            className="w-full h-full object-cover opacity-90 mix-blend-multiply"
-                            src={resource.imageUrl}
-                          />
+                          <img alt="" className="w-full h-full object-cover" src={resource.imageUrl} />
                         </div>
                       ) : null}
                     </div>

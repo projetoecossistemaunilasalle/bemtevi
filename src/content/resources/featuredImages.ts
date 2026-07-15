@@ -2,8 +2,6 @@ import handsHoldingPlant from '../../assets/featured-images/hands_holding_plant.
 import classroom1 from '../../assets/featured-images/classroom_1.png';
 import classroom2 from '../../assets/featured-images/classroom_2.png';
 import greenPatch from '../../assets/featured-images/green_patch.png';
-import respiracao1 from '../../../assets/images/respiracao1.jpg';
-import respiracao2 from '../../../assets/images/respiracao2.jpg';
 
 export interface FeaturedImageOption {
   id: string;
@@ -34,13 +32,13 @@ export const featuredImageOptions = [
   },
   {
     id: 'respiracao-1',
-    src: respiracao1,
-    alt: 'Exercício de respiração passo 1.',
+    src: '/SeCuida-Prototipo/respiracao1.jpg',
+    alt: 'Pessoa praticando respiração em ambiente tranquilo.',
   },
   {
     id: 'respiracao-2',
-    src: respiracao2,
-    alt: 'Exercício de respiração passo 2.',
+    src: '/SeCuida-Prototipo/respiracao2.jpg',
+    alt: 'Exercício de respiração guiada para pausa e autocuidado.',
   },
 ] satisfies FeaturedImageOption[];
 

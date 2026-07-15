@@ -31,11 +31,13 @@ This avoids crowding the mobile bottom navigation while preserving the current d
 - `/dashboard`: Admin-only dashboard route. If an unauthenticated user visits `/dashboard`, redirect to `/` rather than `/login` so the app does not reveal the login entry from guessed dashboard URLs. If the dashboard feature flag is off, redirect to `/`.
 - Existing public routes: remain available to all users, but their navigation should not expose Dashboard unless the user is authenticated as admin and the viewport/layout rules allow it.
 
-## Login Mechanism
+## Authentication And Authorization
 
-The prototype login should require a simple admin passphrase to avoid accidental admin entry in staging or test builds. The passphrase may be configured through a Vite-exposed environment variable such as `VITE_ADMIN_PASSPHRASE`, with a clearly documented local fallback for development.
+Admin access must use Neon Auth email/password accounts. There is no public sign-up route: accounts are created through the Neon Auth administration surface, then explicitly granted dashboard access by inserting their Neon Auth user ID into `public.admin_users`.
 
-This passphrase is not a production security boundary because Vite-exposed values are available to client code. If the dashboard becomes available to real production administrators, this mechanism should be replaced by backend-backed authentication.
+The browser uses only `VITE_NEON_AUTH_URL` and `VITE_NEON_DATA_API_URL`. These public endpoints do not grant administrative privileges. The application must verify the signed-in user's ID against `public.admin_users`, protected by Neon Data API Row Level Security (RLS), before rendering admin navigation or `/dashboard`.
+
+Client route guards are a UX boundary, not the final data security boundary. Any future database writes from the dashboard must also use RLS policies that check `public.is_admin()` so a visitor cannot bypass authorization by calling the API directly.
 
 ## Admin Mode
 
@@ -50,17 +52,16 @@ Admin mode should provide:
 - Desktop admin menu contents: public app navigation/preview and Logout. Dashboard should remain in the existing desktop navigation only, avoiding duplicate Dashboard links in the same top bar.
 - A way to return from Dashboard to the public preview/app.
 - A Logout action that clears admin mode and removes admin navigation immediately.
-- Public routes should render confirmed database-backed content for every user.
 
-For the prototype, admin mode should be stored in browser `localStorage` under a Se Cuida namespace, matching the dashboard's existing storage pattern and allowing admin state to survive page reloads and separate tabs in the same browser profile. A future backend-backed auth provider can replace this storage without changing the navigation contract.
+Neon Auth owns session persistence, refresh, and cross-tab synchronization. The app must derive admin mode from the current authenticated session plus the server-authorized `admin_users` row; it must never store an independent `isAdmin` boolean in browser storage.
 
-## Approval Flow
+## Publishing Boundary
 
-The dashboard remains the place where admins review content changes. Draft edits are not shown in public routes by default. Once an admin confirms a valid change, the dashboard should write that content to the database-backed live content source.
+The dashboard remains the place where admins review content changes. Draft edits are not shown in public routes by default. Once an admin confirms a valid change, the dashboard should eventually write that content to a database-backed live content source.
 
 For all users, confirmation should feel immediate: after the admin confirms a change, routes such as `/orientacao` or `/educacao` should read the live database-backed version without requiring export, repository merge, or redeploy.
 
-Implementation should introduce an app-level content resolver/provider that prefers live database-backed content and falls back to shipped static content when no live record exists or when the database is unavailable. This keeps the app resilient while making the dashboard the normal publishing surface.
+Database-backed publishing is a separate implementation phase. It requires a content schema, draft/published lifecycle, atomic publishing rules, conflict handling, and RLS write policies. This access-control implementation must establish the reusable `public.is_admin()` authorization boundary but must not pretend that the current `localStorage` draft/export flow is already secure database publishing.
 
 ## Out Of Scope
 
@@ -69,6 +70,7 @@ Implementation should introduce an app-level content resolver/provider that pref
 - Changing the existing public information architecture.
 - Designing a full role/permission system beyond admin-only dashboard access.
 - Requiring repository changes, JSON export, or redeploy for normal content publishing after admin confirmation.
+- Implementing database-backed content publishing in the same change as admin authentication.
 
 ## Testing Expectations
 
@@ -78,17 +80,16 @@ Tests should cover:
 - Unauthenticated users attempting to access `/dashboard` are redirected to `/` without exposing `/login`.
 - Any user attempting to access `/login` or `/dashboard` while `VITE_ENABLE_DEV_DASHBOARD` is off is redirected to `/`.
 - Authenticated admins attempting to access `/login` are redirected to `/dashboard`.
-- Invalid passphrase attempts do not enable admin mode.
+- Invalid credentials do not enable admin mode.
+- Valid non-admin accounts are signed out and do not enable admin mode.
 - Admin users see the top-bar admin entry on mobile.
 - Admin users see an admin mode indicator and Logout action on mobile and desktop.
 - Admin users keep the current Dashboard navigation behavior on desktop.
 - Desktop admins do not see duplicate Dashboard links in both the desktop nav and the admin menu.
 - Admins can log out, clearing admin mode and removing admin navigation.
-- Admin session state persists across page reloads and separate tabs in the same browser profile.
+- Neon Auth session state persists across page reloads and separate tabs in the same browser profile.
 - Login redirects admins into the intended admin-capable app state.
-- Draft dashboard changes do not affect public routes until confirmed.
-- Confirmed dashboard changes are persisted to the database-backed content source.
-- Confirmed dashboard changes appear on relevant public routes for normal unauthenticated users.
-- Public routes fall back to shipped static content when live database content is missing or unavailable.
 
-Implementation should introduce a small admin auth module, for example `src/app/auth/adminSession.ts`, that centralizes `isAdminMode()`, `loginAdmin()`, `logoutAdmin()`, and test-only reset behavior. Tests should reset this module/storage state in `beforeEach` to avoid leakage between route and navigation cases.
+Database-backed publishing and public-content fallback tests belong to the separate publishing implementation phase, not to the admin authentication gate.
+
+Implementation should introduce a small admin auth service and React provider that centralize session restoration, admin authorization, login, logout, and auth-state changes. Tests should inject or mock the service instead of writing fake admin flags into browser storage.

@@ -100,8 +100,16 @@ describe('Resources content', () => {
     const resource = resourcesContent.resources[0];
 
     expect(resource.imageUrl).not.toContain('googleusercontent.com');
-    expect(resource.featuredImage).toEqual({ kind: 'catalog', imageId: 'respiracao-1' });
+    expect(resource.imageUrl).toBe('/SeCuida-Prototipo/hands_holding_plant.png');
+    expect(resource.featuredImage).toEqual({
+      kind: 'catalog',
+      imageId: 'respiracao-1',
+    });
     expect(resource.body?.map((block) => block.kind)).toEqual(['paragraph', 'video', 'image', 'image', 'paragraph']);
+    expect(resource.body?.filter((block) => block.kind === 'image').map((block) => block.imageUrl)).toEqual([
+      '/SeCuida-Prototipo/respiracao1.jpg',
+      '/SeCuida-Prototipo/respiracao2.jpg',
+    ]);
   });
 
   it('includes generated resources and lets them override base resource IDs', async () => {
@@ -152,6 +160,15 @@ describe('Featured image options', () => {
       expect(option.src).toBeTruthy();
       expect(option.alt).toBeTruthy();
     });
+  });
+
+  it('includes breathing photos from the public assets', () => {
+    expect(featuredImageOptions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'respiracao-1', src: '/SeCuida-Prototipo/respiracao1.jpg' }),
+        expect.objectContaining({ id: 'respiracao-2', src: '/SeCuida-Prototipo/respiracao2.jpg' }),
+      ]),
+    );
   });
 });
 
