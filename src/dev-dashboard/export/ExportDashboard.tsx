@@ -51,7 +51,7 @@ export function ExportDashboard({
       defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
     };
     return computeChangeSummary(baseline, draft);
-  }, [bundle, shipped, drafts]);
+  }, [shipped, drafts]);
   const hasChanges = changeCounts.total > 0;
   const hasStaleExport = exportedAt !== null && draftUpdatedAt !== null && draftUpdatedAt > exportedAt;
 

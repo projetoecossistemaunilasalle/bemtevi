@@ -3,10 +3,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { useAdminAuth } from '../../app/auth/AdminAuthContext';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
-import type {
-  PublishedContentPayload,
-  PublishedContentSnapshot,
-} from '../../app/content/publishedContent';
+import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import { PublishedContentRepositoryError } from '../../app/content/publishedContentRepository';
 import type { DashboardValidationResult } from '../validation/validationTypes';
 import { computeChangeSummary, type RecordChangeCount } from './changeSummary';

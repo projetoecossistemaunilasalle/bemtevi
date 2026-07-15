@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -25,9 +26,7 @@ function dbPayload(firstContactName: string): PublishedContentPayload {
   const base = getBundledContent();
   return {
     ...base,
-    contacts: base.contacts.map((contact, index) =>
-      index === 0 ? { ...contact, name: firstContactName } : contact,
-    ),
+    contacts: base.contacts.map((contact, index) => (index === 0 ? { ...contact, name: firstContactName } : contact)),
   };
 }
 
@@ -53,7 +52,9 @@ let latest: PublishedContentContextValue | null = null;
 
 function Probe() {
   const ctx = usePublishedContent();
-  latest = ctx;
+  useEffect(() => {
+    latest = ctx;
+  });
   return (
     <div>
       <span data-testid="source">{ctx.source}</span>

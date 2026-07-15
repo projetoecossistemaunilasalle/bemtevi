@@ -71,9 +71,7 @@ describe('published content validation', () => {
     });
 
     for (const revision of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '3']) {
-      expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(
-        PublishedContentValidationError,
-      );
+      expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(PublishedContentValidationError);
       expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(/revision/i);
     }
   });

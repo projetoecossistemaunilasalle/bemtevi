@@ -9,10 +9,7 @@ import {
 } from '../../../app/content/PublishedContentContext';
 import { AdminAuthContext, type AdminAuthContextValue } from '../../../app/auth/AdminAuthContext';
 import type { AdminAccount } from '../../../app/auth/adminAuth';
-import {
-  type PublishedContentPayload,
-  type PublishedContentSnapshot,
-} from '../../../app/content/publishedContent';
+import { type PublishedContentPayload, type PublishedContentSnapshot } from '../../../app/content/publishedContent';
 import { PublishedContentRepositoryError } from '../../../app/content/publishedContentRepository';
 import type { ServiceDirectoryEntry } from '../../../domain/services/types';
 import type { DashboardValidationResult } from '../../validation/validationTypes';
@@ -184,9 +181,7 @@ describe('PublishDashboard', () => {
 
   it('reports conflict without calling onPublished', async () => {
     const user = userEvent.setup();
-    const publish = vi
-      .fn()
-      .mockRejectedValue(new PublishedContentRepositoryError('conflict', 'boom'));
+    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'boom'));
     const onPublished = vi.fn();
     renderPublish({ publish, onPublished });
 
@@ -215,9 +210,7 @@ describe('PublishDashboard', () => {
 
   it('maps an unauthorized repository error to the real-auth message', async () => {
     const user = userEvent.setup();
-    const publish = vi
-      .fn()
-      .mockRejectedValue(new PublishedContentRepositoryError('unauthorized', 'boom'));
+    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('unauthorized', 'boom'));
     renderPublish({ publish });
 
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
@@ -229,9 +222,7 @@ describe('PublishDashboard', () => {
 
   it('reports configuration failures safely', async () => {
     const user = userEvent.setup();
-    const publish = vi
-      .fn()
-      .mockRejectedValue(new PublishedContentRepositoryError('not_configured', 'secret detail'));
+    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('not_configured', 'secret detail'));
     renderPublish({ publish });
 
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));

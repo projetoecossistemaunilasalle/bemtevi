@@ -540,13 +540,13 @@ export function EducationDashboard({
                           />
                         </div>
                       </div>
-                       <BlockFields
-                         block={block}
-                         blockNumber={blockNumber}
-                         invalid={blockIssues.errors.length > 0}
-                         onChange={(patch) => updateBlock(block.id, patch)}
-                         readImageFile={readImageSafely}
-                       />
+                      <BlockFields
+                        block={block}
+                        blockNumber={blockNumber}
+                        invalid={blockIssues.errors.length > 0}
+                        onChange={(patch) => updateBlock(block.id, patch)}
+                        readImageFile={readImageSafely}
+                      />
                     </div>
                   );
                 })}

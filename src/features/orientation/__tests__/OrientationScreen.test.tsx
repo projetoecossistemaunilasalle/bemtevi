@@ -48,9 +48,7 @@ function renderWithContent(ui: ReactElement, payload: PublishedContentPayload = 
 function buildDatabaseFlowsPayload(transitionMessage: string): PublishedContentPayload {
   const bundled = getBundledContent();
   const flows = bundled.flows.map((flow) =>
-    flow.id === 'orientation-understand-feelings'
-      ? { ...flow, entry: { ...flow.entry, transitionMessage } }
-      : flow,
+    flow.id === 'orientation-understand-feelings' ? { ...flow, entry: { ...flow.entry, transitionMessage } } : flow,
   );
   return { ...bundled, flows };
 }

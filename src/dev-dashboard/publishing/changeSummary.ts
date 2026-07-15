@@ -44,10 +44,7 @@ export function computeChangeSummary(
   return { flows, materials, groups, contacts, defaultGroupOrderChanged, total };
 }
 
-export function countRecordChanges<T extends { id: string }>(
-  baseline: T[],
-  draft: T[],
-): RecordChangeCount {
+export function countRecordChanges<T extends { id: string }>(baseline: T[], draft: T[]): RecordChangeCount {
   const baselineOccurrencesById = new Map<string, string[]>();
   baseline.forEach((record) => {
     const occurrences = baselineOccurrencesById.get(record.id) ?? [];

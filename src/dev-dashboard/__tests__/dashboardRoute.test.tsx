@@ -8,10 +8,7 @@ import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorag
 import { EducationDashboard } from '../education/EducationDashboard';
 import { MAX_IMAGE_UPLOAD_BYTES } from '../components/fileUpload';
 import { getShippedDashboardContent } from '../content/shippedContent';
-import type {
-  PublishedContentPayload,
-  PublishedContentSnapshot,
-} from '../../app/content/publishedContent';
+import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import type { DashboardShippedContent } from '../content/shippedContent';
 
 function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
@@ -2003,14 +2000,9 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() =>
-      expect(screen.getByText('Publicado na revisão 4.')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Publicado na revisão 4.')).toBeInTheDocument());
     expect(dashboardMocks.publish).toHaveBeenCalledTimes(1);
-    const [payload, publisherId] = dashboardMocks.publish.mock.calls[0] as [
-      PublishedContentPayload,
-      string,
-    ];
+    const [payload, publisherId] = dashboardMocks.publish.mock.calls[0] as [PublishedContentPayload, string];
     expect(publisherId).toBe('admin-id');
     expect(payload.contacts[0].name).toBe('CAPS II Praça Brasil (editado)');
     expect(payload.flows.length).toBeGreaterThan(0);
@@ -2051,9 +2043,7 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    expect(
-      await screen.findByText('Não foi possível publicar agora. Tente novamente.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Não foi possível publicar agora. Tente novamente.')).toBeInTheDocument();
     expect(localStorage.getItem('secuida:dev-dashboard:drafts:v1')).not.toBeNull();
   });
 
@@ -2083,9 +2073,7 @@ describe('DashboardRoute', () => {
         addedFlows: [],
         addedEducationMaterials: [],
         addedGroups: [],
-        contactPatches: [
-          { id: 'db-contact', sourceIndex: 0, patch: { name: 'Contato do banco (editado)' } },
-        ],
+        contactPatches: [{ id: 'db-contact', sourceIndex: 0, patch: { name: 'Contato do banco (editado)' } }],
         removedContactIds: [],
         updatedAt: '2026-07-12T00:00:00.000Z',
       }),
@@ -2102,6 +2090,3 @@ describe('DashboardRoute', () => {
     expect(contactsStat).toHaveTextContent('1 editado');
   });
 });
-
-
-

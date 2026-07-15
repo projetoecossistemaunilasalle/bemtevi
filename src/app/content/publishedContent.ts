@@ -70,9 +70,7 @@ function validateFlows(flows: unknown): GuidedFlow[] {
     const label = isRecord(flow) && isNonEmptyString(flow.id) ? String(flow.id) : `índice ${index}`;
     const validation = validateFlow(flow);
     if (!validation.valid) {
-      throw new PublishedContentValidationError(
-        `Fluxo "${label}" inválido: ${validation.errors.join(' ')}`,
-      );
+      throw new PublishedContentValidationError(`Fluxo "${label}" inválido: ${validation.errors.join(' ')}`);
     }
     return parseGuidedFlow(flow);
   });
@@ -213,9 +211,7 @@ export function parsePublishedContentRow(row: PublishedContentRow): PublishedCon
     throw new PublishedContentValidationError('Apenas o registro "current" é suportado.');
   }
   if (row.schema_version !== PUBLISHED_CONTENT_SCHEMA_VERSION) {
-    throw new PublishedContentValidationError(
-      `Versão de esquema (schema) não suportada: ${row.schema_version}.`,
-    );
+    throw new PublishedContentValidationError(`Versão de esquema (schema) não suportada: ${row.schema_version}.`);
   }
   if (typeof row.revision !== 'number' || !Number.isSafeInteger(row.revision) || row.revision <= 0) {
     throw new PublishedContentValidationError('O "revision" deve ser um inteiro positivo.');

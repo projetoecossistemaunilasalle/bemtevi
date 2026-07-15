@@ -73,6 +73,7 @@ Existing files modified by the plan:
 ### Task 1: Add the Publication Mode Boundary
 
 **Files:**
+
 - Create: `src/dev-dashboard/publishing/publishMode.ts`
 - Create: `src/dev-dashboard/publishing/__tests__/publishMode.test.ts`
 
@@ -138,6 +139,7 @@ git commit -m "feat: add dashboard publish mode"
 ### Task 2: Define and Validate Complete Published Snapshots
 
 **Files:**
+
 - Create: `src/app/content/publishedContent.ts`
 - Create: `src/app/content/bundledContent.ts`
 - Create: `src/app/content/__tests__/publishedContent.test.ts`
@@ -350,6 +352,7 @@ git commit -m "feat: define published content snapshots"
 ### Task 3: Enforce Image and Snapshot Size Limits
 
 **Files:**
+
 - Modify: `src/dev-dashboard/components/fileUpload.ts`
 - Create: `src/dev-dashboard/components/__tests__/fileUpload.test.ts`
 - Modify: `src/dev-dashboard/education/EducationDashboard.tsx`
@@ -440,6 +443,7 @@ git commit -m "feat: limit dashboard image uploads"
 ### Task 4: Add the Published Content Table and RLS Policies
 
 **Files:**
+
 - Create: `neon/migrations/20260715000000_published_content.sql`
 
 - [ ] **Step 1: Create the migration with the exact table and grants**
@@ -515,6 +519,7 @@ git commit -m "feat: add published content schema"
 ### Task 5: Share the Neon Client and Implement the Repository
 
 **Files:**
+
 - Create: `src/app/neon/database.ts`
 - Create: `src/app/neon/client.ts`
 - Create: `src/app/neon/__tests__/client.test.ts`
@@ -593,10 +598,7 @@ export function getNeonConfig(): NeonConfig {
   };
 }
 
-export function createConfiguredNeonClient(
-  config: NeonConfig = getNeonConfig(),
-  factory = createClient<Database>,
-) {
+export function createConfiguredNeonClient(config: NeonConfig = getNeonConfig(), factory = createClient<Database>) {
   if (!config.authUrl || !config.dataApiUrl) return null;
   return factory({
     auth: { url: config.authUrl, allowAnonymous: true },
@@ -623,7 +625,10 @@ export type PublishedContentRepositoryErrorCode =
   | 'unavailable';
 
 export class PublishedContentRepositoryError extends Error {
-  constructor(public readonly code: PublishedContentRepositoryErrorCode, message: string) {
+  constructor(
+    public readonly code: PublishedContentRepositoryErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = 'PublishedContentRepositoryError';
   }
@@ -710,6 +715,7 @@ git commit -m "feat: add Neon published content repository"
 ### Task 6: Add the Runtime Content Provider
 
 **Files:**
+
 - Create: `src/app/content/PublishedContentContext.ts`
 - Create: `src/app/content/PublishedContentProvider.tsx`
 - Create: `src/app/content/__tests__/PublishedContentProvider.test.tsx`
@@ -820,6 +826,7 @@ git commit -m "feat: add published content provider"
 ### Task 7: Move Public Screens to the Live Content Provider
 
 **Files:**
+
 - Modify: `src/features/orientation/OrientationScreen.tsx`
 - Modify: `src/features/orientation/__tests__/OrientationScreen.test.tsx`
 - Modify: `src/features/contacts/ContactsScreen.tsx`
@@ -866,9 +873,7 @@ Keep the existing static Canoas page title and description because those fields 
 Change education preview resolution to accept a baseline:
 
 ```ts
-export function resolveEducationResourcesForPreview(
-  baseline: PublishedContentPayload,
-): EducationResourcePreviewState {
+export function resolveEducationResourcesForPreview(baseline: PublishedContentPayload): EducationResourcePreviewState {
   const drafts = safeLoadDrafts();
   // Use baseline.educationMaterials/groups/defaultGroupOrder in the existing merge logic.
 }
@@ -920,6 +925,7 @@ git commit -m "feat: load public content from published snapshot"
 ### Task 8: Extract a Shared Change Summary
 
 **Files:**
+
 - Create: `src/dev-dashboard/publishing/changeSummary.ts`
 - Create: `src/dev-dashboard/publishing/__tests__/changeSummary.test.ts`
 - Modify: `src/dev-dashboard/export/ExportDashboard.tsx`
@@ -988,6 +994,7 @@ git commit -m "refactor: share dashboard change summary"
 ### Task 9: Add Explicit Database Publication UI
 
 **Files:**
+
 - Create: `src/dev-dashboard/publishing/PublishDashboard.tsx`
 - Create: `src/dev-dashboard/publishing/__tests__/PublishDashboard.test.tsx`
 - Modify: `src/dev-dashboard/components/DashboardShell.tsx`
@@ -1147,17 +1154,19 @@ When group-move handlers need the current default order, derive it from `mergeDa
 Build one complete `PublishedContentPayload` from `mergedDrafts` for publication. In the final tab:
 
 ```tsx
-{publishMode === 'database' ? (
-  <PublishDashboard
-    baseline={baseline}
-    draft={publishedDraft}
-    validation={validation}
-    draftUpdatedAt={draftState.updatedAt}
-    onPublished={() => setDraftState(resetDashboardDrafts())}
-  />
-) : (
-  <ExportDashboard {...existingExportProps} />
-)}
+{
+  publishMode === 'database' ? (
+    <PublishDashboard
+      baseline={baseline}
+      draft={publishedDraft}
+      validation={validation}
+      draftUpdatedAt={draftState.updatedAt}
+      onPublished={() => setDraftState(resetDashboardDrafts())}
+    />
+  ) : (
+    <ExportDashboard {...existingExportProps} />
+  );
+}
 ```
 
 Reset local drafts only in `onPublished`. Failed and conflicting publications must leave both React state and `localStorage` unchanged.
@@ -1193,6 +1202,7 @@ git commit -m "feat: publish dashboard content to Neon"
 ### Task 10: Document and Configure the Rollout
 
 **Files:**
+
 - Modify: `.env.example`
 - Modify: `.github/workflows/deploy.yml`
 - Modify: `README.md`
@@ -1256,6 +1266,7 @@ git commit -m "docs: document database publishing rollout"
 ### Task 11: Run the Full Verification Gate
 
 **Files:**
+
 - Modify only files surfaced by verification failures, and add a regression test before each behavior fix.
 
 - [ ] **Step 1: Run focused persistence tests**

@@ -18,7 +18,10 @@ export type PublishedContentRepositoryErrorCode =
   | 'unavailable';
 
 export class PublishedContentRepositoryError extends Error {
-  constructor(public readonly code: PublishedContentRepositoryErrorCode, message: string) {
+  constructor(
+    public readonly code: PublishedContentRepositoryErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = 'PublishedContentRepositoryError';
   }
@@ -72,40 +75,21 @@ function indicatesMissingAuth(error: unknown): boolean {
 }
 
 function mapDataApiError(error: DataApiError): PublishedContentRepositoryError {
-  if (
-    error.code === '42501' ||
-    error.code === 'PGRST301' ||
-    indicatesMissingAuth(error)
-  ) {
-    return new PublishedContentRepositoryError(
-      'unauthorized',
-      'Acesso não autorizado ao conteúdo publicado.',
-    );
+  if (error.code === '42501' || error.code === 'PGRST301' || indicatesMissingAuth(error)) {
+    return new PublishedContentRepositoryError('unauthorized', 'Acesso não autorizado ao conteúdo publicado.');
   }
   if (error.code === '23505') {
-    return new PublishedContentRepositoryError(
-      'conflict',
-      'Conflito de revisão ao publicar o conteúdo.',
-    );
+    return new PublishedContentRepositoryError('conflict', 'Conflito de revisão ao publicar o conteúdo.');
   }
-  return new PublishedContentRepositoryError(
-    'unavailable',
-    'Não foi possível concluir a operação no momento.',
-  );
+  return new PublishedContentRepositoryError('unavailable', 'Não foi possível concluir a operação no momento.');
 }
 
 function mapThrownError(error: unknown): PublishedContentRepositoryError {
   if (error instanceof PublishedContentRepositoryError) return error;
   if (indicatesMissingAuth(error)) {
-    return new PublishedContentRepositoryError(
-      'unauthorized',
-      'Acesso não autorizado ao conteúdo publicado.',
-    );
+    return new PublishedContentRepositoryError('unauthorized', 'Acesso não autorizado ao conteúdo publicado.');
   }
-  return new PublishedContentRepositoryError(
-    'unavailable',
-    'Não foi possível concluir a operação no momento.',
-  );
+  return new PublishedContentRepositoryError('unavailable', 'Não foi possível concluir a operação no momento.');
 }
 
 function parseRow(row: PublishedContentRow): PublishedContentSnapshot {
@@ -125,22 +109,14 @@ function parseRow(row: PublishedContentRow): PublishedContentSnapshot {
 export function createNeonPublishedContentGateway(client: SeCuidaNeonClient): PublishedContentGateway {
   return {
     async readCurrent() {
-      const { data, error } = await client
-        .from('published_content')
-        .select('*')
-        .eq('id', 'current')
-        .maybeSingle();
+      const { data, error } = await client.from('published_content').select('*').eq('id', 'current').maybeSingle();
       return {
         data: (data as PublishedContentRow | null) ?? null,
         error: toDataApiError(error),
       };
     },
     async insertCurrent(row) {
-      const { data, error } = await client
-        .from('published_content')
-        .insert(row)
-        .select('*')
-        .single();
+      const { data, error } = await client.from('published_content').insert(row).select('*').single();
       return {
         data: (data as PublishedContentRow | null) ?? null,
         error: toDataApiError(error),
@@ -182,10 +158,7 @@ export function createPublishedContentRepository(gateway: PublishedContentGatewa
         payload = validatePublicationPayload(input.payload);
       } catch (error) {
         if (error instanceof PublishedContentValidationError) {
-          throw new PublishedContentRepositoryError(
-            'invalid_payload',
-            'O payload publicado é inválido.',
-          );
+          throw new PublishedContentRepositoryError('invalid_payload', 'O payload publicado é inválido.');
         }
         throw error;
       }
@@ -207,10 +180,7 @@ export function createPublishedContentRepository(gateway: PublishedContentGatewa
 
         if (result.error) throw mapDataApiError(result.error);
         if (result.data === null) {
-          throw new PublishedContentRepositoryError(
-            'conflict',
-            'Conflito de revisão ao publicar o conteúdo.',
-          );
+          throw new PublishedContentRepositoryError('conflict', 'Conflito de revisão ao publicar o conteúdo.');
         }
         return parseRow(result.data);
       } catch (error) {
@@ -223,10 +193,7 @@ export function createPublishedContentRepository(gateway: PublishedContentGatewa
 
 function createNotConfiguredRepository(): PublishedContentRepository {
   const fail = (): never => {
-    throw new PublishedContentRepositoryError(
-      'not_configured',
-      'O cliente Neon não está configurado.',
-    );
+    throw new PublishedContentRepositoryError('not_configured', 'O cliente Neon não está configurado.');
   };
   return {
     loadPublishedContent: fail,

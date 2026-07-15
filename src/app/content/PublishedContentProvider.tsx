@@ -48,9 +48,7 @@ export function PublishedContentProvider({
     } catch (error) {
       if (!active.current) return;
       setStatus('fallback');
-      setLoadError(
-        error as PublishedContentRepositoryError | PublishedContentValidationError,
-      );
+      setLoadError(error as PublishedContentRepositoryError | PublishedContentValidationError);
     }
   }, [repository]);
 
@@ -75,6 +73,8 @@ export function PublishedContentProvider({
 
   useEffect(() => {
     active.current = true;
+    // Load published content on mount; the actual setState happens after the async refresh resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     const handleFocus = () => {
       void refresh();

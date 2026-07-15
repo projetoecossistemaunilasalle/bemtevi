@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { createAdminAuthService, createMockAdminAuthService, type AdminAccount, type AdminAuthService } from './adminAuth';
+import {
+  createAdminAuthService,
+  createMockAdminAuthService,
+  type AdminAccount,
+  type AdminAuthService,
+} from './adminAuth';
 import { AdminAuthContext, type AdminAuthStatus } from './AdminAuthContext';
 import { createNeonAdminAuthBackend } from './neonClient';
-const defaultService = import.meta.env.VITE_DISABLE_AUTH === 'true'
-  ? createMockAdminAuthService()
-  : createAdminAuthService(createNeonAdminAuthBackend());
+const defaultService =
+  import.meta.env.VITE_DISABLE_AUTH === 'true'
+    ? createMockAdminAuthService()
+    : createAdminAuthService(createNeonAdminAuthBackend());
 
 export function AdminAuthProvider({
   children,

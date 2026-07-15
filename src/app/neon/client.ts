@@ -13,10 +13,7 @@ export function getNeonConfig(): NeonConfig {
   };
 }
 
-export function createConfiguredNeonClient(
-  config: NeonConfig = getNeonConfig(),
-  factory = createClient<Database>,
-) {
+export function createConfiguredNeonClient(config: NeonConfig = getNeonConfig(), factory = createClient<Database>) {
   if (!config.authUrl || !config.dataApiUrl) return null;
   return factory({
     auth: { url: config.authUrl, allowAnonymous: true },

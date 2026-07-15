@@ -76,7 +76,10 @@ export function OrientationScreen() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRevealing = hasStarted && (state === null || visibleCount < state.transcript.length);
 
-  const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing, flows]);
+  const options = useMemo(
+    () => (state && !isRevealing ? resolveOptions(state, flows) : []),
+    [state, isRevealing, flows],
+  );
   const visibleOptions = useMemo(() => {
     const normalizedInput = inputValue.trim().toLocaleLowerCase('pt-BR');
     const strictMatch = options.find(
@@ -147,7 +150,7 @@ export function OrientationScreen() {
       setState(nextState);
       setVisibleCount(nextState.transcript.length);
     }, TYPING_DELAY_MS);
-  }, [hasStarted, selectedIntroStarter, selectedIntroFlowId, state]);
+  }, [hasStarted, selectedIntroStarter, selectedIntroFlowId, state, flows]);
 
   useEffect(() => {
     return () => {
