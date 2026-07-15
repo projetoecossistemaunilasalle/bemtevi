@@ -1,5 +1,5 @@
-import { createClient } from '@neondatabase/neon-js';
 import type { AdminAuthBackend, AuthSession } from './adminAuth';
+import { defaultNeonClient } from '../neon/client';
 
 interface NeonUser {
   id: string;
@@ -33,13 +33,6 @@ export interface NeonAuthClient {
   };
 }
 
-interface NeonConfig {
-  authUrl: string;
-  dataApiUrl: string;
-}
-
-type NeonClientFactory = (config: NeonConfig) => NeonAuthClient;
-
 function toError(error: NeonError | null) {
   return error ? new Error(error.message) : null;
 }
@@ -50,21 +43,10 @@ function toSession(data: NeonSessionData | null): AuthSession | null {
   return { user: { id: user.id, email: user.email } };
 }
 
-export function getNeonConfig(): NeonConfig {
-  return {
-    authUrl: import.meta.env.VITE_NEON_AUTH_URL ?? '',
-    dataApiUrl: import.meta.env.VITE_NEON_DATA_API_URL ?? '',
-  };
-}
-
 export function createNeonAdminAuthBackend(
-  config: NeonConfig = getNeonConfig(),
-  clientFactory: NeonClientFactory = ({ authUrl, dataApiUrl }) =>
-    createClient({ auth: { url: authUrl }, dataApi: { url: dataApiUrl } }) as unknown as NeonAuthClient,
+  client: NeonAuthClient | null = defaultNeonClient as unknown as NeonAuthClient | null,
 ): AdminAuthBackend | null {
-  if (!config.authUrl || !config.dataApiUrl) return null;
-
-  const client = clientFactory(config);
+  if (client === null) return null;
 
   async function getSession() {
     const { data, error } = await client.auth.getSession();

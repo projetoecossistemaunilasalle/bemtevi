@@ -24,19 +24,13 @@ function createClient(): NeonAuthClient {
 }
 
 describe('Neon admin auth backend', () => {
-  it('stays disabled when Neon Auth or Data API configuration is incomplete', () => {
-    const factory = vi.fn();
-
-    expect(createNeonAdminAuthBackend({ authUrl: '', dataApiUrl: '' }, factory)).toBeNull();
-    expect(factory).not.toHaveBeenCalled();
+  it('stays disabled when no Neon client is provided', () => {
+    expect(createNeonAdminAuthBackend(null)).toBeNull();
   });
 
   it('maps Neon Auth sessions and checks admin membership through the Data API', async () => {
     const client = createClient();
-    const backend = createNeonAdminAuthBackend(
-      { authUrl: 'https://project.neonauth.example/neondb/auth', dataApiUrl: 'https://project.example/rest/v1' },
-      () => client,
-    );
+    const backend = createNeonAdminAuthBackend(client);
 
     expect(backend).not.toBeNull();
     await expect(backend!.signInWithPassword('admin@secuida.test', 'password')).resolves.toMatchObject({
@@ -50,10 +44,7 @@ describe('Neon admin auth backend', () => {
   it('rechecks the Neon session when another tab changes browser auth state', async () => {
     const client = createClient();
     vi.mocked(client.auth.getSession).mockResolvedValue({ data: adminData, error: null });
-    const backend = createNeonAdminAuthBackend(
-      { authUrl: 'https://project.neonauth.example/neondb/auth', dataApiUrl: 'https://project.example/rest/v1' },
-      () => client,
-    )!;
+    const backend = createNeonAdminAuthBackend(client)!;
     const listener = vi.fn();
 
     const stop = backend.subscribe(listener);
