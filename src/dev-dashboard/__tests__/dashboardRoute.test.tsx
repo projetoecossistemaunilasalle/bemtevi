@@ -6,6 +6,7 @@ import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { DashboardRoute } from '../DashboardRoute';
 import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorage';
 import { EducationDashboard } from '../education/EducationDashboard';
+import { MAX_IMAGE_UPLOAD_BYTES } from '../components/fileUpload';
 
 const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
 
@@ -1104,6 +1105,28 @@ describe('DashboardRoute', () => {
 
     expect(screen.getByDisplayValue('Descrição editada localmente')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Fonte editada localmente')).toBeInTheDocument();
+  });
+
+  it('rejects an oversized education thumbnail without replacing the current value', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+
+    const currentUrl = screen.getByLabelText('URL da miniatura da biblioteca');
+    const originalValue = currentUrl.getAttribute('value') ?? (currentUrl as HTMLInputElement).value;
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+
+    const oversized = new File([new Uint8Array(MAX_IMAGE_UPLOAD_BYTES + 1)], 'large.png', {
+      type: 'image/png',
+    });
+    fireEvent.change(fileInput!, { target: { files: [oversized] } });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('A imagem não pode exceder 1 MiB.');
+    expect(currentUrl).toHaveValue(originalValue);
   });
 
   it('removes the per-material group order input', () => {

@@ -71,18 +71,18 @@ describe('published content validation', () => {
     });
 
     for (const revision of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '3']) {
-      const error = expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(
+      expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(
         PublishedContentValidationError,
       );
-      error.toThrow(/revision/i);
+      expect(() => parsePublishedContentRow(buildRow(revision) as never)).toThrow(/revision/i);
     }
   });
 
   it('rejects a payload whose defaultGroupOrder is non-finite', () => {
     for (const defaultGroupOrder of [NaN, Infinity, -Infinity]) {
       const payload = { ...getBundledContent(), defaultGroupOrder };
-      const error = expect(() => parsePayload(payload as never)).toThrow(PublishedContentValidationError);
-      error.toThrow(/defaultGroupOrder/i);
+      expect(() => parsePayload(payload as never)).toThrow(PublishedContentValidationError);
+      expect(() => parsePayload(payload as never)).toThrow(/defaultGroupOrder/i);
     }
   });
 
@@ -95,8 +95,8 @@ describe('published content validation', () => {
       published_at: '',
       published_by: '00000000-0000-0000-0000-000000000001',
     };
-    const error = expect(() => parsePublishedContentRow(row)).toThrow(PublishedContentValidationError);
-    error.toThrow(/published_at/i);
+    expect(() => parsePublishedContentRow(row)).toThrow(PublishedContentValidationError);
+    expect(() => parsePublishedContentRow(row)).toThrow(/published_at/i);
   });
 
   it('rejects a row with an empty published_by', () => {
@@ -108,15 +108,15 @@ describe('published content validation', () => {
       published_at: '2026-07-15T12:00:00.000Z',
       published_by: '   ',
     };
-    const error = expect(() => parsePublishedContentRow(row)).toThrow(PublishedContentValidationError);
-    error.toThrow(/published_by/i);
+    expect(() => parsePublishedContentRow(row)).toThrow(PublishedContentValidationError);
+    expect(() => parsePublishedContentRow(row)).toThrow(/published_by/i);
   });
 
   it('rejects a payload missing required collection keys', () => {
     const payload = getBundledContent();
     delete (payload as Partial<typeof payload>).contacts;
     delete (payload as Partial<typeof payload>).flows;
-    const error = expect(() => parsePayload(payload as never)).toThrow(PublishedContentValidationError);
-    error.toThrow(/payload/i);
+    expect(() => parsePayload(payload as never)).toThrow(PublishedContentValidationError);
+    expect(() => parsePayload(payload as never)).toThrow(/payload/i);
   });
 });

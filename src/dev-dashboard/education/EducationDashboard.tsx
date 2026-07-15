@@ -86,6 +86,21 @@ export function EducationDashboard({
   );
   const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  /** Reads an image file as a data URL, surfacing size/format errors to one shared alert. */
+  async function readImageSafely(file: File): Promise<string | null> {
+    setImageError(null);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setImageError(null);
+      return dataUrl;
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : 'Falha ao enviar imagem.');
+      return null;
+    }
+  }
+
   // Canonical selection: fall back to the first resource if the selected id is
   // no longer present (e.g. after the data set changes). All field edits and
   // list highlighting key off these two values.
@@ -210,6 +225,14 @@ export function EducationDashboard({
           </aside>
 
           <div className="flex flex-col gap-stack-md">
+            {imageError ? (
+              <div
+                role="alert"
+                className="rounded-lg border border-error bg-error-container px-4 py-3 font-label-md text-on-error-container"
+              >
+                {imageError}
+              </div>
+            ) : null}
             <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
               <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
               <Field label="Título do material" issues={issuesForPath(validation, `${resourcePath}.title`)}>
@@ -280,8 +303,8 @@ export function EducationDashboard({
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
                           if (!file || !isImageFile(file)) return;
-                          const dataUrl = await readFileAsDataUrl(file);
-                          changeField({ imageUrl: dataUrl, imageFileName: file.name });
+                          const dataUrl = await readImageSafely(file);
+                          if (dataUrl) changeField({ imageUrl: dataUrl, imageFileName: file.name });
                           event.target.value = '';
                         }}
                       />
@@ -380,8 +403,8 @@ export function EducationDashboard({
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
                             if (!file || !isImageFile(file)) return;
-                            const dataUrl = await readFileAsDataUrl(file);
-                            updateFeaturedImage({ kind: 'uploaded', dataUrl, fileName: file.name });
+                            const dataUrl = await readImageSafely(file);
+                            if (dataUrl) updateFeaturedImage({ kind: 'uploaded', dataUrl, fileName: file.name });
                             event.target.value = '';
                           }}
                         />
@@ -517,12 +540,13 @@ export function EducationDashboard({
                           />
                         </div>
                       </div>
-                      <BlockFields
-                        block={block}
-                        blockNumber={blockNumber}
-                        invalid={blockIssues.errors.length > 0}
-                        onChange={(patch) => updateBlock(block.id, patch)}
-                      />
+                       <BlockFields
+                         block={block}
+                         blockNumber={blockNumber}
+                         invalid={blockIssues.errors.length > 0}
+                         onChange={(patch) => updateBlock(block.id, patch)}
+                         readImageFile={readImageSafely}
+                       />
                     </div>
                   );
                 })}
@@ -706,11 +730,13 @@ function BlockFields({
   blockNumber,
   invalid = false,
   onChange,
+  readImageFile,
 }: {
   block: EducationResourceBlock;
   blockNumber: number;
   invalid?: boolean;
   onChange: (patch: Partial<EducationResourceBlock>) => void;
+  readImageFile: (file: File) => Promise<string | null>;
 }) {
   const baseInput = invalid ? `${inputClass} ${inputInvalidClass}` : inputClass;
   const baseTextarea = invalid ? `${textareaClassTall} ${inputInvalidClass}` : textareaClassTall;
@@ -822,8 +848,8 @@ function BlockFields({
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file || !isImageFile(file)) return;
-                const dataUrl = await readFileAsDataUrl(file);
-                onChange({ imageUrl: dataUrl, imageFileName: file.name });
+                const dataUrl = await readImageFile(file);
+                if (dataUrl) onChange({ imageUrl: dataUrl, imageFileName: file.name });
                 event.target.value = '';
               }}
             />

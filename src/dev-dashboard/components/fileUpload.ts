@@ -1,4 +1,10 @@
+export const MAX_IMAGE_UPLOAD_BYTES = 1024 * 1024;
+
 export function readFileAsDataUrl(file: File): Promise<string> {
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+    return Promise.reject(new Error('A imagem não pode exceder 1 MiB.'));
+  }
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
