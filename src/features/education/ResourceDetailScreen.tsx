@@ -9,8 +9,6 @@ import { Page } from '../../design-system/components/Page';
 import type { EducationResource, EducationResourceBlock } from '../../domain/resources/types';
 import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { resolveVideoEmbed } from './videoEmbeds';
-import respiracao1Image from '../../../assets/images/respiracao1.jpg';
-import respiracao2Image from '../../../assets/images/respiracao2.jpg';
 
 export function ResourceDetailScreen() {
   const { resourceId } = useParams();
@@ -81,12 +79,6 @@ function resolveFeaturedImage(resource: EducationResource) {
   return option ? { src: option.src, alt: option.alt } : null;
 }
 
-function resolveBodyImageUrl(imageUrl: string) {
-  if (imageUrl === 'secuida-asset:respiracao1') return respiracao1Image;
-  if (imageUrl === 'secuida-asset:respiracao2') return respiracao2Image;
-  return imageUrl;
-}
-
 function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; source: string }) {
   if (block.kind === 'heading') {
     return <h2 className="font-headline-md text-on-surface">{block.text}</h2>;
@@ -119,7 +111,7 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
   if (block.kind === 'image' && block.imageUrl) {
     return (
       <div className="overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-low">
-        <img alt={block.alt ?? ''} className="h-auto w-full object-cover" src={resolveBodyImageUrl(block.imageUrl)} />
+        <img alt={block.alt ?? ''} className="h-auto w-full object-cover" src={block.imageUrl} />
       </div>
     );
   }
