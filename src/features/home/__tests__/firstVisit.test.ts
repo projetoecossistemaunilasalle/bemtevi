@@ -23,6 +23,6 @@ describe('firstVisit', () => {
     markVisited();
 
     expect(isFirstVisit()).toBe(false);
-    expect(window.localStorage.getItem('secuida:onboarding-seen')).toBe('true');
+    expect(window.localStorage.getItem('bemtevi:onboarding-seen')).toBe('true');
   });
 });

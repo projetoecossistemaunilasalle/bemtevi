@@ -13,6 +13,7 @@ export function suspendFlow(state: FlowRuntimeState): FlowRuntimeState {
         flowId: state.activeFlowId,
         nodeId: state.activeNodeId,
         answers: state.answers,
+        scores: state.scores,
         transcript: state.transcript,
       },
     },

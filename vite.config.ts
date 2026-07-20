@@ -1,24 +1,27 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
-  base: '/secuida/',
+  base: '/bemtevi/',
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'SeCuida',
-        short_name: 'SeCuida',
+        name: 'BemTeVi',
+        short_name: 'BemTeVi',
         description: 'Orientação emocional, recursos e apoio para educadores.',
         display: 'standalone',
         lang: 'pt-BR',
-        start_url: '/secuida/',
-        scope: '/secuida/',
+        start_url: '/bemtevi/',
+        scope: '/bemtevi/',
         theme_color: '#006a43',
         background_color: '#f9f9ff',
         icons: [
@@ -59,7 +62,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': path.resolve(dirname, 'src'),
     },
   },
 });

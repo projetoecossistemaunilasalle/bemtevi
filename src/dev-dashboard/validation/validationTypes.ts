@@ -1,5 +1,5 @@
 export type DashboardValidationLevel = 'error' | 'warning';
-export type DashboardValidationArea = 'flows' | 'education' | 'export';
+export type DashboardValidationArea = 'flows' | 'education' | 'contacts' | 'export';
 
 export interface DashboardValidationIssue {
   level: DashboardValidationLevel;

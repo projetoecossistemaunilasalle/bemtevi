@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the first implementation task for the SeCuida frontend architecture.
+This document breaks down the first implementation task for the BemTeVi frontend architecture.
 
 It is derived from the current repository state on the `develop` branch and from the following project documents:
 
@@ -225,8 +225,8 @@ Recommended manifest baseline:
 
 ```json
 {
-  "name": "SeCuida",
-  "short_name": "SeCuida",
+  "name": "BemTeVi",
+  "short_name": "BemTeVi",
   "display": "standalone",
   "start_url": "/SeCuida-Prototipo/",
   "scope": "/SeCuida-Prototipo/",
@@ -271,7 +271,7 @@ Add basic PWA metadata:
 Keep:
 
 ```html
-<title>SeCuida</title>
+<title>BemTeVi</title>
 ```
 
 ---
@@ -280,7 +280,7 @@ Keep:
 
 Do not add complex offline behavior in this first slice.
 
-Reason: SeCuida has privacy-sensitive guided flows and future questionnaire behavior. PWA caching must not accidentally preserve questionnaire answers, chat transcripts, session state, location, or any other sensitive state.
+Reason: BemTeVi has privacy-sensitive guided flows and future questionnaire behavior. PWA caching must not accidentally preserve questionnaire answers, chat transcripts, session state, location, or any other sensitive state.
 
 First slice recommendation:
 
@@ -335,7 +335,7 @@ Scope:
 Acceptance criteria:
 
 - app has a manifest;
-- app name and short name are `SeCuida`;
+- app name and short name are `BemTeVi`;
 - display mode is `standalone`;
 - start URL and scope respect `/SeCuida-Prototipo/`;
 - manifest icons point to committed PNG files under `public/icons/`;

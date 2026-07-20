@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi Mocks · Índice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./mock-styles.css" />
+    <style>
+      .mock-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        background: var(--color-surface-container-lowest);
+        border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+        border-radius: 12px;
+        padding: 16px;
+        text-decoration: none;
+        color: inherit;
+        transition:
+          border-color 0.15s ease,
+          transform 0.15s ease;
+      }
+      .mock-card:hover {
+        border-color: var(--color-primary);
+        transform: translateY(-1px);
+      }
+      .mock-num {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Atkinson Hyperlegible Next', sans-serif;
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .mock-card-main {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mock-shell">
+      <div class="mock-banner">
+        ⚠️ <span>Mocks estáticos (não-funcionais) — somente para validar o visual da UI proposta.</span>
+      </div>
+
+      <div>
+        <h1 class="font-headline-sm" style="font-size: 28px">Mocks · Redirecionamentos &amp; edição de fluxos</h1>
+        <p class="font-body-md text-muted" style="margin-top: 4px">
+          Quatro pré-visualizações estáticas usando os tokens reais do design. Veja o <code>README.md</code> para
+          detalhes.
+        </p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <a class="mock-card" href="./option-effects.html">
+          <div class="mock-num">1</div>
+          <div class="mock-card-main">
+            <p class="font-label-lg">Editor de opções · efeitos &amp; redirecionamentos</p>
+            <p class="font-body-md text-muted" style="margin: 0">
+              Ações principais, pontuação e o novo encaminhamento de segurança ao final do SRQ-20.
+            </p>
+          </div>
+        </a>
+
+        <a class="mock-card" href="./score-declaration.html">
+          <div class="mock-num">2</div>
+          <div class="mock-card-main">
+            <p class="font-label-lg">Declaração de pontuação · opt-in por fluxo</p>
+            <p class="font-body-md text-muted" style="margin: 0">
+              O painel que ativa pontuação num fluxo. Estados desativado (work-stress) e ativado (SRQ-20) lado a lado.
+            </p>
+          </div>
+        </a>
+
+        <a class="mock-card" href="./large-flow-nav.html">
+          <div class="mock-num">3</div>
+          <div class="mock-card-main">
+            <p class="font-label-lg">Navegação para fluxos grandes · SRQ-20</p>
+            <p class="font-body-md text-muted" style="margin: 0">
+              Busca, filtros, recolher/expandir tudo e mini-outline lateral clicável. Resolve "SRQ-20 é difícil de
+              editar".
+            </p>
+          </div>
+        </a>
+
+        <a class="mock-card" href="./redirections-view.html">
+          <div class="mock-num">4</div>
+          <div class="mock-card-main">
+            <p class="font-label-lg">Visão de redirecionamentos</p>
+            <p class="font-body-md text-muted" style="margin: 0">
+              Nova aba listando redirecionamentos e efeitos auditáveis — segurança ao final, ramificações, pontuações,
+              navegações.
+            </p>
+          </div>
+        </a>
+      </div>
+
+      <p class="field-hint text-muted" style="text-align: center">
+        Estes mocks vivem em <code>mocks/</code> e não fazem parte do build do app.
+      </p>
+    </div>
+  </body>
+</html>

@@ -1,4 +1,8 @@
+.kimchi/
+node_modules
 node_modules/
+node_modules.win/
+node_modules.wsl/
 build/
 dist/
 coverage/
@@ -8,3 +12,4 @@ coverage/
 *.log
 .env*
 !.env.example
+.neon

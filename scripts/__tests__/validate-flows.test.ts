@@ -69,10 +69,10 @@ for (let questionNumber = 1; questionNumber <= 20; questionNumber += 1) {
           questionNumber === 17
             ? [
                 {
-                  kind: 'safety_interrupt',
+                  kind: 'deferred_safety',
+                  flagKey: 'self_harm_ideation',
                   message: 'Vamos te direcionar para apoio imediato.',
                   destination: '/apoio',
-                  blockResume: true,
                 },
               ]
             : [{ kind: 'score', scoreKey: 'srq20', value: 1 }],
@@ -111,7 +111,7 @@ describe('validateSrq20Contract', () => {
     expect(validateSrq20Contract(validSrq20Fixture)).toEqual([]);
   });
 
-  it('reports missing SRQ-20 question nodes and missing q17 safety interruption', () => {
+  it('reports missing SRQ-20 question nodes and missing q17 deferred safety effect', () => {
     const broken = structuredClone(validSrq20Fixture);
     delete broken.nodes.q20;
     const q17 = broken.nodes.q17;
@@ -122,7 +122,55 @@ describe('validateSrq20Contract', () => {
     expect(validateSrq20Contract(broken)).toEqual(
       expect.arrayContaining([
         'SRQ-20 must include question node q20.',
-        'SRQ-20 q17 yes option must include a safety_interrupt effect to /apoio with blockResume enabled.',
+        'SRQ-20 q17 yes option must include a deferred_safety effect to /apoio with non-empty flagKey and message.',
+      ]),
+    );
+  });
+
+  it('reports q17 deferred_safety effect with empty flagKey or message', () => {
+    const broken = structuredClone(validSrq20Fixture);
+    const q17 = broken.nodes.q17;
+    if (q17.kind === 'choice') {
+      const yesOption = q17.options.find((option) => option.id === 'yes');
+      if (yesOption) {
+        yesOption.effects = [
+          {
+            kind: 'deferred_safety',
+            flagKey: '',
+            message: '',
+            destination: '/apoio',
+          },
+        ];
+      }
+    }
+
+    expect(validateSrq20Contract(broken)).toEqual(
+      expect.arrayContaining([
+        'SRQ-20 q17 yes option must include a deferred_safety effect to /apoio with non-empty flagKey and message.',
+      ]),
+    );
+  });
+
+  it('reports q17 effect when destination is not /apoio', () => {
+    const broken = structuredClone(validSrq20Fixture);
+    const q17 = broken.nodes.q17;
+    if (q17.kind === 'choice') {
+      const yesOption = q17.options.find((option) => option.id === 'yes');
+      if (yesOption) {
+        yesOption.effects = [
+          {
+            kind: 'deferred_safety',
+            flagKey: 'self_harm_ideation',
+            message: 'Mensagem.',
+            destination: '/contatos',
+          },
+        ];
+      }
+    }
+
+    expect(validateSrq20Contract(broken)).toEqual(
+      expect.arrayContaining([
+        'SRQ-20 q17 yes option must include a deferred_safety effect to /apoio with non-empty flagKey and message.',
       ]),
     );
   });

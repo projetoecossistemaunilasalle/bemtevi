@@ -1,16 +1,10 @@
-import { flowRegistry } from '../../content/flows/registry';
-import { resourcesContent } from '../../content/resources/resources';
-import type { GuidedFlow } from '../../domain/flow-engine/types';
-import type { EducationResource } from '../../domain/resources/types';
+import { getBundledContent } from '../../app/content/bundledContent';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 
-export interface DashboardShippedContent {
-  flows: GuidedFlow[];
-  educationMaterials: EducationResource[];
-}
+export type DashboardShippedContent = Omit<PublishedContentPayload, 'defaultGroupOrder'> & {
+  defaultGroupOrder?: number;
+};
 
 export function getShippedDashboardContent(): DashboardShippedContent {
-  return {
-    flows: flowRegistry.flows,
-    educationMaterials: resourcesContent.resources,
-  };
+  return getBundledContent();
 }

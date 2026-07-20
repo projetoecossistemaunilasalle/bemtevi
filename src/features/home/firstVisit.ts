@@ -1,4 +1,4 @@
-const FIRST_VISIT_STORAGE_KEY = 'secuida:onboarding-seen';
+const FIRST_VISIT_STORAGE_KEY = 'bemtevi:onboarding-seen';
 let hasVisitedFallback = false;
 
 function getStorage() {

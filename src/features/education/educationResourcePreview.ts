@@ -1,37 +1,56 @@
 import type { EducationResource } from '../../domain/resources/types';
-import { getShippedDashboardContent } from '../../dev-dashboard/content/shippedContent';
 import {
   createEmptyDashboardDraftState,
   loadDashboardDrafts,
   mergeDashboardDrafts,
 } from '../../dev-dashboard/draft-storage/dashboardStorage';
+import type { EducationResourceGroup } from '../../content/resources/groups';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
+import { normalizeForComparison } from '../../dev-dashboard/content/normalize';
 
 export interface EducationResourcePreviewState {
   resources: EducationResource[];
+  groups: EducationResourceGroup[];
+  defaultGroupOrder: number;
   changedResourceIds: string[];
   isPreviewingDrafts: boolean;
 }
 
-export function resolveEducationResourcesForPreview(): EducationResourcePreviewState {
-  const shipped = getShippedDashboardContent();
+export function resolveEducationResourcesForPreview(baseline: PublishedContentPayload): EducationResourcePreviewState {
   const drafts = safeLoadDrafts();
-  const hasEducationDrafts = drafts.educationMaterialPatches.length > 0 || drafts.addedEducationMaterials.length > 0;
+  const hasEducationDrafts =
+    drafts.educationMaterialPatches.length > 0 ||
+    drafts.addedEducationMaterials.length > 0 ||
+    drafts.groupPatches.length > 0 ||
+    drafts.addedGroups.length > 0 ||
+    (drafts.removedGroupIds?.length ?? 0) > 0 ||
+    drafts.defaultGroupOrder !== undefined;
 
   if (!hasEducationDrafts) {
     return {
-      resources: shipped.educationMaterials,
+      resources: baseline.educationMaterials,
+      groups: baseline.educationGroups,
+      defaultGroupOrder: baseline.defaultGroupOrder,
       changedResourceIds: [],
       isPreviewingDrafts: false,
     };
   }
 
-  const resources = mergeDashboardDrafts(shipped, drafts).educationMaterials;
-  const changedResourceIds = resolveChangedEducationResourceIds(shipped.educationMaterials, resources);
+  const merged = mergeDashboardDrafts(baseline, drafts);
+  const resources = merged.educationMaterials;
+  const groups = merged.educationGroups;
+  const defaultGroupOrder = merged.defaultGroupOrder;
+  const changedResourceIds = resolveChangedEducationResourceIds(baseline.educationMaterials, resources);
+  const hasGroupChanges =
+    normalizeForComparison(groups) !== normalizeForComparison(baseline.educationGroups) ||
+    merged.defaultGroupOrder !== baseline.defaultGroupOrder;
 
   return {
     resources,
+    groups,
+    defaultGroupOrder,
     changedResourceIds,
-    isPreviewingDrafts: changedResourceIds.length > 0,
+    isPreviewingDrafts: changedResourceIds.length > 0 || hasGroupChanges,
   };
 }
 

@@ -6,7 +6,7 @@
 
 **Architecture:** Neutral flows remain normal `guided_conversation` flows with optional `purpose` metadata, so the existing engine, parser, registry, and UI patterns continue to apply. Direct curated handoffs use a new `flow_start` effect/runtime option that starts another flow without suspending the neutral or completed flow.
 
-**Tech Stack:** React 19, TypeScript, Vite, Vitest, Testing Library, existing SeCuida flow-engine modules.
+**Tech Stack:** React 19, TypeScript, Vite, Vitest, Testing Library, existing BemTeVi flow-engine modules.
 
 ---
 
@@ -1089,7 +1089,7 @@ In `src/features/orientation/__tests__/OrientationScreen.test.tsx`, replace intr
 
 ```ts
 expect(
-  screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.'),
+  screen.getByText('Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.'),
 ).toBeInTheDocument();
 expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
 expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
@@ -1246,7 +1246,7 @@ Update the initial typing indicator test to expect neutral-flow copy:
 expect(
   screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
 ).not.toBeInTheDocument();
-expect(screen.getByText('SeCuida')).toBeInTheDocument();
+expect(screen.getByText('BemTeVi')).toBeInTheDocument();
 expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
 advanceInitialLoad();
@@ -1310,7 +1310,7 @@ fireEvent.click(screen.getByRole('button', { name: 'Quero falar sobre o que esto
 
 expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
 expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
-expect(screen.getByText('SeCuida')).toBeInTheDocument();
+expect(screen.getByText('BemTeVi')).toBeInTheDocument();
 
 advanceInitialLoad();
 
@@ -1422,7 +1422,7 @@ Update intro copy:
 
 ```tsx
 <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
-  Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
+  Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.
 </p>
 ```
 

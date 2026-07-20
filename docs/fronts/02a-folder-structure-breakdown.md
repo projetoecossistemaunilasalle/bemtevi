@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the second implementation task for the SeCuida frontend architecture.
+This document breaks down the second implementation task for the BemTeVi frontend architecture.
 
 It is derived from the current repository state on the `develop` branch and from the following project documents:
 

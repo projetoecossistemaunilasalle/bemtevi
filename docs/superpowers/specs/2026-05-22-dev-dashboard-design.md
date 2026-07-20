@@ -2,7 +2,7 @@
 
 ## Context
 
-SeCuida is a mobile-first React/Vite prototype with structured content for guided flows and education resources. The current product app is static and GitHub Pages-friendly: there is no backend, authentication, file upload, or write access from the browser.
+BemTeVi is a mobile-first React/Vite prototype with structured content for guided flows and education resources. The current product app is static and GitHub Pages-friendly: there is no backend, authentication, file upload, or write access from the browser.
 
 The dashboard should help trusted editors prepare flow and education-content changes without giving the deployed app a publishing surface. It is a development-only editing sandbox that exports reviewable JSON for someone with repository access to inspect and merge.
 
@@ -99,7 +99,7 @@ Editors should edit friendly fields instead of raw JSON:
 - status;
 - flow purpose;
 - entry phrases;
-- SeCuida messages;
+- BemTeVi messages;
 - response options;
 - next step for each option;
 - routing effects;
@@ -328,7 +328,7 @@ Shape:
 {
   "schemaVersion": "1.0.0",
   "exportedAt": "2026-05-22T00:00:00.000Z",
-  "source": "secuida-dev-dashboard",
+  "source": "bemtevi-dev-dashboard",
   "changes": {
     "flows": [],
     "educationMaterials": []

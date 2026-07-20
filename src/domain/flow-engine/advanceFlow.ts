@@ -145,6 +145,21 @@ function applyOptionEffects(state: FlowRuntimeState, flowId: string, effects: Fl
       };
     }
 
+    if (effect.kind === 'deferred_safety') {
+      return {
+        ...nextState,
+        safetyFlags: {
+          ...nextState.safetyFlags,
+          [effect.flagKey]: true,
+        },
+        deferredNavigation: {
+          destination: effect.destination,
+          message: effect.message,
+          reason: effect.flagKey,
+        },
+      };
+    }
+
     if (effect.kind === 'navigate') {
       return {
         ...nextState,
@@ -187,17 +202,30 @@ function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string
   const node = flow.nodes[nodeId];
 
   if (node.kind === 'score_branch') {
-    return advanceToNode(state, flow, resolveScoreBranchNextNode(state, node));
+    const branch = resolveScoreBranch(state, node);
+    const branchedState = advanceToNode(state, flow, branch.next);
+
+    return branch.navigation && !branchedState.pendingNavigation
+      ? { ...branchedState, pendingNavigation: branch.navigation }
+      : branchedState;
   }
 
-  return {
+  const nextState = {
     ...state,
     activeNodeId: node.id,
     transcript: [...state.transcript, createMessage('bot', node.text, flow.id, node.id)],
   };
+
+  if (node.kind !== 'result' || !nextState.deferredNavigation) return nextState;
+
+  return {
+    ...nextState,
+    pendingNavigation: nextState.deferredNavigation.destination,
+    transcript: [...nextState.transcript, createMessage('bot', nextState.deferredNavigation.message, flow.id, node.id)],
+  };
 }
 
-function resolveScoreBranchNextNode(state: FlowRuntimeState, node: Extract<FlowNode, { kind: 'score_branch' }>) {
+function resolveScoreBranch(state: FlowRuntimeState, node: Extract<FlowNode, { kind: 'score_branch' }>) {
   const score = state.scores[node.scoreKey] ?? 0;
   const branch = node.branches.find((candidate) => score >= candidate.min && score <= candidate.max);
 
@@ -205,7 +233,7 @@ function resolveScoreBranchNextNode(state: FlowRuntimeState, node: Extract<FlowN
     throw new Error(`No score branch found for ${node.scoreKey} score ${score}.`);
   }
 
-  return branch.next;
+  return branch;
 }
 
 function advanceFreeTextIfAvailable(

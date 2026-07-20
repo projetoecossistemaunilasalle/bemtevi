@@ -2,7 +2,7 @@
 
 ## Purpose
 
-SeCuida's guided chat should not depend only on users typing or choosing exact entry phrases to reach useful flows.
+BemTeVi's guided chat should not depend only on users typing or choosing exact entry phrases to reach useful flows.
 
 Some flows should exist mainly to help route the user toward another flow. These are **neutral flows**: low-pressure, non-clinical conversation paths whose main job is to understand the user's broad need and nudge them toward a more specific guided flow.
 

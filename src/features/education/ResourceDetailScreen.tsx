@@ -1,6 +1,7 @@
 import { ArrowLeft, ExternalLink, Play } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { routes } from '../../app/routes';
+import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { findFeaturedImageOption } from '../../content/resources/featuredImages';
 import { Badge } from '../../design-system/components/Badge';
 import { Card } from '../../design-system/components/Card';
@@ -13,7 +14,8 @@ import respiracao2Image from '../../../assets/images/respiracao2.jpg';
 
 export function ResourceDetailScreen() {
   const { resourceId } = useParams();
-  const { resources, changedResourceIds } = resolveEducationResourcesForPreview();
+  const { content } = usePublishedContent();
+  const { resources, changedResourceIds } = resolveEducationResourcesForPreview(content);
   const resource = resources.find((item) => item.id === resourceId) ?? resources[0];
   const isPreviewingResource = changedResourceIds.includes(resource.id);
   const featuredImage = resolveFeaturedImage(resource);
@@ -64,6 +66,13 @@ function resolveFeaturedImage(resource: EducationResource) {
   if (resource.featuredImage.kind === 'external') {
     return {
       src: resource.featuredImage.imageUrl,
+      alt: resource.featuredImage.alt ?? '',
+    };
+  }
+
+  if (resource.featuredImage.kind === 'uploaded') {
+    return {
+      src: resource.featuredImage.dataUrl,
       alt: resource.featuredImage.alt ?? '',
     };
   }

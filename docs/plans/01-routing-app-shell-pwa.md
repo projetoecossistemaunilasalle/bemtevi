@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace top-level local view state with stable React Router routes and establish a conservative PWA foundation for the whole SeCuida app.
+Replace top-level local view state with stable React Router routes and establish a conservative PWA foundation for the whole BemTeVi app.
 
 ## Source Context
 
@@ -85,5 +85,5 @@ public/icon.svg
 - Required routes exist.
 - `currentView` has been removed.
 - `index.html` uses `pt-BR`.
-- PWA manifest exists and names the app `SeCuida`.
+- PWA manifest exists and names the app `BemTeVi`.
 - No persistence, analytics, or backend behavior is introduced.

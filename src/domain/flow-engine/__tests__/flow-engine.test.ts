@@ -91,6 +91,62 @@ const scoringFlow: GuidedFlow = {
   },
 };
 
+const scoringResumeFlow: GuidedFlow = {
+  id: 'scoring-resume-flow',
+  version: '1.0.0',
+  locale: 'pt-BR',
+  title: 'Fluxo de pontuação suspenso',
+  type: 'guided_conversation',
+  status: 'draft',
+  entry: {
+    nodeId: 'q1',
+    enteringPhrases: ['Quero testar pontuação suspensa'],
+    transitionMessage: 'Vamos salvar a pontuação antes de trocar de fluxo.',
+  },
+  nodes: {
+    q1: {
+      id: 'q1',
+      kind: 'choice',
+      text: 'Você quer registrar um ponto?',
+      options: [
+        {
+          id: 'yes',
+          label: 'Sim',
+          next: 'after-score',
+          effects: [{ kind: 'score', scoreKey: 'fixture-resume-score', value: 1 }],
+        },
+        { id: 'no', label: 'Não', next: 'after-score' },
+      ],
+    },
+    'after-score': {
+      id: 'after-score',
+      kind: 'choice',
+      text: 'A pontuação já foi registrada. O que deseja fazer?',
+      options: [{ id: 'score-branch', label: 'Ir para pontuação', next: 'score-branch' }],
+    },
+    'score-branch': {
+      id: 'score-branch',
+      kind: 'score_branch',
+      text: 'Calculando o retorno salvo.',
+      scoreKey: 'fixture-resume-score',
+      branches: [
+        { id: 'low', min: 0, max: 0, next: 'low-result' },
+        { id: 'high', min: 1, max: 20, next: 'high-result' },
+      ],
+    },
+    'low-result': {
+      id: 'low-result',
+      kind: 'result',
+      text: 'Resultado baixo.',
+    },
+    'high-result': {
+      id: 'high-result',
+      kind: 'result',
+      text: 'Resultado alto.',
+    },
+  },
+};
+
 const secondFlow: GuidedFlow = {
   id: 'second-flow',
   version: '1.0.0',
@@ -263,6 +319,39 @@ describe('validateFlow', () => {
 
     expect(validateFlow(invalidFlow).errors).toContain(
       'Flow fixture-flow purpose must be one of orientation_entry, post_flow_routing.',
+    );
+  });
+
+  it('validates deferred safety effects', () => {
+    const invalidFlow: GuidedFlow = {
+      ...validFlow,
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'Você precisa de apoio?',
+          options: [
+            {
+              id: 'yes',
+              label: 'Sim',
+              next: 'end',
+              effects: [
+                {
+                  kind: 'deferred_safety',
+                  flagKey: '',
+                  message: '',
+                  destination: '/privacidade' as '/apoio',
+                },
+              ],
+            },
+          ],
+        },
+        end: { id: 'end', kind: 'result', text: 'Fim.' },
+      },
+    };
+
+    expect(validateFlow(invalidFlow).errors).toContain(
+      'Flow fixture-flow option yes deferred safety effect must include flagKey, message, and supported destination.',
     );
   });
 
@@ -523,6 +612,37 @@ describe('flow runtime', () => {
     expect(nextState.transcript.map((message) => message.text)).toContain('Resultado alto.');
   });
 
+  it('restores suspended scores before resuming a score branch', () => {
+    const flows = [scoringResumeFlow, secondFlow];
+    let state = createInitialFlowState(scoringResumeFlow, flows);
+
+    state = advanceFlow(state, flows, 'Sim');
+
+    expect(state.activeFlowId).toBe('scoring-resume-flow');
+    expect(state.activeNodeId).toBe('after-score');
+    expect(state.scores['fixture-resume-score']).toBe(1);
+
+    const suspended = suspendFlow(state);
+
+    expect(suspended.suspendedFlows['scoring-resume-flow']?.scores).toEqual({ 'fixture-resume-score': 1 });
+
+    state = advanceFlow(suspended, flows, 'Quero trocar de assunto');
+
+    expect(state.activeFlowId).toBe('second-flow');
+    expect(state.scores).toEqual({});
+
+    const resumed = resumeFlow({ ...state, scores: { 'fixture-resume-score': 0 } }, 'scoring-resume-flow');
+
+    expect(resumed.activeFlowId).toBe('scoring-resume-flow');
+    expect(resumed.activeNodeId).toBe('after-score');
+    expect(resumed.scores).toEqual({ 'fixture-resume-score': 1 });
+
+    const branchedState = advanceFlow(resumed, flows, 'Ir para pontuação');
+
+    expect(branchedState.activeNodeId).toBe('high-result');
+    expect(branchedState.transcript.map((message) => message.text)).toContain('Resultado alto.');
+  });
+
   it('resolves score branches using zero when the score key has not been set', () => {
     const initialState = createInitialFlowState(scoringFlow, [scoringFlow]);
     const nextState = advanceFlow(initialState, [scoringFlow], 'Não');
@@ -530,6 +650,31 @@ describe('flow runtime', () => {
     expect(nextState.scores['fixture-score']).toBeUndefined();
     expect(nextState.activeNodeId).toBe('low-result');
     expect(nextState.transcript.map((message) => message.text)).toContain('Resultado baixo.');
+  });
+
+  it('sets score branch navigation after showing the branch result', () => {
+    const navigationFlow: GuidedFlow = {
+      ...scoringFlow,
+      nodes: {
+        ...scoringFlow.nodes,
+        'score-branch': {
+          id: 'score-branch',
+          kind: 'score_branch',
+          text: 'Calculando o melhor retorno.',
+          scoreKey: 'fixture-score',
+          branches: [
+            { id: 'low', min: 0, max: 0, next: 'low-result' },
+            { id: 'high', min: 1, max: 20, next: 'high-result', navigation: '/apoio' },
+          ],
+        },
+      },
+    };
+
+    const nextState = advanceFlow(createInitialFlowState(navigationFlow, [navigationFlow]), [navigationFlow], 'Sim');
+
+    expect(nextState.activeNodeId).toBe('high-result');
+    expect(nextState.transcript.map((message) => message.text)).toContain('Resultado alto.');
+    expect(nextState.pendingNavigation).toBe('/apoio');
   });
 
   it('handles safety interruption as a generic JSON option effect', () => {
@@ -586,6 +731,65 @@ describe('flow runtime', () => {
     expect(nextState.transcript.map((message) => message.text)).toContain('Vamos te direcionar para apoio imediato.');
     expect(nextState.transcript.map((message) => message.text)).not.toContain(
       'Este texto não deve aparecer antes do apoio.',
+    );
+  });
+
+  it('records deferred safety routing and continues until the result node', () => {
+    const deferredSafetyFlow: GuidedFlow = {
+      ...scoringFlow,
+      id: 'deferred-safety-flow',
+      title: 'Fluxo com segurança ao final',
+      nodes: {
+        q1: {
+          id: 'q1',
+          kind: 'choice',
+          text: 'Você precisa de apoio?',
+          options: [
+            {
+              id: 'yes',
+              label: 'Sim',
+              next: 'q2',
+              effects: [
+                {
+                  kind: 'deferred_safety',
+                  flagKey: 'self_harm_ideation',
+                  message: 'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
+                  destination: '/apoio',
+                },
+              ],
+            },
+            { id: 'no', label: 'Não', next: 'q2' },
+          ],
+        },
+        q2: {
+          id: 'q2',
+          kind: 'choice',
+          text: 'Última pergunta.',
+          options: [{ id: 'finish', label: 'Finalizar', next: 'result' }],
+        },
+        result: { id: 'result', kind: 'result', text: 'Resultado calculado.' },
+      },
+    };
+
+    let state = createInitialFlowState(deferredSafetyFlow, [deferredSafetyFlow]);
+    state = advanceFlow(state, [deferredSafetyFlow], 'Sim');
+
+    expect(state.activeNodeId).toBe('q2');
+    expect(state.pendingNavigation).toBeUndefined();
+    expect(state.safetyFlags.self_harm_ideation).toBe(true);
+    expect(state.deferredNavigation).toEqual({
+      destination: '/apoio',
+      message: 'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
+      reason: 'self_harm_ideation',
+    });
+
+    state = advanceFlow(state, [deferredSafetyFlow], 'Finalizar');
+
+    expect(state.activeNodeId).toBe('result');
+    expect(state.pendingNavigation).toBe('/apoio');
+    expect(state.transcript.map((message) => message.text)).toContain('Resultado calculado.');
+    expect(state.transcript.map((message) => message.text)).toContain(
+      'Obrigado por responder com sinceridade. Vamos abrir a página de apoio depois do resultado.',
     );
   });
 
@@ -682,21 +886,31 @@ describe('flow runtime', () => {
     );
   });
 
-  it('routes SRQ-20 Q17 affirmative through generic JSON safety interruption', () => {
+  it('runs SRQ-20 Q17 affirmative through deferred support routing after the final result', () => {
     let state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'srq20');
 
     state = advanceFlow(state, flowRegistry.flows, 'Quero responder');
     state = advanceFlow(state, flowRegistry.flows, 'Continuar');
 
-    for (let index = 0; index < 16; index += 1) {
+    for (let question = 1; question <= 16; question++) {
       state = advanceFlow(state, flowRegistry.flows, 'Não');
     }
 
     state = advanceFlow(state, flowRegistry.flows, 'Sim');
 
+    expect(state.activeNodeId).toBe('q18');
+    expect(state.pendingNavigation).toBeUndefined();
+    expect(state.safetyFlags.self_harm_ideation).toBe(true);
+
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+    state = advanceFlow(state, flowRegistry.flows, 'Não');
+
+    expect(state.activeNodeId).toBe('low-distress-result');
     expect(state.pendingNavigation).toBe('/apoio');
-    expect(state.safetyFlags['block-resume:srq20']).toBe(true);
-    expect(state.activeFlowId).toBeUndefined();
+    expect(state.transcript.map((message) => message.text)).toContain(
+      'Obrigado por responder com sinceridade. Como você marcou um sinal que merece cuidado imediato, vamos abrir a página de apoio agora. Você não está sozinho(a).',
+    );
   });
 
   it('starts a target flow from a neutral flow option without suspending the neutral flow', () => {

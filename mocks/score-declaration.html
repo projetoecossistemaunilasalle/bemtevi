@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi Mock · Declaração de pontuação (opt-in)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./mock-styles.css" />
+  </head>
+  <body>
+    <div class="mock-shell">
+      <div class="mock-banner">⚠️ <span>Mock estático (não-funcional) — somente para validar o visual.</span></div>
+
+      <nav class="mock-nav">
+        <a href="./option-effects.html">1 · Editor de opções</a>
+        <a href="./score-declaration.html" class="current">2 · Declaração de pontuação</a>
+        <a href="./large-flow-nav.html">3 · Navegação p/ fluxos grandes</a>
+        <a href="./redirections-view.html">4 · Visão de redirecionamentos</a>
+      </nav>
+
+      <div>
+        <h1 class="font-headline-sm" style="font-size: 24px">Declaração de pontuação · opt-in por fluxo</h1>
+        <p class="font-body-md text-muted" style="margin-top: 4px">
+          A pontuação <strong>não existe por padrão</strong> em todos os fluxos. O autor a ativa uma vez no topo do
+          editor; só então as opções podem somar pontos e os nós de ramificação por pontuação aparecem. Abaixo: o mesmo
+          painel em dois estados — desativado (work-stress) e ativado (SRQ-20).
+        </p>
+      </div>
+
+      <!-- ============ STATE A: DISABLED (work-stress) ============ -->
+      <section class="card">
+        <div class="row-between">
+          <h2 class="font-headline-sm">Dados do fluxo</h2>
+          <span class="pill pill-surface">Sobrecarga na escola</span>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Título do fluxo</span>
+          <input class="inp" value="Sobrecarga na escola" />
+        </div>
+
+        <!-- ============ SCORE PANEL — DISABLED ============ -->
+        <div
+          class="subsection"
+          style="
+            border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+            padding-top: 12px;
+          "
+        >
+          <div>
+            <p class="font-label-md">Pontuação</p>
+            <p class="field-hint">
+              Fluxos de conversa simples não usam pontuação. Ative apenas para questionários de rastreio (ex.: SRQ-20),
+              onde as respostas somam pontos para definir o resultado.
+            </p>
+          </div>
+          <button class="btn btn-primary btn-sm btn-wfit" type="button">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Ativar pontuação neste fluxo
+          </button>
+          <p class="field-hint text-muted" style="font-style: italic">
+            Enquanto desativado, nenhuma UI de pontuação aparece nas opções e o tipo "Ramificação por pontuação" fica
+            oculto.
+          </p>
+        </div>
+
+        <p class="field-hint text-muted">… Frases de entrada, mensagem antes do fluxo, primeira etapa, etapas …</p>
+      </section>
+
+      <!-- ============ STATE B: ENABLED (SRQ-20) ============ -->
+      <section class="card">
+        <div class="row-between">
+          <h2 class="font-headline-sm">Dados do fluxo</h2>
+          <span class="pill pill-primary-container">SRQ-20</span>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Título do fluxo</span>
+          <input class="inp" value="SRQ-20" />
+        </div>
+
+        <!-- ============ SCORE PANEL — ENABLED ============ -->
+        <div
+          class="subsection"
+          style="
+            border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+            padding-top: 12px;
+          "
+        >
+          <div class="row-between">
+            <div>
+              <p class="font-label-md">Pontuação</p>
+              <p class="field-hint">
+                Este fluxo acumula pontos para decidir o resultado. As opções podem somar e a ramificação por faixa fica
+                disponível.
+              </p>
+            </div>
+            <button class="btn btn-secondary btn-sm btn-wfit" type="button">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Adicionar pontuação
+            </button>
+          </div>
+
+          <!-- declared score #1 -->
+          <div class="grid-4" style="background: var(--color-surface-container-low); border-radius: 8px; padding: 12px">
+            <div class="field">
+              <span class="field-label">Identificador</span>
+              <input class="inp-sm" value="srq20" />
+              <span class="field-hint"
+                >Nome interno, sem espaços (ex.: srq20). Usado para ligar as opções a esta pontuação.</span
+              >
+            </div>
+            <div class="field">
+              <span class="field-label">Nome de exibição</span>
+              <input class="inp-sm" value="Sofrimento (SRQ-20)" />
+              <span class="field-hint">Como aparece nos seletores, mais fácil de reconhecer que o identificador.</span>
+            </div>
+            <div class="field">
+              <span class="field-label">Pontuação máxima</span>
+              <input class="inp-sm" type="number" value="20" />
+              <span class="field-hint"
+                >O teto possível (ex.: 20 perguntas). Ajuda a validar se as faixas de resultado cobrem todos os
+                pontos.</span
+              >
+            </div>
+            <button class="btn btn-danger btn-sm" type="button" style="margin-bottom: 14px">Remover</button>
+          </div>
+        </div>
+
+        <p class="field-hint text-muted">… Frases de entrada, mensagem antes do fluxo, primeira etapa, etapas …</p>
+      </section>
+
+      <!-- ============ WHAT THIS UNLOCKS ============ -->
+      <section class="card">
+        <h2 class="font-headline-sm">O que a ativação libera</h2>
+        <p class="font-body-md text-muted">Depois de declarada, a pontuação aparece em dois lugares:</p>
+        <ul
+          style="
+            margin: 0;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: var(--color-on-surface);
+          "
+        >
+          <li>
+            <strong>No editor de opção</strong> → seção "Pontuação" (ver
+            <a class="btn-link btn-link-primary" href="./option-effects.html">Mock 1</a>), com dropdown das chaves
+            declaradas.
+          </li>
+          <li>
+            <strong>No seletor de tipo de etapa</strong> → a opção "Ramificação por pontuação" deixa de ficar oculta e
+            ganha editor de faixas (de → até → próxima etapa).
+          </li>
+        </ul>
+      </section>
+
+      <p class="field-hint text-muted" style="text-align: center">
+        Mock 2/4 ·
+        <a class="btn-link btn-link-primary" href="./large-flow-nav.html">Próximo: navegação para fluxos grandes →</a>
+      </p>
+    </div>
+  </body>
+</html>

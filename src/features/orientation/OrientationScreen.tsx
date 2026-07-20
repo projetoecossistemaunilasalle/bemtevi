@@ -1,15 +1,13 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Send, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { flowRegistry } from '../../content/flows/registry';
+import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowStateFromRegistry, createMessage, getActiveFlow } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
-import type { ChatMessage, FlowRuntimeState, RuntimeOption } from '../../domain/flow-engine/types';
+import type { ChatMessage, FlowRuntimeState, GuidedFlow, RuntimeOption } from '../../domain/flow-engine/types';
 
 const TYPING_DELAY_MS = 1200;
-
-const flows = flowRegistry.flows;
 
 const INTRO_STARTERS = [
   {
@@ -65,6 +63,9 @@ const typingIndicatorStyle = (
 
 export function OrientationScreen() {
   const navigate = useNavigate();
+  const { content } = usePublishedContent();
+  const [conversationFlows, setConversationFlows] = useState<GuidedFlow[] | null>(null);
+  const flows = conversationFlows ?? content.flows;
   const logRef = useRef<HTMLDivElement | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
@@ -75,7 +76,10 @@ export function OrientationScreen() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRevealing = hasStarted && (state === null || visibleCount < state.transcript.length);
 
-  const options = useMemo(() => (state && !isRevealing ? resolveOptions(state, flows) : []), [state, isRevealing]);
+  const options = useMemo(
+    () => (state && !isRevealing ? resolveOptions(state, flows) : []),
+    [state, isRevealing, flows],
+  );
   const visibleOptions = useMemo(() => {
     const normalizedInput = inputValue.trim().toLocaleLowerCase('pt-BR');
     const strictMatch = options.find(
@@ -85,7 +89,9 @@ export function OrientationScreen() {
     if (strictMatch) return [];
 
     if (!normalizedInput) {
-      return options.filter((option) => option.kind === 'node_option' || option.kind === 'flow_start');
+      return options.filter(
+        (option) => option.kind === 'node_option' || option.kind === 'flow_start' || option.kind === 'resume_flow',
+      );
     }
 
     return options.filter((option) => option.label.toLocaleLowerCase('pt-BR').includes(normalizedInput));
@@ -99,7 +105,7 @@ export function OrientationScreen() {
     const activeNode = activeFlow.nodes[activeNodeId];
 
     return activeNode.kind === 'choice' && activeNode.freeText !== undefined;
-  }, [state, isRevealing]);
+  }, [state, isRevealing, flows]);
 
   const exactOption = options.find(
     (option) => option.label.toLocaleLowerCase('pt-BR') === inputValue.trim().toLocaleLowerCase('pt-BR'),
@@ -144,7 +150,7 @@ export function OrientationScreen() {
       setState(nextState);
       setVisibleCount(nextState.transcript.length);
     }, TYPING_DELAY_MS);
-  }, [hasStarted, selectedIntroStarter, selectedIntroFlowId, state]);
+  }, [hasStarted, selectedIntroStarter, selectedIntroFlowId, state, flows]);
 
   useEffect(() => {
     return () => {
@@ -160,6 +166,7 @@ export function OrientationScreen() {
     setInputValue('');
     setState(null);
     setVisibleCount(0);
+    setConversationFlows(content.flows);
     setHasStarted(true);
   }
 
@@ -334,7 +341,7 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
             <div className="min-w-0">
               <h1 className="font-title-lg text-on-surface">Antes de começar</h1>
               <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
-                Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
+                Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.
               </p>
             </div>
           </div>
@@ -370,7 +377,7 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.sender === 'user';
-  const label = isUser ? 'Você' : 'SeCuida';
+  const label = isUser ? 'Você' : 'BemTeVi';
 
   return (
     <article className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -421,7 +428,7 @@ function TypingIndicator() {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
               <MessageCircle size={17} />
             </span>
-            SeCuida
+            BemTeVi
           </span>
           <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
             <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />

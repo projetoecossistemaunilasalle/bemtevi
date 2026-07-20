@@ -5,13 +5,11 @@ import { Button } from '../../design-system/components/Button';
 
 export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
   const [step, setStep] = useState(0);
-  const [acceptedTestVersion, setAcceptedTestVersion] = useState(false);
-  const [acceptedAccessLimit, setAcceptedAccessLimit] = useState(false);
 
   const steps = [
     {
       icon: <Brain size={48} className="text-on-primary" />,
-      title: 'Bem-vindo ao SeCuida',
+      title: 'Bem-vindo ao BemTeVi',
       body: 'Um espaço seguro e anônimo para cuidar de você. Aqui, ninguém precisa saber quem você é — só importa como você está se sentindo.',
     },
     {
@@ -26,14 +24,12 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
     },
     {
       icon: <HeartHandshake size={48} className="text-on-primary" />,
-      title: 'Antes de começar',
-      body: 'O SeCuida foi feito para educadores que merecem acolhimento. Para seguir, confirme que entendeu os limites desta versão de teste.',
+      title: 'Você não está sozinho(a)',
+      body: 'O BemTeVi foi feito para educadores que merecem acolhimento. Vamos começar?',
     },
   ];
 
   const current = steps[step];
-  const isLastStep = step === steps.length - 1;
-  const canStart = acceptedTestVersion && acceptedAccessLimit;
 
   return (
     <motion.div
@@ -41,7 +37,7 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-[calc(100dvh-4rem-3rem-1px)] -mb-24 md:mb-0 flex flex-col bg-primary relative overflow-hidden"
+      className="h-[calc(100dvh-4rem-1px)] max-h-[calc(100dvh-4rem-1px)] -mb-24 md:mb-0 flex flex-col bg-primary relative overflow-hidden"
     >
       {/* Wave decoration */}
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
@@ -71,28 +67,6 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
           </div>
           <h1 className="font-display-lg text-on-primary">{current.title}</h1>
           <p className="font-body-lg text-on-primary/85 leading-relaxed">{current.body}</p>
-          {isLastStep && (
-            <div className="w-full rounded-3xl bg-white/12 border border-white/20 p-4 text-left space-y-3 backdrop-blur-sm">
-              <label className="flex gap-3 font-body-md text-on-primary/90 leading-snug">
-                <input
-                  type="checkbox"
-                  checked={acceptedTestVersion}
-                  onChange={(event) => setAcceptedTestVersion(event.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-white"
-                />
-                <span>Entendo que esta é uma versão de teste e que o conteúdo é apenas orientativo.</span>
-              </label>
-              <label className="flex gap-3 font-body-md text-on-primary/90 leading-snug">
-                <input
-                  type="checkbox"
-                  checked={acceptedAccessLimit}
-                  onChange={(event) => setAcceptedAccessLimit(event.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-white"
-                />
-                <span>Afirmo que não vou compartilhar o acesso do aplicativo sem permissão direta dos envolvidos.</span>
-              </label>
-            </div>
-          )}
         </motion.div>
       </div>
 
@@ -121,14 +95,12 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
             variant="secondary"
             size="lg"
             onClick={onContinue}
-            disabled={!canStart}
-            className="w-full max-w-sm bg-white !text-primary hover:bg-white/90 font-bold disabled:bg-white/60 disabled:hover:bg-white/60"
+            className="w-full max-w-sm bg-white !text-primary hover:bg-white/90 font-bold"
           >
             Começar
           </Button>
         )}
 
-        {/* Skip is intentionally hidden during the test-version consent flow.
         {step < steps.length - 1 && (
           <button
             onClick={onContinue}
@@ -136,7 +108,7 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
           >
             Pular
           </button>
-        )} */}
+        )}
       </div>
     </motion.div>
   );

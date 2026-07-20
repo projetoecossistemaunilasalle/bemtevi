@@ -1,15 +1,64 @@
+import type { ReactElement } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PublishedContentContext } from '../../../app/content/PublishedContentContext';
+import { getBundledContent } from '../../../app/content/bundledContent';
+import type { PublishedContentPayload } from '../../../app/content/publishedContent';
+
+const mockNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 import { OrientationScreen } from '../OrientationScreen';
 
 const TYPING_DELAY_MS = 1200;
 
-function renderOrientation() {
-  render(
+function buildContentValue(payload: PublishedContentPayload) {
+  const snapshot = {
+    schemaVersion: '1.0.0',
+    revision: 1,
+    payload,
+    publishedAt: '2026-07-15T00:00:00.000Z',
+    publishedBy: 'admin',
+  } as const;
+  return {
+    content: payload,
+    snapshot,
+    source: 'database' as const,
+    status: 'ready' as const,
+    loadError: null,
+    refresh: async () => {},
+    publish: async () => snapshot,
+  };
+}
+
+function renderWithContent(ui: ReactElement, payload: PublishedContentPayload = getBundledContent()) {
+  return render(
+    <PublishedContentContext.Provider value={buildContentValue(payload)}>{ui}</PublishedContentContext.Provider>,
+  );
+}
+
+function buildDatabaseFlowsPayload(transitionMessage: string): PublishedContentPayload {
+  const bundled = getBundledContent();
+  const flows = bundled.flows.map((flow) =>
+    flow.id === 'orientation-understand-feelings' ? { ...flow, entry: { ...flow.entry, transitionMessage } } : flow,
+  );
+  return { ...bundled, flows };
+}
+
+function renderOrientation(payload: PublishedContentPayload = getBundledContent()) {
+  return renderWithContent(
     <MemoryRouter>
       <OrientationScreen />
     </MemoryRouter>,
+    payload,
   );
 }
 
@@ -32,6 +81,7 @@ function routeFromNeutralToWorkStress() {
 describe('OrientationScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    mockNavigate.mockClear();
   });
 
   afterEach(() => {
@@ -43,7 +93,7 @@ describe('OrientationScreen', () => {
 
     expect(screen.getByRole('heading', { name: 'Antes de começar' })).toBeInTheDocument();
     expect(
-      screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.'),
+      screen.getByText('Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.'),
     ).toBeInTheDocument();
     expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
@@ -86,7 +136,7 @@ describe('OrientationScreen', () => {
     startOrientationWithStarter();
 
     expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
-    expect(screen.getAllByText('SeCuida')).toHaveLength(2);
+    expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
   });
 
   it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
@@ -238,7 +288,7 @@ describe('OrientationScreen', () => {
     expect(
       screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
+    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
     advanceInitialLoad();
@@ -256,7 +306,7 @@ describe('OrientationScreen', () => {
 
     expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
     expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
+    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
 
     advanceInitialLoad();
 
@@ -389,5 +439,79 @@ describe('OrientationScreen', () => {
       screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
+  });
+
+  it('continues SRQ-20 after Q17 yes and navigates to apoio only after the final result', () => {
+    renderOrientation();
+
+    startOrientationWithStarter();
+
+    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
+      target: { value: 'SRQ-20' },
+    });
+    fireEvent.click(screen.getByRole('option', { name: 'Quero responder o SRQ-20' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Quero responder' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Continuar' }));
+    advanceInitialLoad();
+
+    for (let question = 1; question <= 16; question++) {
+      fireEvent.click(screen.getByRole('option', { name: 'Não' }));
+      advanceInitialLoad();
+    }
+
+    fireEvent.click(screen.getByRole('option', { name: 'Sim' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText(/Sente-se cansado/i)).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/apoio');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Não' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Não' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Não' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText(/Obrigado por responder com sinceridade/i)).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/apoio');
+  });
+
+  it('uses database flows for a newly started orientation conversation', () => {
+    const payload = buildDatabaseFlowsPayload('Mensagem inicial vinda do banco de dados.');
+    renderOrientation(payload);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Mensagem inicial vinda do banco de dados.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps an already-started orientation on its original flow snapshot after provider refresh', () => {
+    const payloadA = buildDatabaseFlowsPayload('Mensagem do banco A.');
+    const { rerender } = renderOrientation(payloadA);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
+    advanceInitialLoad();
+
+    expect(screen.getByText('Mensagem do banco A.')).toBeInTheDocument();
+
+    const payloadB = buildDatabaseFlowsPayload('Mensagem do banco B.');
+    rerender(
+      <PublishedContentContext.Provider value={buildContentValue(payloadB)}>
+        <MemoryRouter>
+          <OrientationScreen />
+        </MemoryRouter>
+      </PublishedContentContext.Provider>,
+    );
+
+    expect(screen.getByText('Mensagem do banco A.')).toBeInTheDocument();
+    expect(screen.queryByText('Mensagem do banco B.')).not.toBeInTheDocument();
   });
 });

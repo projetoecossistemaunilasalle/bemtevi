@@ -4,7 +4,8 @@ export type EducationResourceAudience = 'teachers' | 'public_school_teachers' | 
 
 export type EducationResourceFeaturedImage =
   | { kind: 'catalog'; imageId: string }
-  | { kind: 'external'; imageUrl: string; alt?: string };
+  | { kind: 'external'; imageUrl: string; alt?: string }
+  | { kind: 'uploaded'; dataUrl: string; alt?: string; fileName?: string };
 
 export type EducationResourceBlockKind = 'paragraph' | 'heading' | 'list' | 'image' | 'video' | 'sourceLink';
 
@@ -15,6 +16,7 @@ export interface EducationResourceBlock {
   text?: string;
   items?: string[];
   imageUrl?: string;
+  imageFileName?: string;
   alt?: string;
   url?: string;
   label?: string;
@@ -32,12 +34,15 @@ export interface EducationResource {
   source: string;
   description: string;
   imageUrl?: string;
+  imageFileName?: string;
   featuredImage?: EducationResourceFeaturedImage;
   tags: string[];
   audience: EducationResourceAudience;
   body?: EducationResourceBlock[];
   embed?: EducationResourceEmbed;
   href?: string;
+  group?: string;
+  groupOrder?: number;
   review: ReviewMetadata;
 }
 

@@ -19,6 +19,7 @@ export function resumeFlow(state: FlowRuntimeState, flowId: string): FlowRuntime
     activeFlowId: suspendedFlow.flowId,
     activeNodeId: suspendedFlow.nodeId,
     answers: suspendedFlow.answers,
+    scores: suspendedFlow.scores,
     suspendedFlows: remainingSuspendedFlows,
   };
 }

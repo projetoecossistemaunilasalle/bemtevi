@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the ninth implementation task for SeCuida.
+This document breaks down the ninth implementation task for BemTeVi.
 
 It is derived from:
 

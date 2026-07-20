@@ -1,6 +1,10 @@
+node_modules
 dist
 coverage
-node_modules
-.pnpm-store
-vite-dev*.log
-vite-dev*.err.log
+.agents
+.claude
+.cursor
+.vscode
+.neon
+*.log
+pnpm-lock.yaml

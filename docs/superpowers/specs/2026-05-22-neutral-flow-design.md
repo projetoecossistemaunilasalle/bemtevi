@@ -2,7 +2,7 @@
 
 ## Purpose
 
-SeCuida's orientation chat should start from calm, broad user intents instead of routing every intro choice into a specific concern flow. Neutral flows provide that bridge: they are ordinary deterministic guided flows whose purpose is to help users choose a more specific next path without implying diagnosis, free-text understanding, or real AI.
+BemTeVi's orientation chat should start from calm, broad user intents instead of routing every intro choice into a specific concern flow. Neutral flows provide that bridge: they are ordinary deterministic guided flows whose purpose is to help users choose a more specific next path without implying diagnosis, free-text understanding, or real AI.
 
 Dashboard editing and dashboard UI are out of scope for this implementation. The design only covers the main app flow model, content, runtime behavior, chat UI integration, validation, and tests.
 

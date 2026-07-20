@@ -1,4 +1,5 @@
 import type { ResourcesContent } from '../../domain/resources/types';
+import { generatedResources } from './generated-resources';
 
 const pendingReview = {
   status: 'pending_review',
@@ -7,61 +8,62 @@ const pendingReview = {
   notes: '',
 } as const;
 
+const baseResources = [
+  {
+    id: 'teacher-emotional-regulation-classroom',
+    title: 'Guia Prático de Regulação Emocional em Sala de Aula',
+    source: 'FEEVALE',
+    description:
+      'Descubra estratégias práticas e acessíveis para lidar com a sobrecarga diária e gerenciar o estresse no ambiente escolar. Este material foi desenvolvido com foco no acolhimento e na preservação da saúde mental do professor.',
+    imageUrl: '/hands_holding_plant.png',
+    tags: ['regulação-emocional', 'sala-de-aula', 'professores'],
+    audience: 'teachers',
+    featuredImage: { kind: 'catalog', imageId: 'hands-holding-plant' },
+    body: [
+      {
+        id: 'overview',
+        kind: 'paragraph',
+        title: 'Sobre este material',
+        text: 'Este conteúdo reúne orientações breves para reconhecer sinais de tensão, organizar pequenas pausas e retomar a rotina com mais presença. Ele não substitui atendimento profissional e não tem finalidade diagnóstica.',
+      },
+      {
+        id: 'breathing-video',
+        kind: 'video',
+        title: 'Vídeo: pausa de respiração para professores',
+        url: 'https://www.youtube.com/watch?v=kiEmbhvv7Fo',
+      },
+      {
+        id: 'practice',
+        kind: 'paragraph',
+        title: 'Aplicação prática',
+        text: 'Uma sugestão é reservar um momento curto antes ou depois da aula para uma pausa guiada. O professor pode adaptar a prática ao tempo disponível e ao contexto da turma.',
+      },
+      {
+        id: 'source',
+        kind: 'sourceLink',
+        label: 'Acessar fonte original',
+        url: 'https://www.feevale.br/',
+      },
+    ],
+    review: pendingReview,
+  },
+] satisfies ResourcesContent['resources'];
+
+function mergeGeneratedResources() {
+  const generatedById = new Map(generatedResources.map((resource) => [resource.id, resource]));
+  const baseIds = new Set(baseResources.map((resource) => resource.id));
+  const overriddenBaseResources = baseResources.map((resource) => generatedById.get(resource.id) ?? resource);
+  const addedGeneratedResources = generatedResources.filter((resource) => !baseIds.has(resource.id));
+
+  return [...overriddenBaseResources, ...addedGeneratedResources];
+}
+
 export const resourcesContent = {
   id: 'education-resources',
   version: '0.1.0',
   status: 'draft',
   locale: 'pt-BR',
-  resources: [
-    {
-      id: 'teacher-emotional-regulation-classroom',
-      title: 'Guia de Regulação Emocional',
-      source: 'FEEVALE',
-      description: 'Estratégias de suporte para apoiar o professor no cuidado pessoal com a sua saúde mental.',
-      imageUrl:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBUu8741_OQaC5gUnsKWur7Ue7XjPl0zrmuOIJ4Beja1qwe3ecefY-jAPirXyxkalCbdbrni9ru9BNvN445eECuIikPSHgiq06Tzqu-95xgP3UoyvMQVVQI36N81_js4EGvH1QQRVXJ_e8rIpiTlui2vOpllyou7wJMei-tkTvrlnzhswzlJVMxW6GA0QKmGziWmfB7sY5Eskwn6YISBEpc1HqIHOmjdvGPEcHf13Ez2CF_WEnk99EtkQo2HAQMRaTBB1WY5bv-ygQ',
-      tags: ['regulação-emocional', 'respiração', 'professores'],
-      audience: 'teachers',
-      featuredImage: {
-        kind: 'external',
-        imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuBUu8741_OQaC5gUnsKWur7Ue7XjPl0zrmuOIJ4Beja1qwe3ecefY-jAPirXyxkalCbdbrni9ru9BNvN445eECuIikPSHgiq06Tzqu-95xgP3UoyvMQVVQI36N81_js4EGvH1QQRVXJ_e8rIpiTlui2vOpllyou7wJMei-tkTvrlnzhswzlJVMxW6GA0QKmGziWmfB7sY5Eskwn6YISBEpc1HqIHOmjdvGPEcHf13Ez2CF_WEnk99EtkQo2HAQMRaTBB1WY5bv-ygQ',
-      },
-      body: [
-        {
-          id: 'overview',
-          kind: 'paragraph',
-          title: 'Sobre este material',
-          text: 'Este conteúdo reúne orientações breves para reconhecer sinais de desconforto emocional, organizar pequenas pausas e retomar a rotina com mais presença. É um material informativo e sem finalidade diagnóstica, portanto, não substitui o atendimento especializado com profissional.',
-        },
-        {
-          id: 'breathing-video',
-          kind: 'video',
-          title: 'Vídeo: Técnica de respiração',
-          url: 'https://www.youtube.com/watch?v=kiEmbhvv7Fo',
-        },
-        {
-          id: 'breathing-image-1',
-          kind: 'image',
-          imageUrl: 'secuida-asset:respiracao1',
-          alt: 'Ilustração de técnica de respiração guiada.',
-        },
-        {
-          id: 'breathing-image-2',
-          kind: 'image',
-          imageUrl: 'secuida-asset:respiracao2',
-          alt: 'Ilustração complementar de exercício de respiração.',
-        },
-        {
-          id: 'practice',
-          kind: 'paragraph',
-          title: 'Aplicação prática',
-          text: 'Recomendamos reservar um tempo adequado da sua rotina para esta prática. Você pode adaptar o tempo da prática de acordo com o contexto em que está inserido no momento.',
-        },
-      ],
-      review: pendingReview,
-    },
-  ],
+  resources: mergeGeneratedResources(),
 } satisfies ResourcesContent;
 
 export const featuredOrientationResource = resourcesContent.resources[0];

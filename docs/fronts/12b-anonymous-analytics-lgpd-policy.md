@@ -4,13 +4,13 @@
 
 Decision note for the Privacy/LGPD and Anonymous Analytics fronts.
 
-This is **not** an implementation plan for the current app. SeCuida does not currently have a backend, analytics provider, event collector, or reporting store. No analytics work should start until the Privacy/LGPD policy is approved and a backend/storage design exists.
+This is **not** an implementation plan for the current app. BemTeVi does not currently have a backend, analytics provider, event collector, or reporting store. No analytics work should start until the Privacy/LGPD policy is approved and a backend/storage design exists.
 
 ---
 
 ## Product Position
 
-SeCuida may collect product analytics only as aggregate, non-identifying metrics.
+BemTeVi may collect product analytics only as aggregate, non-identifying metrics.
 
 The purpose of analytics should be to understand whether the product is useful and where users need support, not to understand or reconstruct the behavior of an individual educator.
 
@@ -103,11 +103,11 @@ Do not display or export sensitive metric rows where count < 10.
 
 ## Google Analytics Position
 
-Google Analytics should be treated as **not approved** for SeCuida by default.
+Google Analytics should be treated as **not approved** for BemTeVi by default.
 
 Reasons:
 
-- SeCuida handles mental-health-adjacent behavior, which deserves stricter minimization.
+- BemTeVi handles mental-health-adjacent behavior, which deserves stricter minimization.
 - Google Analytics is built around event collection and reporting, not aggregate-only counter storage.
 - Even when configured with privacy controls, it can create governance complexity around IP handling, cookies, device/browser signals, retention, cross-service processing, and international transfer.
 - It is harder to prove that no individual journey, identifier, or sensitive route sequence is being retained.
@@ -116,7 +116,7 @@ Using Google Analytics would require a separate legal/privacy review, documented
 
 For the MVP, do not use Google Analytics.
 
-Preferred direction: a first-party aggregate counter endpoint controlled by SeCuida, with no cookies, no persistent identifiers, no raw event retention, and no third-party advertising or behavioral analytics provider.
+Preferred direction: a first-party aggregate counter endpoint controlled by BemTeVi, with no cookies, no persistent identifiers, no raw event retention, and no third-party advertising or behavioral analytics provider.
 
 ---
 
@@ -177,7 +177,7 @@ Reports to refuse:
 If analytics is implemented later, user-facing copy should say plainly:
 
 ```txt
-O SeCuida coleta apenas métricas agregadas de uso, como páginas acessadas e recursos abertos, para melhorar o produto. Não usamos cookies de rastreamento, não identificamos pessoas, não salvamos respostas individuais, histórico de conversa, escola, localização precisa ou dados de saúde associados a uma pessoa.
+O BemTeVi coleta apenas métricas agregadas de uso, como páginas acessadas e recursos abertos, para melhorar o produto. Não usamos cookies de rastreamento, não identificamos pessoas, não salvamos respostas individuais, histórico de conversa, escola, localização precisa ou dados de saúde associados a uma pessoa.
 ```
 
 Do not claim analytics is anonymous unless the implementation stores only aggregate counters and there is no reasonable way to re-identify a person from the collected records.

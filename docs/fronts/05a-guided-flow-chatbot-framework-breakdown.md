@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the fifth implementation task for SeCuida.
+This document breaks down the fifth implementation task for BemTeVi.
 
 It is derived from the current repository state and from:
 

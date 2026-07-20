@@ -4,6 +4,9 @@ import { supportContacts } from '../support/contacts';
 import { canoasServices } from '../services/canoas-services';
 import { resourcesContent } from '../resources/resources';
 import { flowRegistry } from '../flows/registry';
+import { educationResourceGroups, DEFAULT_EDUCATION_GROUP_ID } from '../resources/groups';
+import { featuredImageOptions } from '../resources/featuredImages';
+import type { EducationResourceGroup } from '../resources/groups';
 
 describe('Home copy', () => {
   it('has required fields', () => {
@@ -96,30 +99,28 @@ describe('Resources content', () => {
   it('seeds education resources with detail preview fields', () => {
     const resource = resourcesContent.resources[0];
 
-    expect(resource.title).toBe('Guia de Regulação Emocional');
-    expect(resource.description).toBe(
-      'Estratégias de suporte para apoiar o professor no cuidado pessoal com a sua saúde mental.',
-    );
-    expect(resource.tags).toEqual(['regulação-emocional', 'respiração', 'professores']);
+    expect(resource.imageUrl).not.toContain('googleusercontent.com');
+    expect(resource.imageUrl).toBe('/bemtevi/hands_holding_plant.png');
     expect(resource.featuredImage).toEqual({
-      kind: 'external',
-      imageUrl: resource.imageUrl,
+      kind: 'catalog',
+      imageId: 'respiracao-1',
     });
     expect(resource.body?.map((block) => block.kind)).toEqual(['paragraph', 'video', 'image', 'image', 'paragraph']);
-    expect(resource.body?.slice(2, 4)).toEqual([
-      expect.objectContaining({
-        id: 'breathing-image-1',
-        kind: 'image',
-        imageUrl: 'secuida-asset:respiracao1',
-        alt: 'Ilustração de técnica de respiração guiada.',
-      }),
-      expect.objectContaining({
-        id: 'breathing-image-2',
-        kind: 'image',
-        imageUrl: 'secuida-asset:respiracao2',
-        alt: 'Ilustração complementar de exercício de respiração.',
-      }),
+    expect(resource.body?.filter((block) => block.kind === 'image').map((block) => block.imageUrl)).toEqual([
+      '/bemtevi/respiracao1.jpg',
+      '/bemtevi/respiracao2.jpg',
     ]);
+  });
+
+  it('includes generated resources and lets them override base resource IDs', async () => {
+    const generatedModule = await import('../resources/generated-resources');
+    const generatedIds = generatedModule.generatedResources.map((resource) => resource.id);
+
+    generatedIds.forEach((id) => {
+      const matches = resourcesContent.resources.filter((resource) => resource.id === id);
+      expect(matches).toHaveLength(1);
+      expect(matches[0]).toEqual(generatedModule.generatedResources.find((resource) => resource.id === id));
+    });
   });
 });
 
@@ -148,5 +149,59 @@ describe('Flow registry', () => {
     });
     expect(flows.filter((flow) => flow.purpose === 'orientation_entry')).toHaveLength(4);
     expect(flows.find((flow) => flow.id === 'post-flow-next-step')?.purpose).toBe('post_flow_routing');
+  });
+});
+
+describe('Featured image options', () => {
+  it('defines bundled catalog images', () => {
+    expect(featuredImageOptions).toHaveLength(6);
+    featuredImageOptions.forEach((option) => {
+      expect(option.id).toBeTruthy();
+      expect(option.src).toBeTruthy();
+      expect(option.alt).toBeTruthy();
+    });
+  });
+
+  it('includes breathing photos from the public assets', () => {
+    expect(featuredImageOptions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'respiracao-1', src: '/bemtevi/respiracao1.jpg' }),
+        expect.objectContaining({ id: 'respiracao-2', src: '/bemtevi/respiracao2.jpg' }),
+      ]),
+    );
+  });
+});
+
+describe('Education resource groups', () => {
+  it('exports an array that is not empty', () => {
+    expect(educationResourceGroups).toBeInstanceOf(Array);
+    expect(educationResourceGroups.length).toBeGreaterThan(0);
+  });
+
+  it('every group has required id, title, and numeric order', () => {
+    educationResourceGroups.forEach((group: EducationResourceGroup) => {
+      expect(typeof group.id).toBe('string');
+      expect(group.id).toBeTruthy();
+      expect(typeof group.title).toBe('string');
+      expect(group.title).toBeTruthy();
+      expect(typeof group.order).toBe('number');
+    });
+  });
+
+  it('every group has a unique id', () => {
+    const ids = educationResourceGroups.map((g: EducationResourceGroup) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('no group uses the reserved geral ID', () => {
+    const ids = educationResourceGroups.map((g: EducationResourceGroup) => g.id);
+    expect(ids).not.toContain(DEFAULT_EDUCATION_GROUP_ID);
+  });
+
+  it('includes the shipped groups: auto-cuidado, sala-de-aula, formacao', () => {
+    const ids = educationResourceGroups.map((g: EducationResourceGroup) => g.id);
+    expect(ids).toContain('auto-cuidado');
+    expect(ids).toContain('sala-de-aula');
+    expect(ids).toContain('formacao');
   });
 });

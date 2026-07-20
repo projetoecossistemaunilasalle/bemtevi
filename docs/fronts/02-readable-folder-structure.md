@@ -221,7 +221,7 @@ Reusable visual primitives.
 
 ### `lib/`
 
-Generic utilities that are not specific to SeCuida’s domain.
+Generic utilities that are not specific to BemTeVi’s domain.
 
 ---
 

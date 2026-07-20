@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi — Mock: Gerenciar redirecionamentos</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: '#f9f9ff',
+              'on-background': '#111c2c',
+              primary: '#006a43',
+              'on-primary': '#fff',
+              'primary-container': '#188557',
+              'on-primary-container': '#f6fff6',
+              secondary: '#425e91',
+              'on-secondary': '#fff',
+              'secondary-container': '#a8c4fe',
+              'on-secondary-container': '#345083',
+              surface: '#f9f9ff',
+              'on-surface': '#111c2c',
+              'surface-variant': '#d8e3fa',
+              'on-surface-variant': '#3e4942',
+              'surface-container-lowest': '#fff',
+              'surface-container-low': '#f0f3ff',
+              'surface-container': '#e7eeff',
+              'surface-container-high': '#dee8ff',
+              outline: '#6e7a71',
+              'outline-variant': '#bdcabf',
+              error: '#ba1a1a',
+              'on-error': '#fff',
+              'error-container': '#ffdad6',
+              'on-error-container': '#93000a',
+              warning: '#7a5900',
+              'on-warning': '#fff',
+              'warning-container': '#ffdf9e',
+              'on-warning-container': '#5c4300',
+            },
+            spacing: { 'stack-sm': '0.5rem', 'stack-md': '1.5rem', 'stack-lg': '3rem' },
+            fontFamily: {
+              headline: ['Atkinson Hyperlegible Next', 'sans-serif'],
+              body: ['Source Sans 3', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .font-headline-sm {
+        font-family: 'Atkinson Hyperlegible Next';
+        font-size: 20px;
+        line-height: 28px;
+        font-weight: 600;
+      }
+      .font-label-md {
+        font-family: 'Source Sans 3';
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      .font-label-sm {
+        font-family: 'Source Sans 3';
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+      }
+      .font-body-md {
+        font-family: 'Source Sans 3';
+        font-size: 16px;
+        line-height: 24px;
+      }
+      .inp {
+        width: 100%;
+        border: 1px solid var(--c, outline);
+        border-radius: 8px;
+        background: #fff;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #111c2c;
+      }
+      .pill {
+        border-radius: 9999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      details > summary {
+        list-style: none;
+        cursor: pointer;
+      }
+      details > summary::-webkit-details-marker {
+        display: none;
+      }
+      .effect-card {
+        border: 1px solid #bdcabf;
+        border-left: 4px solid #425e91;
+        border-radius: 8px;
+        background: #f0f3ff;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body class="bg-background text-on-surface font-body p-6">
+    <div class="max-w-3xl mx-auto flex flex-col gap-stack-md">
+      <!-- 1. ENHANCED OPTION EDITOR — per-option "Ação" now covers ALL effect kinds -->
+      <section class="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-5 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="font-headline-sm">Etapa 1 — consent</h2>
+          <span class="pill bg-secondary-container text-on-secondary-container">Pergunta com opções</span>
+        </div>
+        <p class="font-body-md text-on-surface-variant">
+          Antes de começar: suas respostas ficam apenas nesta conversa…
+        </p>
+
+        <!-- OPTION with redirect actions -->
+        <div class="rounded-lg bg-surface-container-low p-3 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <p class="font-label-md">Opção 1 — "Sim, quero responder"</p>
+            <button class="text-error font-label-sm underline">Remover opção</button>
+          </div>
+
+          <!-- NEW: redirect/effects section, grouped and friendly -->
+          <div class="effect-card flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+              <span class="pill bg-primary text-on-primary">Redirecionamento</span>
+              <p class="font-label-sm text-on-surface-variant">O que acontece quando a pessoa escolhe esta opção</p>
+            </div>
+
+            <!-- Primary action selector (replaces old "next | flow_start" select) -->
+            <label class="flex flex-col gap-1">
+              <span class="font-label-sm">Ação principal</span>
+              <select class="inp">
+                <option>Ir para a próxima etapa</option>
+                <option>Começar outro fluxo</option>
+                <option>Navegar para uma tela (Apoio, Contatos, Educação)</option>
+                <option>Encerrar a conversa com uma mensagem</option>
+                <option>⚠️ Interrupção de segurança (levar ao apoio)</option>
+              </select>
+            </label>
+
+            <!-- Destination pickers (shown depending on action) -->
+            <div class="grid md:grid-cols-2 gap-2">
+              <label class="flex flex-col gap-1">
+                <span class="font-label-sm">Próxima etapa</span>
+                <select class="inp">
+                  <option>Etapa 2 — q1</option>
+                  <option>Etapa 3 — q2</option>
+                  <option>Resultado — declined-result</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- EXTRA effects (score) — additive, multiple allowed -->
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="font-label-sm">Pontuação (opcional)</span>
+                <button class="font-label-sm text-primary underline">+ Adicionar pontuação</button>
+              </div>
+              <div class="flex gap-2 items-center">
+                <input class="inp" value="srq20" placeholder="chave (ex: srq20)" />
+                <select class="inp" style="max-width: 120px">
+                  <option>+1</option>
+                  <option>+2</option>
+                  <option>-1</option>
+                </select>
+                <button class="text-error font-label-sm">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <button class="rounded-full bg-secondary text-on-secondary px-4 py-2 font-label-md">
+            + Adicionar opção nesta etapa
+          </button>
+          <div class="flex gap-2">
+            <button class="rounded-full border border-outline-variant px-3 py-2 font-label-sm">↑ Mover</button>
+            <button class="rounded-full border border-outline-variant px-3 py-2 font-label-sm">↓ Mover</button>
+            <button class="rounded-full border border-error/40 text-error px-3 py-2 font-label-sm">
+              Remover etapa
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. SCORE BRANCH NODE EDITOR (currently read-only) -->
+      <section class="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-5 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h2 class="font-headline-sm">Etapa 22 — srq20-score</h2>
+          <span class="pill bg-primary-container text-on-primary-container">Ramificação por pontuação</span>
+        </div>
+        <label class="flex flex-col gap-1">
+          <span class="font-label-sm">Chave de pontuação usada</span>
+          <input class="inp" value="srq20" />
+        </label>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="font-label-sm">Caminhos por faixa de pontos</span>
+            <button class="font-label-sm text-primary underline">+ Adicionar caminho</button>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="rounded-lg bg-surface-container-low p-3 grid md:grid-cols-[1fr_1fr_2fr_auto] gap-2 items-end">
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">De</span><input class="inp" value="0"
+              /></label>
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">Até</span><input class="inp" value="6"
+              /></label>
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">Vai para</span
+                ><select class="inp">
+                  <option>low-distress-result</option>
+                </select></label
+              >
+              <button class="text-error font-label-sm">✕</button>
+            </div>
+            <div class="rounded-lg bg-surface-container-low p-3 grid md:grid-cols-[1fr_1fr_2fr_auto] gap-2 items-end">
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">De</span><input class="inp" value="7"
+              /></label>
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">Até</span><input class="inp" value="20"
+              /></label>
+              <label class="flex flex-col gap-1"
+                ><span class="font-label-sm">Vai para</span
+                ><select class="inp">
+                  <option>possible-distress-result</option>
+                </select></label
+              >
+              <button class="text-error font-label-sm">✕</button>
+            </div>
+          </div>
+          <p class="font-label-sm text-on-surface-variant">
+            As faixas devem cobrir de 0 até a pontuação máxima possível sem sobrepor.
+          </p>
+        </div>
+      </section>
+
+      <!-- 3. SAFETY-INTERRUPT form (shown when that action is selected) -->
+      <section class="rounded-lg border border-error/40 bg-error-container/30 p-5 flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <span class="pill bg-error text-on-error">Interrupção de segurança</span>
+          <p class="font-label-sm text-on-error-container">
+            Use com cuidado — tira a pessoa do fluxo e leva direto ao apoio.
+          </p>
+        </div>
+        <label class="flex flex-col gap-1"
+          ><span class="font-label-sm">Mensagem de acolhimento</span
+          ><textarea class="inp" rows="2">Agradecemos sua coragem em responder com sinceridade…</textarea>
+        </label>
+        <div class="grid md:grid-cols-2 gap-2">
+          <label class="flex flex-col gap-1"
+            ><span class="font-label-sm">Destino</span
+            ><select class="inp">
+              <option>/apoio</option>
+              <option>/contatos</option>
+            </select></label
+          >
+          <label class="flex items-center gap-2 mt-6"
+            ><input type="checkbox" checked /> <span class="font-label-sm">Bloquear retomar este fluxo</span></label
+          >
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

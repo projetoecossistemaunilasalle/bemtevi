@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create a stronger Home experience that explains SeCuida’s philosophy, earns trust quickly, and guides the user without overwhelming them.
+Create a stronger Home experience that explains BemTeVi’s philosophy, earns trust quickly, and guides the user without overwhelming them.
 
 The client requested a better Home that explains the app’s philosophy. This may include a one-time onboarding flow similar to mobile apps.
 
@@ -13,7 +13,7 @@ The client requested a better Home that explains the app’s philosophy. This ma
 Home should answer:
 
 ```txt
-What is SeCuida?
+What is BemTeVi?
 Can I trust it?
 Is this anonymous?
 What can I do here?
@@ -41,7 +41,7 @@ Do not add a regular “Como funciona” card or section to Home when the app-st
 Example:
 
 ```txt
-O SeCuida é um espaço de apoio emocional para professores.
+O BemTeVi é um espaço de apoio emocional para professores.
 
 Aqui você pode entender melhor como está se sentindo, encontrar materiais confiáveis e descobrir caminhos de apoio — sem login, sem identificação e no seu ritmo.
 ```
@@ -105,7 +105,7 @@ Immediate support remains available through the persistent Support tab.
 
 ## Acceptance Criteria
 
-- Home clearly explains SeCuida’s purpose.
+- Home clearly explains BemTeVi’s purpose.
 - Home reinforces privacy and non-diagnostic positioning.
 - Three primary paths have equal visual weight.
 - Immediate support is accessible through persistent navigation.

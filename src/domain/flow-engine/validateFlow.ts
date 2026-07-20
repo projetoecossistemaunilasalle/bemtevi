@@ -142,6 +142,12 @@ function validateScoreBranchNode(flowLabel: string, node: ScoreBranchFlowNode, n
         `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} points to missing node ${branch.next}.`,
       );
     }
+
+    if (branch.navigation !== undefined && !['/apoio', '/contatos', '/educacao'].includes(String(branch.navigation))) {
+      errors.push(
+        `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} navigation must be a supported destination.`,
+      );
+    }
   });
 }
 
@@ -157,6 +163,19 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
     if (!hasText(effect.message) || !hasText(effect.destination) || typeof effect.blockResume !== 'boolean') {
       errors.push(
         `Flow ${flowLabel} option ${optionId} safety interrupt effect must include message, destination, and blockResume.`,
+      );
+    }
+    return;
+  }
+
+  if (effect.kind === 'deferred_safety') {
+    if (
+      !hasText(effect.flagKey) ||
+      !hasText(effect.message) ||
+      !['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))
+    ) {
+      errors.push(
+        `Flow ${flowLabel} option ${optionId} deferred safety effect must include flagKey, message, and supported destination.`,
       );
     }
     return;

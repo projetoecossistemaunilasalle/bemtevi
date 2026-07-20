@@ -107,11 +107,19 @@ export function validateSrq20Contract(flow: GuidedFlow | undefined): string[] {
     }
 
     if (questionNumber === 17 && yesOption) {
-      const hasSafetyInterrupt = yesOption.effects?.some(
-        (e) => e.kind === 'safety_interrupt' && e.destination === '/apoio' && e.blockResume === true,
+      const hasDeferredSafety = yesOption.effects?.some(
+        (e) =>
+          e.kind === 'deferred_safety' &&
+          e.destination === '/apoio' &&
+          typeof e.flagKey === 'string' &&
+          e.flagKey.length > 0 &&
+          typeof e.message === 'string' &&
+          e.message.length > 0,
       );
-      if (!hasSafetyInterrupt) {
-        errors.push(`SRQ-20 q17 yes option must include a safety_interrupt effect to /apoio with blockResume enabled.`);
+      if (!hasDeferredSafety) {
+        errors.push(
+          'SRQ-20 q17 yes option must include a deferred_safety effect to /apoio with non-empty flagKey and message.',
+        );
       }
     } else if (yesOption && !yesOption.effects?.some((e) => e.kind === 'score' && e.scoreKey === 'srq20')) {
       errors.push(`SRQ-20 ${nodeId} yes option must include a score effect for srq20.`);
