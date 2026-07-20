@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the fourteenth implementation task for SeCuida.
+This document breaks down the fourteenth implementation task for BemTeVi.
 
 It is derived from:
 
@@ -195,4 +195,4 @@ npm run build
 
 ## Definition of Done
 
-Front 14A is done when SeCuida's editorial content is metadata-rich, serializable, declarative, and documented well enough that a future dashboard can edit content without requiring a frontend architecture refactor.
+Front 14A is done when BemTeVi's editorial content is metadata-rich, serializable, declarative, and documented well enough that a future dashboard can edit content without requiring a frontend architecture refactor.

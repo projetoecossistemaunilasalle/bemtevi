@@ -10,7 +10,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 
 describe('parse-export-zip.py', () => {
   it('generates import-backed resources and removes dashboard-only image helper fields', () => {
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'secuida-export-'));
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'bemtevi-export-'));
     const zipPath = path.join(tempDir, 'export.zip');
     const assetsDir = path.join(tempDir, 'assets');
     const tsPath = path.join(tempDir, 'generated-resources.ts');
@@ -20,7 +20,7 @@ describe('parse-export-zip.py', () => {
           {
             id: 'material-one',
             title: 'Material',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição.',
             imageUrl: './images/material-one-thumbnail-thumb.png',
             imageFileName: 'thumb.png',

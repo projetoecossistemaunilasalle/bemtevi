@@ -41,7 +41,7 @@ describe('computeChangeSummary', () => {
         {
           id: 'added-material',
           title: 'Material adicionado',
-          source: 'Equipe SeCuida',
+          source: 'Equipe BemTeVi',
           description: 'Descrição do material adicionado.',
           tags: ['teste'],
           audience: 'teachers',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Info, X } from 'lucide-react';
 
-const DISMISS_KEY = 'secuida:dev-dashboard:notice-dismissed';
+const DISMISS_KEY = 'bemtevi:dev-dashboard:notice-dismissed';
 
 /**
  * Inline "local draft" banner. Once dismissed it stays hidden (per browser)

@@ -1,4 +1,4 @@
-# SeCuida — Front Status Tracker
+# BemTeVi — Front Status Tracker
 
 Last updated: 2026-05-22
 
@@ -40,7 +40,7 @@ SRQ-20 implemented as JSON guided flow (`src/content/flows/srq20.json`). Generic
 
 ### 07 — Home & Onboarding — Done
 
-4-step swipe carousel, localStorage persistence (`secuida:onboarding-seen`), trust cards, 3 action cards on home.
+4-step swipe carousel, localStorage persistence (`bemtevi:onboarding-seen`), trust cards, 3 action cards on home.
 
 ---
 
@@ -104,7 +104,7 @@ Cannot finalize the directory structure or filtering logic until this decision i
 
 **What exists:** Static privacy card saying the app uses only in-memory state. Domain folder reserved with "do not touch" README.
 
-**Known problem:** The privacy screen claims "no localStorage" but `firstVisit.ts` actually uses it (`secuida:onboarding-seen`). This contradiction is documented but unresolved.
+**Known problem:** The privacy screen claims "no localStorage" but `firstVisit.ts` actually uses it (`bemtevi:onboarding-seen`). This contradiction is documented but unresolved.
 
 **Blocker:** Needs legal grounding. A lawyer or LGPD specialist must review what the app can/cannot do before we implement any privacy logic, consent management, or data handling.
 

@@ -3,7 +3,7 @@ import { createNeonAdminAuthBackend, type NeonAuthClient } from '../neonClient';
 
 const adminData = {
   session: { id: 'session-id' },
-  user: { id: 'admin-id', email: 'admin@secuida.test' },
+  user: { id: 'admin-id', email: 'admin@bemtevi.test' },
 };
 
 function createClient(): NeonAuthClient {
@@ -33,8 +33,8 @@ describe('Neon admin auth backend', () => {
     const backend = createNeonAdminAuthBackend(client);
 
     expect(backend).not.toBeNull();
-    await expect(backend!.signInWithPassword('admin@secuida.test', 'password')).resolves.toMatchObject({
-      session: { user: { id: 'admin-id', email: 'admin@secuida.test' } },
+    await expect(backend!.signInWithPassword('admin@bemtevi.test', 'password')).resolves.toMatchObject({
+      session: { user: { id: 'admin-id', email: 'admin@bemtevi.test' } },
       error: null,
     });
     await expect(backend!.isAdmin('admin-id')).resolves.toEqual({ isAdmin: true, error: null });
@@ -51,7 +51,7 @@ describe('Neon admin auth backend', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: 'better-auth.message' }));
 
     await vi.waitFor(() =>
-      expect(listener).toHaveBeenCalledWith({ user: { id: 'admin-id', email: 'admin@secuida.test' } }),
+      expect(listener).toHaveBeenCalledWith({ user: { id: 'admin-id', email: 'admin@bemtevi.test' } }),
     );
     stop();
   });

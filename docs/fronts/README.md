@@ -1,18 +1,18 @@
-# SeCuida — Project Fronts Overview
+# BemTeVi — Project Fronts Overview
 
 ## Purpose
 
-This document defines the main project fronts for transforming the current SeCuida demo into a real privacy-preserving, mobile-first PWA for teacher mental-health support.
+This document defines the main project fronts for transforming the current BemTeVi demo into a real privacy-preserving, mobile-first PWA for teacher mental-health support.
 
 The current prototype already establishes a calm visual direction and basic screens, but the real product requires a broader architecture: routing, content modeling, guided flows, questionnaire support, privacy constraints, curated resources, local support contacts, and future dashboard-readiness.
 
-The official product name is **SeCuida**.
+The official product name is **BemTeVi**.
 
 ---
 
 ## Product Direction
 
-SeCuida is a mental-health support platform for teachers, especially public school teachers, designed to offer orientation, educational resources, immediate support paths, and professional contact information without requiring login or personal identification.
+BemTeVi is a mental-health support platform for teachers, especially public school teachers, designed to offer orientation, educational resources, immediate support paths, and professional contact information without requiring login or personal identification.
 
 The app does not diagnose, does not replace professional care, and should not feel like a clinical intake system.
 
@@ -101,7 +101,7 @@ Quality/Tooling supports every front.
 
 ### Milestone 1 — Real App Foundation
 
-- Preserve official name: SeCuida.
+- Preserve official name: BemTeVi.
 - Introduce React Router.
 - Define full-app PWA setup.
 - Replace local `currentView` navigation with routes.

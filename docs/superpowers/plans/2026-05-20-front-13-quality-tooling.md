@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add reliable quality tooling for SeCuida: explicit script names, ESLint, Prettier, content validation, broader tests, and one `pnpm run check` merge gate.
+**Goal:** Add reliable quality tooling for BemTeVi: explicit script names, ESLint, Prettier, content validation, broader tests, and one `pnpm run check` merge gate.
 
 **Architecture:** Keep tooling at the repository boundary. Runtime app code remains independent of validation scripts, while `scripts/validate-flows.ts` imports existing content/domain modules to validate the same flows and resources the app uses.
 

@@ -116,7 +116,7 @@ describe('EducationLibraryScreen', () => {
   it('shows the preview warning when at least one material was actually added', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -145,7 +145,7 @@ describe('EducationLibraryScreen', () => {
   it('renders named group headings only for groups with resources', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedGroups: [{ id: 'unused-group', title: 'Grupo sem recursos', order: 10 }],
@@ -179,7 +179,7 @@ describe('EducationLibraryScreen', () => {
   it('does not render headings for empty groups', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedGroups: [{ id: 'empty-group', title: 'Grupo Vazio', order: 5 }],
@@ -209,7 +209,7 @@ describe('EducationLibraryScreen', () => {
   it('renders named groups ordered by their order field', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedGroups: [
@@ -241,7 +241,7 @@ describe('EducationLibraryScreen', () => {
   it('renders geral section first without a heading', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
@@ -273,7 +273,7 @@ describe('EducationLibraryScreen', () => {
   it('renders geral according to the default group order', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           defaultGroupOrder: 2,
@@ -305,7 +305,7 @@ describe('EducationLibraryScreen', () => {
   it('separates geral from a previous named group without rendering a geral heading', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           defaultGroupOrder: 2,
@@ -339,7 +339,7 @@ describe('EducationLibraryScreen', () => {
   it('sorts resources within groups by groupOrder with stable tie-breaking', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -372,7 +372,7 @@ describe('EducationLibraryScreen', () => {
   it('falls back dangling group references to geral', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -399,7 +399,7 @@ describe('EducationLibraryScreen', () => {
 
   it('sets isPreviewingDrafts true when only groups have drafts', async () => {
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedGroups: [{ id: 'new-group', title: 'Novo Grupo', order: 5 }],
@@ -415,7 +415,7 @@ describe('EducationLibraryScreen', () => {
 
   it('previews a local default group order of zero against a nonzero database baseline', async () => {
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           schemaVersion: '4.0.0',
@@ -442,7 +442,7 @@ describe('EducationLibraryScreen', () => {
     expect(firstGroup).toBeDefined();
     expect(secondGroup).toBeDefined();
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           schemaVersion: '4.0.0',
@@ -482,7 +482,7 @@ describe('ResourceDetailScreen', () => {
   it('renders the source badge and dashboard-defined tags without empty badges', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           educationMaterialPatches: [
@@ -565,7 +565,7 @@ describe('ResourceDetailScreen', () => {
     const videoDescription = 'Uma prática breve para acompanhar antes do início da próxima aula.';
 
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -607,7 +607,7 @@ describe('ResourceDetailScreen', () => {
   it('previews local dashboard drafts with a warning banner', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           educationMaterialPatches: [
@@ -640,7 +640,7 @@ describe('ResourceDetailScreen', () => {
   it('does not show the preview warning on an unchanged material when another material was added', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -669,7 +669,7 @@ describe('ResourceDetailScreen', () => {
   it('shows the preview warning on a detail page for an added material', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify(
         createDraftState({
           addedEducationMaterials: [
@@ -698,7 +698,7 @@ describe('ResourceDetailScreen', () => {
   it('renders generic video URLs as full-card links instead of broken embeds', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '1.0.0',
         flowPatches: [],
@@ -736,7 +736,7 @@ describe('ResourceDetailScreen', () => {
 it('resolves local dashboard education drafts for preview', async () => {
   const resource = resourcesContent.resources[0];
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify(
       createDraftState({
         educationMaterialPatches: [
@@ -761,7 +761,7 @@ it('resolves local dashboard education drafts for preview', async () => {
 it('ignores unchanged education patches when computing preview warning state', async () => {
   const resource = resourcesContent.resources[0];
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify(
       createDraftState({
         educationMaterialPatches: [

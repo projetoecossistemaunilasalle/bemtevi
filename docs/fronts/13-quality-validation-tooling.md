@@ -4,7 +4,7 @@
 
 Create enough tooling to safely evolve a content-heavy, privacy-sensitive app.
 
-For SeCuida, content validation is as important as code validation.
+For BemTeVi, content validation is as important as code validation.
 
 ---
 

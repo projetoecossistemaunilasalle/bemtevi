@@ -36,7 +36,7 @@ export function AdminLoginScreen() {
       <div className="w-full max-w-md">
         <PageHeader
           title="Acesso administrativo"
-          description="Entre com uma conta autorizada para gerenciar o conteúdo do SeCuida."
+          description="Entre com uma conta autorizada para gerenciar o conteúdo do BemTeVi."
           icon={<LockKeyhole className="text-primary" size={36} aria-hidden="true" />}
           align="center"
         />

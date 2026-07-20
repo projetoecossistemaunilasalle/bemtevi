@@ -10,7 +10,7 @@
 
 ## 1. Product Frame
 
-**SeCuida** is a front-end prototype for educator mental-health support in Portuguese. The experience presents itself as:
+**BemTeVi** is a front-end prototype for educator mental-health support in Portuguese. The experience presents itself as:
 
 - a safe, anonymous-by-default support space;
 - a fast path for immediate distress support;

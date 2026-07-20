@@ -284,7 +284,7 @@ function TypingIndicator() {
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
             <MessageCircle size={17} />
           </span>
-          SeCuida
+          BemTeVi
         </span>
         <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
           <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />

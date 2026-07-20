@@ -51,7 +51,7 @@ Instead of rendering _only_ the active stage, the main area will display all sta
 
 ## 3. Design Tokens & Styling
 
-Adheres to the official **SeCuida** design tokens defined in [index.css](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/index.css):
+Adheres to the official **BemTeVi** design tokens defined in [index.css](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/SeCuida-Prototipo/src/index.css):
 
 - **Primary:** `var(--color-primary)` (`#006a43`) green.
 - **Secondary:** `var(--color-secondary)` (`#425e91`) blueish gray.

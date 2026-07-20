@@ -32,6 +32,6 @@ revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
 comment on table public.admin_users is
-  'Allowlist of Neon Auth users authorized to access SeCuida administration.';
+  'Allowlist of Neon Auth users authorized to access BemTeVi administration.';
 comment on function public.is_admin() is
   'Neon Data API RLS predicate for administrator-only database operations.';

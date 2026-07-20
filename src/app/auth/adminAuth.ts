@@ -53,7 +53,7 @@ function accountFromSession(session: AuthSession): AdminAccount {
 
 const MOCK_ADMIN_ACCOUNT: AdminAccount = {
   id: 'mock-admin',
-  email: 'dev@secuida.test',
+  email: 'dev@bemtevi.test',
 };
 
 export function createMockAdminAuthService(): AdminAuthService {

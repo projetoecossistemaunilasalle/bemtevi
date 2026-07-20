@@ -8,7 +8,7 @@ Preserve the current calm, welcoming visual direction while creating reusable UI
 
 ## Design Direction
 
-SeCuida should feel:
+BemTeVi should feel:
 
 - calm;
 - human;

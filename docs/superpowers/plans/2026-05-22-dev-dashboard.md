@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a dev-only dashboard route for editing SeCuida chatbot flows and education materials, saving local drafts, validating them, previewing them, and exporting one review bundle.
+**Goal:** Build a dev-only dashboard route for editing BemTeVi chatbot flows and education materials, saving local drafts, validating them, previewing them, and exporting one review bundle.
 
 **Architecture:** The dashboard lives under `src/dev-dashboard/` and is exposed only when `VITE_ENABLE_DEV_DASHBOARD=true`. Most behavior is pure TypeScript: content adapters, validation, draft storage, and export. React components consume those helpers to provide a pt-BR editor, visual flow map, chat preview, and education-material form.
 
@@ -909,7 +909,7 @@ import { validateDashboardEducation } from '../education/educationValidation';
 const baseResource: EducationResource = {
   id: 'resource-one',
   title: 'Material de teste',
-  source: 'Equipe SeCuida',
+  source: 'Equipe BemTeVi',
   description: 'Descrição clara do material.',
   tags: ['descanso'],
   audience: 'teachers',
@@ -1187,7 +1187,7 @@ import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { DashboardShippedContent } from '../content/shippedContent';
 
-const STORAGE_KEY = 'secuida:dev-dashboard:drafts:v1';
+const STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
 export const DASHBOARD_DRAFT_SCHEMA_VERSION = '1.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {
@@ -1305,7 +1305,7 @@ const flow: GuidedFlow = {
 const material: EducationResource = {
   id: 'material-one',
   title: 'Material um',
-  source: 'Equipe SeCuida',
+  source: 'Equipe BemTeVi',
   description: 'Descrição.',
   tags: ['descanso'],
   audience: 'teachers',
@@ -1372,7 +1372,7 @@ export interface DashboardDraftContent {
 export interface DashboardExportBundle {
   schemaVersion: typeof DASHBOARD_EXPORT_SCHEMA_VERSION;
   exportedAt: string;
-  source: 'secuida-dev-dashboard';
+  source: 'bemtevi-dev-dashboard';
   changes: DashboardDraftContent;
   validation: DashboardValidationResult;
 }
@@ -1391,7 +1391,7 @@ export function buildExportBundle({
   return {
     schemaVersion: DASHBOARD_EXPORT_SCHEMA_VERSION,
     exportedAt,
-    source: 'secuida-dev-dashboard',
+    source: 'bemtevi-dev-dashboard',
     changes: {
       flows: changedRecords(shipped.flows, drafts.flows),
       educationMaterials: changedRecords(shipped.educationMaterials, drafts.educationMaterials),
@@ -1493,7 +1493,7 @@ vi.mock('../content/shippedContent', () => ({
       {
         id: 'mock-material',
         title: 'Material de teste',
-        source: 'Equipe SeCuida',
+        source: 'Equipe BemTeVi',
         description: 'Descrição do material.',
         tags: ['teste'],
         audience: 'teachers',
@@ -2141,7 +2141,7 @@ export function ExportDashboard({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `secuida-dashboard-export-${bundle.exportedAt.slice(0, 10)}.json`;
+    link.download = `bemtevi-dashboard-export-${bundle.exportedAt.slice(0, 10)}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();

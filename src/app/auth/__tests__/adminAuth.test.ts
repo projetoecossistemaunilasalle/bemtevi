@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdminAuthError, createAdminAuthService, type AdminAuthBackend, type AuthSession } from '../adminAuth';
 
 const adminSession: AuthSession = {
-  user: { id: 'admin-user-id', email: 'admin@secuida.test' },
+  user: { id: 'admin-user-id', email: 'admin@bemtevi.test' },
 };
 
 function createBackend(overrides: Partial<AdminAuthBackend> = {}): AdminAuthBackend {
@@ -21,11 +21,11 @@ describe('admin auth service', () => {
     const backend = createBackend();
     const service = createAdminAuthService(backend);
 
-    await expect(service.login('admin@secuida.test', 'correct-password')).resolves.toEqual({
+    await expect(service.login('admin@bemtevi.test', 'correct-password')).resolves.toEqual({
       id: 'admin-user-id',
-      email: 'admin@secuida.test',
+      email: 'admin@bemtevi.test',
     });
-    expect(backend.signInWithPassword).toHaveBeenCalledWith('admin@secuida.test', 'correct-password');
+    expect(backend.signInWithPassword).toHaveBeenCalledWith('admin@bemtevi.test', 'correct-password');
     expect(backend.isAdmin).toHaveBeenCalledWith('admin-user-id');
   });
 
@@ -34,7 +34,7 @@ describe('admin auth service', () => {
       signInWithPassword: vi.fn().mockResolvedValue({ session: null, error: new Error('Invalid login credentials') }),
     });
 
-    await expect(createAdminAuthService(backend).login('admin@secuida.test', 'wrong')).rejects.toMatchObject({
+    await expect(createAdminAuthService(backend).login('admin@bemtevi.test', 'wrong')).rejects.toMatchObject({
       code: 'invalid_credentials',
     });
     expect(backend.isAdmin).not.toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe('admin auth service', () => {
       isAdmin: vi.fn().mockResolvedValue({ isAdmin: false, error: null }),
     });
 
-    await expect(createAdminAuthService(backend).login('user@secuida.test', 'correct-password')).rejects.toMatchObject({
+    await expect(createAdminAuthService(backend).login('user@bemtevi.test', 'correct-password')).rejects.toMatchObject({
       code: 'not_admin',
     });
     expect(backend.signOut).toHaveBeenCalledOnce();
@@ -58,7 +58,7 @@ describe('admin auth service', () => {
 
     await expect(createAdminAuthService(backend).restore()).resolves.toEqual({
       id: 'admin-user-id',
-      email: 'admin@secuida.test',
+      email: 'admin@bemtevi.test',
     });
   });
 
@@ -111,7 +111,7 @@ describe('admin auth service', () => {
     authListener?.(adminSession);
 
     expect(backend.isAdmin).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(listener).toHaveBeenCalledWith({ id: 'admin-user-id', email: 'admin@secuida.test' }));
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledWith({ id: 'admin-user-id', email: 'admin@bemtevi.test' }));
   });
 
   it('ignores an old authorization result after a newer sign-out event', async () => {
@@ -139,6 +139,6 @@ describe('admin auth service', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(listener).toHaveBeenCalledWith(null);
-    expect(listener).not.toHaveBeenCalledWith({ id: 'admin-user-id', email: 'admin@secuida.test' });
+    expect(listener).not.toHaveBeenCalledWith({ id: 'admin-user-id', email: 'admin@bemtevi.test' });
   });
 });

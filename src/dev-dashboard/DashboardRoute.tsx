@@ -59,7 +59,7 @@ function createLocalEducationMaterial(existingCount: number) {
   return {
     id: `material-local-${suffix}`,
     title: 'Novo material',
-    source: 'Equipe SeCuida',
+    source: 'Equipe BemTeVi',
     description: 'Material editável apenas neste navegador.',
     imageUrl: '',
     tags: ['novo'],

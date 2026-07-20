@@ -56,7 +56,7 @@ In `src/dev-dashboard/__tests__/educationValidation.test.ts`, update `baseResour
 const baseResource: EducationResource = {
   id: 'resource-one',
   title: 'Material de teste',
-  source: 'Equipe SeCuida',
+  source: 'Equipe BemTeVi',
   description: 'Descrição clara do material.',
   imageUrl: 'https://example.com/thumb.jpg',
   featuredImage: { kind: 'catalog', imageId: 'hands-holding-plant' },
@@ -546,7 +546,7 @@ Add:
 it('resolves local dashboard education drafts for preview', async () => {
   const resource = resourcesContent.resources[0];
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify({
       schemaVersion: '1.0.0',
       flowPatches: [],

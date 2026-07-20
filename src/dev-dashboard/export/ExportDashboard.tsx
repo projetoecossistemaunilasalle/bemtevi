@@ -10,7 +10,7 @@ import { extractImagesFromDrafts } from './extractImages';
 import { computeChangeSummary } from '../publishing/changeSummary';
 import { Button } from '../../design-system/components/Button';
 
-const LAST_EXPORTED_AT_KEY = 'secuida:dev-dashboard:lastExportedAt';
+const LAST_EXPORTED_AT_KEY = 'bemtevi:dev-dashboard:lastExportedAt';
 
 export function ExportDashboard({
   shipped,
@@ -73,7 +73,7 @@ export function ExportDashboard({
     link.href = url;
     const date = bundle.exportedAt.slice(0, 10);
     const time = bundle.exportedAt.slice(11, 19).replace(/:/g, '-');
-    link.download = `secuida-dashboard-export-${date}-${time}.zip`;
+    link.download = `bemtevi-dashboard-export-${date}-${time}.zip`;
     document.body.appendChild(link);
     link.click();
     link.remove();

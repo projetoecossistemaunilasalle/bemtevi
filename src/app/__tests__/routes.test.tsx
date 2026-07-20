@@ -8,7 +8,7 @@ import { AdminAuthProvider } from '../auth/AdminAuthProvider';
 import { AdminAuthError, type AdminAccount, type AdminAuthService } from '../auth/adminAuth';
 import { Router } from '../router';
 
-const admin: AdminAccount = { id: 'admin-id', email: 'admin@secuida.test' };
+const admin: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
 
 function createAuthService(initialAccount: AdminAccount | null = null): AdminAuthService {
   let currentAccount = initialAccount;
@@ -66,7 +66,7 @@ function renderRoute(initialEntry: string, authService = createAuthService()) {
 
 describe('Router', () => {
   it.each([
-    ['/', /bem-vindo ao secuida/i],
+    ['/', /bem-vindo ao bemtevi/i],
     ['/orientacao', /antes de começar/i],
     ['/apoio', /você não está sozinho/i],
     ['/contatos', /rede de apoio em canoas/i],
@@ -78,14 +78,14 @@ describe('Router', () => {
 
   it.each(['/login', '/dashboard'])('redirects %s home when the dashboard feature is disabled', async (route) => {
     renderRoute(route);
-    expect(await screen.findByRole('heading', { name: /bem-vindo ao secuida/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i })).toBeInTheDocument();
   });
 
   it('redirects an unauthenticated dashboard request home without exposing login', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
     renderRoute('/dashboard');
 
-    expect(await screen.findByRole('heading', { name: /bem-vindo ao secuida/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /acesso administrativo/i })).not.toBeInTheDocument();
   });
 
@@ -101,11 +101,11 @@ describe('Router', () => {
     const user = userEvent.setup();
     const authService = renderRoute('/login');
 
-    await user.type(await screen.findByLabelText(/e-mail/i), 'admin@secuida.test');
+    await user.type(await screen.findByLabelText(/e-mail/i), 'admin@bemtevi.test');
     await user.type(screen.getByLabelText(/senha/i), 'correct-password');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
-    expect(authService.login).toHaveBeenCalledWith('admin@secuida.test', 'correct-password');
+    expect(authService.login).toHaveBeenCalledWith('admin@bemtevi.test', 'correct-password');
     expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
   });
 
@@ -118,7 +118,7 @@ describe('Router', () => {
     );
     renderRoute('/login', authService);
 
-    await user.type(await screen.findByLabelText(/e-mail/i), 'admin@secuida.test');
+    await user.type(await screen.findByLabelText(/e-mail/i), 'admin@bemtevi.test');
     await user.type(screen.getByLabelText(/senha/i), 'wrong-password');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
@@ -158,7 +158,7 @@ describe('Router', () => {
 
     resolveRevalidation?.(null);
     expect(
-      await screen.findByRole('heading', { name: /bem-vindo ao secuida/i }, { timeout: 3000 }),
+      await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Dashboard' })).not.toBeInTheDocument();
   });

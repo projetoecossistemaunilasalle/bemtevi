@@ -2,7 +2,7 @@
 
 ## Goal
 
-Transform SeCuida from a local-state demo into a real mobile-first Progressive Web App with stable routing, app shell, navigation, and deployable structure.
+Transform BemTeVi from a local-state demo into a real mobile-first Progressive Web App with stable routing, app shell, navigation, and deployable structure.
 
 The whole app should be treated as the PWA, not a partial feature.
 
@@ -18,7 +18,7 @@ The prototype currently has core views for home, orientation, emergency support,
 
 ## Decisions
 
-- Official product name: **SeCuida**.
+- Official product name: **BemTeVi**.
 - Use **React Router**.
 - PWA applies to the whole app.
 - Avoid route path `/crise`; prefer a calmer support route such as `/apoio`.
@@ -91,8 +91,8 @@ public/
 
 Add:
 
-- app name: SeCuida;
-- short name: SeCuida;
+- app name: BemTeVi;
+- short name: BemTeVi;
 - theme color aligned with primary green;
 - background color white or app background;
 - display: standalone;

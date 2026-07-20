@@ -28,7 +28,7 @@ const dashboardMocks = vi.hoisted(() => ({
   content: null as PublishedContentPayload | null,
   snapshot: null as PublishedContentSnapshot | null,
   publish: vi.fn(),
-  account: { id: 'admin-id', email: 'admin@secuida.test' } as { id: string; email: string } | null,
+  account: { id: 'admin-id', email: 'admin@bemtevi.test' } as { id: string; email: string } | null,
 }));
 
 vi.mock('../publishing/publishMode', () => ({
@@ -72,7 +72,7 @@ function createDefaultShippedContact(): ServiceDirectoryEntry {
     notes: 'Atendimento por acolhimento.',
     review: {
       status: 'approved',
-      reviewedBy: 'Equipe SeCuida',
+      reviewedBy: 'Equipe BemTeVi',
       reviewedAt: '2026-07-01T12:00:00.000Z',
       notes: 'Contato conferido com a rede municipal.',
     },
@@ -246,7 +246,7 @@ vi.mock('../content/shippedContent', () => ({
       {
         id: 'mock-material',
         title: 'Material de teste',
-        source: 'Equipe SeCuida',
+        source: 'Equipe BemTeVi',
         description: 'Descrição do material.',
         tags: ['teste'],
         audience: 'teachers',
@@ -278,7 +278,7 @@ describe('DashboardRoute', () => {
     dashboardMocks.publishMode = 'export';
     dashboardMocks.content = asPayload(getShippedDashboardContent());
     dashboardMocks.snapshot = null;
-    dashboardMocks.account = { id: 'admin-id', email: 'admin@secuida.test' };
+    dashboardMocks.account = { id: 'admin-id', email: 'admin@bemtevi.test' };
     dashboardMocks.publish.mockResolvedValue({
       flows: 0,
       materials: 0,
@@ -455,7 +455,7 @@ describe('DashboardRoute', () => {
       configurable: true,
       value: scrollIntoView,
     });
-    localStorage.setItem('secuida:dev-dashboard:active-tab', 'education');
+    localStorage.setItem('bemtevi:dev-dashboard:active-tab', 'education');
 
     render(
       <MemoryRouter>
@@ -490,7 +490,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Centro');
     expect(screen.getByRole('textbox', { name: 'Telefone' })).toHaveValue('(51) 99999-8888');
 
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.contactPatches).toEqual([
       {
         id: 'canoas-caps-praca-brasil',
@@ -523,7 +523,7 @@ describe('DashboardRoute', () => {
         patch: { name: 'Contato único recuperado' },
       },
     ];
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
 
     const view = render(
       <MemoryRouter>
@@ -543,7 +543,7 @@ describe('DashboardRoute', () => {
       target: { value: 'Rua Reordenada, 123' },
     });
 
-    const storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(storedDraft.contactPatches).toEqual([
       {
         id: originalContact.id,
@@ -606,7 +606,7 @@ describe('DashboardRoute', () => {
         review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
       },
     ];
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
 
     render(
       <MemoryRouter>
@@ -628,7 +628,7 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Segundo contato editado');
-    let draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.contactPatches).toEqual([
       {
         id: 'canoas-caps-praca-brasil',
@@ -647,7 +647,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Segundo contato editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Segundo contato editado' }));
 
-    draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.contactPatches).toEqual([]);
     expect(draft.addedContacts).toEqual([]);
     expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
@@ -662,7 +662,7 @@ describe('DashboardRoute', () => {
         review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
       },
     ];
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(draftState));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(draftState));
 
     render(
       <MemoryRouter>
@@ -676,7 +676,7 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato publicado editado');
-    let storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    let storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(storedDraft.contactPatches).toEqual([
       {
         id: 'canoas-caps-praca-brasil',
@@ -697,13 +697,13 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato local selecionado');
-    storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(storedDraft.addedContacts[0].name).toBe('Contato local selecionado');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Contato local selecionado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Contato local selecionado' }));
 
-    storedDraft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(storedDraft.addedContacts).toEqual([]);
     expect(storedDraft.contactPatches).toEqual([
       {
@@ -728,7 +728,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Novo contato' }));
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Novo contato');
-    let draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.addedContacts).toHaveLength(1);
     expect(draft.addedContacts[0]).toMatchObject({
       id: 'service-local-1',
@@ -740,7 +740,7 @@ describe('DashboardRoute', () => {
       target: { value: 'Contato local editado' },
     });
 
-    draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.addedContacts).toHaveLength(1);
     expect(draft.addedContacts[0]).toMatchObject({
       id: 'service-local-1',
@@ -751,7 +751,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Contato local editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Contato local editado' }));
 
-    draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.addedContacts).toEqual([]);
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
   });
@@ -770,7 +770,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato CAPS II editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato CAPS II editado' }));
 
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
     expect(draft.contactPatches).toEqual([]);
     expect(screen.queryByRole('textbox', { name: 'Nome' })).not.toBeInTheDocument();
@@ -784,7 +784,7 @@ describe('DashboardRoute', () => {
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
-    expect(localStorage.getItem('secuida:dev-dashboard:active-tab')).toBe('contacts');
+    expect(localStorage.getItem('bemtevi:dev-dashboard:active-tab')).toBe('contacts');
 
     view.unmount();
     render(
@@ -1235,7 +1235,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para baixo' }));
 
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
 
     expect(draft.groupPatches).toEqual([
       { id: 'mock-group', sourceIndex: 0, patch: { order: 2 } },
@@ -1303,7 +1303,7 @@ describe('DashboardRoute', () => {
 
     expect(groupTitles()).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
 
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
 
     expect(draft.defaultGroupOrder).toBe(1);
     expect(draft.groupPatches).toEqual([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
@@ -1321,7 +1321,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para cima' }));
 
     const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
 
     expect(groupTitles).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
     expect(draft.defaultGroupOrder).toBe(1);
@@ -1342,7 +1342,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo de teste' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover grupo Grupo de teste' }));
 
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
     const materialGroupSelect = screen.getByLabelText('Grupo do material') as HTMLSelectElement;
 
     expect(draft.removedGroupIds).toEqual(['mock-group']);
@@ -1367,7 +1367,7 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Novo grupo para cima' }));
 
     const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
-    const draft = JSON.parse(localStorage.getItem('secuida:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
 
     expect(groupTitles).toEqual(['Geral', 'Grupo de teste', 'Novo grupo', 'Segundo grupo de teste']);
     expect(draft.addedGroups).toEqual([{ id: 'group-local-1', title: 'Novo grupo', description: '', order: 2 }]);
@@ -1484,7 +1484,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             imageUrl: 'data:image/png;base64,AAAA',
             imageFileName: 'thumb.png',
@@ -1608,7 +1608,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1638,7 +1638,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1673,7 +1673,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1709,7 +1709,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1745,7 +1745,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1780,7 +1780,7 @@ describe('DashboardRoute', () => {
           {
             id: 'mock-material',
             title: 'Material de teste',
-            source: 'Equipe SeCuida',
+            source: 'Equipe BemTeVi',
             description: 'Descrição do material.',
             tags: ['teste'],
             audience: 'teachers',
@@ -1989,7 +1989,7 @@ describe('DashboardRoute', () => {
     const user = userEvent.setup();
     dashboardMocks.publishMode = 'database';
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
         baseRevision: 3,
@@ -2038,14 +2038,14 @@ describe('DashboardRoute', () => {
     expect(payload.educationMaterials.length).toBeGreaterThan(0);
     expect(payload.educationGroups.length).toBeGreaterThan(0);
     expect(payload.defaultGroupOrder).toBe(0);
-    expect(localStorage.getItem('secuida:dev-dashboard:drafts:v1')).toBeNull();
+    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).toBeNull();
   });
 
   it('keeps local drafts when publication fails', async () => {
     const user = userEvent.setup();
     dashboardMocks.publishMode = 'database';
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
         flowPatches: [],
@@ -2073,7 +2073,7 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
     expect(await screen.findByText('Não foi possível publicar agora. Tente novamente.')).toBeInTheDocument();
-    expect(localStorage.getItem('secuida:dev-dashboard:drafts:v1')).not.toBeNull();
+    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).not.toBeNull();
   });
 
   it('compares edits against the database content baseline', async () => {
@@ -2093,7 +2093,7 @@ describe('DashboardRoute', () => {
       defaultGroupOrder: 0,
     };
     localStorage.setItem(
-      'secuida:dev-dashboard:drafts:v1',
+      'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
         flowPatches: [],

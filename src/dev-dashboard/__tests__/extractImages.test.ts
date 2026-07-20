@@ -15,7 +15,7 @@ const contact: ServiceDirectoryEntry = {
   address: 'Av. Getúlio Vargas, 7071 - Centro, Canoas - RS',
   phoneDisplay: '(51) 3236-1500',
   phoneHref: 'tel:5132361500',
-  review: { status: 'approved', reviewedBy: 'Equipe SeCuida', reviewedAt: null, notes: '' },
+  review: { status: 'approved', reviewedBy: 'Equipe BemTeVi', reviewedAt: null, notes: '' },
 };
 
 describe('extractImagesFromDrafts', () => {
@@ -28,7 +28,7 @@ describe('extractImagesFromDrafts', () => {
         {
           id: 'material-one',
           title: 'Material',
-          source: 'Equipe SeCuida',
+          source: 'Equipe BemTeVi',
           description: 'Descrição.',
           imageUrl: pngDataUrl('thumb'),
           imageFileName: 'thumb upload.png',

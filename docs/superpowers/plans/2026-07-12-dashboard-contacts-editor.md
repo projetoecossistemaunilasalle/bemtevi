@@ -255,7 +255,7 @@ it('merges patched, added, and removed contacts', () => {
 
 it('migrates v2 drafts by initializing contact collections', () => {
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify({
       ...legacyV2Draft,
       schemaVersion: '2.0.0',
@@ -477,7 +477,7 @@ it('edits contacts in a persisted dashboard tab', async () => {
   await user.clear(screen.getByLabelText('Nome'));
   await user.type(screen.getByLabelText('Nome'), 'CAPS Atualizado');
   expect(screen.getByLabelText('Nome')).toHaveValue('CAPS Atualizado');
-  expect(localStorage.getItem('secuida:dev-dashboard:active-tab')).toBe('contacts');
+  expect(localStorage.getItem('bemtevi:dev-dashboard:active-tab')).toBe('contacts');
 
   unmount();
   render(<MemoryRouter><DashboardRoute /></MemoryRouter>);

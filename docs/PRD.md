@@ -1,15 +1,15 @@
-# SeCuida — Product Requirements Document
+# BemTeVi — Product Requirements Document
 
 **Version:** 1.1  
 **Status:** Draft  
 **Audience:** Product, Design, Development, Clinical Review  
-**Product Name:** SeCuida
+**Product Name:** BemTeVi
 
 ---
 
 ## 1. Product Vision
 
-SeCuida is a mental-health support platform for teachers, especially public school teachers, designed to provide a safe, welcoming, privacy-preserving space where users can reflect on their emotional state, access guided orientation, find curated mental-health resources, and discover professional support options.
+BemTeVi is a mental-health support platform for teachers, especially public school teachers, designed to provide a safe, welcoming, privacy-preserving space where users can reflect on their emotional state, access guided orientation, find curated mental-health resources, and discover professional support options.
 
 The platform does not diagnose, does not replace professional care, and does not collect personally identifiable information by default.
 
@@ -37,7 +37,7 @@ The typical user may be:
 - concerned about privacy;
 - unsure whether what they are feeling is “serious enough” to seek help.
 
-SeCuida must earn trust quickly and avoid feeling like a clinical intake system.
+BemTeVi must earn trust quickly and avoid feeling like a clinical intake system.
 
 ---
 
@@ -71,7 +71,7 @@ Immediate support must always be available, but the app should avoid alarmist la
 
 ## 4. Product Scope
 
-SeCuida is a mobile-first Progressive Web App.
+BemTeVi is a mobile-first Progressive Web App.
 
 The entire app should be installable and usable as a PWA.
 
@@ -108,7 +108,7 @@ The education library may be accessed from result screens, Home, and resource re
 
 ## 6.1 Home, Philosophy & Onboarding
 
-The Home screen is responsible for explaining SeCuida’s purpose and building trust.
+The Home screen is responsible for explaining BemTeVi’s purpose and building trust.
 
 It should include:
 
@@ -322,7 +322,7 @@ Flow results may recommend a primary resource by stable resource ID.
 
 ## 7. Privacy and LGPD
 
-SeCuida must avoid collecting personally identifiable information by default.
+BemTeVi must avoid collecting personally identifiable information by default.
 
 The platform should not request:
 
@@ -390,7 +390,7 @@ Never collect:
 
 ## 9. Design Requirements
 
-SeCuida should feel:
+BemTeVi should feel:
 
 - calm;
 - safe;
@@ -473,7 +473,7 @@ A strong MVP includes:
 
 ## 13. Success Criteria
 
-SeCuida succeeds if a teacher can:
+BemTeVi succeeds if a teacher can:
 
 - understand what the app is within seconds;
 - trust that they are not being identified;

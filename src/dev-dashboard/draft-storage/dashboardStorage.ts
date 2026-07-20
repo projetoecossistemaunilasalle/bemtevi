@@ -4,7 +4,7 @@ import type { EducationResourceGroup } from '../../content/resources/groups';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import type { DashboardShippedContent } from '../content/shippedContent';
 
-const STORAGE_KEY = 'secuida:dev-dashboard:drafts:v1';
+const STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
 export const DASHBOARD_DRAFT_SCHEMA_VERSION = '4.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {

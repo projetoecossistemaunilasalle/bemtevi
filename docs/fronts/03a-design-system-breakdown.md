@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the third implementation task for SeCuida.
+This document breaks down the third implementation task for BemTeVi.
 
 It is derived from the current repository state on the `develop` branch and from the following project documents:
 

@@ -175,7 +175,7 @@ Global actions may be available through the constrained autocomplete, but they s
 The Orientation route should render as a clean chat surface:
 
 - no extra page title or explanatory panel above the chat;
-- SeCuida messages stay on the left, with the chat icon next to the `SeCuida` sender label;
+- BemTeVi messages stay on the left, with the chat icon next to the `BemTeVi` sender label;
 - user-selected messages stay on the right;
 - option bubbles float on the right above the composer;
 - clicking an option bubble immediately sends the answer and advances the flow;

@@ -24,7 +24,7 @@ export function TopBar() {
       <div className="flex items-center px-container-padding-mobile h-16 w-full max-w-7xl mx-auto justify-between">
         <Link to={routes.home} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Brain className="text-primary" size={28} />
-          <span className="font-headline-lg-mobile text-primary">SeCuida</span>
+          <span className="font-headline-lg-mobile text-primary">BemTeVi</span>
         </Link>
 
         <div className="flex items-center gap-2">

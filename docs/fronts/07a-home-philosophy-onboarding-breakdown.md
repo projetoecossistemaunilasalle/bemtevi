@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the seventh implementation task for SeCuida.
+This document breaks down the seventh implementation task for BemTeVi.
 
 It is derived from:
 
@@ -12,7 +12,7 @@ It is derived from:
 - `docs/fronts/04a-content-data-modeling-breakdown.md`
 - `docs/fronts/11-privacy-lgpd-session.md`
 
-The goal is to make Home clearly explain SeCuida's purpose, privacy posture, non-diagnostic nature, and main paths without creating persistence or a clinical intake feel.
+The goal is to make Home clearly explain BemTeVi's purpose, privacy posture, non-diagnostic nature, and main paths without creating persistence or a clinical intake feel.
 
 ---
 
@@ -32,9 +32,9 @@ After Front 04A, Home copy may already live in `src/content/copy/home.ts`.
 4. three equal-weight entry paths;
 5. quiet links to privacy and education content if they are distinct from onboarding.
 
-Home should answer what SeCuida is, whether it is anonymous, whether it is diagnostic, and what the user can do next.
+Home should answer what BemTeVi is, whether it is anonymous, whether it is diagnostic, and what the user can do next.
 
-Guardrail: do not add `howItWorksTitle`, `howItWorksItems`, a `HowItWorks` component, or a visible “Como funciona” Home section while the app-style starting screen exists. The starting screen already explains how SeCuida works.
+Guardrail: do not add `howItWorksTitle`, `howItWorksItems`, a `HowItWorks` component, or a visible “Como funciona” Home section while the app-style starting screen exists. The starting screen already explains how BemTeVi works.
 
 ---
 
@@ -142,4 +142,4 @@ npm run build
 
 ## Definition of Done
 
-Front 07A is done when Home clearly communicates SeCuida's purpose, trust posture, non-diagnostic role, and main next steps through content-driven, mobile-first UI without introducing persistent onboarding state.
+Front 07A is done when Home clearly communicates BemTeVi's purpose, trust posture, non-diagnostic role, and main next steps through content-driven, mobile-first UI without introducing persistent onboarding state.

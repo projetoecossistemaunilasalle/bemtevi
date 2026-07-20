@@ -21,7 +21,7 @@ export interface DashboardDraftContent {
 export interface DashboardExportBundle {
   schemaVersion: typeof DASHBOARD_EXPORT_SCHEMA_VERSION;
   exportedAt: string;
-  source: 'secuida-dev-dashboard';
+  source: 'bemtevi-dev-dashboard';
   changes: DashboardDraftContent;
   validation: DashboardValidationResult;
 }
@@ -40,7 +40,7 @@ export function buildExportBundle({
   return {
     schemaVersion: DASHBOARD_EXPORT_SCHEMA_VERSION,
     exportedAt,
-    source: 'secuida-dev-dashboard',
+    source: 'bemtevi-dev-dashboard',
     changes: {
       flows: changedRecords(shipped.flows, drafts.flows),
       educationMaterials: changedRecords(shipped.educationMaterials, drafts.educationMaterials),

@@ -490,7 +490,7 @@ with check (
 );
 
 comment on table public.published_content is
-  'Singleton live SeCuida content snapshot read by the public application.';
+  'Singleton live BemTeVi content snapshot read by the public application.';
 comment on column public.published_content.revision is
   'Optimistic concurrency revision incremented by each successful publication.';
 ```
@@ -606,7 +606,7 @@ export function createConfiguredNeonClient(config: NeonConfig = getNeonConfig(),
   });
 }
 
-export type SeCuidaNeonClient = NonNullable<ReturnType<typeof createConfiguredNeonClient>>;
+export type BemTeViNeonClient = NonNullable<ReturnType<typeof createConfiguredNeonClient>>;
 export const defaultNeonClient = createConfiguredNeonClient();
 ```
 

@@ -93,7 +93,7 @@ describe('OrientationScreen', () => {
 
     expect(screen.getByRole('heading', { name: 'Antes de começar' })).toBeInTheDocument();
     expect(
-      screen.getByText('Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.'),
+      screen.getByText('Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.'),
     ).toBeInTheDocument();
     expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('OrientationScreen', () => {
     startOrientationWithStarter();
 
     expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
-    expect(screen.getAllByText('SeCuida')).toHaveLength(2);
+    expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
   });
 
   it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
@@ -288,7 +288,7 @@ describe('OrientationScreen', () => {
     expect(
       screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
+    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
 
     advanceInitialLoad();
@@ -306,7 +306,7 @@ describe('OrientationScreen', () => {
 
     expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
     expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
-    expect(screen.getByText('SeCuida')).toBeInTheDocument();
+    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
 
     advanceInitialLoad();
 

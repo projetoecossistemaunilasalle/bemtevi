@@ -21,5 +21,5 @@ export function createConfiguredNeonClient(config: NeonConfig = getNeonConfig(),
   });
 }
 
-export type SeCuidaNeonClient = NonNullable<ReturnType<typeof createConfiguredNeonClient>>;
+export type BemTeViNeonClient = NonNullable<ReturnType<typeof createConfiguredNeonClient>>;
 export const defaultNeonClient = createConfiguredNeonClient();

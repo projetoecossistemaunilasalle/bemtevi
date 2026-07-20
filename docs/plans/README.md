@@ -1,6 +1,6 @@
 # Fronts 01-05 Implementation Plans
 
-These plans turn the existing SeCuida prototype into a routed, feature-organized, content-driven PWA foundation and the first guided-flow/chat framework.
+These plans turn the existing BemTeVi prototype into a routed, feature-organized, content-driven PWA foundation and the first guided-flow/chat framework.
 
 They consolidate:
 

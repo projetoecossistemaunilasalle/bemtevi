@@ -2,7 +2,7 @@
 
 ## Context
 
-SeCuida is now a routed, content-driven React/Vite prototype with TypeScript, Vitest, Testing Library, a PWA build, structured content, and pure domain logic for guided flows and SRQ-20. The project already has useful validation through `pnpm run lint`, `pnpm run test`, and `pnpm run build`, but `lint` currently means TypeScript checking and there is no single merge-gate command or repo-wide content validation CLI.
+BemTeVi is now a routed, content-driven React/Vite prototype with TypeScript, Vitest, Testing Library, a PWA build, structured content, and pure domain logic for guided flows and SRQ-20. The project already has useful validation through `pnpm run lint`, `pnpm run test`, and `pnpm run build`, but `lint` currently means TypeScript checking and there is no single merge-gate command or repo-wide content validation CLI.
 
 Front 13 should make the repository safer to evolve without adding product features. The app is privacy-sensitive and content-heavy, so content validation must be treated as a first-class quality gate alongside type checking, linting, tests, and build verification.
 

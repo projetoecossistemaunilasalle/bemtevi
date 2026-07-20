@@ -8,7 +8,7 @@ import {
   type PublishedContentSnapshot,
 } from './publishedContent';
 import type { Database } from '../neon/database';
-import { defaultNeonClient, type SeCuidaNeonClient } from '../neon/client';
+import { defaultNeonClient, type BemTeViNeonClient } from '../neon/client';
 
 export type PublishedContentRepositoryErrorCode =
   | 'not_configured'
@@ -106,7 +106,7 @@ function parseRow(row: PublishedContentRow): PublishedContentSnapshot {
   }
 }
 
-export function createNeonPublishedContentGateway(client: SeCuidaNeonClient): PublishedContentGateway {
+export function createNeonPublishedContentGateway(client: BemTeViNeonClient): PublishedContentGateway {
   return {
     async readCurrent() {
       const { data, error } = await client.from('published_content').select('*').eq('id', 'current').maybeSingle();

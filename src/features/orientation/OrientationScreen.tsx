@@ -341,7 +341,7 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
             <div className="min-w-0">
               <h1 className="font-title-lg text-on-surface">Antes de começar</h1>
               <p className="mt-2 max-w-xl font-body-md text-on-surface-variant">
-                Escolha um caminho para começar. O SeCuida vai te guiar com perguntas simples, no seu ritmo.
+                Escolha um caminho para começar. O BemTeVi vai te guiar com perguntas simples, no seu ritmo.
               </p>
             </div>
           </div>
@@ -377,7 +377,7 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.sender === 'user';
-  const label = isUser ? 'Você' : 'SeCuida';
+  const label = isUser ? 'Você' : 'BemTeVi';
 
   return (
     <article className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -428,7 +428,7 @@ function TypingIndicator() {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
               <MessageCircle size={17} />
             </span>
-            SeCuida
+            BemTeVi
           </span>
           <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
             <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />

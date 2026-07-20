@@ -7,7 +7,7 @@ import type { AdminAccount, AdminAuthService } from '../../auth/adminAuth';
 import { BottomNav } from '../BottomNav';
 import { TopBar } from '../TopBar';
 
-const admin: AdminAccount = { id: 'admin-id', email: 'admin@secuida.test' };
+const admin: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
 
 type TestAdminAuthService = AdminAuthService & { emit(account: AdminAccount | null): void };
 
@@ -51,7 +51,7 @@ describe('app navigation', () => {
 
     expect(await screen.findByRole('navigation', { name: /navegação principal/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/admin@secuida.test/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/admin@bemtevi.test/i)).not.toBeInTheDocument();
   });
 
   it('shows authorized admins a dashboard link and session controls in the top bar', async () => {
@@ -59,7 +59,7 @@ describe('app navigation', () => {
 
     const desktopNav = await screen.findByRole('navigation', { name: /navegação principal/i });
     expect(within(desktopNav).getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/dashboard');
-    expect(await screen.findByText('admin@secuida.test')).toBeInTheDocument();
+    expect(await screen.findByText('admin@bemtevi.test')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /ver site/i })).toHaveAttribute('href', '/');
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe('app navigation', () => {
     await user.click(await screen.findByRole('button', { name: /sair/i }));
 
     expect(service.logout).toHaveBeenCalledOnce();
-    expect(screen.queryByText('admin@secuida.test')).not.toBeInTheDocument();
+    expect(screen.queryByText('admin@bemtevi.test')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
 
     rejectLogout?.(new Error('network unavailable'));
@@ -92,6 +92,6 @@ describe('app navigation', () => {
     service.emit(admin);
 
     await vi.waitFor(() => expect(service.logout).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText('admin@secuida.test')).not.toBeInTheDocument();
+    expect(screen.queryByText('admin@bemtevi.test')).not.toBeInTheDocument();
   });
 });

@@ -2,10 +2,10 @@ import type { DashboardTab } from '../components/DashboardShell';
 
 /**
  * Persists the active dashboard tab across reloads, mirroring the localStorage
- * convention used by `dashboardStorage.ts` (secuida: namespace, plain value).
+ * convention used by `dashboardStorage.ts` (bemtevi: namespace, plain value).
  * Falls back to `defaultTab` when storage is unavailable or holds garbage.
  */
-const STORAGE_KEY = 'secuida:dev-dashboard:active-tab';
+const STORAGE_KEY = 'bemtevi:dev-dashboard:active-tab';
 
 const validTabs: readonly DashboardTab[] = ['flows', 'education', 'contacts', 'export'];
 

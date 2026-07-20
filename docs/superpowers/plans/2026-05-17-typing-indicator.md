@@ -88,7 +88,7 @@ describe('OrientationScreen', () => {
     advanceInitialLoad();
 
     expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
-    expect(screen.getAllByText('SeCuida')).toHaveLength(2);
+    expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
   });
 
   it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
@@ -234,7 +234,7 @@ function TypingIndicator() {
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
             <MessageCircle size={17} />
           </span>
-          SeCuida
+          BemTeVi
         </span>
         <div className="ml-10 rounded-2xl rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] px-4 py-3 shadow-sm">
           <span className="orientation-typing-dot" style={{ animationDelay: '0s' }} />
@@ -457,7 +457,7 @@ it('shows typing indicator before initial greeting appears', () => {
 
   // Typing indicator visible, no messages yet
   expect(screen.queryByText('Vamos olhar para essa sobrecarga com calma')).not.toBeInTheDocument();
-  expect(screen.getByText('SeCuida')).toBeInTheDocument(); // avatar in typing indicator
+  expect(screen.getByText('BemTeVi')).toBeInTheDocument(); // avatar in typing indicator
 
   // After delay, messages appear
   advanceInitialLoad();

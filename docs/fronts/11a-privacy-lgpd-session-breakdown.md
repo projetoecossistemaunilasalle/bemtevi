@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the eleventh implementation task for SeCuida.
+This document breaks down the eleventh implementation task for BemTeVi.
 
 It is derived from:
 
@@ -155,4 +155,4 @@ npm run build
 
 ## Definition of Done
 
-Front 11A is done when SeCuida has a clear session/privacy policy, a real privacy screen, and enforceable guardrails that keep sensitive flow/questionnaire state, location, and analytics from being persisted or collected by default.
+Front 11A is done when BemTeVi has a clear session/privacy policy, a real privacy screen, and enforceable guardrails that keep sensitive flow/questionnaire state, location, and analytics from being persisted or collected by default.

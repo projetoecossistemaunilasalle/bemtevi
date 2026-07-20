@@ -15,8 +15,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'SeCuida',
-        short_name: 'SeCuida',
+        name: 'BemTeVi',
+        short_name: 'BemTeVi',
         description: 'Orientação emocional, recursos e apoio para educadores.',
         display: 'standalone',
         lang: 'pt-BR',

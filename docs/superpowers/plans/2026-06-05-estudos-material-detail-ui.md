@@ -65,7 +65,7 @@ Add:
 it('previews local dashboard drafts with a warning banner', () => {
   const resource = resourcesContent.resources[0];
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify({
       schemaVersion: '1.0.0',
       flowPatches: [],
@@ -107,7 +107,7 @@ Add:
 it('renders generic video URLs as full-card links instead of broken embeds', () => {
   const resource = resourcesContent.resources[0];
   localStorage.setItem(
-    'secuida:dev-dashboard:drafts:v1',
+    'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify({
       schemaVersion: '1.0.0',
       flowPatches: [],

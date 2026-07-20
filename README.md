@@ -1,6 +1,6 @@
-# SeCuida
+# BemTeVi
 
-SeCuida is a mobile-first React/Vite prototype for educator mental-health support in Portuguese. It offers a calm, anonymous-by-default experience for guided orientation, immediate support, educational resources, and local support contacts.
+BemTeVi is a mobile-first React/Vite prototype for educator mental-health support in Portuguese. It offers a calm, anonymous-by-default experience for guided orientation, immediate support, educational resources, and local support contacts.
 
 The app does not diagnose, does not replace professional care, and should not collect personal identification by default.
 
@@ -58,7 +58,7 @@ delete from public.admin_users
 where user_id = (select id from neon_auth."user" where email = 'admin@example.com');
 ```
 
-For GitHub Pages, configure `VITE_NEON_AUTH_URL` and `VITE_NEON_DATA_API_URL` as repository variables. In Neon Console → Auth → Configuration → Domains, also add `https://niciniv.github.io` as a trusted production domain (protocol included, no trailing slash). Localhost origins are preconfigured by Neon. Browser route guards protect the UI; all future dashboard database writes must also use Neon Data API RLS policies based on `public.is_admin()`.
+The `BemTeVi` Neon project is the shared backend for both GitHub Pages frontends. Configure the same `VITE_NEON_AUTH_URL` and `VITE_NEON_DATA_API_URL` repository variables in `niciniV/SeCuida-Prototipo` and `projetoecossistemaunilasalle/secuida`. Neon Auth must trust both `https://niciniv.github.io` and `https://projetoecossistemaunilasalle.github.io` (protocol included, no trailing slash). Localhost origins are preconfigured by Neon. Browser route guards protect the UI; database writes are additionally restricted by Neon Data API RLS policies based on `public.is_admin()`.
 
 ## Operations
 

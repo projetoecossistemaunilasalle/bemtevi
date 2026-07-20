@@ -10,7 +10,7 @@ This is essential for maintainability and future dashboard readiness.
 
 ## Content Types
 
-SeCuida needs structured content for:
+BemTeVi needs structured content for:
 
 ```txt
 guided flows

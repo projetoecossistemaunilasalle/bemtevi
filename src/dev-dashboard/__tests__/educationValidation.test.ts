@@ -7,7 +7,7 @@ import { validateDashboardEducation } from '../education/educationValidation';
 const baseResource: EducationResource = {
   id: 'resource-one',
   title: 'Material de teste',
-  source: 'Equipe SeCuida',
+  source: 'Equipe BemTeVi',
   description: 'Descrição clara do material.',
   imageUrl: 'https://example.com/thumb.jpg',
   featuredImage: { kind: 'catalog', imageId: 'hands-holding-plant' },

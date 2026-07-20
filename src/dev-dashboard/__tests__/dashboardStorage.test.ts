@@ -366,7 +366,7 @@ describe('dashboardStorage', () => {
       addedEducationMaterials: [],
       updatedAt: '2026-05-22T00:00:00.000Z',
     };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(v1Draft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(v1Draft));
 
     const loaded = loadDashboardDrafts();
 
@@ -400,7 +400,7 @@ describe('dashboardStorage', () => {
       removedFlowIds: ['removed-flow'],
       updatedAt: '2026-06-15T00:00:00.000Z',
     };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(v2Draft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(v2Draft));
 
     expect(loadDashboardDrafts()).toEqual({
       ...v2Draft,
@@ -423,7 +423,7 @@ describe('dashboardStorage', () => {
       addedGroups: [],
       updatedAt: null,
     };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(incompleteV3Draft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(incompleteV3Draft));
 
     expect(loadDashboardDrafts()).toEqual({
       ...incompleteV3Draft,
@@ -453,7 +453,7 @@ describe('dashboardStorage', () => {
       removedContactIds: { id: contact.id },
       updatedAt: null,
     };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(malformedV3Draft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(malformedV3Draft));
 
     const loaded = loadDashboardDrafts();
 
@@ -475,7 +475,7 @@ describe('dashboardStorage', () => {
       addedEducationMaterials: [],
       updatedAt: '2026-05-22T00:00:00.000Z',
     };
-    localStorage.setItem('secuida:dev-dashboard:drafts:v1', JSON.stringify(unknownDraft));
+    localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(unknownDraft));
 
     const loaded = loadDashboardDrafts();
 

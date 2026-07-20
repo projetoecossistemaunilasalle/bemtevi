@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document breaks down the sixth implementation task for SeCuida.
+This document breaks down the sixth implementation task for BemTeVi.
 
 It is derived from:
 
@@ -17,7 +17,7 @@ The goal is to extend the guided-flow framework with generic questionnaire behav
 
 ## Current State
 
-After Front 05A, SeCuida should have a generic flow schema, runtime engine, constrained chat UI, and at least one non-questionnaire flow. It still needs questionnaire-specific concepts: consent, fixed question sets, scoring, thresholds, safety interruption, and result recommendations.
+After Front 05A, BemTeVi should have a generic flow schema, runtime engine, constrained chat UI, and at least one non-questionnaire flow. It still needs questionnaire-specific concepts: consent, fixed question sets, scoring, thresholds, safety interruption, and result recommendations.
 
 ---
 
@@ -176,4 +176,4 @@ npm run build
 
 ## Definition of Done
 
-Front 06A is done when SRQ-20 runs as structured questionnaire content through generic domain logic, has automated tests for validation, scoring, thresholds, consent, and safety interruption, and preserves SeCuida's privacy and non-diagnostic product commitments.
+Front 06A is done when SRQ-20 runs as structured questionnaire content through generic domain logic, has automated tests for validation, scoring, thresholds, consent, and safety interruption, and preserves BemTeVi's privacy and non-diagnostic product commitments.

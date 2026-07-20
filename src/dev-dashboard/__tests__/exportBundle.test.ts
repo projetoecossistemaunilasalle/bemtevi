@@ -19,7 +19,7 @@ const flow: GuidedFlow = {
 const material: EducationResource = {
   id: 'material-one',
   title: 'Material um',
-  source: 'Equipe SeCuida',
+  source: 'Equipe BemTeVi',
   description: 'Descrição.',
   tags: ['descanso'],
   audience: 'teachers',
@@ -41,7 +41,7 @@ const contact: ServiceDirectoryEntry = {
   notes: 'Atendimento por acolhimento.',
   review: {
     status: 'approved',
-    reviewedBy: 'Equipe SeCuida',
+    reviewedBy: 'Equipe BemTeVi',
     reviewedAt: '2026-07-01T12:00:00.000Z',
     notes: 'Contato conferido com a rede municipal.',
   },

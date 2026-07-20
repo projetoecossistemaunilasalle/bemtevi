@@ -57,7 +57,7 @@ function makeSnapshot(revision: number): PublishedContentSnapshot {
   };
 }
 
-const account: AdminAccount = { id: 'admin-id', email: 'admin@secuida.test' };
+const account: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
 
 function renderPublish({
   publish = vi.fn<PublishedContentContextValue['publish']>(),

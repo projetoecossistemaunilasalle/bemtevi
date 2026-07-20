@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a welcoming pre-chat screen that always appears before the Orientacao chatbot, matching the current SeCuida visual language and giving users safe starter messages.
+**Goal:** Add a welcoming pre-chat screen that always appears before the Orientacao chatbot, matching the current BemTeVi visual language and giving users safe starter messages.
 
 **Architecture:** Gate the existing chatbot behind a local `hasStarted` state. The new intro view lives inside `OrientationScreen.tsx` and reuses the same page frame, colors, rounded panel, and typography. When the user chooses a starter, the component starts the current guided flow after the existing typing delay; non-"Outro" starters are inserted as the first user message so the conversation feels continuous.
 
@@ -107,7 +107,7 @@ it('exposes the conversation as an accessible log with sender context', () => {
   startOrientationWithStarter();
 
   expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
-  expect(screen.getAllByText('SeCuida')).toHaveLength(2);
+  expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
 });
 
 it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
@@ -178,7 +178,7 @@ it('starts the chatbot after a starter and records the starter as a user message
 
   expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
   expect(screen.queryByText('Tive um dia cheio.')).not.toBeInTheDocument();
-  expect(screen.getByText('SeCuida')).toBeInTheDocument();
+  expect(screen.getByText('BemTeVi')).toBeInTheDocument();
 
   advanceInitialLoad();
 
@@ -485,7 +485,7 @@ http://localhost:3000/SeCuida-Prototipo/orientacao
 
 Expected visual result:
 
-- Header remains the same SeCuida app header.
+- Header remains the same BemTeVi app header.
 - Bottom nav remains visible with "Orientação" active.
 - The first visible screen is the "Antes de começar" intro panel.
 - The intro panel uses the same white surface, green accent, soft border, and rounded-xl framing as the existing chatbot.
@@ -524,7 +524,7 @@ If no fixes are needed, do not create an empty commit.
 
 ## Self-Review
 
-**Spec coverage:** The plan adds a screen that always appears before the chatbot, keeps the SeCuida theme, includes title/subtitle/helpful starter messages, uses safe Portuguese copy, and keeps the existing chatbot as the next step.
+**Spec coverage:** The plan adds a screen that always appears before the chatbot, keeps the BemTeVi theme, includes title/subtitle/helpful starter messages, uses safe Portuguese copy, and keeps the existing chatbot as the next step.
 
 **Placeholder scan:** No placeholder implementation steps remain. Each code change includes concrete snippets, and every verification command includes an expected result.
 

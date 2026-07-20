@@ -10,7 +10,7 @@ Privacy is not a later legal screen. It shapes architecture.
 
 ## Known Product Direction
 
-SeCuida should not require:
+BemTeVi should not require:
 
 ```txt
 login

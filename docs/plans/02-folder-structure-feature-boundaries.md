@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make SeCuida readable by product domain so future work can land without turning the app back into a large view folder.
+Make BemTeVi readable by product domain so future work can land without turning the app back into a large view folder.
 
 ## Source Context
 

@@ -9,7 +9,7 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
   const steps = [
     {
       icon: <Brain size={48} className="text-on-primary" />,
-      title: 'Bem-vindo ao SeCuida',
+      title: 'Bem-vindo ao BemTeVi',
       body: 'Um espaço seguro e anônimo para cuidar de você. Aqui, ninguém precisa saber quem você é — só importa como você está se sentindo.',
     },
     {
@@ -25,7 +25,7 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
     {
       icon: <HeartHandshake size={48} className="text-on-primary" />,
       title: 'Você não está sozinho(a)',
-      body: 'O SeCuida foi feito para educadores que merecem acolhimento. Vamos começar?',
+      body: 'O BemTeVi foi feito para educadores que merecem acolhimento. Vamos começar?',
     },
   ];
 

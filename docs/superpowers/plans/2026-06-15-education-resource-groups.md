@@ -18,7 +18,7 @@
 - Only locally added groups can be removed. Shipped groups can be edited but not deleted.
 - `groupOrder` is editable in the dashboard and controls order within a group; missing values sort last.
 - Group descriptions are omitted from this iteration because they have no editing or rendering use.
-- Keep localStorage key `secuida:dev-dashboard:drafts:v1` so the existing value can be migrated in place.
+- Keep localStorage key `bemtevi:dev-dashboard:drafts:v1` so the existing value can be migrated in place.
 - Bump both draft and export schemas from `1.0.0` to `2.0.0`.
 
 ## File Map
