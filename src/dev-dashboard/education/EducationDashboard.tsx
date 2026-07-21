@@ -680,13 +680,17 @@ export function EducationDashboard({
                       {/* Header Row */}
                       <div
                         className="flex flex-wrap items-center justify-between gap-2 p-3.5 cursor-pointer select-none"
-                        onClick={() => toggleBlockExpanded(block.id)}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('[data-no-toggle]')) return;
+                          toggleBlockExpanded(block.id);
+                        }}
                         role="button"
                         tabIndex={0}
                         aria-expanded={isExpanded}
                         aria-label={`Bloco ${blockNumber}: ${blockKindLabels[block.kind]}`}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
+                            if ((e.target as HTMLElement).closest('[data-no-toggle]')) return;
                             e.preventDefault();
                             toggleBlockExpanded(block.id);
                           }
@@ -714,10 +718,7 @@ export function EducationDashboard({
                         </div>
 
                         {/* Actions Bar inside Header */}
-                        <div
-                          className="flex items-center gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className="flex items-center gap-1.5" data-no-toggle>
                           <Button
                             variant="secondary"
                             size="sm"
