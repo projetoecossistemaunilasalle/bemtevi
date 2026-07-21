@@ -2135,4 +2135,81 @@ describe('DashboardRoute', () => {
     const contactsStat = screen.getByText('Contatos', { selector: 'p' }).closest('div');
     expect(contactsStat).toHaveTextContent('1 editado');
   });
+
+  it('renders "Limpar TODAS as alterações" button disabled when no local draft changes exist', async () => {
+    const user = userEvent.setup();
+    dashboardMocks.publishMode = 'database';
+    dashboardMocks.content = {
+      flows: [],
+      educationMaterials: [],
+      educationGroups: [],
+      contacts: [createDefaultShippedContact()],
+      defaultGroupOrder: 0,
+    };
+    localStorage.removeItem('bemtevi:dev-dashboard:drafts:v1');
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Publicar' }));
+
+    const clearButton = screen.getByRole('button', { name: 'Limpar TODAS as alterações' });
+    expect(clearButton).toBeInTheDocument();
+    expect(clearButton).toBeDisabled();
+    expect(screen.getByText('Descartar rascunho local')).toBeInTheDocument();
+    expect(screen.getByText(/O conteúdo já publicado não será alterado ou apagado/i)).toBeInTheDocument();
+  });
+
+  it('clears all local draft changes when "Limpar TODAS as alterações" is confirmed', async () => {
+    const user = userEvent.setup();
+    dashboardMocks.publishMode = 'database';
+    dashboardMocks.content = {
+      flows: [],
+      educationMaterials: [],
+      educationGroups: [],
+      contacts: [createDefaultShippedContact()],
+      defaultGroupOrder: 0,
+    };
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify({
+        schemaVersion: '4.0.0',
+        flowPatches: [],
+        educationMaterialPatches: [],
+        groupPatches: [],
+        addedFlows: [],
+        addedEducationMaterials: [],
+        addedGroups: [],
+        contactPatches: [{ id: createDefaultShippedContact().id, sourceIndex: 0, patch: { name: 'Contato Editado' } }],
+        removedContactIds: [],
+        updatedAt: '2026-07-12T00:00:00.000Z',
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Publicar' }));
+
+    const clearButton = screen.getByRole('button', { name: 'Limpar TODAS as alterações' });
+    expect(clearButton).not.toBeDisabled();
+
+    // Click to arm
+    await user.click(clearButton);
+    const confirmButton = screen.getByRole('button', { name: 'Confirmar e limpar tudo' });
+    expect(confirmButton).toBeInTheDocument();
+
+    // Click to confirm
+    await user.click(confirmButton);
+
+    // Verify drafts local storage was cleared
+    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Limpar TODAS as alterações' })).toBeDisabled();
+  });
 });

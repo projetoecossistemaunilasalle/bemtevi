@@ -619,6 +619,7 @@ export function DashboardRoute() {
               draftUpdatedAt={draftState.updatedAt}
               expectedRevision={draftState.baseRevision ?? null}
               onPublished={() => setDraftState(resetDashboardDrafts())}
+              onResetDrafts={() => setDraftState(resetDashboardDrafts())}
             />
           ) : (
             <ExportDashboard
@@ -626,6 +627,7 @@ export function DashboardRoute() {
               drafts={drafts}
               validation={validation}
               draftUpdatedAt={draftState.updatedAt}
+              onResetDrafts={() => setDraftState(resetDashboardDrafts())}
             />
           ))}
       </DashboardShell>

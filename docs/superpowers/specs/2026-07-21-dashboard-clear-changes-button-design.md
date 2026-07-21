@@ -1,9 +1,11 @@
 # Design Spec: Dashboard "Limpar TODAS as alterações" Button
 
 ## Overview
+
 Adds a clear, obvious, and destructive action card to discard all local draft modifications in the dashboard. The action resets uncommitted/unpublished local draft state and reverts to the currently published content.
 
 ## User Intent & Requirements
+
 - **Action**: Discard all local draft alterations across flows, materials, groups, and contacts in `localStorage`.
 - **Button Label**: `"Limpar TODAS as alterações"`
 - **Confirmation**: Two-step inline confirmation using `ConfirmButton` (danger variant).
@@ -14,10 +16,12 @@ Adds a clear, obvious, and destructive action card to discard all local draft mo
 ## Architecture & Component Changes
 
 ### 1. `DashboardRoute.tsx`
+
 - Passes an `onResetDrafts={() => setDraftState(resetDashboardDrafts())}` callback to both `PublishDashboard` and `ExportDashboard`.
 - Exports or utilizes `hasDashboardChanges(draftState)` from `dashboardStorage.ts`.
 
 ### 2. `PublishDashboard.tsx` & `ExportDashboard.tsx`
+
 - Accepts `onResetDrafts: () => void`.
 - Computes `hasChanges = summary.total > 0` (or `changeCounts.total > 0`).
 - Renders the "Descartar rascunho local" section card at the bottom of the tab content:
@@ -31,6 +35,7 @@ Adds a clear, obvious, and destructive action card to discard all local draft mo
     - `onConfirm={onResetDrafts}`
 
 ## Testing Strategy
+
 - Unit & integration tests in `dashboardRoute.test.tsx` verifying:
   - "Limpar TODAS as alterações" button is present in Publicar and Exportar tabs.
   - Button is disabled when no local draft changes exist.

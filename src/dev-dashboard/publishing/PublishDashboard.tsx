@@ -8,6 +8,8 @@ import { PublishedContentRepositoryError } from '../../app/content/publishedCont
 import type { DashboardValidationResult } from '../validation/validationTypes';
 import { computeChangeSummary, type RecordChangeCount } from './changeSummary';
 
+import { ConfirmButton } from '../components/ConfirmButton';
+
 interface PublishDashboardProps {
   baseline: PublishedContentPayload;
   draft: PublishedContentPayload;
@@ -15,6 +17,7 @@ interface PublishDashboardProps {
   draftUpdatedAt: string | null;
   expectedRevision?: number | null;
   onPublished(snapshot: PublishedContentSnapshot): void;
+  onResetDrafts(): void;
 }
 
 type PublishState =
@@ -49,6 +52,7 @@ export function PublishDashboard({
   draftUpdatedAt,
   expectedRevision,
   onPublished,
+  onResetDrafts,
 }: PublishDashboardProps) {
   const { snapshot, publish } = usePublishedContent();
   const { account } = useAdminAuth();
@@ -81,68 +85,90 @@ export function PublishDashboard({
   }
 
   return (
-    <section className="flex flex-col gap-stack-md rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <div>
-        <h2 className="font-headline-sm text-on-surface">Publicar conteúdo</h2>
-        <p className="mt-2 font-body-md text-on-surface-variant">
-          Publica as alterações no banco de dados público para todas as pessoas.
-        </p>
-        <p className="font-body-md text-on-surface-variant">Revisão atual: {currentRevision}</p>
-      </div>
-
-      {!hasChanges ? (
-        <div className="rounded-lg bg-surface-container-low p-4">
-          <p className="font-body-md text-on-surface-variant">
-            Nada para publicar — todas as alterações coincidem com o conteúdo publicado.
+    <div className="flex flex-col gap-stack-md">
+      <section className="flex flex-col gap-stack-md rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+        <div>
+          <h2 className="font-headline-sm text-on-surface">Publicar conteúdo</h2>
+          <p className="mt-2 font-body-md text-on-surface-variant">
+            Publica as alterações no banco de dados público para todas as pessoas.
           </p>
+          <p className="font-body-md text-on-surface-variant">Revisão atual: {currentRevision}</p>
         </div>
-      ) : (
-        <div className="rounded-lg bg-surface-container-low p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <ChangeStat label="Fluxos" counts={summary.flows} />
-            <ChangeStat label="Materiais" counts={summary.materials} />
-            <ChangeStat label="Grupos" counts={summary.groups} />
-            <ChangeStat label="Contatos" counts={summary.contacts} />
+
+        {!hasChanges ? (
+          <div className="rounded-lg bg-surface-container-low p-4">
+            <p className="font-body-md text-on-surface-variant">
+              Nada para publicar — todas as alterações coincidem com o conteúdo publicado.
+            </p>
           </div>
-          {summary.defaultGroupOrderChanged ? (
-            <p className="mt-3 font-label-sm text-on-surface-variant">A ordem padrão dos grupos foi alterada.</p>
+        ) : (
+          <div className="rounded-lg bg-surface-container-low p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ChangeStat label="Fluxos" counts={summary.flows} />
+              <ChangeStat label="Materiais" counts={summary.materials} />
+              <ChangeStat label="Grupos" counts={summary.groups} />
+              <ChangeStat label="Contatos" counts={summary.contacts} />
+            </div>
+            {summary.defaultGroupOrderChanged ? (
+              <p className="mt-3 font-label-sm text-on-surface-variant">A ordem padrão dos grupos foi alterada.</p>
+            ) : null}
+          </div>
+        )}
+
+        {state.kind === 'error' ? (
+          <p role="alert" className="font-body-md text-error">
+            {state.message}
+          </p>
+        ) : null}
+
+        {state.kind === 'success' ? (
+          <p className="flex items-center gap-1.5 font-label-md text-on-surface-variant">
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+            Publicado na revisão {state.revision}.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3">
+          {state.kind === 'confirming' ? (
+            <>
+              <Button onClick={confirmPublication}>Confirmar publicação</Button>
+              <Button variant="secondary" onClick={() => setState({ kind: 'idle' })}>
+                Cancelar
+              </Button>
+            </>
+          ) : isPending ? (
+            <Button disabled>Publicando…</Button>
+          ) : (
+            <Button disabled={publishDisabled} onClick={() => setState({ kind: 'confirming' })}>
+              Publicar alterações
+            </Button>
+          )}
+          {draftUpdatedAt ? (
+            <span className="font-label-sm text-on-surface-variant">Rascunho salvo neste navegador.</span>
           ) : null}
         </div>
-      )}
+      </section>
 
-      {state.kind === 'error' ? (
-        <p role="alert" className="font-body-md text-error">
-          {state.message}
-        </p>
-      ) : null}
-
-      {state.kind === 'success' ? (
-        <p className="flex items-center gap-1.5 font-label-md text-on-surface-variant">
-          <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
-          Publicado na revisão {state.revision}.
-        </p>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-3">
-        {state.kind === 'confirming' ? (
-          <>
-            <Button onClick={confirmPublication}>Confirmar publicação</Button>
-            <Button variant="secondary" onClick={() => setState({ kind: 'idle' })}>
-              Cancelar
-            </Button>
-          </>
-        ) : isPending ? (
-          <Button disabled>Publicando…</Button>
-        ) : (
-          <Button disabled={publishDisabled} onClick={() => setState({ kind: 'confirming' })}>
-            Publicar alterações
-          </Button>
-        )}
-        {draftUpdatedAt ? (
-          <span className="font-label-sm text-on-surface-variant">Rascunho salvo neste navegador.</span>
-        ) : null}
-      </div>
-    </section>
+      <section className="flex flex-col gap-3 rounded-lg border border-error/30 bg-error-container/10 p-5">
+        <div>
+          <h3 className="font-headline-sm text-error">Descartar rascunho local</h3>
+          <p className="mt-1 font-body-md text-on-surface-variant">
+            Esta ação descarta apenas o rascunho local deste navegador (edições, adições e remoções pendentes em fluxos,
+            materiais, grupos e contatos) e restaura tudo de volta ao conteúdo atualmente publicado. O conteúdo já
+            publicado não será alterado ou apagado.
+          </p>
+        </div>
+        <div>
+          <ConfirmButton
+            prompt="Limpar TODAS as alterações"
+            confirmLabel="Confirmar e limpar tudo"
+            cancelLabel="Cancelar"
+            disabled={!hasChanges}
+            onConfirm={onResetDrafts}
+          />
+        </div>
+      </section>
+    </div>
   );
 }
 

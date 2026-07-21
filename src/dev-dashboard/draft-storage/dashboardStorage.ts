@@ -55,7 +55,7 @@ function preserveNonZeroDefaultGroupOrder(value: unknown): number | undefined {
   return typeof value === 'number' && value !== 0 ? value : undefined;
 }
 
-function hasDashboardChanges(state: DashboardDraftState) {
+export function hasDashboardChanges(state: DashboardDraftState) {
   return (
     [
       state.flowPatches,

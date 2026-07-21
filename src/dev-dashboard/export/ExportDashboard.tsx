@@ -12,16 +12,20 @@ import { Button } from '../../design-system/components/Button';
 
 const LAST_EXPORTED_AT_KEY = 'bemtevi:dev-dashboard:lastExportedAt';
 
+import { ConfirmButton } from '../components/ConfirmButton';
+
 export function ExportDashboard({
   shipped,
   drafts,
   validation,
   draftUpdatedAt,
+  onResetDrafts,
 }: {
   shipped: DashboardShippedContent;
   drafts: DashboardDraftContent;
   validation: DashboardValidationResult;
   draftUpdatedAt: string | null;
+  onResetDrafts(): void;
 }) {
   const [exportedAt, setExportedAt] = useState<string | null>(() => localStorage.getItem(LAST_EXPORTED_AT_KEY));
   const bundle = useMemo(
@@ -84,73 +88,95 @@ export function ExportDashboard({
   }
 
   return (
-    <section className="flex flex-col gap-stack-md rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <div>
-        <h2 className="font-headline-sm text-on-surface">Arquivo para revisão</h2>
-        <p className="mt-2 font-body-md text-on-surface-variant">
-          Envie este arquivo ZIP para a pessoa responsável pelo repositório.
-        </p>
-        <p className="font-body-md text-on-surface-variant">Ele contém o JSON de dados e as imagens enviadas.</p>
-      </div>
+    <div className="flex flex-col gap-stack-md">
+      <section className="flex flex-col gap-stack-md rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+        <div>
+          <h2 className="font-headline-sm text-on-surface">Arquivo para revisão</h2>
+          <p className="mt-2 font-body-md text-on-surface-variant">
+            Envie este arquivo ZIP para a pessoa responsável pelo repositório.
+          </p>
+          <p className="font-body-md text-on-surface-variant">Ele contém o JSON de dados e as imagens enviadas.</p>
+        </div>
 
-      {!hasChanges ? (
-        <div className="rounded-lg bg-surface-container-low p-4">
-          <p className="font-body-md text-on-surface-variant">
-            Nada para exportar — todas as alterações coincidem com o conteúdo publicado.
+        {!hasChanges ? (
+          <div className="rounded-lg bg-surface-container-low p-4">
+            <p className="font-body-md text-on-surface-variant">
+              Nada para exportar — todas as alterações coincidem com o conteúdo publicado.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-surface-container-low p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ChangeStat
+                label="Fluxos"
+                added={changeCounts.flows.added}
+                edited={changeCounts.flows.edited}
+                removed={changeCounts.flows.removed}
+              />
+              <ChangeStat
+                label="Materiais"
+                added={changeCounts.materials.added}
+                edited={changeCounts.materials.edited}
+                removed={changeCounts.materials.removed}
+              />
+              <ChangeStat
+                label="Grupos"
+                added={changeCounts.groups.added}
+                edited={changeCounts.groups.edited}
+                removed={changeCounts.groups.removed}
+              />
+              <ChangeStat
+                label="Grupos removidos"
+                added={0}
+                edited={0}
+                removed={drafts.removedEducationGroupIds?.length ?? 0}
+              />
+              <ChangeStat
+                label="Contatos"
+                added={changeCounts.contacts.added}
+                edited={changeCounts.contacts.edited}
+                removed={changeCounts.contacts.removed}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button disabled={hasErrors || !hasChanges} onClick={downloadBundle}>
+            Gerar arquivo ZIP
+          </Button>
+          {exportedAt ? (
+            <span className="flex items-center gap-1.5 font-label-md text-on-surface-variant">
+              <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+              Exportado
+            </span>
+          ) : null}
+          {hasStaleExport ? (
+            <span className="font-label-sm text-on-surface-variant">Há alterações desde a última exportação.</span>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-lg border border-error/30 bg-error-container/10 p-5">
+        <div>
+          <h3 className="font-headline-sm text-error">Descartar rascunho local</h3>
+          <p className="mt-1 font-body-md text-on-surface-variant">
+            Esta ação descarta apenas o rascunho local deste navegador (edições, adições e remoções pendentes em fluxos,
+            materiais, grupos e contatos) e restaura tudo de volta ao conteúdo atualmente publicado. O conteúdo já
+            publicado não será alterado ou apagado.
           </p>
         </div>
-      ) : (
-        <div className="rounded-lg bg-surface-container-low p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <ChangeStat
-              label="Fluxos"
-              added={changeCounts.flows.added}
-              edited={changeCounts.flows.edited}
-              removed={changeCounts.flows.removed}
-            />
-            <ChangeStat
-              label="Materiais"
-              added={changeCounts.materials.added}
-              edited={changeCounts.materials.edited}
-              removed={changeCounts.materials.removed}
-            />
-            <ChangeStat
-              label="Grupos"
-              added={changeCounts.groups.added}
-              edited={changeCounts.groups.edited}
-              removed={changeCounts.groups.removed}
-            />
-            <ChangeStat
-              label="Grupos removidos"
-              added={0}
-              edited={0}
-              removed={drafts.removedEducationGroupIds?.length ?? 0}
-            />
-            <ChangeStat
-              label="Contatos"
-              added={changeCounts.contacts.added}
-              edited={changeCounts.contacts.edited}
-              removed={changeCounts.contacts.removed}
-            />
-          </div>
+        <div>
+          <ConfirmButton
+            prompt="Limpar TODAS as alterações"
+            confirmLabel="Confirmar e limpar tudo"
+            cancelLabel="Cancelar"
+            disabled={!hasChanges}
+            onConfirm={onResetDrafts}
+          />
         </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={hasErrors || !hasChanges} onClick={downloadBundle}>
-          Gerar arquivo ZIP
-        </Button>
-        {exportedAt ? (
-          <span className="flex items-center gap-1.5 font-label-md text-on-surface-variant">
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
-            Exportado
-          </span>
-        ) : null}
-        {hasStaleExport ? (
-          <span className="font-label-sm text-on-surface-variant">Há alterações desde a última exportação.</span>
-        ) : null}
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 

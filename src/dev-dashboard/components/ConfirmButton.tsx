@@ -57,7 +57,7 @@ export function ConfirmButton({
           }}
           // The danger styling makes the second click visually distinct.
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-error px-4 py-2 font-label-md text-on-error shadow-sm transition-colors hover:bg-error/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
-          aria-label={ariaLabel ? `Confirmar: ${ariaLabel}` : prompt}
+          aria-label={ariaLabel ? `Confirmar: ${ariaLabel}` : (confirmLabel ?? prompt)}
         >
           {confirmLabel ?? prompt}
         </button>

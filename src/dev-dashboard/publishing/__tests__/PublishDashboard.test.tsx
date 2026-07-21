@@ -100,6 +100,7 @@ function renderPublish({
           validation={validation}
           draftUpdatedAt="2026-07-12T00:00:00.000Z"
           onPublished={onPublished}
+          onResetDrafts={vi.fn()}
         />
       </AdminAuthContext.Provider>
     </PublishedContentContext.Provider>
