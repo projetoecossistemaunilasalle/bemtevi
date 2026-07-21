@@ -144,6 +144,24 @@ describe('buildExportBundle', () => {
     expect(bundle.changes.removedEducationGroupIds).toEqual(['auto-cuidado']);
   });
 
+  it('exports removed education material IDs', () => {
+    const bundle = buildExportBundle({
+      shipped: { flows: [], educationMaterials: [material], educationGroups: [], contacts: [] },
+      drafts: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [],
+        removedEducationMaterialIds: [material.id],
+      },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-07-21T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.educationMaterials).toEqual([]);
+    expect(bundle.changes.removedEducationMaterialIds).toEqual([material.id]);
+  });
+
   it('exports edited contacts as complete records', () => {
     const changedContact = { ...contact, name: 'CAPS II Centro' };
 

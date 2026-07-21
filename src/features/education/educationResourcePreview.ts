@@ -24,6 +24,7 @@ export function resolveEducationResourcesForPreview(baseline: PublishedContentPa
     drafts.groupPatches.length > 0 ||
     drafts.addedGroups.length > 0 ||
     (drafts.removedGroupIds?.length ?? 0) > 0 ||
+    (drafts.removedEducationMaterialIds?.length ?? 0) > 0 ||
     drafts.defaultGroupOrder !== undefined;
 
   if (!hasEducationDrafts) {
@@ -50,7 +51,8 @@ export function resolveEducationResourcesForPreview(baseline: PublishedContentPa
     groups,
     defaultGroupOrder,
     changedResourceIds,
-    isPreviewingDrafts: changedResourceIds.length > 0 || hasGroupChanges,
+    isPreviewingDrafts:
+      changedResourceIds.length > 0 || hasGroupChanges || (drafts.removedEducationMaterialIds?.length ?? 0) > 0,
   };
 }
 

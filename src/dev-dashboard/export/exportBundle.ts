@@ -15,6 +15,7 @@ export interface DashboardDraftContent {
   contacts: ServiceDirectoryEntry[];
   defaultGroupOrder?: number;
   removedEducationGroupIds?: string[];
+  removedEducationMaterialIds?: string[];
   removedContactIds?: string[];
 }
 
@@ -48,6 +49,7 @@ export function buildExportBundle({
       contacts: changedRecords(shipped.contacts, drafts.contacts),
       defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
       removedEducationGroupIds: drafts.removedEducationGroupIds ?? [],
+      removedEducationMaterialIds: drafts.removedEducationMaterialIds ?? [],
       removedContactIds: drafts.removedContactIds ?? [],
     },
     validation,

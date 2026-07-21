@@ -189,14 +189,48 @@ function validateBodyBlock(issues: DashboardValidationIssue[], resourceId: strin
     });
   }
 
-  if (block.kind === 'sourceLink' && (!block.label?.trim() || !isHttpUrl(block.url ?? ''))) {
-    issues.push({
-      level: 'error',
-      area: 'education',
-      id: `invalid-source-link-block:${resourceId}:${block.id}`,
-      message: 'O bloco de fonte precisa de rótulo e URL pública.',
-      path,
-    });
+  if (block.kind === 'sourceLink') {
+    const hasLabel = Boolean(block.label?.trim());
+    const hasValidUrl = isHttpUrl(block.url ?? '');
+
+    if (!hasLabel && !hasValidUrl) {
+      issues.push({
+        level: 'error',
+        area: 'education',
+        id: `invalid-source-link-block:${resourceId}:${block.id}`,
+        message: 'O bloco de fonte precisa ter um texto de citação ou uma URL pública válida.',
+        path,
+      });
+    } else if (block.url?.trim() && !hasValidUrl) {
+      issues.push({
+        level: 'error',
+        area: 'education',
+        id: `invalid-source-link-url:${resourceId}:${block.id}`,
+        message: 'A URL da fonte precisa começar com http:// ou https://.',
+        path: `${path}.url`,
+      });
+    }
+  }
+
+  if (block.kind === 'link') {
+    if (!block.label?.trim()) {
+      issues.push({
+        level: 'error',
+        area: 'education',
+        id: `missing-link-label:${resourceId}:${block.id}`,
+        message: 'O texto do link é obrigatório.',
+        path: `${path}.label`,
+      });
+    }
+    if (!isHttpUrl(block.url ?? '')) {
+      issues.push({
+        level: 'error',
+        area: 'education',
+        id: `invalid-link-url:${resourceId}:${block.id}`,
+        message: 'A URL do link precisa começar com http:// ou https://.',
+        path: `${path}.url`,
+      });
+    }
   }
 }
 

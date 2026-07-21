@@ -113,6 +113,40 @@ describe('EducationLibraryScreen', () => {
     expect(thumbnail).not.toHaveAttribute('src', expect.stringContaining('respiracao'));
   });
 
+  it('renders long bibliography entries as compact source badges', () => {
+    const resource = resourcesContent.resources[0];
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          educationMaterialPatches: [
+            {
+              id: resource.id,
+              sourceIndex: 0,
+              patch: {
+                source:
+                  'ORGANIZAÇÃO MUNDIAL DA SAÚDE (OMS). Saúde mental e bem-estar. / PARROTT, E. et al. The Role of Teachers.',
+              },
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('OMS')).toBeInTheDocument();
+    expect(screen.getByText('PARROTT et al.')).toBeInTheDocument();
+    expect(screen.queryByText('Fontes e referências')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Saúde mental e bem-estar/)).not.toBeInTheDocument();
+  });
+
   it('shows the preview warning when at least one material was actually added', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
@@ -513,6 +547,22 @@ describe('ResourceDetailScreen', () => {
 
     expect(visibleBadgeTexts).toEqual([resource.source, 'Respiração', 'Sala de aula']);
     expect(visibleBadgeTexts).not.toContain('Material educativo');
+  });
+
+  it('restores the original FEEVALE material link at the end of the detail content', () => {
+    const resource = resourcesContent.resources[0];
+
+    renderWithContent(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const sourceLink = screen.getByRole('link', { name: /acessar fonte original/i });
+    expect(sourceLink).toHaveAttribute('href', 'https://www.feevale.br/');
+    expect(resource.body?.at(-1)?.kind).toBe('sourceLink');
   });
 
   it('renders the respiration images as body content, not only as metadata', () => {

@@ -171,6 +171,22 @@ describe('dashboardStorage', () => {
     ).toEqual([keptGroup]);
   });
 
+  it('filters removed education materials after merge', () => {
+    const removedMaterial = { id: 'material-one', title: 'Removed material' } as EducationResource;
+    const keptMaterial = { id: 'material-two', title: 'Kept material' } as EducationResource;
+    const draft = {
+      ...emptyDraft,
+      removedEducationMaterialIds: [removedMaterial.id],
+    };
+
+    expect(
+      mergeDashboardDrafts(
+        { flows: [], educationMaterials: [removedMaterial, keptMaterial], educationGroups: [], contacts: [] },
+        draft,
+      ).educationMaterials,
+    ).toEqual([keptMaterial]);
+  });
+
   it('preserves the default group order when merging drafts', () => {
     const draft = {
       ...emptyDraft,

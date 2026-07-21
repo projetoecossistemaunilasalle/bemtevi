@@ -60,7 +60,7 @@ describe('app navigation', () => {
     const desktopNav = await screen.findByRole('navigation', { name: /navegação principal/i });
     expect(within(desktopNav).getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/dashboard');
     expect(await screen.findByText('admin@bemtevi.test')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /ver site/i })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('link', { name: /ver site/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
   });
 

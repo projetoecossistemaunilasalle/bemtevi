@@ -136,6 +136,29 @@ type ContactOrigin =
   | { kind: 'shipped'; sourceIndex: number; id: string }
   | { kind: 'added'; addedIndex: number; id: string };
 
+type EducationResourceOrigin =
+  | { kind: 'shipped'; sourceIndex: number; id: string }
+  | { kind: 'added'; addedIndex: number; id: string };
+
+function resolveEducationResourceOrigin(
+  shippedResources: Array<{ id: string }>,
+  addedResources: Array<{ id: string }>,
+  removedResourceIds: readonly string[],
+  mergedIndex: number,
+): EducationResourceOrigin | undefined {
+  const removedIds = new Set(removedResourceIds);
+  const origins: EducationResourceOrigin[] = [];
+
+  shippedResources.forEach((resource, sourceIndex) => {
+    if (!removedIds.has(resource.id)) origins.push({ kind: 'shipped', sourceIndex, id: resource.id });
+  });
+  addedResources.forEach((resource, addedIndex) => {
+    if (!removedIds.has(resource.id)) origins.push({ kind: 'added', addedIndex, id: resource.id });
+  });
+
+  return origins[mergedIndex];
+}
+
 function resolveContactOrigin(
   shippedContacts: Array<{ id: string }>,
   addedContacts: Array<{ id: string }>,
@@ -205,6 +228,7 @@ export function DashboardRoute() {
     contacts: mergedDrafts.contacts,
     defaultGroupOrder: mergedDrafts.defaultGroupOrder,
     removedEducationGroupIds: draftState.removedGroupIds ?? [],
+    removedEducationMaterialIds: draftState.removedEducationMaterialIds ?? [],
     removedContactIds: draftState.removedContactIds ?? [],
   };
   const publishedDraft: PublishedContentPayload = {
@@ -257,12 +281,22 @@ export function DashboardRoute() {
             defaultGroupOrder={mergedDrafts.defaultGroupOrder}
             onResourceChange={(resourceIndex, resourceId, patch) =>
               updateDraftState((current) => {
-                const addedIndex = resourceIndex - shipped.educationMaterials.length;
+                const origin = resolveEducationResourceOrigin(
+                  shipped.educationMaterials,
+                  current.addedEducationMaterials,
+                  current.removedEducationMaterialIds ?? [],
+                  resourceIndex,
+                );
+                if (!origin || origin.id !== resourceId) return current;
 
-                if (addedIndex >= 0) {
+                if (origin.kind === 'added') {
                   return {
                     ...current,
-                    addedEducationMaterials: updateRecordAtIndex(current.addedEducationMaterials, addedIndex, patch),
+                    addedEducationMaterials: updateRecordAtIndex(
+                      current.addedEducationMaterials,
+                      origin.addedIndex,
+                      patch,
+                    ),
                   };
                 }
 
@@ -271,7 +305,7 @@ export function DashboardRoute() {
                   educationMaterialPatches: upsertPatchById(
                     current.educationMaterialPatches,
                     resourceId,
-                    resourceIndex,
+                    origin.sourceIndex,
                     patch,
                   ),
                 };
@@ -287,6 +321,34 @@ export function DashboardRoute() {
               }));
               return newMaterial.id;
             }}
+            onResourceRemove={(resourceIndex, resourceId) =>
+              updateDraftState((current) => {
+                const origin = resolveEducationResourceOrigin(
+                  shipped.educationMaterials,
+                  current.addedEducationMaterials,
+                  current.removedEducationMaterialIds ?? [],
+                  resourceIndex,
+                );
+                if (!origin || origin.id !== resourceId) return current;
+
+                if (origin.kind === 'added') {
+                  return {
+                    ...current,
+                    addedEducationMaterials: current.addedEducationMaterials.filter(
+                      (_, index) => index !== origin.addedIndex,
+                    ),
+                  };
+                }
+
+                return {
+                  ...current,
+                  educationMaterialPatches: current.educationMaterialPatches.filter((patch) => patch.id !== origin.id),
+                  removedEducationMaterialIds: [
+                    ...new Set([...(current.removedEducationMaterialIds ?? []), origin.id]),
+                  ],
+                };
+              })
+            }
             onGroupChange={(groupIndex, groupId, patch) =>
               updateDraftState((current) => {
                 const addedIndex = findGroupIndex(current.addedGroups, groupId);

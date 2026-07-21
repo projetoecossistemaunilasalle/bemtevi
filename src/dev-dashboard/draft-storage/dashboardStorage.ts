@@ -28,6 +28,7 @@ export interface DashboardDraftState {
   defaultGroupOrder?: number;
   removedGroupIds?: string[];
   removedFlowIds?: string[];
+  removedEducationMaterialIds?: string[];
   removedContactIds: string[];
   updatedAt: string | null;
 }
@@ -67,6 +68,7 @@ function hasDashboardChanges(state: DashboardDraftState) {
       state.addedContacts,
       state.removedGroupIds,
       state.removedFlowIds,
+      state.removedEducationMaterialIds,
       state.removedContactIds,
     ].some((records) => Array.isArray(records) && records.length > 0) || state.defaultGroupOrder !== undefined
   );
@@ -173,13 +175,16 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     (contact) => !removedContactIds.has(contact.id),
   );
 
+  const removedEducationMaterialIds = new Set(drafts.removedEducationMaterialIds ?? []);
+  const educationMaterials = mergeRecords(
+    shipped.educationMaterials,
+    drafts.educationMaterialPatches,
+    drafts.addedEducationMaterials,
+  ).filter((material) => !removedEducationMaterialIds.has(material.id));
+
   return {
     flows,
-    educationMaterials: mergeRecords(
-      shipped.educationMaterials,
-      drafts.educationMaterialPatches,
-      drafts.addedEducationMaterials,
-    ),
+    educationMaterials,
     educationGroups: sortGroupsByOrder(educationGroups),
     contacts,
     defaultGroupOrder: drafts.defaultGroupOrder ?? shipped.defaultGroupOrder ?? 0,

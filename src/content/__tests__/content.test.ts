@@ -105,7 +105,14 @@ describe('Resources content', () => {
       kind: 'catalog',
       imageId: 'respiracao-1',
     });
-    expect(resource.body?.map((block) => block.kind)).toEqual(['paragraph', 'video', 'image', 'image', 'paragraph']);
+    expect(resource.body?.map((block) => block.kind)).toEqual([
+      'paragraph',
+      'video',
+      'image',
+      'image',
+      'paragraph',
+      'sourceLink',
+    ]);
     expect(resource.body?.filter((block) => block.kind === 'image').map((block) => block.imageUrl)).toEqual([
       '/bemtevi/respiracao1.jpg',
       '/bemtevi/respiracao2.jpg',

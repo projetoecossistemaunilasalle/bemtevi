@@ -41,6 +41,12 @@ export const generatedResources = [
         title: 'Aplicação prática',
         text: 'Recomendamos reservar um tempo adequado da sua rotina para esta prática. Você pode adaptar o tempo da prática de acordo com o contexto em que está inserido no momento.',
       },
+      {
+        id: 'source',
+        kind: 'sourceLink',
+        label: 'FEEVALE',
+        url: 'https://www.feevale.br/',
+      },
     ],
     review: {
       status: 'pending_review',

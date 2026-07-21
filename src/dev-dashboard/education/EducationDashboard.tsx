@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
 import type {
@@ -8,7 +8,9 @@ import type {
   EducationResourceFeaturedImage,
 } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
+import { Badge } from '../../design-system/components/Badge';
 import { Button } from '../../design-system/components/Button';
+import { formatCitationSourceLabel, parseSourceCitations } from '../../features/education/sourceFormatter';
 import { ChipInput } from '../components/ChipInput';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { Field } from '../components/Field';
@@ -33,6 +35,7 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
   image: 'Imagem',
   video: 'Vídeo',
   sourceLink: 'Link da fonte',
+  link: 'Link',
 };
 
 type ManagedEducationGroup = EducationResourceGroup & { isDefault?: boolean };
@@ -57,12 +60,100 @@ function uploadedImageInputLabel(fileName: string | undefined) {
   return `Imagem enviada (${label})`;
 }
 
+function SourceCardPreview({ sourceText }: { sourceText?: string }) {
+  const citations = useMemo(() => parseSourceCitations(sourceText), [sourceText]);
+
+  return (
+    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-low p-3.5">
+      <div className="flex items-center justify-between font-label-sm text-on-surface-variant font-semibold">
+        <span>Pré-visualização da fonte no cartão</span>
+        <span className="font-label-sm text-on-surface-variant/75">
+          {citations.length === 1 ? '1 fonte' : `${citations.length} fontes`}
+        </span>
+      </div>
+
+      {citations.length === 0 ? (
+        <p className="font-body-sm text-on-surface-variant/70 italic">
+          Nenhuma fonte inserida. As citações e badges do cartão aparecerão aqui.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-2" aria-label="Pré-visualização das badges no cartão">
+            <span className="font-label-sm text-on-surface-variant">Selo no cartão:</span>
+            {citations.map((citation) => (
+              <span key={citation.id} title={citation.rawText}>
+                <Badge tone="secondary">{formatCitationSourceLabel(citation.rawText)}</Badge>
+              </span>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1.5 border-t border-outline-variant/20 pt-2">
+            <span className="font-label-sm text-on-surface-variant font-medium">Citações e links reconhecidos:</span>
+            <ul className="flex flex-col gap-1.5 font-body-sm text-on-surface-variant">
+              {citations.map((citation) => (
+                <li
+                  key={citation.id}
+                  className="flex flex-col gap-1 rounded bg-surface-container-lowest p-2 border border-outline-variant/20"
+                >
+                  <span className="line-clamp-2">{citation.rawText}</span>
+                  {citation.segments.some((s) => s.kind === 'link') && (
+                    <div className="flex flex-wrap gap-2 text-primary font-label-sm">
+                      {citation.segments
+                        .filter((s) => s.kind === 'link')
+                        .map((seg, idx) => (
+                          <span key={idx} className="underline underline-offset-2">
+                            🔗 {seg.url}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getBlockSummary(block: EducationResourceBlock): string {
+  if (block.kind === 'paragraph') {
+    return block.title || block.text || 'Parágrafo sem texto';
+  }
+  if (block.kind === 'heading') {
+    return block.text || 'Título sem texto';
+  }
+  if (block.kind === 'video') {
+    return block.title || block.url || 'Vídeo sem URL';
+  }
+  if (block.kind === 'image') {
+    if (block.imageFileName) return `Imagem: ${block.imageFileName}`;
+    if (block.alt) return `Imagem: ${block.alt}`;
+    if (block.imageUrl) return `Imagem: ${block.imageUrl.slice(0, 40)}...`;
+    return 'Imagem sem arquivo ou URL';
+  }
+  if (block.kind === 'list') {
+    const count = block.items?.length ?? 0;
+    const title = block.title ? `${block.title} • ` : '';
+    return `${title}${count} ${count === 1 ? 'item' : 'itens'}`;
+  }
+  if (block.kind === 'sourceLink') {
+    return block.label || block.url || 'Link de fonte';
+  }
+  if (block.kind === 'link') {
+    return block.label || block.url || 'Link';
+  }
+  return '';
+}
+
 export function EducationDashboard({
   resources,
   groups,
   defaultGroupOrder = 0,
   onResourceChange,
   onResourceAdd,
+  onResourceRemove = () => {},
   onGroupChange,
   onGroupAdd,
   onGroupRemove,
@@ -73,6 +164,7 @@ export function EducationDashboard({
   defaultGroupOrder?: number;
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
   onResourceAdd: () => string;
+  onResourceRemove?: (resourceIndex: number, resourceId: string) => void;
   onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
   onGroupAdd: () => void;
   onGroupRemove: (groupIndex: number, groupId: string) => void;
@@ -117,6 +209,14 @@ export function EducationDashboard({
     setSelectedResourceId(newId);
   }
 
+  function removeResource() {
+    if (!selectedResource) return;
+
+    const neighbor = resources[effectiveIndex + 1] ?? resources[effectiveIndex - 1];
+    setSelectedResourceId(neighbor?.id ?? null);
+    onResourceRemove(effectiveIndex, selectedResource.id);
+  }
+
   /** Builds an invalid-aware input className for a given issue set. */
   function fieldClass(issues: FieldIssues, base = inputClass) {
     return issues.errors.length > 0 ? `${base} ${inputInvalidClass}` : base;
@@ -156,12 +256,40 @@ export function EducationDashboard({
     }
   }
 
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(() => new Set());
+
+  function toggleBlockExpanded(blockId: string) {
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) {
+        next.delete(blockId);
+      } else {
+        next.add(blockId);
+      }
+      return next;
+    });
+  }
+
+  function expandAllBlocks() {
+    setCollapsedBlockIds(new Set());
+  }
+
+  function collapseAllBlocks() {
+    setCollapsedBlockIds(new Set(selectedResourceBody.map((block) => block.id)));
+  }
+
   function updateBlock(blockId: string, patch: Partial<EducationResourceBlock>) {
     updateBody(selectedResourceBody.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
   }
 
   function addBlock() {
-    updateBody([...selectedResourceBody, createBodyBlock(newBlockKind, selectedResourceBody.length)]);
+    const newBlock = createBodyBlock(newBlockKind, selectedResourceBody.length);
+    updateBody([...selectedResourceBody, newBlock]);
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      next.delete(newBlock.id);
+      return next;
+    });
   }
 
   function removeBlock(blockId: string) {
@@ -234,7 +362,15 @@ export function EducationDashboard({
               </div>
             ) : null}
             <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-              <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
+                <ConfirmButton
+                  key={`${effectiveIndex}-${selectedResource.id}`}
+                  prompt="Remover material"
+                  onConfirm={removeResource}
+                  aria-label={`Remover material ${selectedResource.title || 'sem título'}`}
+                />
+              </div>
               <Field label="Título do material" issues={issuesForPath(validation, `${resourcePath}.title`)}>
                 <input
                   aria-label="Título do material"
@@ -257,15 +393,17 @@ export function EducationDashboard({
               </Field>
               <Field
                 label="Fonte do material"
-                hint="Nome da organização, autora ou referência principal do material."
+                hint="Fontes e referências bibliográficas no padrão ABNT. Separe múltiplas fontes com barra (/) ou quebra de linha. Links inseridos no texto serão detectados automaticamente."
                 issues={issuesForPath(validation, `${resourcePath}.source`)}
               >
-                <input
+                <textarea
                   aria-label="Fonte do material"
-                  className={fieldClass(issuesForPath(validation, `${resourcePath}.source`))}
+                  className={fieldClass(issuesForPath(validation, `${resourcePath}.source`), textareaClass)}
+                  rows={3}
                   value={selectedResource.source}
                   onChange={(event) => changeField({ source: event.target.value })}
                 />
+                <SourceCardPreview sourceText={selectedResource.source} />
               </Field>
 
               <Field label="Miniatura da biblioteca" hint="Imagem pequena usada no cartão da biblioteca de Estudos.">
@@ -503,57 +641,146 @@ export function EducationDashboard({
             </section>
 
             <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-              <h2 className="font-headline-sm text-on-surface">Conteúdo do material</h2>
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-headline-sm text-on-surface">Conteúdo do material</h2>
+                  <p className="font-label-sm text-on-surface-variant">
+                    {selectedResourceBody.length === 1
+                      ? '1 bloco de conteúdo'
+                      : `${selectedResourceBody.length} blocos de conteúdo`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" onClick={expandAllBlocks}>
+                    Expandir todos
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={collapseAllBlocks}>
+                    Recolher todos
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
                 {selectedResourceBody.map((block, blockIndex) => {
                   const blockNumber = blockIndex + 1;
+                  const isExpanded = !collapsedBlockIds.has(block.id);
                   const blockIssues = issuesForPath(validation, `${resourcePath}.body.${block.id}`);
+                  const isFirst = blockIndex === 0;
+                  const isLast = blockIndex === selectedResourceBody.length - 1;
+
                   return (
-                    <div key={block.id} className="flex flex-col gap-3 rounded-lg border border-outline-variant/30 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-label-md text-on-surface-variant font-semibold">
-                          Bloco {blockNumber} — {blockKindLabels[block.kind]}
-                        </span>
-                        <div className="flex flex-wrap gap-2">
+                    <div
+                      key={block.id}
+                      className={`flex flex-col rounded-lg border transition-all ${
+                        isExpanded
+                          ? 'border-primary/40 bg-surface-container-lowest shadow-sm'
+                          : 'border-outline-variant/40 bg-surface-container-low hover:bg-surface-container-low/80'
+                      }`}
+                    >
+                      {/* Header Row */}
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-2 p-3.5 cursor-pointer select-none"
+                        onClick={() => toggleBlockExpanded(block.id)}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        aria-label={`Bloco ${blockNumber}: ${blockKindLabels[block.kind]}`}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleBlockExpanded(block.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-label-sm font-bold text-primary">
+                            {blockNumber}
+                          </span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-label-md font-semibold text-on-surface">
+                                {blockKindLabels[block.kind]}
+                              </span>
+                              {blockIssues.errors.length > 0 && (
+                                <span className="rounded bg-error-container px-2 py-0.5 font-label-sm text-on-error-container font-medium">
+                                  Erro
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-body-sm text-on-surface-variant truncate">
+                              {getBlockSummary(block)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions Bar inside Header */}
+                        <div
+                          className="flex items-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="secondary"
                             size="sm"
+                            disabled={isFirst}
                             onClick={() => moveBlock(blockIndex, -1)}
                             aria-label={`Mover bloco ${blockNumber} para cima`}
+                            title="Mover para cima"
                           >
-                            Mover para cima
+                            <ChevronUp className="h-4 w-4" />
+                            <span className="sr-only lg:not-sr-only">Cima</span>
                           </Button>
                           <Button
                             variant="secondary"
                             size="sm"
+                            disabled={isLast}
                             onClick={() => moveBlock(blockIndex, 1)}
                             aria-label={`Mover bloco ${blockNumber} para baixo`}
+                            title="Mover para baixo"
                           >
-                            Mover para baixo
+                            <ChevronDown className="h-4 w-4" />
+                            <span className="sr-only lg:not-sr-only">Baixo</span>
                           </Button>
                           <ConfirmButton
                             prompt="Remover bloco"
                             confirmLabel="Confirmar"
                             onConfirm={() => removeBlock(block.id)}
                             aria-label={`Remover bloco ${blockNumber}`}
-                            className="rounded-full bg-error-container px-4 py-2 font-label-sm text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+                            className="rounded-full bg-error-container px-3 py-1.5 font-label-sm text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
                           />
+                          <button
+                            type="button"
+                            onClick={() => toggleBlockExpanded(block.id)}
+                            className="p-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
+                            aria-label={isExpanded ? 'Recolher bloco' : 'Expandir bloco'}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="h-5 w-5" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5" />
+                            )}
+                          </button>
                         </div>
                       </div>
-                      <BlockFields
-                        block={block}
-                        blockNumber={blockNumber}
-                        invalid={blockIssues.errors.length > 0}
-                        onChange={(patch) => updateBlock(block.id, patch)}
-                        readImageFile={readImageSafely}
-                      />
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="border-t border-outline-variant/30 p-4 bg-surface-container-lowest rounded-b-lg">
+                          <BlockFields
+                            block={block}
+                            blockNumber={blockNumber}
+                            invalid={blockIssues.errors.length > 0}
+                            onChange={(patch) => updateBlock(block.id, patch)}
+                            readImageFile={readImageSafely}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
-                <Field label="Tipo do novo bloco">
+              <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-outline-variant/30 pt-4">
+                <Field label="Tipo do novo bloco" className="flex-1 min-w-[200px]">
                   <select
                     aria-label="Tipo do novo bloco"
                     className={inputClass}
@@ -721,6 +948,7 @@ function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: nu
   if (kind === 'image') return { id, kind, imageUrl: '', alt: '' };
   if (kind === 'video') return { id, kind, title: 'Novo vídeo', url: 'https://www.youtube.com/watch?v=abcdef12345' };
   if (kind === 'sourceLink') return { id, kind, label: 'Acessar fonte original', url: 'https://example.com' };
+  if (kind === 'link') return { id, kind, label: 'Formulário', url: 'https://example.com' };
 
   return { id, kind: 'paragraph', title: 'Novo bloco', text: 'Texto do bloco.' };
 }
@@ -898,16 +1126,16 @@ function BlockFields({
     return (
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber}</span>
-          <input
+          <span className="font-label-md text-on-surface">Texto da fonte / Citação ABNT do bloco {blockNumber}</span>
+          <textarea
             aria-label={`Texto do link do bloco ${blockNumber}`}
-            className={baseInput}
+            className={baseTextarea}
             value={block.label ?? ''}
             onChange={(e) => onChange({ label: e.target.value })}
           />
         </label>
         <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL da fonte do bloco {blockNumber}</span>
+          <span className="font-label-md text-on-surface">URL direta da fonte (opcional se houver citação ABNT)</span>
           <input
             aria-label={`URL da fonte do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
@@ -916,6 +1144,42 @@ function BlockFields({
             onChange={(e) => onChange({ url: e.target.value })}
           />
         </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'link') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber} (ex: Formulário)</span>
+          <input
+            aria-label={`Texto do link do bloco ${blockNumber}`}
+            aria-invalid={invalid || undefined}
+            className={baseInput}
+            value={block.label ?? ''}
+            onChange={(e) => onChange({ label: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">URL do link do bloco {blockNumber}</span>
+          <input
+            aria-label={`URL do link do bloco ${blockNumber}`}
+            aria-invalid={invalid || undefined}
+            className={baseInput}
+            value={block.url ?? ''}
+            onChange={(e) => onChange({ url: e.target.value })}
+          />
+        </label>
+        {block.label ? (
+          <div className="mt-1 flex flex-col gap-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low p-3">
+            <span className="font-label-sm text-on-surface-variant font-medium">Pré-visualização no material:</span>
+            <span className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 font-label-md font-semibold text-primary self-start">
+              <span>{block.label}</span>
+              <ExternalLink size={16} />
+            </span>
+          </div>
+        ) : null}
       </div>
     );
   }

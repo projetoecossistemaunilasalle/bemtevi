@@ -9,6 +9,8 @@ import { Page } from '../../design-system/components/Page';
 import type { EducationResource, EducationResourceBlock } from '../../domain/resources/types';
 import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { resolveVideoEmbed } from './videoEmbeds';
+import { SourceCitationsView } from './SourceCitationsView';
+import { isLegacySourceBlock, parseSourceCitations } from './sourceFormatter';
 
 export function ResourceDetailScreen() {
   const { resourceId } = useParams();
@@ -18,6 +20,11 @@ export function ResourceDetailScreen() {
   const isPreviewingResource = changedResourceIds.includes(resource.id);
   const featuredImage = resolveFeaturedImage(resource);
   const resourceTags = resource.tags.map((tag) => tag.trim()).filter(Boolean);
+  const legacySourceBlock = resource.body?.find((block) => isLegacySourceBlock(block) && block.text?.trim());
+  const citationSource = legacySourceBlock?.text ?? resource.source;
+  const parsedCitations = parseSourceCitations(citationSource);
+  const isShortSource =
+    parsedCitations.length === 1 && citationSource.trim().length <= 35 && !citationSource.includes(';');
 
   return (
     <Page width="narrow" className="gap-stack-md">
@@ -34,7 +41,7 @@ export function ResourceDetailScreen() {
 
       <header className="flex flex-col gap-stack-sm">
         <div className="flex flex-wrap gap-2">
-          <Badge tone="secondary">{resource.source}</Badge>
+          {isShortSource ? <Badge tone="secondary">{resource.source}</Badge> : null}
           {resourceTags.map((tag, index) => (
             <Badge key={`${tag}-${index}`}>{tag}</Badge>
           ))}
@@ -50,10 +57,14 @@ export function ResourceDetailScreen() {
       ) : null}
 
       <section className="flex flex-col gap-stack-md">
-        {resource.body?.map((block) => (
-          <ResourceBodyBlock key={block.id} block={block} source={resource.source} />
-        ))}
+        {resource.body
+          ?.filter((block) => !isLegacySourceBlock(block))
+          .map((block) => (
+            <ResourceBodyBlock key={block.id} block={block} source={resource.source} />
+          ))}
       </section>
+
+      {!isShortSource && citationSource ? <SourceCitationsView sourceText={citationSource} /> : null}
     </Page>
   );
 }
@@ -160,21 +171,39 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
     );
   }
 
-  if (block.kind === 'sourceLink' && block.url) {
+  if (block.kind === 'sourceLink') {
+    const textToRender = block.label || source;
     return (
-      <Card className="p-5">
-        <p className="font-body-md text-on-surface-variant">Fonte do material</p>
-        <p className="font-headline-sm text-on-surface">{source}</p>
-        <a
-          className="mt-2 inline-flex items-center gap-2 font-label-md text-primary"
-          href={block.url}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {block.label ?? 'Acessar fonte original'}
-          <ExternalLink size={16} />
-        </a>
+      <Card className="p-5 flex flex-col gap-2">
+        <p className="font-body-md text-on-surface-variant font-medium">Fonte do material</p>
+        <SourceCitationsView sourceText={textToRender} variant="inline" />
+        {block.url ? (
+          <a
+            className="mt-1 inline-flex items-center gap-2 font-label-md text-primary hover:underline"
+            href={block.url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Acessar fonte original
+            <ExternalLink size={16} />
+          </a>
+        ) : null}
       </Card>
+    );
+  }
+
+  if (block.kind === 'link' && block.url) {
+    const linkLabel = block.label?.trim() || block.title?.trim() || 'Acessar link';
+    return (
+      <a
+        className="inline-flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3.5 font-label-lg font-semibold text-primary transition-all hover:bg-primary/10 hover:border-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary self-start"
+        href={block.url}
+        rel="noreferrer"
+        target="_blank"
+      >
+        <span>{linkLabel}</span>
+        <ExternalLink size={18} className="shrink-0" />
+      </a>
     );
   }
 

@@ -1170,6 +1170,23 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('Material editável apenas neste navegador.')).toBeInTheDocument();
   });
 
+  it('removes a shipped education material after confirmation', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remover material Material de teste' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover material Material de teste' }));
+
+    expect(screen.getByText('Nenhum material disponível.')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}')).toMatchObject({
+      removedEducationMaterialIds: ['mock-material'],
+    });
+  });
+
   it('updates required education metadata drafts', () => {
     render(
       <MemoryRouter>
