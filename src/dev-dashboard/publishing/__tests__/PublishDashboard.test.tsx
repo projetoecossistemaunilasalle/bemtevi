@@ -32,6 +32,7 @@ const baseline: PublishedContentPayload = {
   educationMaterials: [],
   educationGroups: [],
   contacts: [],
+  locations: [],
   defaultGroupOrder: 0,
 };
 

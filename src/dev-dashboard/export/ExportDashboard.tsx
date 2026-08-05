@@ -45,6 +45,7 @@ export function ExportDashboard({
       educationMaterials: shipped.educationMaterials,
       educationGroups: shipped.educationGroups,
       contacts: shipped.contacts,
+      locations: shipped.locations ?? [],
       defaultGroupOrder: shipped.defaultGroupOrder ?? 0,
     };
     const draft: PublishedContentPayload = {
@@ -52,6 +53,7 @@ export function ExportDashboard({
       educationMaterials: drafts.educationMaterials,
       educationGroups: drafts.educationGroups,
       contacts: drafts.contacts,
+      locations: drafts.locations ?? [],
       defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
     };
     return computeChangeSummary(baseline, draft);
@@ -106,7 +108,7 @@ export function ExportDashboard({
           </div>
         ) : (
           <div className="rounded-lg bg-surface-container-low p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <ChangeStat
                 label="Fluxos"
                 added={changeCounts.flows.added}
@@ -136,6 +138,12 @@ export function ExportDashboard({
                 added={changeCounts.contacts.added}
                 edited={changeCounts.contacts.edited}
                 removed={changeCounts.contacts.removed}
+              />
+              <ChangeStat
+                label="Locais"
+                added={changeCounts.locations.added}
+                edited={changeCounts.locations.edited}
+                removed={changeCounts.locations.removed}
               />
             </div>
           </div>

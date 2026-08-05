@@ -12,6 +12,7 @@ export interface DashboardChangeSummary {
   materials: RecordChangeCount;
   groups: RecordChangeCount;
   contacts: RecordChangeCount;
+  locations: RecordChangeCount;
   defaultGroupOrderChanged: boolean;
   total: number;
 }
@@ -24,6 +25,7 @@ export function computeChangeSummary(
   const materials = countRecordChanges(baseline.educationMaterials, draft.educationMaterials);
   const groups = countRecordChanges(baseline.educationGroups, draft.educationGroups);
   const contacts = countRecordChanges(baseline.contacts, draft.contacts);
+  const locations = countRecordChanges(baseline.locations, draft.locations);
   const defaultGroupOrderChanged = baseline.defaultGroupOrder !== draft.defaultGroupOrder;
 
   const total =
@@ -39,9 +41,12 @@ export function computeChangeSummary(
     contacts.added +
     contacts.edited +
     contacts.removed +
+    locations.added +
+    locations.edited +
+    locations.removed +
     (defaultGroupOrderChanged ? 1 : 0);
 
-  return { flows, materials, groups, contacts, defaultGroupOrderChanged, total };
+  return { flows, materials, groups, contacts, locations, defaultGroupOrderChanged, total };
 }
 
 export function countRecordChanges<T extends { id: string }>(baseline: T[], draft: T[]): RecordChangeCount {

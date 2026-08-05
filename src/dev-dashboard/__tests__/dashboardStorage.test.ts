@@ -25,10 +25,13 @@ const emptyDraft: DashboardDraftState = {
   addedEducationMaterials: [],
   addedGroups: [],
   contactPatches: [],
+  locationPatches: [],
   addedContacts: [],
+  addedLocations: [],
   removedGroupIds: [],
   removedFlowIds: [],
   removedContactIds: [],
+  removedLocationIds: [],
   updatedAt: '2026-05-22T00:00:00.000Z',
 };
 
@@ -39,6 +42,7 @@ const contact: ServiceDirectoryEntry = {
   badgeTone: 'primary',
   city: 'Canoas',
   state: 'RS',
+  locationId: 'loc-canoas-rs',
   address: 'Rua Um, 123',
   phoneDisplay: '(51) 3000-0000',
   phoneHref: 'tel:5130000000',
@@ -65,10 +69,13 @@ describe('dashboardStorage', () => {
       addedEducationMaterials: [],
       addedGroups: [],
       contactPatches: [],
+      locationPatches: [],
       addedContacts: [],
+      addedLocations: [],
       removedGroupIds: [],
       removedFlowIds: [],
       removedContactIds: [],
+      removedLocationIds: [],
       updatedAt: null,
     });
   });
@@ -83,8 +90,86 @@ describe('dashboardStorage', () => {
 
     saveDashboardDrafts(v3Draft);
 
-    expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('4.0.0');
+    expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('5.0.0');
     expect(loadDashboardDrafts()).toEqual({ ...v3Draft, baseRevision: null });
+  });
+
+  it('migrates v4 drafts to v5 without losing contact edits', () => {
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify({
+        schemaVersion: '4.0.0',
+        flowPatches: [],
+        educationMaterialPatches: [],
+        groupPatches: [],
+        contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { name: 'Contato editado' } }],
+        addedFlows: [],
+        addedEducationMaterials: [],
+        addedGroups: [],
+        addedContacts: [],
+        removedGroupIds: [],
+        removedFlowIds: [],
+        removedEducationMaterialIds: [],
+        removedContactIds: [],
+        updatedAt: null,
+      }),
+    );
+
+    const loaded = loadDashboardDrafts();
+
+    expect(loaded.schemaVersion).toBe('5.0.0');
+    expect(loaded.contactPatches).toEqual([{ id: contact.id, sourceIndex: 0, patch: { name: 'Contato editado' } }]);
+    expect(loaded.locationPatches).toEqual([]);
+    expect(loaded.addedLocations).toEqual([]);
+    expect(loaded.removedLocationIds).toEqual([]);
+  });
+
+  it('refreshes contacts when a managed location is renamed', () => {
+    const location = { id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      locationPatches: [{ id: location.id, sourceIndex: 0, patch: { city: 'Porto Alegre' } }],
+    };
+
+    const merged = mergeDashboardDrafts(
+      {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [contact],
+        locations: [location],
+      },
+      draft,
+    );
+
+    expect(merged.locations).toEqual([{ id: location.id, city: 'Porto Alegre', state: 'RS' }]);
+    expect(merged.contacts[0]).toMatchObject({ locationId: location.id, city: 'Porto Alegre', state: 'RS' });
+  });
+
+  it('preserves legacy city edits from v4 drafts for explicit repair', () => {
+    const location = { id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' };
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [{ id: contact.id, sourceIndex: 0, patch: { city: 'Porto Alegre' } }],
+    };
+
+    const merged = mergeDashboardDrafts(
+      {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [contact],
+        locations: [location],
+      },
+      draft,
+    );
+
+    expect(merged.locations).toEqual([location]);
+    expect(merged.contacts[0]).toMatchObject({
+      locationId: location.id,
+      city: 'Porto Alegre',
+      state: 'RS',
+    });
   });
 
   it('persists the database revision on which a draft is based', () => {
@@ -151,6 +236,7 @@ describe('dashboardStorage', () => {
       educationMaterials: [shippedMaterial],
       educationGroups: [],
       contacts: [],
+      locations: [],
       defaultGroupOrder: 0,
     });
   });
@@ -358,7 +444,8 @@ describe('dashboardStorage', () => {
   });
 
   it('includes Canoas services in shipped contacts', () => {
-    expect(getShippedDashboardContent().contacts).toEqual(canoasServices.services);
+    expect(getShippedDashboardContent().contacts).toMatchObject(canoasServices.services);
+    expect(getShippedDashboardContent().locations).toEqual([{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }]);
   });
 
   it('includes group and contact draft collections in draft state', () => {
@@ -371,6 +458,9 @@ describe('dashboardStorage', () => {
     expect(draft.contactPatches).toEqual([]);
     expect(draft.addedContacts).toEqual([]);
     expect(draft.removedContactIds).toEqual([]);
+    expect(draft.locationPatches).toEqual([]);
+    expect(draft.addedLocations).toEqual([]);
+    expect(draft.removedLocationIds).toEqual([]);
   });
 
   it('migrates v1 localStorage value to v3 preserving existing fields', () => {
@@ -425,6 +515,9 @@ describe('dashboardStorage', () => {
       contactPatches: [],
       addedContacts: [],
       removedContactIds: [],
+      locationPatches: [],
+      addedLocations: [],
+      removedLocationIds: [],
     });
   });
 
@@ -449,6 +542,11 @@ describe('dashboardStorage', () => {
       contactPatches: [],
       addedContacts: [],
       removedContactIds: [],
+      locationPatches: [],
+      addedLocations: [],
+      removedLocationIds: [],
+      baseRevision: undefined,
+      defaultGroupOrder: undefined,
     });
   });
 

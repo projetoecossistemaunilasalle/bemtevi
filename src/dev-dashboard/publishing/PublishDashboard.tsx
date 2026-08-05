@@ -103,11 +103,12 @@ export function PublishDashboard({
           </div>
         ) : (
           <div className="rounded-lg bg-surface-container-low p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <ChangeStat label="Fluxos" counts={summary.flows} />
               <ChangeStat label="Materiais" counts={summary.materials} />
               <ChangeStat label="Grupos" counts={summary.groups} />
               <ChangeStat label="Contatos" counts={summary.contacts} />
+              <ChangeStat label="Locais" counts={summary.locations} />
             </div>
             {summary.defaultGroupOrderChanged ? (
               <p className="mt-3 font-label-sm text-on-surface-variant">A ordem padrão dos grupos foi alterada.</p>

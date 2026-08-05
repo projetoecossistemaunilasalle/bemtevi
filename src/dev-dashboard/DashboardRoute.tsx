@@ -13,6 +13,7 @@ import { EducationDashboard } from './education/EducationDashboard';
 import { validateDashboardEducation } from './education/educationValidation';
 import { ExportDashboard } from './export/ExportDashboard';
 import { PublishDashboard } from './publishing/PublishDashboard';
+import { computeChangeSummary } from './publishing/changeSummary';
 import { getDashboardPublishMode } from './publishing/publishMode';
 import { usePublishedContent } from '../app/content/PublishedContentContext';
 import type { PublishedContentPayload } from '../app/content/publishedContent';
@@ -23,9 +24,10 @@ import { DEFAULT_EDUCATION_GROUP_ID } from '../content/resources/groups';
 import type { EducationResourceGroup } from '../content/resources/groups';
 import { loadActiveTab, saveActiveTab } from './draft-storage/dashboardTabStorage';
 import { ContactsDashboard } from './contacts/ContactsDashboard';
-import { createLocalService } from './contacts/contactDrafts';
+import { createLocalLocation, createLocalService } from './contacts/contactDrafts';
 import { validateDashboardContacts } from './contacts/contactsValidation';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
+import { normalizeContactLocations } from '../domain/services/locations';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -137,6 +139,10 @@ type ContactOrigin =
   | { kind: 'shipped'; sourceIndex: number; id: string }
   | { kind: 'added'; addedIndex: number; id: string };
 
+type LocationOrigin =
+  | { kind: 'shipped'; sourceIndex: number; id: string }
+  | { kind: 'added'; addedIndex: number; id: string };
+
 type EducationResourceOrigin =
   | { kind: 'shipped'; sourceIndex: number; id: string }
   | { kind: 'added'; addedIndex: number; id: string };
@@ -179,11 +185,41 @@ function resolveContactOrigin(
   return origins[mergedIndex];
 }
 
+function resolveLocationOrigin(
+  shippedLocations: Array<{ id: string }>,
+  addedLocations: Array<{ id: string }>,
+  removedLocationIds: readonly string[],
+  mergedIndex: number,
+): LocationOrigin | undefined {
+  const removedIds = new Set(removedLocationIds);
+  const origins: LocationOrigin[] = [];
+
+  shippedLocations.forEach((location, sourceIndex) => {
+    if (!removedIds.has(location.id)) origins.push({ kind: 'shipped', sourceIndex, id: location.id });
+  });
+  addedLocations.forEach((location, addedIndex) => {
+    if (!removedIds.has(location.id)) origins.push({ kind: 'added', addedIndex, id: location.id });
+  });
+
+  return origins[mergedIndex];
+}
+
 export function DashboardRoute() {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
   const { content: baseline, snapshot } = usePublishedContent();
   const publishMode = getDashboardPublishMode();
-  const shipped = baseline;
+  const shipped = useMemo(() => {
+    if (!baseline) return baseline;
+
+    const normalized = normalizeContactLocations(baseline.contacts, baseline.locations ?? [], {
+      allowDerivation: baseline.locations === undefined,
+    });
+    return {
+      ...baseline,
+      contacts: normalized.contacts,
+      locations: normalized.locations,
+    };
+  }, [baseline]);
   const [draftState, setDraftState] = useState(() => loadDashboardDrafts());
   const mergedDrafts = useMemo(() => mergeDashboardDrafts(shipped, draftState), [draftState, shipped]);
 
@@ -206,44 +242,73 @@ export function DashboardRoute() {
     });
   }
 
-  const contactValidation = useMemo(() => validateDashboardContacts(mergedDrafts.contacts), [mergedDrafts.contacts]);
-  const validation = useMemo(() => {
-    const flowValidation = validateDashboardFlows(
-      mergedDrafts.flows,
-      mergedDrafts.educationMaterials.map((resource) => resource.id),
-    );
-    const educationValidation = validateDashboardEducation(
-      mergedDrafts.educationMaterials,
-      mergedDrafts.educationGroups,
-    );
-
-    return {
+  const contactValidation = useMemo(
+    () => validateDashboardContacts(mergedDrafts.contacts, mergedDrafts.locations),
+    [mergedDrafts.contacts, mergedDrafts.locations],
+  );
+  const flowValidation = useMemo(
+    () =>
+      validateDashboardFlows(
+        mergedDrafts.flows,
+        mergedDrafts.educationMaterials.map((resource) => resource.id),
+      ),
+    [mergedDrafts],
+  );
+  const educationValidation = useMemo(
+    () => validateDashboardEducation(mergedDrafts.educationMaterials, mergedDrafts.educationGroups),
+    [mergedDrafts],
+  );
+  const validation = useMemo(
+    () => ({
       errors: [...flowValidation.errors, ...educationValidation.errors, ...contactValidation.errors],
       warnings: [...flowValidation.warnings, ...educationValidation.warnings, ...contactValidation.warnings],
-    };
-  }, [contactValidation, mergedDrafts]);
+    }),
+    [flowValidation, educationValidation, contactValidation],
+  );
   const drafts = {
     flows: mergedDrafts.flows,
     educationMaterials: mergedDrafts.educationMaterials,
     educationGroups: mergedDrafts.educationGroups,
     contacts: mergedDrafts.contacts,
+    locations: mergedDrafts.locations,
     defaultGroupOrder: mergedDrafts.defaultGroupOrder,
     removedEducationGroupIds: draftState.removedGroupIds ?? [],
     removedEducationMaterialIds: draftState.removedEducationMaterialIds ?? [],
     removedContactIds: draftState.removedContactIds ?? [],
+    removedLocationIds: draftState.removedLocationIds ?? [],
   };
-  const publishedDraft: PublishedContentPayload = {
-    flows: mergedDrafts.flows,
-    educationMaterials: mergedDrafts.educationMaterials,
-    educationGroups: mergedDrafts.educationGroups,
-    contacts: mergedDrafts.contacts,
-    defaultGroupOrder: mergedDrafts.defaultGroupOrder,
+  const publishedDraft = useMemo<PublishedContentPayload>(
+    () => ({
+      flows: mergedDrafts.flows,
+      educationMaterials: mergedDrafts.educationMaterials,
+      educationGroups: mergedDrafts.educationGroups,
+      contacts: mergedDrafts.contacts,
+      locations: mergedDrafts.locations,
+      defaultGroupOrder: mergedDrafts.defaultGroupOrder,
+    }),
+    [mergedDrafts],
+  );
+  const changeSummary = useMemo(() => computeChangeSummary(shipped, publishedDraft), [shipped, publishedDraft]);
+  const tabErrorCounts: Partial<Record<DashboardTab, number>> = {
+    flows: flowValidation.errors.length,
+    education: educationValidation.errors.length,
+    contacts: contactValidation.errors.length,
   };
 
   return (
     <Page>
-      <PageHeader title="Dashboard" description="Rascunhos locais para fluxos, materiais e contatos." />
-      <DashboardShell activeTab={activeTab} onTabChange={setActiveTab} publishMode={publishMode}>
+      <PageHeader
+        title="Dashboard"
+        description="Gerencie o conteúdo publicado e consulte estatísticas agregadas de acesso."
+      />
+      <DashboardShell
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        publishMode={publishMode}
+        pendingChanges={changeSummary.total}
+        draftUpdatedAt={draftState.updatedAt}
+        tabErrorCounts={tabErrorCounts}
+      >
         {activeTab === 'flows' && (
           <FlowDashboard
             flows={mergedDrafts.flows}
@@ -546,6 +611,7 @@ export function DashboardRoute() {
         {activeTab === 'contacts' && (
           <ContactsDashboard
             services={mergedDrafts.contacts}
+            locations={mergedDrafts.locations}
             validation={contactValidation}
             onServiceChange={(serviceIndex, serviceId, patch) =>
               updateDraftState((current) => {
@@ -577,7 +643,10 @@ export function DashboardRoute() {
               })
             }
             onServiceAdd={() => {
-              const newService = createLocalService(mergedDrafts.contacts.map((service) => service.id));
+              const newService = createLocalService(
+                mergedDrafts.contacts.map((service) => service.id),
+                mergedDrafts.locations,
+              );
               updateDraftState((current) => ({
                 ...current,
                 addedContacts: [...current.addedContacts, newService],
@@ -609,13 +678,80 @@ export function DashboardRoute() {
                 };
               })
             }
+            onLocationChange={(locationIndex, locationId, patch) =>
+              updateDraftState((current) => {
+                const origin = resolveLocationOrigin(
+                  shipped.locations ?? [],
+                  current.addedLocations,
+                  current.removedLocationIds ?? [],
+                  locationIndex,
+                );
+                if (!origin || origin.id !== locationId) return current;
+
+                if (origin.kind === 'added') {
+                  return {
+                    ...current,
+                    addedLocations: updateRecordAtIndex(current.addedLocations, origin.addedIndex, patch),
+                  };
+                }
+
+                return {
+                  ...current,
+                  locationPatches: upsertPatchById(
+                    current.locationPatches,
+                    origin.id,
+                    origin.sourceIndex,
+                    patch,
+                    (shipped.locations ?? []).filter((location) => location.id === origin.id).length === 1,
+                  ),
+                };
+              })
+            }
+            onLocationAdd={() => {
+              const existingIds = [
+                ...(shipped.locations ?? []).map((location) => location.id),
+                ...draftState.addedLocations.map((location) => location.id),
+                ...(draftState.removedLocationIds ?? []),
+              ];
+              const newLocation = createLocalLocation(existingIds);
+              updateDraftState((current) => ({
+                ...current,
+                addedLocations: [...current.addedLocations, newLocation],
+              }));
+              return newLocation.id;
+            }}
+            onLocationRemove={(locationIndex, locationId) =>
+              updateDraftState((current) => {
+                const origin = resolveLocationOrigin(
+                  shipped.locations ?? [],
+                  current.addedLocations,
+                  current.removedLocationIds ?? [],
+                  locationIndex,
+                );
+                if (!origin || origin.id !== locationId) return current;
+
+                if (origin.kind === 'added') {
+                  return {
+                    ...current,
+                    addedLocations: current.addedLocations.filter((_, index) => index !== origin.addedIndex),
+                    removedLocationIds: [...new Set([...(current.removedLocationIds ?? []), origin.id])],
+                  };
+                }
+
+                return {
+                  ...current,
+                  locationPatches: current.locationPatches.filter((patch) => patch.id !== origin.id),
+                  removedLocationIds: [...new Set([...(current.removedLocationIds ?? []), origin.id])],
+                };
+              })
+            }
           />
         )}
         {activeTab === 'analytics' && <AnalyticsDashboard />}
         {activeTab === 'export' &&
           (publishMode === 'database' ? (
             <PublishDashboard
-              baseline={baseline}
+              baseline={shipped}
               draft={publishedDraft}
               validation={validation}
               draftUpdatedAt={draftState.updatedAt}

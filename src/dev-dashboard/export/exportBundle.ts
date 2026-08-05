@@ -1,22 +1,24 @@
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
-import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
 import { normalizeForComparison } from '../content/normalize';
 import type { DashboardShippedContent } from '../content/shippedContent';
 import type { DashboardValidationResult } from '../validation/validationTypes';
 
-export const DASHBOARD_EXPORT_SCHEMA_VERSION = '3.0.0' as const;
+export const DASHBOARD_EXPORT_SCHEMA_VERSION = '4.0.0' as const;
 
 export interface DashboardDraftContent {
   flows: GuidedFlow[];
   educationMaterials: EducationResource[];
   educationGroups: EducationResourceGroup[];
   contacts: ServiceDirectoryEntry[];
+  locations?: ServiceLocation[];
   defaultGroupOrder?: number;
   removedEducationGroupIds?: string[];
   removedEducationMaterialIds?: string[];
   removedContactIds?: string[];
+  removedLocationIds?: string[];
 }
 
 export interface DashboardExportBundle {
@@ -47,10 +49,12 @@ export function buildExportBundle({
       educationMaterials: changedRecords(shipped.educationMaterials, drafts.educationMaterials),
       educationGroups: changedRecords(shipped.educationGroups, drafts.educationGroups),
       contacts: changedRecords(shipped.contacts, drafts.contacts),
+      locations: changedRecords(shipped.locations ?? [], drafts.locations ?? []),
       defaultGroupOrder: drafts.defaultGroupOrder ?? 0,
       removedEducationGroupIds: drafts.removedEducationGroupIds ?? [],
       removedEducationMaterialIds: drafts.removedEducationMaterialIds ?? [],
       removedContactIds: drafts.removedContactIds ?? [],
+      removedLocationIds: drafts.removedLocationIds ?? [],
     },
     validation,
   };

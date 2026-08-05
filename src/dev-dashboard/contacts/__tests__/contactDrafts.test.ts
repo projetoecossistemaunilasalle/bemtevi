@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeToneForServiceType, createLocalService, normalizePhoneHref } from '../contactDrafts';
+import { badgeToneForServiceType, createLocalLocation, createLocalService, normalizePhoneHref } from '../contactDrafts';
 
 describe('contactDrafts', () => {
   it('derives a tel URL from a formatted phone number', () => {
@@ -27,8 +27,9 @@ describe('contactDrafts', () => {
       name: 'Novo contato',
       type: 'Outro',
       badgeTone: 'neutral',
-      city: 'Canoas',
-      state: 'RS',
+      city: '',
+      state: '',
+      locationId: null,
       address: '',
       phoneDisplay: '',
       phoneHref: 'tel:',
@@ -38,6 +39,25 @@ describe('contactDrafts', () => {
         reviewedAt: null,
         notes: '',
       },
+    });
+  });
+
+  it('defaults a new contact to the first managed location', () => {
+    expect(createLocalService([], [{ id: 'loc-esteio-rs', city: 'Esteio', state: 'RS' }])).toMatchObject({
+      locationId: 'loc-esteio-rs',
+      city: 'Esteio',
+      state: 'RS',
+    });
+  });
+
+  it('does not reuse removed location IDs', () => {
+    expect(createLocalLocation(['location-local-1', 'location-local-3'])).toEqual({
+      id: 'location-local-2',
+      city: '',
+      state: '',
+    });
+    expect(createLocalLocation(['location-local-1', 'location-local-2'])).toMatchObject({
+      id: 'location-local-3',
     });
   });
 });

@@ -1,11 +1,12 @@
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
-import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
+import { deriveLocationsFromContacts, normalizeContactLocations } from '../../domain/services/locations';
 import type { DashboardShippedContent } from '../content/shippedContent';
 
 const STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
-export const DASHBOARD_DRAFT_SCHEMA_VERSION = '4.0.0' as const;
+export const DASHBOARD_DRAFT_SCHEMA_VERSION = '5.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {
   id: string;
@@ -20,16 +21,19 @@ export interface DashboardDraftState {
   educationMaterialPatches: Array<DashboardRecordPatch<EducationResource>>;
   groupPatches: Array<DashboardRecordPatch<EducationResourceGroup>>;
   contactPatches: Array<DashboardRecordPatch<ServiceDirectoryEntry>>;
+  locationPatches: Array<DashboardRecordPatch<ServiceLocation>>;
   addedFlows: GuidedFlow[];
   addedEducationMaterials: EducationResource[];
   addedGroups: EducationResourceGroup[];
   addedContacts: ServiceDirectoryEntry[];
+  addedLocations: ServiceLocation[];
   baseRevision?: number | null;
   defaultGroupOrder?: number;
   removedGroupIds?: string[];
   removedFlowIds?: string[];
   removedEducationMaterialIds?: string[];
   removedContactIds: string[];
+  removedLocationIds: string[];
   updatedAt: string | null;
 }
 
@@ -40,13 +44,16 @@ export function createEmptyDashboardDraftState(): DashboardDraftState {
     educationMaterialPatches: [],
     groupPatches: [],
     contactPatches: [],
+    locationPatches: [],
     addedFlows: [],
     addedEducationMaterials: [],
     addedGroups: [],
     addedContacts: [],
+    addedLocations: [],
     removedGroupIds: [],
     removedFlowIds: [],
     removedContactIds: [],
+    removedLocationIds: [],
     updatedAt: null,
   };
 }
@@ -62,14 +69,17 @@ export function hasDashboardChanges(state: DashboardDraftState) {
       state.educationMaterialPatches,
       state.groupPatches,
       state.contactPatches,
+      state.locationPatches,
       state.addedFlows,
       state.addedEducationMaterials,
       state.addedGroups,
       state.addedContacts,
+      state.addedLocations,
       state.removedGroupIds,
       state.removedFlowIds,
       state.removedEducationMaterialIds,
       state.removedContactIds,
+      state.removedLocationIds,
     ].some((records) => Array.isArray(records) && records.length > 0) || state.defaultGroupOrder !== undefined
   );
 }
@@ -98,8 +108,11 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         contactPatches: [],
         addedContacts: [],
         removedContactIds: [],
+        locationPatches: [],
+        addedLocations: [],
+        removedLocationIds: [],
       } as DashboardDraftState;
-    } else if (version === '3.0.0' || version === DASHBOARD_DRAFT_SCHEMA_VERSION) {
+    } else if (version === '3.0.0' || version === '4.0.0' || version === DASHBOARD_DRAFT_SCHEMA_VERSION) {
       const result = parsed as DashboardDraftState;
       state = {
         ...result,
@@ -112,9 +125,12 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
               : undefined,
         contactPatches: Array.isArray(result.contactPatches) ? result.contactPatches : [],
         addedContacts: Array.isArray(result.addedContacts) ? result.addedContacts : [],
+        locationPatches: Array.isArray(result.locationPatches) ? result.locationPatches : [],
+        addedLocations: Array.isArray(result.addedLocations) ? result.addedLocations : [],
         removedGroupIds: result.removedGroupIds ?? [],
         removedFlowIds: result.removedFlowIds ?? [],
         removedContactIds: Array.isArray(result.removedContactIds) ? result.removedContactIds : [],
+        removedLocationIds: Array.isArray(result.removedLocationIds) ? result.removedLocationIds : [],
       };
     } else {
       return createEmptyDashboardDraftState();
@@ -175,6 +191,39 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     (contact) => !removedContactIds.has(contact.id),
   );
 
+  const shippedLocations = Array.isArray(shipped.locations)
+    ? shipped.locations
+    : deriveLocationsFromContacts(shipped.contacts);
+  const removedLocationIds = new Set(drafts.removedLocationIds ?? []);
+  const mergedLocations = mergeRecords(
+    shippedLocations,
+    drafts.locationPatches ?? [],
+    drafts.addedLocations ?? [],
+  ).filter((location) => !removedLocationIds.has(location.id));
+  const legacyLocationPatchIds = new Set(
+    drafts.contactPatches
+      .filter(
+        ({ patch }) =>
+          !Object.prototype.hasOwnProperty.call(patch, 'locationId') &&
+          (Object.prototype.hasOwnProperty.call(patch, 'city') || Object.prototype.hasOwnProperty.call(patch, 'state')),
+      )
+      .map(({ id }) => id),
+  );
+  const explicitlyPatchedLocationIds = new Set((drafts.locationPatches ?? []).map(({ id }) => id));
+  const preservedContactIndexes = new Set<number>();
+  contacts.forEach((contact, index) => {
+    if (
+      legacyLocationPatchIds.has(contact.id) &&
+      !explicitlyPatchedLocationIds.has(typeof contact.locationId === 'string' ? contact.locationId : '')
+    ) {
+      preservedContactIndexes.add(index);
+    }
+  });
+  const normalized = normalizeContactLocations(contacts, mergedLocations, {
+    allowDerivation: !Array.isArray(shipped.locations),
+    preserveDenormalizedContactIndexes: preservedContactIndexes,
+  });
+
   const removedEducationMaterialIds = new Set(drafts.removedEducationMaterialIds ?? []);
   const educationMaterials = mergeRecords(
     shipped.educationMaterials,
@@ -186,7 +235,8 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     flows,
     educationMaterials,
     educationGroups: sortGroupsByOrder(educationGroups),
-    contacts,
+    contacts: normalized.contacts,
+    locations: normalized.locations,
     defaultGroupOrder: drafts.defaultGroupOrder ?? shipped.defaultGroupOrder ?? 0,
   };
 }

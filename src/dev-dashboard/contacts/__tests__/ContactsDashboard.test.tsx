@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ServiceDirectoryEntry } from '../../../domain/services/types';
+import type { ServiceDirectoryEntry, ServiceLocation } from '../../../domain/services/types';
 import { ContactsDashboard } from '../ContactsDashboard';
 import { createLocalService } from '../contactDrafts';
 import { validateDashboardContacts } from '../contactsValidation';
@@ -49,6 +49,7 @@ const universityService: ServiceDirectoryEntry = {
 };
 
 type ServiceChangeHandler = (index: number, id: string, patch: Partial<ServiceDirectoryEntry>) => void;
+type LocationChangeHandler = (index: number, id: string, patch: Partial<ServiceLocation>) => void;
 
 function StatefulHarness({
   initialServices,
@@ -103,6 +104,37 @@ function renderDashboard(initialServices: ServiceDirectoryEntry[] = [capsService
   };
 
   render(<StatefulHarness initialServices={initialServices} {...callbacks} />);
+
+  return { user: userEvent.setup(), ...callbacks };
+}
+
+function renderLocationDashboard() {
+  const locations: ServiceLocation[] = [
+    { id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' },
+    { id: 'loc-esteio-rs', city: 'Esteio', state: 'RS' },
+  ];
+  const services = [
+    { ...capsService, locationId: 'loc-canoas-rs' },
+    { ...ubsService, locationId: 'loc-esteio-rs' },
+    { ...universityService, city: '', state: '', locationId: null },
+  ];
+  const callbacks = {
+    onServiceChange: vi.fn<ServiceChangeHandler>(),
+    onServiceAdd: vi.fn(() => 'service-local-1'),
+    onServiceRemove: vi.fn<(index: number, id: string) => void>(),
+    onLocationChange: vi.fn<LocationChangeHandler>(),
+    onLocationAdd: vi.fn(() => 'location-local-1'),
+    onLocationRemove: vi.fn<(index: number, id: string) => void>(),
+  };
+
+  render(
+    <ContactsDashboard
+      services={services}
+      locations={locations}
+      validation={validateDashboardContacts(services, locations)}
+      {...callbacks}
+    />,
+  );
 
   return { user: userEvent.setup(), ...callbacks };
 }
@@ -163,9 +195,10 @@ describe('ContactsDashboard', () => {
 
   it('offers common service suggestions and derives the badge tone when type changes', async () => {
     const { user, onServiceChange } = renderDashboard();
-    const type = screen.getByRole('combobox', { name: 'Tipo de serviço' });
+    const type = screen.getByRole('combobox', { name: 'Categoria curta' });
 
     expect(type).toHaveAttribute('list', 'contact-service-type-suggestions');
+    expect(type).toHaveAttribute('maxlength', '24');
     await user.clear(type);
     await user.type(type, 'UBS');
 
@@ -173,6 +206,21 @@ describe('ContactsDashboard', () => {
       type: 'UBS',
       badgeTone: 'secondary',
     });
+  });
+
+  it('shows a live, non-interactive preview of the selected contact card', async () => {
+    const { user } = renderDashboard();
+    const preview = screen.getByRole('complementary', { name: 'Prévia do cartão' });
+
+    expect(within(preview).getByRole('heading', { name: 'CAPS Centro' })).toBeInTheDocument();
+    expect(within(preview).getByText('CAPS')).toBeInTheDocument();
+    expect(within(preview).getByText('Atendimento por acolhimento.')).toBeInTheDocument();
+    expect(within(preview).getByText('Ligar agora').closest('a')).not.toHaveAttribute('href');
+
+    await user.click(serviceButton('UBS Norte'));
+
+    expect(within(preview).getByRole('heading', { name: 'UBS Norte' })).toBeInTheDocument();
+    expect(within(preview).getByText('UBS')).toBeInTheDocument();
   });
 
   it('keeps phone formatting visible and derives its tel href on every change', async () => {
@@ -189,16 +237,47 @@ describe('ContactsDashboard', () => {
     });
   });
 
-  it('uppercases the state and limits it to two characters', async () => {
-    const { user, onServiceChange } = renderDashboard();
-    const state = screen.getByRole('textbox', { name: 'Estado' });
+  it('uses a location picker instead of free-text city and state fields', () => {
+    renderDashboard();
+    expect(screen.getByRole('combobox', { name: 'Local' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Cidade' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Estado' })).not.toBeInTheDocument();
+  });
 
-    expect(state).toHaveAttribute('maxlength', '2');
-    await user.clear(state);
-    await user.type(state, 'rjs');
+  it('groups contacts by location and includes an accessible national group', async () => {
+    const { user, onServiceChange } = renderLocationDashboard();
 
-    expect(state).toHaveValue('RJ');
-    expect(onServiceChange).toHaveBeenLastCalledWith(0, 'service-caps-centro', { state: 'RJ' });
+    const canoasGroup = screen.getByRole('group', { name: 'Canoas - RS' });
+    const esteioGroup = screen.getByRole('group', { name: 'Esteio - RS' });
+    const nationalGroup = screen.getByRole('group', { name: 'Sem local' });
+    expect(within(canoasGroup).getByText('1')).toBeInTheDocument();
+    expect(within(esteioGroup).getByText('1')).toBeInTheDocument();
+    expect(within(nationalGroup).getByRole('button', { name: /Clínica Escola/ })).toBeInTheDocument();
+
+    await user.click(within(esteioGroup).getByRole('button', { name: /UBS Norte/ }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Local' }), 'loc-canoas-rs');
+
+    expect(onServiceChange).toHaveBeenLastCalledWith(1, 'service-ubs-norte', {
+      locationId: 'loc-canoas-rs',
+      city: 'Canoas',
+      state: 'RS',
+    });
+  });
+
+  it('manages locations and blocks removal while contacts still reference them', async () => {
+    const { user, onLocationChange, onLocationAdd, onLocationRemove } = renderLocationDashboard();
+
+    await user.click(screen.getByRole('button', { name: 'Gerenciar locais' }));
+    const cityInputs = screen.getAllByRole('textbox', { name: 'Cidade' });
+    expect(screen.getByRole('button', { name: 'Remover local Canoas - RS' })).toBeDisabled();
+    expect(screen.getAllByText('Realocar os contatos antes de remover.')).toHaveLength(2);
+
+    fireEvent.change(cityInputs[1], { target: { value: 'São Leopoldo' } });
+    expect(onLocationChange).toHaveBeenLastCalledWith(1, 'loc-esteio-rs', { city: 'São Leopoldo' });
+    expect(onLocationRemove).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Novo local' }));
+    expect(onLocationAdd).toHaveBeenCalledOnce();
   });
 
   it('adds a contact and immediately selects the stable id returned by the parent', async () => {

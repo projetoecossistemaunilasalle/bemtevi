@@ -6,7 +6,7 @@ import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { DashboardRoute } from '../DashboardRoute';
 import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorage';
 import { EducationDashboard } from '../education/EducationDashboard';
-import { MAX_IMAGE_UPLOAD_BYTES } from '../components/fileUpload';
+import { MAX_IMAGE_SOURCE_BYTES } from '../components/fileUpload';
 import { getShippedDashboardContent } from '../content/shippedContent';
 import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import type { DashboardShippedContent } from '../content/shippedContent';
@@ -17,6 +17,7 @@ function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
     educationMaterials: shipped.educationMaterials,
     educationGroups: shipped.educationGroups,
     contacts: shipped.contacts,
+    locations: shipped.locations ?? [],
     defaultGroupOrder: shipped.defaultGroupOrder ?? 0,
   };
 }
@@ -267,6 +268,7 @@ vi.mock('../content/shippedContent', () => ({
       },
     ],
     contacts: shippedContacts,
+    locations: [{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }],
   }),
 }));
 
@@ -396,7 +398,9 @@ describe('DashboardRoute', () => {
       'Estatísticas',
       'Exportar',
     ]);
-    expect(screen.getByText('Rascunhos locais para fluxos, materiais e contatos.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Gerencie o conteúdo publicado e consulte estatísticas agregadas de acesso.'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
 
@@ -776,6 +780,32 @@ describe('DashboardRoute', () => {
     expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
     expect(draft.contactPatches).toEqual([]);
     expect(screen.queryByRole('textbox', { name: 'Nome' })).not.toBeInTheDocument();
+  });
+
+  it('tombstones removed local locations so their IDs are not reused', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gerenciar locais' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Novo local' }));
+
+    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    expect(draft.addedLocations).toEqual([{ id: 'location-local-1', city: '', state: '' }]);
+
+    const removeButtons = screen.getAllByRole('button', { name: /Remover local/ });
+    expect(removeButtons[0]).toBeDisabled();
+    expect(removeButtons[1]).not.toBeDisabled();
+    fireEvent.click(removeButtons[1]);
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar: Remover local/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Novo local' }));
+    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    expect(draft.addedLocations).toEqual([{ id: 'location-local-2', city: '', state: '' }]);
+    expect(draft.removedLocationIds).toEqual(['location-local-1']);
   });
 
   it('persists the contacts tab and restores it after remounting', () => {
@@ -1209,7 +1239,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Fonte editada localmente')).toBeInTheDocument();
   });
 
-  it('rejects an oversized education thumbnail without replacing the current value', async () => {
+  it('rejects an image above the source-size guard without replacing the current value', async () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -1222,12 +1252,12 @@ describe('DashboardRoute', () => {
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();
 
-    const oversized = new File([new Uint8Array(MAX_IMAGE_UPLOAD_BYTES + 1)], 'large.png', {
+    const oversized = new File([new Uint8Array(MAX_IMAGE_SOURCE_BYTES + 1)], 'large.png', {
       type: 'image/png',
     });
     fireEvent.change(fileInput!, { target: { files: [oversized] } });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('A imagem não pode exceder 1 MiB.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('A imagem selecionada é muito grande.');
     expect(currentUrl).toHaveValue(originalValue);
   });
 
@@ -1896,8 +1926,11 @@ describe('DashboardRoute', () => {
     // Stage q1 (Etapa 3 — q1) should show +pts badge
     expect(screen.getAllByText('+pts')[0]).toBeInTheDocument();
 
-    // Stage q17 (Etapa 19 — q17) should show ⚠ badge
-    expect(screen.getByText('⚠')).toBeInTheDocument();
+    // Stage q17 (Etapa 19 — q17) should show a safety badge (AlertTriangle icon)
+    const q17OutlineButton = screen.getAllByRole('button', {
+      name: /Etapa 19 — Tem tido ideia de acabar com a vida/i,
+    })[0];
+    expect(q17OutlineButton.querySelector('.lucide-triangle-alert')).not.toBeNull();
 
     // Verify "+ Adicionar etapa" is visible in the sidebar stages area
     const addStageBtn = screen.getByRole('button', { name: /Adicionar etapa/i });
@@ -2109,6 +2142,7 @@ describe('DashboardRoute', () => {
           name: 'Contato do banco',
         },
       ],
+      locations: [{ id: 'loc-db-rs', city: 'Canoas', state: 'RS' }],
       defaultGroupOrder: 0,
     };
     localStorage.setItem(
@@ -2146,6 +2180,7 @@ describe('DashboardRoute', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [createDefaultShippedContact()],
+      locations: [{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }],
       defaultGroupOrder: 0,
     };
     localStorage.removeItem('bemtevi:dev-dashboard:drafts:v1');
@@ -2173,6 +2208,7 @@ describe('DashboardRoute', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [createDefaultShippedContact()],
+      locations: [{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }],
       defaultGroupOrder: 0,
     };
     localStorage.setItem(

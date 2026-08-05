@@ -9,6 +9,7 @@ function clonePayload(payload: PublishedContentPayload): PublishedContentPayload
     educationMaterials: [...payload.educationMaterials],
     educationGroups: [...payload.educationGroups],
     contacts: [...payload.contacts],
+    locations: [...payload.locations],
     defaultGroupOrder: payload.defaultGroupOrder,
   };
 }
@@ -52,6 +53,7 @@ describe('computeChangeSummary', () => {
         group.id === editedGroupId ? { ...group, title: 'Grupo editado' } : group,
       ),
       contacts: baseline.contacts,
+      locations: baseline.locations,
       defaultGroupOrder: 1,
     };
 
@@ -78,6 +80,7 @@ describe('computeChangeSummary', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [first, second],
+      locations: [],
       defaultGroupOrder: 0,
     };
     const draft: PublishedContentPayload = {
@@ -85,6 +88,7 @@ describe('computeChangeSummary', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [first, editedSecond],
+      locations: [],
       defaultGroupOrder: 0,
     };
 
@@ -103,6 +107,7 @@ describe('computeChangeSummary', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [only],
+      locations: [],
       defaultGroupOrder: 0,
     };
     const draft: PublishedContentPayload = {
@@ -110,6 +115,7 @@ describe('computeChangeSummary', () => {
       educationMaterials: [],
       educationGroups: [],
       contacts: [only, only],
+      locations: [],
       defaultGroupOrder: 0,
     };
 

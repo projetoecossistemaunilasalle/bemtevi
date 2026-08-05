@@ -240,7 +240,27 @@ describe('buildExportBundle', () => {
     expect(bundle.changes.removedContactIds).toEqual([contact.id]);
   });
 
-  it('exports with schema version 3.0.0', () => {
+  it('exports removed location IDs', () => {
+    const location = { id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' };
+    const bundle = buildExportBundle({
+      shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [], locations: [location] },
+      drafts: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [],
+        locations: [],
+        removedLocationIds: [location.id],
+      },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-06-15T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.locations).toEqual([]);
+    expect(bundle.changes.removedLocationIds).toEqual([location.id]);
+  });
+
+  it('exports with schema version 4.0.0', () => {
     const bundle = buildExportBundle({
       shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [] },
       drafts: { flows: [], educationMaterials: [], educationGroups: [], contacts: [] },
@@ -248,7 +268,7 @@ describe('buildExportBundle', () => {
       exportedAt: '2026-06-15T00:00:00.000Z',
     });
 
-    expect(bundle.schemaVersion).toBe('3.0.0');
-    expect(DASHBOARD_EXPORT_SCHEMA_VERSION).toBe('3.0.0');
+    expect(bundle.schemaVersion).toBe('4.0.0');
+    expect(DASHBOARD_EXPORT_SCHEMA_VERSION).toBe('4.0.0');
   });
 });

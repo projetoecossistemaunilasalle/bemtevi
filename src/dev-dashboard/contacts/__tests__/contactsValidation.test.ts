@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ServiceDirectoryEntry } from '../../../domain/services/types';
+import type { ServiceDirectoryEntry, ServiceLocation } from '../../../domain/services/types';
 import { validateDashboardContacts } from '../contactsValidation';
 
 const service: ServiceDirectoryEntry = {
@@ -15,9 +15,59 @@ const service: ServiceDirectoryEntry = {
   review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
 };
 
+const location: ServiceLocation = { id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' };
+
 describe('validateDashboardContacts', () => {
   it('accepts a complete normalized contact', () => {
     expect(validateDashboardContacts([service])).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('accepts a contact assigned to a managed location', () => {
+    expect(validateDashboardContacts([{ ...service, locationId: location.id }], [location])).toEqual({
+      errors: [],
+      warnings: [],
+    });
+  });
+
+  it('allows national contacts and warns when the managed catalog is empty', () => {
+    const result = validateDashboardContacts([{ ...service, city: '', state: '', locationId: null }], []);
+
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([expect.objectContaining({ id: 'no-locations', area: 'contacts' })]);
+  });
+
+  it('rejects dangling and mismatched location references', () => {
+    const dangling = validateDashboardContacts([{ ...service, locationId: 'missing' }], [location]);
+    const mismatch = validateDashboardContacts([{ ...service, locationId: location.id, city: 'Esteio' }], [location]);
+
+    expect(dangling.errors).toEqual([expect.objectContaining({ id: 'unknown-location:service-one:0' })]);
+    expect(mismatch.errors).toEqual([expect.objectContaining({ id: 'location-mismatch:service-one:0' })]);
+  });
+
+  it('rejects leftover city data on an unassigned contact and duplicate locations', () => {
+    const result = validateDashboardContacts(
+      [{ ...service, locationId: null }],
+      [location, { ...location, id: 'loc-canoas-rs-2' }],
+    );
+
+    expect(result.errors.map((issue) => issue.id)).toEqual([
+      'duplicate-location:canoas|RS',
+      'unassigned-city:service-one:0',
+    ]);
+  });
+
+  it('rejects a sentence used as the short category', () => {
+    const result = validateDashboardContacts([
+      { ...service, type: 'Atendimento psicossocial para adultos em sofrimento.' },
+    ]);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        id: 'long-type:service-one:0',
+        path: 'contacts.0.type',
+        message: expect.stringMatching(/no máximo 24 caracteres/i),
+      }),
+    ]);
   });
 
   it('reports every missing required field with its indexed path', () => {
