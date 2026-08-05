@@ -368,7 +368,9 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
 
         <div className="flex items-start gap-3 rounded-xl border border-outline-variant/50 bg-surface-container px-4 py-3">
           <Shield className="mt-0.5 shrink-0 text-secondary" size={20} aria-hidden="true" />
-          <p className="font-body-sm text-on-surface-variant">Este espaço é anônimo e não salva sua conversa.</p>
+          <p className="font-body-sm text-on-surface-variant">
+            Este espaço não pede sua identificação e não salva sua conversa.
+          </p>
         </div>
       </div>
     </section>

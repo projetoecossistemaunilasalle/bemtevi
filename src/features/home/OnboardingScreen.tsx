@@ -10,12 +10,12 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
     {
       icon: <Brain size={48} className="text-on-primary" />,
       title: 'Bem-vindo ao BemTeVi',
-      body: 'Um espaço seguro e anônimo para cuidar de você. Aqui, ninguém precisa saber quem você é — só importa como você está se sentindo.',
+      body: 'Um espaço acolhedor para cuidar de você. Você não precisa se identificar para começar — só importa como está se sentindo.',
     },
     {
       icon: <Shield size={48} className="text-on-primary" />,
       title: 'Sua privacidade importa',
-      body: 'Não pedimos login, CPF, e-mail ou nome da escola. Nada do que você faz aqui é salvo ou compartilhado.',
+      body: 'Não pedimos login, CPF, e-mail ou nome da escola. Suas respostas e conversas não são salvas. O navegador guarda apenas uma preferência não sensível: que você já viu esta apresentação.',
     },
     {
       icon: <Compass size={48} className="text-on-primary" />,

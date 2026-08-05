@@ -82,6 +82,8 @@ describe('OrientationScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockNavigate.mockClear();
+    window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -101,10 +103,41 @@ describe('OrientationScreen', () => {
     expect(screen.getByRole('button', { name: 'Quero encontrar um próximo passo de cuidado' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Preciso de um momento mais leve' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Outro' })).toBeInTheDocument();
-    expect(screen.getByText('Este espaço é anônimo e não salva sua conversa.')).toBeInTheDocument();
+    expect(screen.getByText('Este espaço não pede sua identificação e não salva sua conversa.')).toBeInTheDocument();
 
     expect(screen.queryByRole('log', { name: 'Histórico da orientação guiada' })).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Digite ou escolha uma opção')).not.toBeInTheDocument();
+  });
+
+  it('keeps orientation answers in memory instead of browser storage', () => {
+    renderOrientation();
+    startOrientationWithStarter();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+
+    expect(window.localStorage).toHaveLength(0);
+    expect(window.sessionStorage).toHaveLength(0);
+  });
+
+  it('keeps questionnaire answers and scores in memory instead of browser storage', () => {
+    renderOrientation();
+    startOrientationWithStarter();
+
+    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
+      target: { value: 'SRQ-20' },
+    });
+    fireEvent.click(screen.getByRole('option', { name: 'Quero responder o SRQ-20' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Quero responder' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Continuar' }));
+    advanceInitialLoad();
+    fireEvent.click(screen.getByRole('option', { name: 'Sim' }));
+
+    expect(window.localStorage).toHaveLength(0);
+    expect(window.sessionStorage).toHaveLength(0);
   });
 
   it('renders guided orientation without free-text submission', () => {

@@ -1,4 +1,4 @@
-import { Brain, Compass, Gauge, GraduationCap, HeartHandshake, Home, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { Compass, Gauge, GraduationCap, HeartHandshake, Home, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { useAdminAuth } from '../auth/AdminAuthContext';
 import { canShowDevDashboard } from '../devDashboard';
 import { Link, NavLink } from 'react-router-dom';
@@ -23,8 +23,13 @@ export function TopBar() {
     <header className="bg-surface sticky top-0 z-40 w-full border-b border-outline-variant/30">
       <div className="flex items-center px-container-padding-mobile h-16 w-full max-w-7xl mx-auto justify-between">
         <Link to={routes.home} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Brain className="text-primary" size={28} />
-          <span className="font-headline-lg-mobile text-primary">BemTeVi</span>
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt=""
+            aria-hidden="true"
+            className="h-10 w-10 object-contain"
+          />
+          <span className="font-brand text-primary">BemTeVi</span>
         </Link>
 
         <div className="flex items-center gap-2">

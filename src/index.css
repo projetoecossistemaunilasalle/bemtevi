@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 @import 'tailwindcss';
 
 @theme {
@@ -51,32 +51,40 @@
 }
 
 @layer utilities {
+  .font-brand {
+    font-family: 'Nunito', sans-serif;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+
   .font-display-lg {
-    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+    font-family: 'Nunito', sans-serif;
     font-size: 36px;
     line-height: 44px;
     font-weight: 700;
   }
   .font-headline-lg {
-    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+    font-family: 'Nunito', sans-serif;
     font-size: 28px;
     line-height: 36px;
     font-weight: 700;
   }
   .font-headline-lg-mobile {
-    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+    font-family: 'Nunito', sans-serif;
     font-size: 24px;
     line-height: 32px;
     font-weight: 700;
   }
   .font-headline-md {
-    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+    font-family: 'Nunito', sans-serif;
     font-size: 24px;
     line-height: 32px;
     font-weight: 600;
   }
   .font-headline-sm {
-    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+    font-family: 'Nunito', sans-serif;
     font-size: 20px;
     line-height: 28px;
     font-weight: 600;

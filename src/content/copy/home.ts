@@ -7,9 +7,9 @@ export const homeCopy = {
   locale: 'pt-BR',
   title: 'Como você está hoje?',
   subtitle:
-    'Um espaço de orientação emocional para educadores, feito para acolher, informar e conectar sem identificar você.',
+    'Um espaço de orientação emocional para educadores, feito para acolher, informar e conectar sem pedir sua identificação.',
   privacyReassurance:
-    'Este é um espaço seguro. O BemTeVi não pede login, CPF, e-mail ou escola. O que você fizer aqui não é salvo entre sessões.',
+    'Este é um espaço seguro. O BemTeVi não pede login, CPF, e-mail, nome ou escola. Suas conversas e respostas não ficam guardadas entre sessões. O navegador lembra apenas que você já viu a apresentação.',
   actions: [
     {
       id: 'immediate-support',

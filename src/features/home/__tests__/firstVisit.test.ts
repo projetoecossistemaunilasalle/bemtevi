@@ -25,4 +25,15 @@ describe('firstVisit', () => {
     expect(isFirstVisit()).toBe(false);
     expect(window.localStorage.getItem('bemtevi:onboarding-seen')).toBe('true');
   });
+
+  it('does not persist any onboarding content beyond the completion flag', async () => {
+    const { markVisited } = await import('../firstVisit');
+
+    markVisited();
+
+    expect(window.localStorage).toHaveLength(1);
+    expect(window.localStorage.getItem('bemtevi:onboarding-seen')).toBe('true');
+    expect(window.localStorage.getItem('bemtevi:onboarding-answers')).toBeNull();
+    expect(window.sessionStorage).toHaveLength(0);
+  });
 });
