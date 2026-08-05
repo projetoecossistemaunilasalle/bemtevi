@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi Mock — Contatos (rede de apoio)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./mock-styles.css" />
+    <style>
+      /* ---------- Page header ---------- */
+      .contacts-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .contacts-header-icon {
+        background: var(--color-primary-container);
+        color: var(--color-on-primary-container);
+        border-radius: 9999px;
+        padding: 8px;
+        display: inline-flex;
+      }
+      .contacts-header h1 {
+        font-family: 'Atkinson Hyperlegible Next', sans-serif;
+        font-size: 28px;
+        line-height: 36px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      /* ---------- Location bar ---------- */
+      .location-bar {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .combobox {
+        position: relative;
+        min-width: 260px;
+        flex: 1;
+        max-width: 360px;
+      }
+      .combobox-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 8px;
+        background: var(--color-surface-container-lowest);
+        padding: 10px 12px;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--color-on-surface);
+        cursor: pointer;
+        text-align: left;
+      }
+      .combobox-trigger:focus,
+      .combobox-trigger[aria-expanded='true'] {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+        outline: none;
+      }
+      .combobox-trigger .chevron {
+        margin-left: auto;
+        transition: transform 0.15s ease;
+        color: var(--color-on-surface-variant);
+      }
+      .combobox-trigger[aria-expanded='true'] .chevron {
+        transform: rotate(180deg);
+      }
+      .combobox-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background: var(--color-surface-container-lowest);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 6px;
+        display: none;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .combobox-panel.open {
+        display: flex;
+      }
+      .combobox-search {
+        width: 100%;
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 14px;
+        color: var(--color-on-surface);
+        outline: none;
+        margin-bottom: 4px;
+      }
+      .combobox-search:focus {
+        border-color: var(--color-primary);
+      }
+      .combobox-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border: none;
+        background: transparent;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--color-on-surface);
+        cursor: pointer;
+        text-align: left;
+      }
+      .combobox-option:hover,
+      .combobox-option.highlighted {
+        background: var(--color-surface-container-low);
+      }
+      .combobox-option .check {
+        margin-left: auto;
+        color: var(--color-primary);
+        visibility: hidden;
+      }
+      .combobox-option.selected .check {
+        visibility: visible;
+      }
+      .combobox-empty {
+        padding: 8px 10px;
+        font-size: 14px;
+        color: var(--color-on-surface-variant);
+      }
+      .btn-locate {
+        white-space: nowrap;
+      }
+      .btn-locate.loading {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .location-status {
+        width: 100%;
+        font-size: 13px;
+        line-height: 18px;
+        min-height: 18px;
+        color: var(--color-on-surface-variant);
+      }
+      .location-status.ok {
+        color: var(--color-primary);
+      }
+      .location-status.error {
+        color: var(--color-error);
+      }
+
+      /* ---------- Cards grid ---------- */
+      .services-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: var(--stack-md);
+      }
+      .service-card {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+        border-left: 4px solid var(--color-primary);
+        border-radius: 12px;
+        background: var(--color-surface-container-low);
+        overflow: hidden;
+      }
+      .service-card-inner {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        padding: 24px;
+      }
+      .service-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .service-card h2 {
+        font-family: 'Atkinson Hyperlegible Next', sans-serif;
+        font-size: 20px;
+        line-height: 28px;
+        font-weight: 600;
+        margin: 0 0 12px;
+      }
+      .city-chip {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        color: var(--color-on-surface-variant);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 9999px;
+        padding: 2px 10px;
+        white-space: nowrap;
+      }
+      .info-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--color-on-surface-variant);
+      }
+      .info-row svg {
+        color: var(--color-secondary);
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .description {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+        padding-top: 12px;
+        margin-top: 4px;
+      }
+      .description-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--color-on-surface-variant);
+      }
+      .description-text {
+        position: relative;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--color-on-surface);
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .description-text.expanded {
+        -webkit-line-clamp: unset;
+      }
+      .description-text:not(.expanded).truncatable::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 40px;
+        background: linear-gradient(to bottom, transparent, var(--color-surface-container-low));
+        pointer-events: none;
+      }
+      .toggle-desc {
+        align-self: flex-start;
+        border: none;
+        background: transparent;
+        padding: 0;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-primary);
+        cursor: pointer;
+      }
+      .toggle-desc:hover {
+        text-decoration: underline;
+      }
+      .call-button {
+        margin-top: 16px;
+        width: 100%;
+      }
+      .no-results {
+        grid-column: 1 / -1;
+        background: var(--color-surface-container-low);
+        border: 1px dashed var(--color-outline-variant);
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        color: var(--color-on-surface-variant);
+      }
+      @media (max-width: 640px) {
+        .location-bar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .combobox {
+          max-width: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mock-shell">
+      <div class="mock-banner">
+        Mock estático — página "Contatos" (rede de apoio). Nada é funcional de verdade; o JS simula o select, o filtro e
+        a geolocalização para demonstração.
+      </div>
+
+      <section>
+        <div class="contacts-header">
+          <span class="contacts-header-icon">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          </span>
+          <h1>Rede de apoio</h1>
+        </div>
+        <p class="font-body-md text-muted">Encontre centros de atendimento e suporte próximos a você.</p>
+      </section>
+
+      <!-- Location bar -->
+      <section>
+        <div class="location-bar">
+          <div class="combobox" id="cityCombobox">
+            <button
+              type="button"
+              class="combobox-trigger"
+              id="comboboxTrigger"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span id="comboboxValue">Todas as cidades</span>
+              <svg
+                class="chevron"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            <div class="combobox-panel" id="comboboxPanel" role="listbox" aria-label="Escolher cidade"></div>
+          </div>
+
+          <button type="button" class="btn btn-secondary btn-locate" id="locateButton">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="2" y1="12" x2="5" y2="12" />
+              <line x1="19" y1="12" x2="22" y2="12" />
+              <line x1="12" y1="2" x2="12" y2="5" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <circle cx="12" cy="12" r="7" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Usar minha localização
+          </button>
+          <p class="location-status" id="locationStatus" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- Services grid -->
+      <section class="services-grid" id="servicesGrid"></section>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------
+      // Simula o conteúdo publicado (originaria do banco via published_content)
+      // ---------------------------------------------------------------
+      const services = [
+        {
+          id: 'caps-praca-brasil',
+          name: 'CAPS II Praça Brasil',
+          type: 'CAPS',
+          tone: 'primary',
+          city: 'Canoas',
+          state: 'RS',
+          address: 'Av. Getúlio Vargas, 7071 - Centro, Canoas - RS',
+          phoneDisplay: '(51) 3236-1500',
+          hours: 'Segunda a Sexta, 08:00 - 18:00',
+          description:
+            'Atendimento psicossocial para adultos em sofrimento ou que apresentam transtornos mentais graves e persistentes. Atende demanda espontânea e encaminhamentos da rede, com equipe multidisciplinar, grupos terapêuticos e Projeto Terapêutico Singular (PTS) para cada usuário.',
+        },
+        {
+          id: 'ubs-centro',
+          name: 'UBS Centro de Saúde',
+          type: 'UBS',
+          tone: 'secondary',
+          city: 'Canoas',
+          state: 'RS',
+          address: 'Rua Quinze de Janeiro, 123 - Centro, Canoas - RS',
+          phoneDisplay: '(51) 3462-1600',
+          hours: 'Segunda a Sexta, 07:30 - 17:00',
+          description: 'Unidade básica de saúde com acolhimento em saúde mental e encaminhamentos.',
+        },
+        {
+          id: 'ulbra-psicologia',
+          name: 'Clínica Escola de Psicologia - Ulbra',
+          type: 'Universidade',
+          tone: 'neutral',
+          city: 'Canoas',
+          state: 'RS',
+          address: 'Av. Farroupilha, 8001 - São José, Canoas - RS',
+          phoneDisplay: '(51) 3477-9200',
+          description: 'Mediante agendamento prévio.',
+        },
+        {
+          id: 'cras-mathias-velho',
+          name: 'CRAS Mathias Velho',
+          type: 'CRAS',
+          tone: 'secondary',
+          city: 'Canoas',
+          state: 'RS',
+          address: 'Rua São Paulo, 140 - Mathias Velho, Canoas - RS',
+          phoneDisplay: '(51) 3476-2998',
+          hours: 'Segunda a Sexta, 08:00 - 17:00',
+          description:
+            'Proteção social básica: orientação, acompanhamento familiar e programas de transferência de renda.',
+        },
+        {
+          id: 'caps-adulto-centro',
+          name: 'CAPS Adulto Centro',
+          type: 'CAPS',
+          tone: 'primary',
+          city: 'Porto Alegre',
+          state: 'RS',
+          address: 'Rua Coronel Genuíno, 234 - Centro Histórico, Porto Alegre - RS',
+          phoneDisplay: '(51) 3289-4100',
+          hours: 'Segunda a Sexta, 08:00 - 18:00',
+          description:
+            'Atendimento psicossocial para adultos com transtornos mentais graves e persistentes, com acolhimento diário, oficinas terapêuticas e atendimento familiar em regime de portas abertas.',
+        },
+        {
+          id: 'ubs-sao-jose',
+          name: 'UBS São José',
+          type: 'UBS',
+          tone: 'secondary',
+          city: 'Porto Alegre',
+          state: 'RS',
+          address: 'Av. Bento Gonçalves, 6212 - Partenon, Porto Alegre - RS',
+          phoneDisplay: '(51) 3289-8765',
+          hours: 'Segunda a Sexta, 07:30 - 17:00',
+          description: 'Acolhimento em saúde mental e consultas com médico de família.',
+        },
+        {
+          id: 'caps-centenario',
+          name: 'CAPS I Centenário',
+          type: 'CAPS',
+          tone: 'primary',
+          city: 'São Leopoldo',
+          state: 'RS',
+          address: 'Av. Independência, 1300 - Centro, São Leopoldo - RS',
+          phoneDisplay: '(51) 3592-1400',
+          hours: 'Segunda a Sexta, 08:00 - 18:00',
+          description:
+            'Serviço de saúde mental de porte municipal, com acolhimento em saúde mental para adultos e ações territoriais de prevenção do sofrimento psíquico.',
+        },
+        {
+          id: 'cvv-nacional',
+          name: 'CVV - Centro de Valorização da Vida',
+          type: 'Nacional',
+          tone: 'neutral',
+          address: 'Atendimento por telefone, chat e e-mail em todo o Brasil',
+          phoneDisplay: '188',
+          hours: '24 horas, todos os dias',
+          description:
+            'Apoio emocional gratuito, sigiloso e sem julgamentos, 24 horas por dia. Se precisar conversar agora, ligue 188 ou acesse o chat no site do CVV.',
+        },
+      ];
+
+      // ---------------------------------------------------------------
+      // Catálogo local de cidades (futuramente gerenciado pelo dashboard/DB).
+      // Coordenadas aproximadas apenas para o teste de distância.
+      // ---------------------------------------------------------------
+      const cityCatalog = [
+        { city: 'Canoas', state: 'RS', lat: -29.9167, lng: -51.1833 },
+        { city: 'Porto Alegre', state: 'RS', lat: -30.0277, lng: -51.2287 },
+        { city: 'São Leopoldo', state: 'RS', lat: -29.7603, lng: -51.1472 },
+        { city: 'Novo Hamburgo', state: 'RS', lat: -29.6783, lng: -51.1309 },
+        { city: 'Esteio', state: 'RS', lat: -29.8608, lng: -51.1783 },
+        { city: 'Gravataí', state: 'RS', lat: -29.9443, lng: -50.9925 },
+      ];
+
+      // ---------------------------------------------------------------
+      // Cidades derivadas dos serviços publicados
+      // ---------------------------------------------------------------
+      const cityOptions = ['Todas as cidades'].concat(
+        [...new Set(services.filter((s) => s.city).map((s) => `${s.city} - ${s.state}`))].sort(),
+      );
+
+      let selectedCity = 'Todas as cidades';
+
+      // ---------------------------------------------------------------
+      // Render dos cards (espelha ServiceCard do design system)
+      // ---------------------------------------------------------------
+      const grid = document.getElementById('servicesGrid');
+
+      function cardTemplate(service) {
+        const cityChip = service.city ? `<span class="city-chip">${service.city} - ${service.state}</span>` : '';
+        const hours = service.hours
+          ? `<div class="info-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>${service.hours}</span></div>`
+          : '';
+        const description = service.description
+          ? `<div class="description">
+              <span class="description-label">Sobre o atendimento</span>
+              <p class="description-text" data-id="${service.id}">${service.description}</p>
+              <button type="button" class="toggle-desc" data-id="${service.id}" hidden>Ver mais</button>
+            </div>`
+          : '';
+        return `
+          <article class="service-card">
+            <div class="service-card-inner">
+              <div class="service-card-header">
+                <span class="pill pill-primary">${service.type}</span>
+                ${cityChip}
+              </div>
+              <h2>${service.name}</h2>
+              <div class="info-rows">
+                <div class="info-row">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span>${service.address}</span>
+                </div>
+                <div class="info-row">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span>${service.phoneDisplay}</span>
+                </div>
+                ${hours}
+              </div>
+              ${description}
+              <a class="btn btn-primary call-button" href="tel:${service.phoneDisplay.replace(/\D/g, '')}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Ligar agora
+              </a>
+            </div>
+          </article>`;
+      }
+
+      function renderCards() {
+        const filtered =
+          selectedCity === 'Todas as cidades'
+            ? services
+            : services.filter((s) => !s.city || `${s.city} - ${s.state}` === selectedCity);
+        if (filtered.length === 0) {
+          grid.innerHTML = `<p class="no-results">Nenhum contato encontrado para ${selectedCity}.</p>`;
+        } else {
+          grid.innerHTML = filtered.map(cardTemplate).join('');
+        }
+        setupTruncation();
+      }
+
+      // ---------------------------------------------------------------
+      // "Ver mais / ver menos" — só aparece se o texto exceder 3 linhas
+      // ---------------------------------------------------------------
+      function setupTruncation() {
+        grid.querySelectorAll('.description-text').forEach((el) => {
+          const toggle = grid.querySelector(`.toggle-desc[data-id="${el.dataset.id}"]`);
+          if (!toggle) return;
+          el.classList.remove('truncatable');
+          const overflows = el.scrollHeight > el.clientHeight;
+          if (overflows) {
+            el.classList.add('truncatable');
+            toggle.hidden = false;
+            toggle.textContent = 'Ver mais';
+            toggle.onclick = () => {
+              const expanded = el.classList.toggle('expanded');
+              el.classList.toggle('truncatable', !expanded);
+              toggle.textContent = expanded ? 'Ver menos' : 'Ver mais';
+            };
+          } else {
+            toggle.hidden = true;
+          }
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // Select (combobox com busca)
+      // ---------------------------------------------------------------
+      const trigger = document.getElementById('comboboxTrigger');
+      const valueLabel = document.getElementById('comboboxValue');
+      const panel = document.getElementById('comboboxPanel');
+      let highlightedIndex = 0;
+
+      function renderOptions() {
+        const query = (panel.querySelector('.combobox-search')?.value ?? '').toLowerCase();
+        const filtered = cityOptions.filter((c) => c.toLowerCase().includes(query));
+        highlightedIndex = 0;
+        if (filtered.length === 0) {
+          panel.innerHTML = `<div class="combobox-empty">Nenhuma cidade encontrada.</div>`;
+          return;
+        }
+        panel.innerHTML = `
+          <input type="text" class="combobox-search" placeholder="Buscar cidade..." aria-label="Buscar cidade" />
+          ${filtered
+            .map(
+              (city) => `
+                <button type="button" role="option" class="combobox-option ${city === selectedCity ? 'selected' : ''}" data-city="${city}">
+                  ${city === 'Todas as cidades' ? '' : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`}
+                  ${city}
+                  <svg class="check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>`,
+            )
+            .join('')}
+        `;
+        panel.querySelectorAll('.combobox-option').forEach((opt, i) => {
+          opt.addEventListener('click', () => selectCity(opt.dataset.city));
+          opt.addEventListener('mouseenter', () => highlightOption(i));
+        });
+        const search = panel.querySelector('.combobox-search');
+        search.addEventListener('input', renderOptions);
+        search.addEventListener('keydown', onSearchKeydown);
+        search.focus();
+        highlightOption(0);
+      }
+
+      function highlightOption(index) {
+        const opts = panel.querySelectorAll('.combobox-option');
+        if (opts.length === 0) return;
+        highlightedIndex = Math.max(0, Math.min(index, opts.length - 1));
+        opts.forEach((o, i) => o.classList.toggle('highlighted', i === highlightedIndex));
+      }
+
+      function onSearchKeydown(event) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          highlightOption(highlightedIndex + 1);
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          highlightOption(highlightedIndex - 1);
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          const opt = panel.querySelectorAll('.combobox-option')[highlightedIndex];
+          if (opt) opt.click();
+        } else if (event.key === 'Escape') {
+          closePanel();
+        }
+      }
+
+      function openPanel() {
+        renderOptions();
+        panel.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+
+      function closePanel() {
+        panel.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+
+      function selectCity(city) {
+        selectedCity = city;
+        valueLabel.textContent = city;
+        closePanel();
+        renderCards();
+      }
+
+      trigger.addEventListener('click', () => {
+        panel.classList.contains('open') ? closePanel() : openPanel();
+      });
+      document.addEventListener('click', (event) => {
+        if (!document.getElementById('cityCombobox').contains(event.target)) closePanel();
+      });
+
+      // ---------------------------------------------------------------
+      // "Usar minha localização" (100% no dispositivo, nada é enviado)
+      // ---------------------------------------------------------------
+      const locateButton = document.getElementById('locateButton');
+      const locationStatus = document.getElementById('locationStatus');
+
+      function haversineKm(a, b) {
+        const R = 6371;
+        const toRad = (d) => (d * Math.PI) / 180;
+        const dLat = toRad(b.lat - a.lat);
+        const dLng = toRad(b.lng - a.lng);
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      }
+
+      function nearestCity(coord) {
+        let best = null;
+        let bestDistance = Infinity;
+        for (const city of cityCatalog) {
+          const distance = haversineKm(coord, city);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = city;
+          }
+        }
+        return { ...best, distance: Math.round(bestDistance * 10) / 10 };
+      }
+
+      // Arredonda para ~2 casas decimais (≈1 km de imprecisão intencional)
+      function blurCoord(coord) {
+        return { lat: Math.round(coord.lat * 100) / 100, lng: Math.round(coord.lng * 100) / 100 };
+      }
+
+      function useLocation(coord, simulated) {
+        const blurred = blurCoord(coord);
+        const match = nearestCity(blurred);
+        const cityLabel = `${match.city} - ${match.state}`;
+        if (cityOptions.includes(cityLabel)) {
+          selectedCity = cityLabel;
+          valueLabel.textContent = cityLabel;
+        }
+        const simNote = simulated ? ' (posição simulada — sem geolocalização disponível)' : '';
+        locationStatus.className = 'location-status ok';
+        locationStatus.textContent =
+          `Localização aproximada: ${match.city} · a ~${match.distance} km${simNote}. ` +
+          (cityOptions.includes(cityLabel)
+            ? 'Filtramos a rede para essa cidade.'
+            : 'Essa cidade ainda não está no catálogo — mostrando tudo.');
+        renderCards();
+        closePanel();
+      }
+
+      locateButton.addEventListener('click', () => {
+        locationStatus.className = 'location-status';
+        locationStatus.textContent = 'Obtendo localização...';
+        locateButton.classList.add('loading');
+        // As coordenadas são descartadas ao sair/recarregar; nada é transmitido.
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              locateButton.classList.remove('loading');
+              useLocation({ lat: position.coords.latitude, lng: position.coords.longitude }, false);
+            },
+            (error) => {
+              locateButton.classList.remove('loading');
+              // No mock, caímos numa posição simulada para demonstração.
+              console.warn('Geolocalização negada ou indisponível:', error.code, error.message);
+              useLocation({ lat: -29.9167, lng: -51.1833 }, true);
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+          );
+        } else {
+          locateButton.classList.remove('loading');
+          useLocation({ lat: -29.9167, lng: -51.1833 }, true);
+        }
+      });
+
+      // ---------------------------------------------------------------
+      // Init
+      // ---------------------------------------------------------------
+      renderCards();
+    </script>
+  </body>
+</html>
