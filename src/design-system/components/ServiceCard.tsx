@@ -1,44 +1,95 @@
-import { Clock, Info, Map, Phone } from 'lucide-react';
+import { Clock, Map, Phone } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { Badge } from './Badge';
 import { LinkButton } from './Button';
 import { Card } from './Card';
 
-export function ServiceCard({ service }: { service: ServiceDirectoryEntry }) {
+export function ServiceCard({ service, preview = false }: { service: ServiceDirectoryEntry; preview?: boolean }) {
   return (
     <Card className="border-l-4 border-l-primary overflow-hidden flex flex-col bg-surface-container-low">
       <article className="p-6 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-4">
-          <Badge tone={service.badgeTone}>{service.type}</Badge>
+        <div className="flex justify-between items-start gap-2 mb-3">
+          <div className="min-w-0">
+            <Badge tone={service.badgeTone}>
+              <span className="block min-w-0 truncate whitespace-nowrap">{service.type}</span>
+            </Badge>
+          </div>
+          {service.city ? (
+            <span className="border border-outline-variant rounded-full px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant whitespace-nowrap">
+              {service.city} - {service.state}
+            </span>
+          ) : null}
         </div>
         <h2 className="font-headline-md text-on-surface mb-4">{service.name}</h2>
-        <div className="flex flex-col gap-3 font-body-md text-on-surface-variant">
-          <div className="flex items-start gap-3">
-            <Map className="text-secondary mt-0.5 shrink-0" size={20} />
+        <div className="flex flex-col gap-2.5 font-body-md text-on-surface-variant">
+          <div className="flex items-start gap-2.5">
+            <Map className="text-secondary mt-1 shrink-0" size={18} />
             <span>{service.address}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Phone className="text-secondary shrink-0" size={20} />
+          <div className="flex items-center gap-2.5">
+            <Phone className="text-secondary shrink-0" size={18} />
             <span>{service.phoneDisplay}</span>
           </div>
           {service.hours ? (
-            <div className="flex items-center gap-3">
-              <Clock className="text-secondary shrink-0" size={20} />
+            <div className="flex items-center gap-2.5">
+              <Clock className="text-secondary shrink-0" size={18} />
               <span>{service.hours}</span>
             </div>
           ) : null}
-          {service.notes ? (
-            <div className="flex items-center gap-3">
-              <Info className="text-secondary shrink-0" size={20} />
-              <span>{service.notes}</span>
-            </div>
-          ) : null}
         </div>
-        <LinkButton href={service.phoneHref} className="mt-6 w-full">
+        {service.notes ? <ExpandableNotes text={service.notes} /> : null}
+        <LinkButton
+          href={preview ? undefined : service.phoneHref}
+          aria-disabled={preview || undefined}
+          tabIndex={preview ? -1 : undefined}
+          onClick={preview ? (event) => event.preventDefault() : undefined}
+          className="mt-6 w-full"
+        >
           <Phone size={20} />
           Ligar agora
         </LinkButton>
       </article>
     </Card>
+  );
+}
+
+function ExpandableNotes({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+    const measure = () => setCanExpand(element.scrollHeight > element.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <div className="border-t border-outline-variant/50 pt-3 mt-4 flex flex-col gap-1">
+      <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Sobre o atendimento</span>
+      <p
+        ref={textRef}
+        className={`font-body-md text-on-surface relative ${
+          expanded ? '' : 'line-clamp-3'
+        } ${!expanded && canExpand ? "after:content-[''] after:absolute after:left-0 after:right-0 after:bottom-0 after:h-10 after:bg-gradient-to-t after:from-surface-container-low after:pointer-events-none" : ''}`}
+      >
+        {text}
+      </p>
+      {canExpand ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+          className="self-start border-none bg-transparent p-0 font-semibold text-primary cursor-pointer hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary text-sm"
+        >
+          {expanded ? 'Ver menos' : 'Ver mais'}
+        </button>
+      ) : null}
+    </div>
   );
 }
