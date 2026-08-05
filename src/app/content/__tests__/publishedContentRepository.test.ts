@@ -61,9 +61,11 @@ function buildValidPayload(): PublishedContentPayload {
         phoneDisplay: '119',
         phoneHref: 'tel:119',
         badgeTone: 'primary',
+        locationId: 'loc-cidade-sp',
         review,
       },
     ],
+    locations: [{ id: 'loc-cidade-sp', city: 'Cidade', state: 'SP' }],
     defaultGroupOrder: 1,
   };
 }

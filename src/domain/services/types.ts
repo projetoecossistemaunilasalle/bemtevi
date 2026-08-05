@@ -1,5 +1,11 @@
 import type { ContentMetadata, ReviewMetadata } from '../content/types';
 
+export interface ServiceLocation {
+  id: string;
+  city: string;
+  state: string;
+}
+
 export interface ServiceDirectoryEntry {
   id: string;
   name: string;
@@ -7,6 +13,7 @@ export interface ServiceDirectoryEntry {
   badgeTone: 'primary' | 'secondary' | 'neutral';
   city: string;
   state: string;
+  locationId?: string | null;
   address: string;
   phoneDisplay: string;
   phoneHref: string;

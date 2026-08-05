@@ -3,7 +3,12 @@ import { validateFlow } from '../../domain/flow-engine/validateFlow';
 import type { EducationResourceGroup } from '../../content/resources/groups';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
-import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import {
+  deriveLocationsFromContacts,
+  locationPairKey,
+  normalizeContactLocations,
+} from '../../domain/services/locations';
+import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 
 export const PUBLISHED_CONTENT_SCHEMA_VERSION = '1.0.0' as const;
 export const MAX_PUBLISHED_PAYLOAD_BYTES = 5 * 1024 * 1024;
@@ -13,6 +18,7 @@ export interface PublishedContentPayload {
   educationMaterials: EducationResource[];
   educationGroups: EducationResourceGroup[];
   contacts: ServiceDirectoryEntry[];
+  locations: ServiceLocation[];
   defaultGroupOrder: number;
 }
 
@@ -154,7 +160,48 @@ function validateEducationGroups(groups: unknown): EducationResourceGroup[] {
   });
 }
 
-function validateContacts(contacts: unknown): ServiceDirectoryEntry[] {
+export function validateLocations(locations: unknown): ServiceLocation[] {
+  if (!Array.isArray(locations)) {
+    throw new PublishedContentValidationError('O campo "locations" deve ser uma lista.');
+  }
+
+  const ids = new Set<string>();
+  const pairs = new Set<string>();
+
+  return locations.map((location, index) => {
+    if (!isRecord(location)) {
+      throw new PublishedContentValidationError(`Local no índice ${index} deve ser um objeto.`);
+    }
+
+    const id = isNonEmptyString(location.id) ? location.id.trim() : '';
+    const city = isNonEmptyString(location.city) ? location.city.trim() : '';
+    const state = typeof location.state === 'string' ? location.state.trim().toUpperCase() : '';
+
+    if (!id) {
+      throw new PublishedContentValidationError(`Local no índice ${index} precisa de um "id".`);
+    }
+    if (!city) {
+      throw new PublishedContentValidationError(`Local "${id}" precisa de uma "city".`);
+    }
+    if (!/^[A-Z]{2}$/.test(state)) {
+      throw new PublishedContentValidationError(`Local "${id}" precisa de um estado com duas letras.`);
+    }
+    if (ids.has(id)) {
+      throw new PublishedContentValidationError(`Existe mais de um local com o ID "${id}".`);
+    }
+
+    const pair = locationPairKey(city, state);
+    if (pairs.has(pair)) {
+      throw new PublishedContentValidationError(`Existe mais de um local para "${city} - ${state}".`);
+    }
+
+    ids.add(id);
+    pairs.add(pair);
+    return { id, city, state };
+  });
+}
+
+function validateContactRecords(contacts: unknown): ServiceDirectoryEntry[] {
   if (!Array.isArray(contacts)) {
     throw new PublishedContentValidationError('O campo "contacts" deve ser uma lista.');
   }
@@ -172,11 +219,14 @@ function validateContacts(contacts: unknown): ServiceDirectoryEntry[] {
     if (!isNonEmptyString(contact.type)) {
       throw new PublishedContentValidationError(`Contato "${label}" precisa de um "type".`);
     }
-    if (!isNonEmptyString(contact.city)) {
-      throw new PublishedContentValidationError(`Contato "${label}" precisa de um "city".`);
+    if (typeof contact.city !== 'string') {
+      throw new PublishedContentValidationError(`Contato "${label}" precisa de um "city" textual.`);
     }
-    if (!isNonEmptyString(contact.state)) {
-      throw new PublishedContentValidationError(`Contato "${label}" precisa de um "state".`);
+    if (typeof contact.state !== 'string') {
+      throw new PublishedContentValidationError(`Contato "${label}" precisa de um "state" textual.`);
+    }
+    if (contact.locationId !== undefined && contact.locationId !== null && typeof contact.locationId !== 'string') {
+      throw new PublishedContentValidationError(`Contato "${label}" tem um "locationId" inválido.`);
     }
     if (!isNonEmptyString(contact.address)) {
       throw new PublishedContentValidationError(`Contato "${label}" precisa de um "address".`);
@@ -197,6 +247,34 @@ function validateContacts(contacts: unknown): ServiceDirectoryEntry[] {
   });
 }
 
+function validateContacts(contacts: unknown, locations: ServiceLocation[]): ServiceDirectoryEntry[] {
+  const records = validateContactRecords(contacts);
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+
+  records.forEach((contact, index) => {
+    const label = isNonEmptyString(contact.id) ? contact.id : `índice ${index}`;
+    const locationId = typeof contact.locationId === 'string' ? contact.locationId.trim() : contact.locationId;
+    const location =
+      typeof locationId === 'string' && locationId.length > 0 ? locationsById.get(locationId) : undefined;
+
+    if (locationId !== undefined && locationId !== null && locationId !== '') {
+      if (!location) {
+        throw new PublishedContentValidationError(`Contato "${label}" referencia um local desconhecido.`);
+      }
+      if (contact.city !== location.city || contact.state !== location.state) {
+        throw new PublishedContentValidationError(`Contato "${label}" não coincide com o local referenciado.`);
+      }
+      return;
+    }
+
+    if (contact.city.trim() || contact.state.trim()) {
+      throw new PublishedContentValidationError(`Contato "${label}" sem local não pode conter cidade ou estado.`);
+    }
+  });
+
+  return records;
+}
+
 export function parsePayload(payload: unknown): PublishedContentPayload {
   if (!isRecord(payload)) {
     throw new PublishedContentValidationError('O payload publicado deve ser um objeto.');
@@ -214,13 +292,23 @@ export function parsePayload(payload: unknown): PublishedContentPayload {
   const flows = validateFlows(payload.flows);
   const educationMaterials = validateEducationMaterials(payload.educationMaterials);
   const educationGroups = validateEducationGroups(payload.educationGroups);
-  const contacts = validateContacts(payload.contacts);
+  const rawContacts = validateContactRecords(payload.contacts);
+  const hasExplicitLocations = payload.locations !== undefined;
+  const initialLocations = hasExplicitLocations
+    ? validateLocations(payload.locations)
+    : validateLocations(deriveLocationsFromContacts(rawContacts));
+  const normalized = normalizeContactLocations(rawContacts, initialLocations, {
+    allowDerivation: !hasExplicitLocations,
+  });
+  const locations = validateLocations(normalized.locations);
+  const contacts = validateContacts(normalized.contacts, locations);
 
   return {
     flows,
     educationMaterials,
     educationGroups,
     contacts,
+    locations,
     defaultGroupOrder: payload.defaultGroupOrder,
   };
 }
