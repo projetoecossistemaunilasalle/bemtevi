@@ -1,5 +1,7 @@
 # Routing, App Shell, And PWA Plan
 
+> Historical implementation plan. Route lists below describe the proposal at the time and are not current product requirements; `/privacidade` was subsequently removed from the product.
+
 ## Goal
 
 Replace top-level local view state with stable React Router routes and establish a conservative PWA foundation for the whole BemTeVi app.

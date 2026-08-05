@@ -40,16 +40,16 @@ Guardrail: do not add `howItWorksTitle`, `howItWorksItems`, a `HowItWorks` compo
 
 ## Onboarding Policy
 
-Do not implement one-time onboarding persistence in this front.
+Keep the existing one-time onboarding persistence and disclose it clearly in the onboarding copy.
 
 Recommended first version:
 
 - keep onboarding in the app-style starting screen;
 - do not duplicate onboarding as a regular Home section;
-- no `localStorage` completion flag;
+- only the non-sensitive `localStorage` completion flag `bemtevi:onboarding-seen="true"`;
 - no cookies;
 - no account or backend state;
-- revisit persistence only after Privacy/LGPD policy approval.
+  - do not persist answers, scores, or transcripts.
 
 ---
 
@@ -124,9 +124,9 @@ Guardrail: say the app is designed to preserve privacy; avoid absolute claims un
 
 Guardrail: keep immediate support persistently available and visible through bottom navigation.
 
-### Risk: one-time onboarding persistence too early
+### Risk: overstating storage privacy
 
-Guardrail: do not save onboarding completion in this front.
+Guardrail: explain that answers and conversations are not saved, while the browser keeps only the onboarding-seen preference.
 
 ---
 
@@ -142,4 +142,4 @@ npm run build
 
 ## Definition of Done
 
-Front 07A is done when Home clearly communicates BemTeVi's purpose, trust posture, non-diagnostic role, and main next steps through content-driven, mobile-first UI without introducing persistent onboarding state.
+Front 07A is done when Home clearly communicates BemTeVi's purpose, trust posture, non-diagnostic role, and main next steps through content-driven, mobile-first UI while disclosing the non-sensitive onboarding preference.

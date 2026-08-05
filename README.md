@@ -1,81 +1,71 @@
 # BemTeVi
 
-BemTeVi is a mobile-first React/Vite prototype for educator mental-health support in Portuguese. It offers a calm, anonymous-by-default experience for guided orientation, immediate support, educational resources, and local support contacts.
+Aplicação web (mobile-first, PWA) de apoio à saúde mental de educadores, em português. O BemTeVi orienta, informa e conecta o usuário a recursos e contatos de apoio profissional — sem diagnóstico, sem substituir acompanhamento profissional e **sem coletar identificação pessoal por padrão**.
 
-The app does not diagnose, does not replace professional care, and should not collect personal identification by default.
+## O que é
 
-## Current Shape
+- **Orientação guiada** (`/orientacao`): conversa determinística, dirigida por fluxos em JSON. Não é IA — por padrão só aceita opções predefinidas; apenas nós explicitamente configurados aceitam texto livre, que não é interpretado.
+- **Apoio imediato** (`/apoio`): CVV 188, SAMU 192, Bombeiros 193, exercício de respiração e mensagens de ancoragem. Sempre acessível na navegação inferior.
+- **Contatos** (`/contatos`): diretório de serviços de apoio com conteúdo publicado/versionado.
+- **Educação** (`/educacao`): biblioteca de recursos de saúde mental, com detalhe por recurso.
 
-- React 19, Vite, TypeScript, Tailwind CSS v4.
-- React Router routes for `/`, `/orientacao`, `/apoio`, `/contatos`, `/educacao`, and `/educacao/:resourceId`.
-- PWA manifest and GitHub Pages subpath support through `/bemtevi/`.
-- Feature folders under `src/features`.
-- Domain logic under `src/domain`.
-- Structured content under `src/content`.
-- Reusable UI primitives under `src/design-system`.
-- Vitest coverage for content, first-visit onboarding behavior, flow engine, orientation UI, and questionnaire logic.
+## Arquitetura
 
-## Run Locally
+- **Stack:** React 19, Vite, TypeScript, Tailwind CSS v4, React Router. PWA com `vite-plugin-pwa`, publicado no GitHub Pages sob `/bemtevi/`.
+- **Organização:** `src/features` (telas por funcionalidade), `src/domain` (regras de negócio), `src/design-system` (primitivos de UI), `src/lib` (utilidades), `src/content` (dados).
+- **Motor de fluxos:** `src/domain/flow-engine` interpreta fluxos JSON (`src/content/flows/*.json`) com nós, opções, regras de resultado e regras de segurança — sem IA.
+- **Neon como fonte de conteúdo publicado:** o que o usuário vê (flows, recursos, grupos, contatos) é uma revisão completa e versionada no Postgres (Neon). O `PublishedContentProvider` inicia o app com o conteúdo embutido no bundle e, ao montar e a cada foco da janela, busca a revisão atual na tabela `published_content` via Neon Data API (`id='current'`, contador de revisão). Revisão válida → passa a servir o banco; ausente/erro → mantém o fallback do bundle. Não há push em tempo real.
+- **Publicação:** o dashboard admin edita e valida o conteúdo; o publish grava a próxima revisão no Neon (revisão `1` na primeira publicação, incremento a cada publish). Conflito de revisão ou falha de validação mantém o rascunho local intacto.
+- **Auth:** leitura pública via Neon Auth (token anônimo); escrita administrativa restrita a contas Neon Auth em `public.admin_users`, com políticas RLS (`public.is_admin()`) na Neon Data API.
+- **Dashboard admin:** rotas `/login` e `/dashboard`, disponíveis apenas com `VITE_ENABLE_DEV_DASHBOARD=true` + conta autorizada em `public.admin_users`.
 
-Prerequisite: Node.js with pnpm.
+## Rodar rápido
+
+Pré-requisitos: Node.js e pnpm.
 
 ```bash
+# Windows (instala em node_modules.win)
+pnpm run install:win
+
+# Qualquer outro ambiente
 pnpm install
+
+# Desenvolvimento (porta 3000)
 pnpm run dev
-```
 
-The dev server defaults to port `3000`.
-
-## Validation
-
-```bash
-pnpm run typecheck
-pnpm run lint
-pnpm run format:check
-pnpm run validate:flows
-pnpm run test
-pnpm run build
+# Qualidade completa (mesmo gate do CI)
 pnpm run check
 ```
 
-`pnpm run check` is the full local quality gate and matches CI.
+> Em WSL, use as variantes `:wsl` (ex.: `pnpm run dev:wsl`). O dev server roda na porta `3000`.
 
-## Admin Dashboard
+Comandos disponíveis: `dev`, `build`, `preview`, `typecheck`, `lint`, `format` / `format:check`, `validate:flows`, `test`, `check`.
 
-The dashboard is available only when `VITE_ENABLE_DEV_DASHBOARD=true` and a user signs in at the unlinked `/login` route with an authorized Neon Auth account. Copy `.env.example` to `.env`, then set the project's public Neon Auth Base URL and Data API URL. Never put a Neon database connection string, API key, or administrator password in a `VITE_*` variable.
+## Variáveis de ambiente
 
-Enable Neon Auth and the Neon Data API with authenticated-user grants, then apply [`neon/migrations/20260709000000_admin_accounts.sql`](neon/migrations/20260709000000_admin_accounts.sql). Create accounts through Neon Auth, then grant an existing user access from the Neon SQL editor:
+Copie `.env.example` para `.env`:
 
-```sql
-insert into public.admin_users (user_id)
-select id from neon_auth."user" where email = 'admin@example.com';
-```
+| Variável                                        | Uso                                                                        |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `VITE_ENABLE_DEV_DASHBOARD`                     | Habilita as rotas `/login` e `/dashboard`.                                 |
+| `VITE_DISABLE_AUTH`                             | Bypass de autenticação com conta mock (só para teste local).               |
+| `VITE_DASHBOARD_PUBLISH_MODE`                   | `database` (default, escreve no Neon) ou `export` (ZIP legado).            |
+| `VITE_NEON_AUTH_URL` / `VITE_NEON_DATA_API_URL` | Endpoints públicos do projeto Neon (Auth e Data API).                      |
+| `VITE_ENABLE_PAGE_ANALYTICS`                    | Contadores diários agregados, sem identificação (exige migração de banco). |
 
-Revoke dashboard access without deleting the Auth account:
+**Nunca** coloque connection string, API key do Neon ou senha em variáveis `VITE_*`.
 
-```sql
-delete from public.admin_users
-where user_id = (select id from neon_auth."user" where email = 'admin@example.com');
-```
+## Coisas importantes
 
-The `BemTeVi` Neon project is the shared backend for GitHub Pages. Configure `VITE_NEON_AUTH_URL` and `VITE_NEON_DATA_API_URL` as repository variables in `projetoecossistemaunilasalle/bemtevi`. Neon Auth must trust `https://projetoecossistemaunilasalle.github.io` (protocol included, no trailing slash). Localhost origins are preconfigured by Neon. Browser route guards protect the UI; database writes are additionally restricted by Neon Data API RLS policies based on `public.is_admin()`.
+- **Privacidade em primeiro lugar:** nada de login, CPF, e-mail ou identificação. Respostas, scores e transcrições existem só em memória durante a sessão e são descartados. O único dado persistido é a preferência não sensível `bemtevi:onboarding-seen` (localStorage).
+- **Não é IA:** a orientação é determinística. Nunca apresente o app como chatbot de IA.
+- **Conteúdo embutido é só fallback:** editar JSON em `src/content` não muda o que os usuários veem — é preciso publicar uma nova revisão no Neon, salvo quando o banco está vazio ou indisponível.
+- **Publish não sobrescreve:** conflito de revisão ou falha de validação mantém o rascunho local intacto.
+- **Limites de payload:** 1 MiB por imagem, 5 MiB por requisição.
 
-## Operations
+## Documentação
 
-The dashboard publishes validated drafts through the Neon Data API. Behavior:
-
-- **Migration order:** apply `20260709000000_admin_accounts.sql` first, then the `published_content` migration. The app reads from `published_content` and falls back to bundled content when that table is empty.
-- **First publication** creates revision `1` and increments on each subsequent publish.
-- **Public routes** serve the current database snapshot; a new publication is visible after a page reload with no redeploy.
-- **Client refresh:** open clients refresh published content on page load and on window focus; there is no realtime push.
-- **Payload limits:** 1 MiB per image and 5 MiB total request payload.
-- **Export recovery mode:** set `VITE_DASHBOARD_PUBLISH_MODE=export` to skip database writes and emit a ZIP for the legacy recovery/development workflow (e.g. when auth is disabled for local mock-auth work). The default `database` mode writes directly to Neon.
-- **Conflicts:** a publish that fails validation or a concurrent revision conflict returns an error and retains the local draft; it does not overwrite the published snapshot.
-
-## Documentation
-
-- Product requirements: [`docs/PRD.md`](docs/PRD.md)
-- Project fronts and milestones: [`docs/fronts/README.md`](docs/fronts/README.md)
-- Implementation plans: [`docs/plans/README.md`](docs/plans/README.md)
-- Current repository context: [`docs/Project-Context.md`](docs/Project-Context.md)
-- Analytics/LGPD policy note: [`docs/fronts/12b-anonymous-analytics-lgpd-policy.md`](docs/fronts/12b-anonymous-analytics-lgpd-policy.md)
+- Requisitos do produto: [`docs/PRD.md`](docs/PRD.md)
+- Frentes e marcos: [`docs/fronts/README.md`](docs/fronts/README.md)
+- Planos de implementação: [`docs/plans/README.md`](docs/plans/README.md)
+- Contexto atual do repositório: [`docs/Project-Context.md`](docs/Project-Context.md)

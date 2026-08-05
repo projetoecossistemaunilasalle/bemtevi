@@ -36,7 +36,7 @@ Full flow engine: `advanceFlow`, `resolveOptions`, `loadFlows`, `suspendFlow`, `
 
 ### 06 — Questionnaire Framework & SRQ-20 — Done
 
-SRQ-20 implemented as JSON guided flow (`src/content/flows/srq20.json`). Generic effects (score, safety_interrupt, score_branch). Consent handling, Q17 safety interrupt, score branching (0-6 low, 7-20 possible distress). Adding new questionnaires = dropping a `.json` file.
+SRQ-20 implemented as a JSON guided flow (`src/content/flows/srq20.json`). Generic effects include score, `deferred_safety`, and score branching. Q17 affirmative records priority support routing, allows Q18-Q20 to continue, and navigates to `/apoio` after completion. Adding new questionnaires means adding validated flow content.
 
 ### 07 — Home & Onboarding — Done
 
@@ -63,20 +63,19 @@ SRQ-20 implemented as JSON guided flow (`src/content/flows/srq20.json`). Generic
 
 ### 09 — Contacts Directory — Partial
 
-**What exists:** 3 Canoas RS services rendered as ServiceCards (CAPS II, UBS Centro, Clinica Escola Ulbra). Responsive grid layout.
+**What exists:** Published contacts render as ServiceCards with managed city grouping, manual city filtering, optional approximate on-device city lookup, responsive layout, and dashboard editing.
 
 **What's missing:**
 
 - Filtering by service type
 - Search functionality
-- Location-based sorting
 
 **Blocker:** The client has not decided on the phone number strategy. Two options under consideration:
 
 1. Direct numbers to each service location
 2. Central numbers through the health secretary of each city
 
-Cannot finalize the directory structure or filtering logic until this decision is made.
+The directory can evolve independently of the phone number decision; current contacts remain reviewable content.
 
 **Complexity:** Medium
 
@@ -100,13 +99,11 @@ Cannot finalize the directory structure or filtering logic until this decision i
 
 ## Blocked / External Dependencies
 
-### 11 — Privacy & LGPD — Blocked
+### 11 — Privacy & LGPD — Policy aligned
 
-**What exists:** Static privacy card saying the app uses only in-memory state. Domain folder reserved with "do not touch" README.
+**What exists:** Privacy wording explains that no personal identification is requested, answers/scores/transcripts stay in memory, and `localStorage` stores only `bemtevi:onboarding-seen="true"`.
 
-**Known problem:** The privacy screen claims "no localStorage" but `firstVisit.ts` actually uses it (`bemtevi:onboarding-seen`). This contradiction is documented but unresolved.
-
-**Blocker:** Needs legal grounding. A lawyer or LGPD specialist must review what the app can/cannot do before we implement any privacy logic, consent management, or data handling.
+**Remaining review:** Legal/LGPD review may refine policy wording, but there is no longer a code/documentation contradiction about the onboarding preference.
 
 **Complexity:** High (depends on legal requirements)
 
@@ -173,4 +170,4 @@ Cannot finalize the directory structure or filtering logic until this decision i
 1. **Grounding/therapeutic content** for Fronts 08 and 10 — must come from psychology professionals
 2. **Phone number strategy** for Front 09 — direct numbers vs. central health secretary numbers
 3. **Legal review** for Front 11 — LGPD compliance, localStorage usage, privacy policy wording
-4. **localStorage contradiction** — privacy screen says "no persistence" but onboarding uses it; needs resolution
+4. **Privacy wording review** — keep future copy aligned with the documented onboarding preference and in-memory session behavior

@@ -26,7 +26,7 @@ It currently has:
 - Tailwind CSS v4;
 - `motion/react` for animation;
 - `lucide-react` for icons;
-- no backend;
+- public routes remain usable with bundled fallback content when Neon is unavailable;
 - no authentication;
 - no persistence layer;
 - no analytics;
@@ -90,7 +90,6 @@ Initial implementation should add all public routes listed above. Existing scree
 | `/contatos`             | `NetworkView`         | Local support directory                       |
 | `/educacao`             | Temporary placeholder | Education library route reserved for Front 10 |
 | `/educacao/:resourceId` | Temporary placeholder | Resource detail route reserved for Front 10   |
-| `/privacidade`          | Temporary placeholder | Privacy route reserved for Front 11           |
 
 Important: avoid `/crise` as a public route. Use `/apoio` for the immediate support path.
 
@@ -142,7 +141,6 @@ export const routes = {
   contacts: '/contatos',
   education: '/educacao',
   educationDetail: '/educacao/:resourceId',
-  privacy: '/privacidade',
 } as const;
 ```
 
@@ -307,12 +305,12 @@ Scope:
 6. replace `currentView` with route-based rendering;
 7. update `src/main.tsx` to render the new app entry;
 8. update view navigation callbacks to use routes;
-9. add temporary placeholder screens for `/educacao`, `/educacao/:resourceId`, and `/privacidade`.
+9. add temporary placeholder screens for `/educacao` and `/educacao/:resourceId`.
 
 Acceptance criteria:
 
 - React Router is installed;
-- the app has stable routes for `/`, `/orientacao`, `/apoio`, `/contatos`, `/educacao`, `/educacao/:resourceId`, and `/privacidade`;
+- the app has stable routes for `/`, `/orientacao`, `/apoio`, `/contatos`, `/educacao`, and `/educacao/:resourceId`;
 - direct URL access works for the implemented routes in the local development environment;
 - browser back/forward works;
 - bottom navigation active state reflects the current route;
@@ -432,7 +430,7 @@ Front 01A is done when:
 
 - the app uses React Router for top-level navigation;
 - stable routes exist for the current main screens;
-- temporary routes exist for `/educacao`, `/educacao/:resourceId`, and `/privacidade`;
+- temporary routes exist for `/educacao` and `/educacao/:resourceId`;
 - desktop and mobile navigation use route matching;
 - direct route access works in local development;
 - browser navigation works;

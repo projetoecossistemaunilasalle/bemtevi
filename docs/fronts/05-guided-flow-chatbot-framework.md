@@ -4,7 +4,7 @@
 
 Create a generic, JSON-driven guided conversation framework.
 
-The system should feel like a chat, but it is not AI and should not pretend to be AI. All user inputs are constrained to predefined options.
+The system should feel like a chat, but it is not AI and should not pretend to be AI. Inputs are constrained to predefined options by default. Specific nodes may explicitly accept a free-form expression/venting message without interpreting it, then continue to a predefined next node.
 
 ---
 
@@ -93,7 +93,7 @@ current node options
 + global support/navigation actions
 ```
 
-The visible UI should still feel like a conversation, not like a searchable form. In the Orientation screen, current node options appear as floating answer bubbles above the composer. Clicking one of these bubbles immediately sends the answer and advances the flow. The send button becomes active only when the composer text exactly matches one available option/action, so arbitrary text cannot be submitted without adding warning copy. When the input strictly matches an option label, the suggestion list hides automatically — the user has already found their answer. If the input changes (e.g., trailing space), suggestions reappear.
+The visible UI should still feel like a conversation, not like a searchable form. In the Orientation screen, current node options appear as floating answer bubbles above the composer. Clicking one immediately sends the answer and advances the flow. On ordinary nodes, the send button becomes active only when the composer exactly matches an available option/action. When the input strictly matches an option label, suggestions hide and reappear if the input changes. A node with an explicit `freeText` transition also enables sending a free-form expression; the text is not semantically analyzed or diagnosed, and the configured transition determines what follows.
 
 ---
 
@@ -180,7 +180,7 @@ The Orientation route should render as a clean chat surface:
 - option bubbles float on the right above the composer;
 - clicking an option bubble immediately sends the answer and advances the flow;
 - the fixed composer sits above the mobile bottom navigation;
-- the send button uses the `Send` icon and is disabled unless the input exactly matches an available option;
+- the send button uses the `Send` icon and, except at nodes explicitly configured for free text, is disabled unless the input exactly matches an available option;
 - the suggestion list hides when the input strictly matches an option label and reappears when it no longer does;
 - the transcript is the only scrollable area on mobile, preventing competing page/chat scroll behavior.
 
@@ -232,7 +232,7 @@ Until Privacy/LGPD verification, treat this as in-memory session state only.
 - Flow switching works through `entering_phrases`.
 - Current node options and flow entry options appear together in autocomplete.
 - Clicking a suggestion bubble immediately sends the answer and advances the flow.
-- The composer send action is disabled unless the input exactly matches an available option/action.
+- The composer send action is disabled unless the input exactly matches an available option/action or the current node explicitly permits free text.
 - The suggestion list hides when the input strictly matches an option label and reappears when it no longer does.
 - The engine has no React dependency.
 - Invalid flow JSON fails validation before runtime.

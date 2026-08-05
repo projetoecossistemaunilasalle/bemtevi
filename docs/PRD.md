@@ -1,6 +1,6 @@
 # BemTeVi — Product Requirements Document
 
-**Version:** 1.1  
+**Version:** 1.2
 **Status:** Draft  
 **Audience:** Product, Design, Development, Clinical Review  
 **Product Name:** BemTeVi
@@ -47,7 +47,7 @@ BemTeVi must earn trust quickly and avoid feeling like a clinical intake system.
 
 The app should feel like a trusted, supportive colleague — not a hospital form.
 
-### Anonymous by default
+### No personal identification by default
 
 No login, account, CPF, email, school ID, or personal identification.
 
@@ -57,11 +57,11 @@ The app should always help the user take a next step.
 
 ### Honest constraints
 
-The guided chat is not real AI. It is a structured, guided conversation with predefined options.
+The guided chat is not real AI. It is a deterministic conversation that uses predefined options by default and permits unprocessed free text only at explicitly configured nodes.
 
 ### Privacy by design
 
-Any persistence, analytics, location behavior, or data collection must be explicitly reviewed before implementation.
+New persistence, analytics, location behavior, or data collection must be explicitly reviewed before implementation. The existing exception is the disclosed, non-sensitive onboarding-seen preference.
 
 ### Calm safety
 
@@ -98,9 +98,8 @@ The final visible label for the immediate support tab should be reviewed by prod
 | ----------------- | ----------------------- |
 | Education Library | `/educacao`             |
 | Resource Detail   | `/educacao/:resourceId` |
-| Privacy           | `/privacidade`          |
 
-The education library may be accessed from result screens, Home, and resource recommendations.
+The education library may be accessed from result screens, Home, and resource recommendations. Privacy information is communicated at relevant points in Home, onboarding, and Orientation; there is no public privacy route in the current product.
 
 ---
 
@@ -131,7 +130,7 @@ Immediate support remains persistently available through the bottom navigation.
 
 ### One-Time Onboarding
 
-A mobile-app-style onboarding may be implemented, but any persistence of “already seen” status must be reviewed by the Privacy/LGPD front.
+The app uses a mobile-app-style onboarding. After the user completes or skips it, the browser stores only the non-sensitive UI preference that the presentation was seen, under `bemtevi:onboarding-seen` with the value `"true"`. This preference contains no health or personal-identification data.
 
 When onboarding is implemented as the app starting screen, Home must not include a regular “Como funciona” section. If repeat access is needed later, use a distinct help/onboarding route or settings entry.
 
@@ -170,12 +169,13 @@ It should operate as a constrained guided conversation:
 
 - bot messages appear on the left;
 - user responses appear on the right;
-- the user may type into an autocomplete input;
-- only predefined options can be submitted;
+- the user may type into the composer;
+- by default, only predefined options can be submitted;
+- explicitly configured nodes may accept a free-form message for expression or venting;
 - current options are also shown as chips before typing;
-- chips hide when the input exactly matches an option label and reappear when it no longer does.
+- on nodes restricted to predefined choices, chips hide when the input exactly matches an option label and reappear when it no longer does.
 
-The app must not pretend that this is real AI.
+Free-form messages are not semantically analyzed, interpreted, or used for diagnosis. After submission, the conversation follows a predefined next node. Nodes without this explicit capability remain restricted to available options, and the app must not pretend that this is real AI.
 
 ---
 
@@ -235,7 +235,7 @@ The framework should support:
 - scoring;
 - thresholds;
 - result rules;
-- interruption rules;
+- immediate and deferred safety rules;
 - recommendation mapping.
 
 SRQ-20 is the first questionnaire implementation and should be treated as the framework’s first major test flow.
@@ -255,9 +255,9 @@ SRQ-20 requirements:
 - affirmative answers are scored;
 - score of 7 or more indicates possible mental distress and leads to supportive resources;
 - result copy avoids diagnosis language;
-- suicidal ideation question interrupts immediately if affirmative;
-- immediate support is surfaced;
-- the interrupted flow is not offered for resumption.
+- an affirmative answer to the suicidal-ideation question records a priority safety condition without interrupting the remaining questions;
+- after all questions are completed, a welcoming support message is shown and the user is directed to `/apoio`;
+- the deferred safety redirect takes priority over the ordinary score result destination.
 
 SRQ-20 must have automated tests.
 
@@ -279,9 +279,11 @@ Each service card includes:
 - opening hours;
 - notes if needed.
 
-### Optional Location Sorting
+The directory renders every applicable contact in the currently published content revision. Names, record counts, fields, and ordering are content, not fixed product requirements.
 
-Location permission may later be used to sort nearby services.
+### Optional Location Filtering
+
+The contacts screen may request location only after the user explicitly selects “Usar minha localização”. The browser location is rounded and compared on-device with an approximate city catalog to select a city filter; it is not stored or transmitted.
 
 Rules:
 
@@ -289,9 +291,8 @@ Rules:
 - clear explanation before permission;
 - no storage;
 - no transmission;
-- app works without permission.
-
-Implementation should wait for Privacy/LGPD review.
+- app works without permission;
+- if permission is denied or unavailable, the directory remains usable and explains how to choose a city manually.
 
 ---
 
@@ -318,6 +319,19 @@ All resources should have editorial/clinical review metadata.
 
 Flow results may recommend a primary resource by stable resource ID.
 
+The library and its groups render the currently published content revision. Resource titles, quantities, and ordering may change through publication without a new application deploy.
+
+## 6.9 Published Content
+
+The public content source covers guided flows, educational resources, resource groups, and support contacts/services.
+
+- The current published Neon snapshot is the vigente public revision when one is available and valid.
+- Content bundled in the repository is initial content and a runtime fallback when no published snapshot can be loaded.
+- The dashboard publishes complete, versioned revisions after validation.
+- Public clients load the published revision on page load and refresh it when the window regains focus; publication does not use realtime push.
+- A failed publication or revision conflict keeps the local draft and must not overwrite a newer published revision.
+- Functional requirements validate record structure and component behavior, not the titles, quantities, or ordering of bundled examples.
+
 ---
 
 ## 7. Privacy and LGPD
@@ -335,25 +349,19 @@ The platform should not request:
 
 ### Session Data
 
-Session and persistence policy must be verified before implementing saving features.
+The app does not save questionnaire answers, scores, or chat transcripts. They exist only in memory during the active interaction and are discarded when the session ends. The app does not use `localStorage` or `sessionStorage` for answers, scores, transcripts, or flow progress.
 
-Until verified:
-
-- no saved questionnaire answers;
-- no saved chat transcripts;
-- no localStorage for sensitive flow state;
-- no persistent progress recovery;
-- no stored location.
+The only product-level browser persistence is the non-sensitive onboarding preference `bemtevi:onboarding-seen="true"`. It does not contain health or personal-identification data.
 
 Runtime in-memory state is allowed for current interaction.
 
 ### Location
 
-Location is optional and only for on-device sorting if approved.
+Location is optional and only for on-device city filtering. It is requested after an explicit user action, rounded before comparison, held in memory only, and discarded after the lookup.
 
 ### Onboarding Persistence
 
-Remembering whether onboarding was seen requires privacy review.
+Onboarding completion is persisted as a generic UI preference so the presentation is not shown again on the next visit. The key is `bemtevi:onboarding-seen`; the value is `"true"` and contains no health or personal-identification data.
 
 ---
 
@@ -382,7 +390,7 @@ Never collect:
 - questionnaire answers;
 - chat transcript;
 - individual path;
-- location;
+- precise location or location history;
 - device identifiers;
 - IP in identifiable form.
 
@@ -431,7 +439,7 @@ Avoid:
 - JSON-compatible content models.
 - Flow validation scripts.
 - Questionnaire tests.
-- No backend required for MVP unless analytics or dashboard needs change.
+- Neon-backed published content with a bundled-content fallback.
 - No account system.
 - No persistence of sensitive data before privacy review.
 
@@ -447,8 +455,7 @@ Avoid:
 - Telepsychology/live support.
 - Integration with health systems.
 - Native app store distribution.
-- Admin dashboard implementation.
-- Backend-driven content editing.
+- Real-time content push to already open clients.
 - Analytics before privacy review.
 
 ---

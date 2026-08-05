@@ -86,7 +86,6 @@ Temporary route placeholders from Front 01A should live in their future feature 
 | ----------------------- | --------------------------------------------------- |
 | `/educacao`             | `src/features/education/EducationLibraryScreen.tsx` |
 | `/educacao/:resourceId` | `src/features/education/ResourceDetailScreen.tsx`   |
-| `/privacidade`          | `src/features/privacy/PrivacyScreen.tsx`            |
 
 The old `src/views/` folder should be removed once imports have been updated.
 
@@ -200,9 +199,8 @@ Acceptance criteria:
 Scope:
 
 1. create `src/features/education/`;
-2. create `src/features/privacy/`;
-3. keep or move temporary placeholder screens for `/educacao`, `/educacao/:resourceId`, and `/privacidade` into those folders;
-4. ensure placeholder copy is Portuguese-first and clearly temporary for development.
+2. keep or move temporary placeholder screens for `/educacao` and `/educacao/:resourceId` into that folder;
+3. ensure placeholder copy is Portuguese-first and clearly temporary for development.
 
 Acceptance criteria:
 
@@ -259,7 +257,6 @@ src/features/support/SupportScreen.tsx
 src/features/contacts/ContactsScreen.tsx
 src/features/education/EducationLibraryScreen.tsx
 src/features/education/ResourceDetailScreen.tsx
-src/features/privacy/PrivacyScreen.tsx
 src/tests/setup.ts
 src/tests/smoke.test.ts
 ```

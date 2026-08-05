@@ -2,8 +2,8 @@
 
 Reserved for explicit privacy, LGPD, session, and analytics policy logic.
 
-The current product direction is anonymous by default: no login, account, CPF, email, saved questionnaire answers, saved chat transcript, analytics provider, or location access.
+The current product direction avoids requesting personal identification: no login, account, CPF, email, saved questionnaire answers, saved scores, saved chat transcript, or analytics provider. The contacts screen requests location only after an explicit user action and uses a rounded coordinate in memory to choose a nearby city; it is never stored or transmitted.
 
-Open decision: onboarding completion is currently persisted through a non-sensitive `localStorage` flag in `src/features/home/firstVisit.ts`. That behavior should be reviewed here before the app makes stronger claims about using only in-memory state.
+The only product-level persistence is the non-sensitive onboarding completion flag in `src/features/home/firstVisit.ts`. It uses `localStorage` key `bemtevi:onboarding-seen` with value `"true"` and contains no health or personal-identification data.
 
-Do not add persistence helpers, analytics, or location behavior here before privacy review.
+Do not add persistence helpers, analytics, or new location behavior here before privacy review.

@@ -49,9 +49,9 @@ It should be used to prove the questionnaire framework, not hardcoded as a uniqu
 - Affirmative answers are scored.
 - Score of 7 or more produces a possible-distress support result.
 - Result copy must avoid diagnostic language.
-- If the suicidal ideation question is answered affirmatively, the questionnaire stops immediately.
-- The user is routed to immediate support content.
-- The interrupted questionnaire should not be offered for resumption.
+- If the suicidal ideation question is answered affirmatively, a priority safety condition is recorded and the questionnaire continues through the remaining questions.
+- After completion, the user receives a welcoming support message and is routed to `/apoio`.
+- This deferred safety destination takes priority over the ordinary scored result destination.
 
 ---
 
@@ -99,8 +99,8 @@ rejects missing question IDs
 rejects broken next references
 scores affirmative answers correctly
 maps score >= 7 to correct result
-Q17 affirmative interrupts immediately
-Q17 affirmative prevents resume
+Q17 affirmative allows Q18-Q20 to continue
+Q17 affirmative redirects to support after completion with priority over the ordinary result
 declined consent exits gracefully
 result copy avoids diagnosis wording
 ```

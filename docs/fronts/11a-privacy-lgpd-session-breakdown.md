@@ -12,13 +12,13 @@ It is derived from:
 - `docs/fronts/07a-home-philosophy-onboarding-breakdown.md`
 - `docs/fronts/12-anonymous-analytics.md`
 
-The goal is to turn privacy constraints into explicit product and engineering policy before adding saving, location, onboarding persistence, or analytics.
+The goal is to turn privacy constraints into explicit product and engineering policy. The current product keeps answers, scores, and transcripts in memory only, while allowing one disclosed non-sensitive onboarding preference.
 
 ---
 
 ## Current State
 
-The project direction is anonymous by default. The app currently has no backend, account system, persistence layer, analytics, or location access. This is a strength and should remain true unless deliberately changed after review.
+The public experience avoids requesting personal identification. Neon supports administrator authentication and published content, but the app does not save public-user answers, scores, transcripts, precise location, or analytics and persists only `bemtevi:onboarding-seen="true"` in `localStorage` to remember that onboarding was seen. The contacts screen may use a rounded device coordinate in memory after an explicit location action to choose a city filter.
 
 ---
 
@@ -27,9 +27,8 @@ The project direction is anonymous by default. The app currently has no backend,
 Create written, repository-visible policy documents/content:
 
 ```txt
-docs/privacy/session-policy.md
-src/content/copy/privacy.ts
-src/features/privacy/PrivacyScreen.tsx
+docs/fronts/11-privacy-lgpd-session.md
+src/domain/privacy/README.md
 ```
 
 The policy should answer what is never collected, what exists only in memory, what may be persisted later if approved, how location may work, what analytics are blocked, and what copy Home can safely claim.
@@ -45,9 +44,9 @@ Until a stricter approved policy says otherwise:
 - no saved questionnaire answers;
 - no saved chat transcripts;
 - no persistent flow progress;
-- no stored location;
+- no stored or transmitted location;
 - no analytics;
-- onboarding completion is not persisted.
+- onboarding completion is persisted only as the non-sensitive `bemtevi:onboarding-seen="true"` preference.
 
 ---
 
@@ -66,21 +65,21 @@ Scope:
 Acceptance criteria:
 
 - policy is explicit and reviewable;
-- no code introduces persistence;
+- no sensitive flow/questionnaire data is persisted; the onboarding preference is the documented exception;
 - Home/support/orientation claims can reference the policy.
 
-### PR 11B — Build Privacy Content And Screen
+### PR 11B — Place Privacy Content In Relevant Surfaces
 
 Scope:
 
-1. create or expand `src/content/copy/privacy.ts`;
-2. render `/privacidade` from content;
-3. explain anonymity, no-login posture, current storage behavior, and limits;
+1. keep privacy copy in Home, onboarding, and Orientation aligned with the session policy;
+2. do not introduce a standalone `/privacidade` route or navigation item;
+3. explain the no-identification posture, current storage behavior, and limits;
 4. keep copy plain-language and Portuguese-first.
 
 Acceptance criteria:
 
-- `/privacidade` exists and is not a placeholder;
+- relevant public surfaces communicate privacy without requiring a dedicated route;
 - copy does not overpromise;
 - no legalistic wall of text is required for basic understanding.
 
@@ -102,8 +101,8 @@ Acceptance criteria:
 
 Scope:
 
-1. document whether onboarding completion may ever be stored;
-2. document the pre-permission location explanation requirement;
+1. preserve the documented onboarding completion preference;
+2. document the explicit city-filter action, approximate on-device lookup, and pre-permission explanation requirement;
 3. document analytics approval prerequisites.
 
 Acceptance criteria:
@@ -117,10 +116,8 @@ Acceptance criteria:
 ## Files Expected To Change First
 
 ```txt
-docs/privacy/session-policy.md
-src/content/copy/privacy.ts
+docs/fronts/11-privacy-lgpd-session.md
 src/domain/privacy/types.ts
-src/features/privacy/PrivacyScreen.tsx
 src/features/home/HomeScreen.tsx
 src/tests/privacy/*.test.ts
 ```
@@ -135,7 +132,7 @@ Guardrail: policy must constrain architecture, not just create a page.
 
 ### Risk: harmless-looking persistence
 
-Guardrail: onboarding flags, progress recovery, and preferences still count as persistence and need explicit approval.
+Guardrail: onboarding persistence must remain limited to the documented non-sensitive completion flag; never store answers, scores, transcripts, or progress recovery.
 
 ### Risk: vague analytics approval
 

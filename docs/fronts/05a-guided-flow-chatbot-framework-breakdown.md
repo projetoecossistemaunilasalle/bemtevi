@@ -177,9 +177,9 @@ Scope:
 Acceptance criteria:
 
 - Orientation screen runs from flow content;
-- user cannot submit arbitrary free text;
+- user can submit free text only at explicitly configured nodes; it is not interpreted and follows a predefined transition;
 - clicking a suggestion immediately sends the answer and advances the flow;
-- the send button is disabled unless the input exactly matches an available option;
+- the send button is disabled unless the input exactly matches an available option or the current node explicitly permits free text;
 - the suggestion list hides when the input strictly matches an option label and reappears when it no longer does;
 - the responsive layout avoids competing page and chat scroll regions;
 - UI copy does not imply real AI;

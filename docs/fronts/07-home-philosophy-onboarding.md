@@ -58,7 +58,7 @@ Sem identificação
 Nada fica salvo sem sua permissão
 ```
 
-The exact “nada fica salvo” wording depends on Privacy/LGPD decisions. Until verified, use careful wording:
+Avoid absolute “nada fica salvo” wording. Current wording should explain that answers and conversations are not saved, while the browser keeps only the non-sensitive onboarding-seen preference.
 
 ```txt
 Pensado para preservar sua privacidade
@@ -68,7 +68,7 @@ Pensado para preservar sua privacidade
 
 ## One-Time Onboarding
 
-A one-time onboarding may be valuable if it does not create persistence issues.
+A one-time onboarding is implemented as the app-style starting screen. Its completion state is stored only as the non-sensitive browser preference `bemtevi:onboarding-seen="true"`.
 
 Possible onboarding screens:
 
@@ -76,8 +76,6 @@ Possible onboarding screens:
 2. **Você escolhe o caminho**
 3. **Não é diagnóstico**
 4. **Privacidade em primeiro lugar**
-
-Because one-time onboarding may require remembering that the user has already seen it, persistence must be reviewed by the Privacy/LGPD front.
 
 Current product decision:
 
@@ -111,4 +109,4 @@ Immediate support remains available through the persistent Support tab.
 - Immediate support is accessible through persistent navigation.
 - Home does not overuse alarming language.
 - Home does not include a duplicate “Como funciona” section when onboarding is present.
-- Any one-time onboarding persistence is privacy-reviewed before implementation.
+- Onboarding copy discloses that the browser remembers only that the presentation was seen.

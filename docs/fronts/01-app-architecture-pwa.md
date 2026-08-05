@@ -37,13 +37,14 @@ The prototype currently has core views for home, orientation, emergency support,
  /educacao/:resourceId
 ```
 
-Optional later routes:
+Possible later routes not currently planned:
 
 ```txt
 /sobre
-/privacidade
 /termos
 ```
+
+Privacy information remains required, but it is communicated within relevant experience surfaces rather than through a standalone `/privacidade` route.
 
 ---
 

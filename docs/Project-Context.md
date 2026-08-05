@@ -4,7 +4,7 @@
 >
 > Scope: This guide describes the repository as it exists now. It is descriptive, not a refactor plan.
 >
-> Last audited: 2026-05-16.
+> Last audited: 2026-07-22.
 
 ---
 
@@ -12,16 +12,16 @@
 
 **BemTeVi** is a front-end prototype for educator mental-health support in Portuguese. The experience presents itself as:
 
-- a safe, anonymous-by-default support space;
+- a safe, privacy-first support space that does not request personal identification;
 - a fast path for immediate distress support;
 - a deterministic guided orientation flow;
 - curated educational resources;
 - a local support network view for Canoas, RS;
-- a privacy explanation surface.
+- privacy explanations embedded at relevant points in the experience.
 
-The current app is best understood as a routed, content-driven front-end prototype rather than a production service. There is no repository-visible backend, API integration, authentication, analytics provider, saved questionnaire history, saved chat transcript, or location access.
+The current app is a routed, content-driven front end with Neon Auth/Data API integration for the optional administrator dashboard and published content. There is no public account requirement, analytics provider, saved questionnaire history, or saved chat transcript. The contacts screen requests location only after an explicit user action, uses an approximate on-device city lookup, and does not store or transmit coordinates. The only product-level browser persistence is the non-sensitive onboarding preference `bemtevi:onboarding-seen="true"`.
 
-Privacy caveat: first-visit onboarding completion is currently remembered with `localStorage` in `src/features/home/firstVisit.ts`. This is not sensitive answer storage, but it is still persistence and should be reviewed under the Privacy/LGPD front before stronger privacy claims are made.
+Questionnaire answers, scores, and chat transcripts are not saved. The onboarding preference contains no health or personal-identification data.
 
 ---
 
@@ -109,8 +109,9 @@ Current public routes are centralized in `src/app/routes.ts`:
 /contatos
 /educacao
 /educacao/:resourceId
-/privacidade
 ```
+
+The optional, unlinked administrator routes are `/login` and `/dashboard` when the dashboard build flag is enabled. There is no public `/privacidade` route; privacy information is embedded in relevant public surfaces.
 
 When adding a new top-level screen, update route constants, router wiring, shell navigation if user-facing, and any global actions that should point to it.
 
@@ -145,7 +146,7 @@ Files:
 
 Primary role: trust-building entry point and app-style onboarding. Home should remain actionable and avoid duplicating a visible "Como funciona" section when onboarding already carries the explanation layer.
 
-Current caution: `firstVisit.ts` persists onboarding completion with `localStorage`. This should be treated as a Privacy/LGPD decision point.
+`firstVisit.ts` persists only the non-sensitive onboarding completion preference with `localStorage`, using the key `bemtevi:onboarding-seen` and the value `"true"`.
 
 ### Immediate Support
 
@@ -166,7 +167,7 @@ Files:
 - `src/domain/flow-engine/*`
 - `src/content/flows/*`
 
-Primary role: constrained chat-like guided orientation. The UI must not imply real AI or free-text understanding. User submission is limited to exact predefined options or global actions.
+Primary role: constrained chat-like guided orientation. The UI must not imply real AI or free-text understanding. Submission uses exact predefined options or global actions by default. A choice node with `freeText` may accept an expression/venting message, but the runtime does not interpret it and advances to the configured next node.
 
 Implemented domain behavior includes:
 
@@ -202,12 +203,7 @@ Primary role: curated educational resource library and detail view. Current cont
 
 ### Privacy
 
-Files:
-
-- `src/features/privacy/PrivacyScreen.tsx`
-- `src/domain/privacy/README.md`
-
-Primary role: explain current session/privacy stance. The displayed claim that the app uses only in-memory state for the current interaction conflicts with the onboarding `localStorage` flag unless that flag is explicitly carved out and approved.
+There is no standalone privacy screen or public privacy route. Home, onboarding, and Orientation communicate the applicable privacy stance: no personal identification is requested, answers, scores, and transcripts stay in memory during the active interaction, and only the onboarding-seen UI preference is persisted locally. `src/domain/privacy/README.md` records the engineering boundary.
 
 ---
 
@@ -227,6 +223,8 @@ Content is no longer hidden primarily inside JSX. The repository now has typed c
 Shared metadata appears through `src/domain/content/types.ts`, including locale, status, version, and review metadata.
 
 Most visible health/resource/service content is still marked `draft` or `pending_review`. Treat this as intentional until clinical/editorial review says otherwise.
+
+At runtime, `PublishedContentProvider` starts with these bundled collections and requests the current published Neon snapshot. A valid published snapshot replaces the fallback for flows, resources, resource groups, and services. Clients refresh on initial load and window focus. Complete dashboard publications are revisioned; validation failures and revision conflicts retain the draft and do not overwrite published content. Consequently, bundled titles, counts, and ordering are examples/fallback rather than permanent public requirements.
 
 ---
 
@@ -268,10 +266,10 @@ Implemented behavior includes:
 - validation;
 - scoring;
 - result resolution;
-- safety interruption checks;
+- immediate and deferred safety handling;
 - tests.
 
-`src/content/flows/srq20.json` defines the SRQ-20 questionnaire as JSON guided-flow content with consent copy, 20 questions, scoring effects, threshold score branch, result copy, and a Q17 safety interrupt effect. It is discovered dynamically by the flow registry via `import.meta.glob`.
+`src/content/flows/srq20.json` defines the SRQ-20 questionnaire as JSON guided-flow content with consent copy, 20 questions, scoring effects, threshold score branch, result copy, and a Q17 `deferred_safety` effect. Q17 affirmative does not short-circuit: the user completes the remaining questions, then receives the support message and is navigated to `/apoio` with priority over the ordinary result destination. The flow is discovered dynamically by the registry via `import.meta.glob`.
 
 Current limitation: SRQ-20 is modeled and tested, but should be checked in the UI before considering the questionnaire front complete.
 
@@ -372,13 +370,12 @@ The current codebase does not model:
 - saved answers;
 - saved chat transcripts;
 - server communication;
-- geolocation permission or location sorting;
+- explicit geolocation lookup for city filtering;
 - analytics providers;
 - push notifications;
-- backend-driven content editing;
-- admin dashboard implementation.
+- real-time push of newly published content to an already open client.
 
-The app does include one non-sensitive persistence behavior: the onboarding-seen flag in `localStorage`. Keep this visible until Privacy/LGPD review decides whether it stays, moves to memory-only behavior, or gets explicit disclosure.
+The app includes one non-sensitive persistence behavior: the onboarding-seen flag in `localStorage`. It uses `bemtevi:onboarding-seen="true"` and contains no health or personal-identification data.
 
 Analytics policy note: `docs/fronts/12b-anonymous-analytics-lgpd-policy.md` documents the future allowed shape for aggregate analytics and explicitly treats Google Analytics as not approved for MVP.
 
@@ -386,7 +383,7 @@ Analytics policy note: `docs/fronts/12b-anonymous-analytics-lgpd-policy.md` docu
 
 ## 15. Known Open Items
 
-- Privacy copy and onboarding persistence need alignment.
+- Privacy copy and onboarding persistence are aligned: answers, scores, and transcripts are not saved, while the onboarding-seen preference is disclosed.
 - Clinical/editorial review metadata is still pending for seed content.
 
 ---
@@ -411,12 +408,12 @@ Before editing, classify the change by layer:
 
 Before merging a change, compare it against these contracts:
 
-1. Can the change run without a backend?
+1. Does the public experience retain bundled fallback behavior when no published Neon snapshot is available?
 2. Does it preserve the subpath deployment assumption?
 3. Does it keep the app Portuguese-first?
 4. Does it respect the safety tone around mental-health support?
 5. Does it preserve constrained, deterministic flow behavior?
-6. Does it avoid saving sensitive answers, transcripts, location, or analytics?
+6. Does it avoid saving sensitive answers, transcripts, precise location, or analytics?
 7. Does it add content that should include review metadata?
 8. Does it introduce a remote resource with unknown lifetime?
 9. Does `pnpm run lint` still pass?

@@ -30,44 +30,24 @@ The app should avoid collecting personally identifiable information.
 
 This front must verify what “session” means for the product.
 
-Until verified:
-
-- Do not build saving features.
-- Do not persist questionnaire answers.
-- Do not store chat transcripts in localStorage.
-- Do not store location.
-- Do not imply progress will survive closing the app.
-
-In-memory state during active use is acceptable for runtime behavior, but persistence needs explicit review.
+The app does not save questionnaire answers, scores, or chat transcripts. These values exist only in memory during active use and are discarded when the session ends. The contacts screen may request location only after an explicit user action; it rounds coordinates, uses them on-device for city filtering, and does not store or transmit them. The only product-level browser persistence is the non-sensitive onboarding preference `bemtevi:onboarding-seen="true"`.
 
 ---
 
 ## One-Time Onboarding
 
-A one-time onboarding completion flag may seem harmless, but it is still persistence.
-
-Options:
-
-1. Do not persist onboarding.
-2. Persist only a generic UI preference.
-3. Ask for consent.
-4. Wait until privacy review.
-
-Recommended now:
-
-- Build onboarding as a regular accessible section.
-- Add persistence later only after Privacy/LGPD approval.
+Onboarding completion is persisted only as a generic UI preference. The key is `bemtevi:onboarding-seen`, the value is `"true"`, and it contains no health or personal-identification data. No additional consent, cookies, analytics, or saved user content are introduced by this preference.
 
 ---
 
 ## Location
 
-Location use must be optional.
+Location use must be optional and limited to the explicit city-filter action.
 
 Rules:
 
 - Explain purpose before permission.
-- Use only for on-device sorting.
+- Use only for on-device city filtering.
 - Do not store.
 - Do not transmit.
 - Directory works without permission.
