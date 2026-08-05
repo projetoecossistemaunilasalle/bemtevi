@@ -2,7 +2,7 @@ import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { DashboardNotice } from './DashboardNotice';
 import type { DashboardPublishMode } from '../publishing/publishMode';
 
-export type DashboardTab = 'flows' | 'education' | 'contacts' | 'export';
+export type DashboardTab = 'flows' | 'education' | 'contacts' | 'analytics' | 'export';
 
 export function DashboardShell({
   activeTab,
@@ -21,6 +21,7 @@ export function DashboardShell({
     { id: 'flows', label: 'Fluxos' },
     { id: 'education', label: 'Materiais' },
     { id: 'contacts', label: 'Contatos' },
+    { id: 'analytics', label: 'Estatísticas' },
     { id: 'export', label: finalTabLabel },
   ];
 

@@ -25,6 +25,7 @@ import { loadActiveTab, saveActiveTab } from './draft-storage/dashboardTabStorag
 import { ContactsDashboard } from './contacts/ContactsDashboard';
 import { createLocalService } from './contacts/contactDrafts';
 import { validateDashboardContacts } from './contacts/contactsValidation';
+import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -610,6 +611,7 @@ export function DashboardRoute() {
             }
           />
         )}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
         {activeTab === 'export' &&
           (publishMode === 'database' ? (
             <PublishDashboard

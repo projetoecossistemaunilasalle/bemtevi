@@ -13,6 +13,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      page_view_counts: {
+        Row: {
+          view_date: string;
+          route: string;
+          view_count: number;
+        };
+        Insert: {
+          view_date: string;
+          route: string;
+          view_count?: number;
+        };
+        Update: {
+          view_date?: string;
+          route?: string;
+          view_count?: number;
+        };
+        Relationships: [];
+      };
       published_content: {
         Row: {
           id: string;
@@ -44,8 +62,20 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       is_admin: {
-        Args: { user_id: string };
+        Args: Record<never, never>;
         Returns: boolean;
+      };
+      get_page_view_counts: {
+        Args: { p_start_date: string };
+        Returns: Array<{
+          view_date: string;
+          route: string;
+          view_count: number;
+        }>;
+      };
+      record_page_view: {
+        Args: { p_route: string };
+        Returns: undefined;
       };
     };
     Enums: Record<never, never>;

@@ -7,7 +7,7 @@ import type { DashboardTab } from '../components/DashboardShell';
  */
 const STORAGE_KEY = 'bemtevi:dev-dashboard:active-tab';
 
-const validTabs: readonly DashboardTab[] = ['flows', 'education', 'contacts', 'export'];
+const validTabs: readonly DashboardTab[] = ['flows', 'education', 'contacts', 'analytics', 'export'];
 
 export function loadActiveTab(defaultTab: DashboardTab = 'flows'): DashboardTab {
   if (typeof window === 'undefined') return defaultTab;
