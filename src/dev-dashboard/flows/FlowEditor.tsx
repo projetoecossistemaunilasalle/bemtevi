@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type {
   ChoiceFlowNode,
   DeferredSafetyFlowEffect,
@@ -7,7 +7,7 @@ import type {
   GuidedFlow,
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, Settings, X } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
@@ -37,6 +37,52 @@ export function FlowEditor({
   const [activeOptionEdit, setActiveOptionEdit] = useState<{ nodeId: string; optionId: string } | null>(null);
   const [confirmDeleteNodeId, setConfirmDeleteNodeId] = useState<string | null>(null);
   const [initialConfigCollapsed, setInitialConfigCollapsed] = useState(true);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!activeOptionEdit) return;
+
+    const container = drawerRef.current;
+
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+
+    const handleDrawerKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Tab' || !container) return;
+
+      const focusableElements = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+
+      if (focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey) {
+        if (activeElement === firstElement || !container.contains(activeElement)) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+      } else if (activeElement === lastElement || !container.contains(activeElement)) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    container?.addEventListener('keydown', handleDrawerKeyDown);
+
+    return () => {
+      container?.removeEventListener('keydown', handleDrawerKeyDown);
+      document.body.style.overflow = '';
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [activeOptionEdit]);
 
   useEffect(() => {
     if (scrollRequest) {
@@ -310,10 +356,11 @@ export function FlowEditor({
 
   return (
     <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-      <section className="bg-white rounded-xl border border-outline-variant/40 shadow-sm overflow-hidden mb-4">
+      <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest overflow-hidden mb-4">
         <div
           role="button"
           tabIndex={0}
+          aria-expanded={!initialConfigCollapsed}
           className="px-5 py-3.5 bg-surface-container-low flex justify-between items-center cursor-pointer select-none"
           onClick={() => setInitialConfigCollapsed(!initialConfigCollapsed)}
           onKeyDown={(e) => {
@@ -324,12 +371,14 @@ export function FlowEditor({
           }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-primary text-lg">⚙️</span>
-            <h3 className="font-bold text-sm text-[#191c1e]">Configurações Iniciais e Entrada do Fluxo</h3>
+            <Settings size={18} className="text-primary" aria-hidden="true" />
+            <h3 className="font-headline-sm text-on-surface">Configurações Iniciais e Entrada do Fluxo</h3>
           </div>
-          <span className="text-xs text-gray-500 font-bold font-mono">
-            {initialConfigCollapsed ? '[+] expandir' : '[-] recolher'}
-          </span>
+          {initialConfigCollapsed ? (
+            <ChevronDown size={20} className="text-on-surface-variant" aria-hidden="true" />
+          ) : (
+            <ChevronUp size={20} className="text-on-surface-variant" aria-hidden="true" />
+          )}
         </div>
         {!initialConfigCollapsed && (
           <div className="p-5 flex flex-col gap-4 border-t border-outline-variant/20">
@@ -503,7 +552,8 @@ export function FlowEditor({
                               duplicateNode(node.id);
                             }}
                           >
-                            👯 Duplicar esta etapa
+                            <Copy size={16} aria-hidden="true" />
+                            Duplicar esta etapa
                           </Button>
                           {confirmDeleteNodeId === node.id ? (
                             <Button
@@ -515,7 +565,8 @@ export function FlowEditor({
                                 deleteNode(node.id);
                               }}
                             >
-                              Confirmar exclusão da etapa ⚠️
+                              <AlertTriangle size={16} aria-hidden="true" />
+                              Confirmar exclusão da etapa
                             </Button>
                           ) : (
                             <Button
@@ -597,14 +648,15 @@ export function FlowEditor({
                                   onClick={() => handleOpenOptionEdit(node, option.id)}
                                   aria-label={`Ações/Score da opção ${optionIndex + 1} da ${stepLabel}`}
                                 >
-                                  Ações/Score ⚙️
+                                  Ações/Score
+                                  <Settings size={16} aria-hidden="true" />
                                 </Button>
                               </div>
 
                               <div className="flex flex-wrap gap-1.5">
                                 {option.effects?.some((effect) => effect.kind === 'deferred_safety') && (
                                   <span className="rounded bg-error-container px-2 py-0.5 text-xs font-label-sm text-on-error-container">
-                                    [⚠ Segurança]
+                                    [<AlertTriangle size={12} className="inline" aria-hidden="true" /> Segurança]
                                   </span>
                                 )}
                                 {option.effects?.some((effect) => effect.kind === 'score') && (
@@ -615,7 +667,10 @@ export function FlowEditor({
                               </div>
 
                               <div className="flex flex-wrap items-center gap-2 rounded bg-primary px-3 py-2 text-on-primary font-label-sm">
-                                <span>➔ Destino Principal:</span>
+                                <span className="flex items-center gap-1.5">
+                                  <ArrowRight size={14} aria-hidden="true" />
+                                  Destino Principal:
+                                </span>
                                 <select
                                   aria-label={
                                     optionIndex === 0 ? 'Ação principal da opção' : `Ação da opção ${optionIndex + 1}`
@@ -797,8 +852,7 @@ export function FlowEditor({
 
           return (
             <div
-              role="button"
-              tabIndex={-1}
+              role="presentation"
               data-testid="drawer-backdrop"
               className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm cursor-default"
               onClick={(e) => {
@@ -812,16 +866,23 @@ export function FlowEditor({
                 }
               }}
             >
-              <div className="h-full w-full max-w-md overflow-y-auto bg-surface-container-lowest p-6 shadow-2xl flex flex-col gap-4 border-l border-outline-variant">
+              <div
+                ref={drawerRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Configurações Avançadas"
+                className="h-full w-full max-w-md overflow-y-auto bg-surface-container-lowest p-6 shadow-2xl flex flex-col gap-4 border-l border-outline-variant"
+              >
                 <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
                   <h3 className="font-headline-sm text-on-surface font-semibold">Configurações Avançadas</h3>
                   <button
                     type="button"
+                    ref={closeButtonRef}
                     onClick={() => setActiveOptionEdit(null)}
                     className="text-on-surface hover:bg-surface-variant/20 rounded p-1 text-lg font-bold w-8 h-8 flex items-center justify-center"
                     aria-label="Fechar"
                   >
-                    ✕
+                    <X size={18} aria-hidden="true" />
                   </button>
                 </div>
 

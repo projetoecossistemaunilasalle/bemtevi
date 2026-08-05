@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { ArrowRightLeft } from 'lucide-react';
 import { ReactFlow, Background, Controls, useNodesState, useEdgesState, type NodeMouseHandler } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -9,16 +10,45 @@ import { FlowMapInspector } from './FlowMapInspector';
 // ─── Custom node components ────────────────────────────────────────────────
 
 function nodeColor(node: FlowNode): { border: string; bg: string; text: string } {
-  if (node.kind === 'result') return { border: '#bdcabf', bg: '#f0f3ff', text: '#111c2c' };
-  if (node.kind === 'score_branch') return { border: '#7a5900', bg: '#ffdf9e', text: '#5c4300' };
-  if (node.kind !== 'choice') return { border: '#bdcabf', bg: '#ffffff', text: '#111c2c' };
+  if (node.kind === 'result')
+    return {
+      border: 'var(--color-outline-variant)',
+      bg: 'var(--color-surface-container-low)',
+      text: 'var(--color-on-surface)',
+    };
+  if (node.kind === 'score_branch')
+    return {
+      border: 'var(--color-warning)',
+      bg: 'var(--color-warning-container)',
+      text: 'var(--color-on-warning-container)',
+    };
+  if (node.kind !== 'choice')
+    return {
+      border: 'var(--color-outline-variant)',
+      bg: 'var(--color-surface-container-lowest)',
+      text: 'var(--color-on-surface)',
+    };
 
   const hasSafetyInterrupt = node.options.some((o) => o.effects?.some((e) => e.kind === 'safety_interrupt'));
   const hasDeferredSafety = node.options.some((o) => o.effects?.some((e) => e.kind === 'deferred_safety'));
 
-  if (hasSafetyInterrupt) return { border: '#ba1a1a', bg: '#ffdad6', text: '#93000a' };
-  if (hasDeferredSafety) return { border: '#7a5900', bg: '#fff8e8', text: '#5c4300' };
-  return { border: '#bdcabf', bg: '#ffffff', text: '#111c2c' };
+  if (hasSafetyInterrupt)
+    return {
+      border: 'var(--color-error)',
+      bg: 'var(--color-error-container)',
+      text: 'var(--color-on-error-container)',
+    };
+  if (hasDeferredSafety)
+    return {
+      border: 'var(--color-warning)',
+      bg: 'var(--color-warning-container)',
+      text: 'var(--color-on-warning-container)',
+    };
+  return {
+    border: 'var(--color-outline-variant)',
+    bg: 'var(--color-surface-container-lowest)',
+    text: 'var(--color-on-surface)',
+  };
 }
 
 function ChoiceNodeComponent({ data }: { data: FlowNodeData }) {
@@ -37,7 +67,7 @@ function ChoiceNodeComponent({ data }: { data: FlowNodeData }) {
           {node.text.length > 80 ? '…' : ''}
         </p>
         {hasScore && (
-          <span className="ml-1 shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-800">
+          <span className="ml-1 shrink-0 rounded-full bg-secondary-container px-1.5 py-0.5 text-[10px] font-bold text-on-secondary-container">
             +pts
           </span>
         )}
@@ -51,11 +81,15 @@ function ScoreBranchNodeComponent({ data }: { data: FlowNodeData }) {
   const { node } = data;
   return (
     <div
-      style={{ border: '2px solid #7a5900', background: '#ffdf9e', color: '#5c4300' }}
+      style={{
+        border: '2px solid var(--color-warning)',
+        background: 'var(--color-warning-container)',
+        color: 'var(--color-on-warning-container)',
+      }}
       className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-center gap-1">
-        <span className="shrink-0 text-base">⇄</span>
+        <ArrowRightLeft aria-hidden="true" className="h-4 w-4 shrink-0" />
         <p className="break-all font-medium leading-tight">{node.text.slice(0, 60)}</p>
       </div>
       <p className="mt-1 text-[10px] opacity-60">
@@ -69,7 +103,11 @@ function ResultNodeComponent({ data }: { data: FlowNodeData }) {
   const { node } = data;
   return (
     <div
-      style={{ border: '1px solid #bdcabf', background: '#f0f3ff', color: '#111c2c' }}
+      style={{
+        border: '1px solid var(--color-outline-variant)',
+        background: 'var(--color-surface-container-low)',
+        color: 'var(--color-on-surface)',
+      }}
       className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
     >
       <div className="flex items-start justify-between gap-1">

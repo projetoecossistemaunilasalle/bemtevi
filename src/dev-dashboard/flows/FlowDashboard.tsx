@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import type { EducationResource } from '../../domain/resources/types';
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
@@ -313,12 +314,12 @@ export function FlowDashboard({
                         )}
                         {hasSafety && (
                           <span className="bg-error-container text-error px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
-                            ⚠
+                            <AlertTriangle aria-hidden="true" className="h-3 w-3" />
                           </span>
                         )}
                         {hasHandoff && (
-                          <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
-                            ⇄
+                          <span className="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded text-[10px] font-bold shrink-0 ml-1">
+                            <ArrowRightLeft aria-hidden="true" className="h-3 w-3" />
                           </span>
                         )}
                       </div>

@@ -39,7 +39,7 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
             key={message.id}
             className={`rounded-2xl px-4 py-3 ${
               message.sender === 'bot'
-                ? 'self-start rounded-bl-sm bg-[#EEF8F3]'
+                ? 'self-start rounded-bl-sm bg-primary-fixed/30'
                 : 'self-end rounded-br-sm bg-primary text-on-primary'
             }`}
           >
