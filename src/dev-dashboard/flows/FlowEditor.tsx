@@ -5,10 +5,25 @@ import type {
   FlowNode,
   GlobalActionTarget,
   GuidedFlow,
+  OrientationVideo,
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
-import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, Settings, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Settings,
+  Trash2,
+  Youtube,
+  X,
+} from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
+import { YouTubeVideoCard } from '../../design-system/components/YouTubeVideoCard';
+import { parseYouTubeVideoId } from '../../domain/media/youtube';
 import { Field } from '../components/Field';
 import { FieldHint } from '../components/FieldHint';
 import { inputClass, inputClassSm, textareaClass } from '../components/fieldStyles';
@@ -183,6 +198,25 @@ export function FlowEditor({
     });
   }
 
+  function addNodeVideo(node: FlowNode) {
+    const videos = node.videos ?? [];
+    const videoId = createUniqueId('video', Object.fromEntries(videos.map((video) => [video.id, video])));
+    updateNode(node.id, {
+      videos: [...videos, { id: videoId, title: 'Novo vídeo', url: '' }],
+    });
+  }
+
+  function updateNodeVideo(node: FlowNode, videoId: string, patch: Partial<OrientationVideo>) {
+    updateNode(node.id, {
+      videos: (node.videos ?? []).map((video) => (video.id === videoId ? { ...video, ...patch } : video)),
+    });
+  }
+
+  function removeNodeVideo(node: FlowNode, videoId: string) {
+    const videos = (node.videos ?? []).filter((video) => video.id !== videoId);
+    updateNode(node.id, { videos: videos.length > 0 ? videos : undefined });
+  }
+
   function replaceNode(node: FlowNode) {
     onChange({
       nodes: {
@@ -236,12 +270,12 @@ export function FlowEditor({
     if (node.kind === kind) return;
 
     if (kind === 'choice') {
-      replaceNode({ id: node.id, kind: 'choice', text: node.text, options: [] });
+      replaceNode({ id: node.id, kind: 'choice', text: node.text, videos: node.videos, options: [] });
       return;
     }
 
     if (kind === 'result') {
-      replaceNode({ id: node.id, kind: 'result', text: node.text });
+      replaceNode({ id: node.id, kind: 'result', text: node.text, videos: node.videos });
       return;
     }
 
@@ -611,6 +645,92 @@ export function FlowEditor({
                           <option value="score_branch">Ramificação por pontuação</option>
                         </select>
                       </label>
+
+                      {node.kind !== 'score_branch' && (
+                        <section className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Youtube className="h-5 w-5 text-[#c5221f]" aria-hidden="true" />
+                                <h5 className="font-label-md text-on-surface">Vídeos na orientação</h5>
+                              </div>
+                              <p className="mt-1 max-w-xl font-body-sm text-on-surface-variant">
+                                O vídeo aparece logo abaixo desta mensagem no chat. Use um link do YouTube.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => addNodeVideo(node)}
+                              aria-label={`Adicionar vídeo do YouTube na ${stepLabel}`}
+                            >
+                              Adicionar vídeo
+                            </Button>
+                          </div>
+
+                          {(node.videos ?? []).map((video, videoIndex) => {
+                            const hasInvalidUrl =
+                              video.url.trim().length > 0 && parseYouTubeVideoId(video.url) === null;
+
+                            return (
+                              <div
+                                key={video.id}
+                                className="grid gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)]"
+                              >
+                                <div className="flex min-w-0 flex-col gap-3">
+                                  <label className="flex flex-col gap-1">
+                                    <span className="font-label-sm text-on-surface">Título do vídeo</span>
+                                    <input
+                                      aria-label={`Título do vídeo ${videoIndex + 1} da ${stepLabel}`}
+                                      className={inputClassSm}
+                                      value={video.title}
+                                      onChange={(event) =>
+                                        updateNodeVideo(node, video.id, { title: event.target.value })
+                                      }
+                                    />
+                                  </label>
+                                  <label className="flex flex-col gap-1">
+                                    <span className="font-label-sm text-on-surface">Link do YouTube</span>
+                                    <input
+                                      type="url"
+                                      aria-label={`Link do YouTube ${videoIndex + 1} da ${stepLabel}`}
+                                      className={inputClassSm}
+                                      placeholder="https://www.youtube.com/watch?v=..."
+                                      value={video.url}
+                                      onChange={(event) => updateNodeVideo(node, video.id, { url: event.target.value })}
+                                    />
+                                  </label>
+                                  {hasInvalidUrl && (
+                                    <p className="font-body-sm text-error" role="alert">
+                                      Informe um link válido do YouTube.
+                                    </p>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    className="w-fit"
+                                    onClick={() => removeNodeVideo(node, video.id)}
+                                    aria-label={`Remover vídeo ${video.title || videoIndex + 1}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                    Remover vídeo
+                                  </Button>
+                                </div>
+
+                                {parseYouTubeVideoId(video.url) !== null ? (
+                                  <YouTubeVideoCard title={video.title} url={video.url} className="self-start" />
+                                ) : (
+                                  <div className="flex aspect-video items-center justify-center rounded-xl border border-dashed border-outline-variant bg-surface-container-low px-4 text-center font-body-sm text-on-surface-variant">
+                                    A prévia aparece aqui quando o link for válido.
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </section>
+                      )}
 
                       {node.kind === 'choice' && (
                         <div className="flex flex-col gap-2">

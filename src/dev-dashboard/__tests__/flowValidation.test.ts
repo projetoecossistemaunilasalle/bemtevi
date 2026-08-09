@@ -87,6 +87,31 @@ describe('validateDashboardFlows', () => {
     );
   });
 
+  it('rejects incomplete, duplicate, and non-YouTube orientation videos', () => {
+    const result = validateDashboardFlows(
+      [
+        {
+          ...baseFlow,
+          nodes: {
+            ...baseFlow.nodes,
+            end: {
+              ...baseFlow.nodes.end,
+              videos: [
+                { id: 'pause', title: '', url: 'https://vimeo.com/123' },
+                { id: 'pause', title: 'Outro vídeo', url: 'not-a-url' },
+              ],
+            },
+          },
+        },
+      ],
+      ['known-resource'],
+    );
+
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('video pause must include a title');
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('video pause must use a valid YouTube URL');
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('duplicate video id pause');
+  });
+
   it('warns when score branch ranges overlap or use a score key with no scoring options', () => {
     const result = validateDashboardFlows(
       [

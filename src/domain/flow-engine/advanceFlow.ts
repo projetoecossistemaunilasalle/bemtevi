@@ -213,7 +213,7 @@ function advanceToNode(state: FlowRuntimeState, flow: GuidedFlow, nodeId: string
   const nextState = {
     ...state,
     activeNodeId: node.id,
-    transcript: [...state.transcript, createMessage('bot', node.text, flow.id, node.id)],
+    transcript: [...state.transcript, createMessage('bot', node.text, flow.id, node.id, node.videos)],
   };
 
   if (node.kind !== 'result' || !nextState.deferredNavigation) return nextState;

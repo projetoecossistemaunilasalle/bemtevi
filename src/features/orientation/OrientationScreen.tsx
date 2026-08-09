@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Send, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
+import { YouTubeVideoCard } from '../../design-system/components/YouTubeVideoCard';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowStateFromRegistry, createMessage, getActiveFlow } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
@@ -380,10 +381,15 @@ function OrientationIntroScreen({ onSelectStarter }: { onSelectStarter: (starter
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.sender === 'user';
   const label = isUser ? 'Você' : 'BemTeVi';
+  const videos = isUser ? [] : (message.videos ?? []);
 
   return (
     <article className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex max-w-[84%] flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
+      <div
+        className={`flex flex-col gap-1 ${videos.length > 0 ? 'w-full max-w-[94%] md:max-w-[88%]' : 'max-w-[84%]'} ${
+          isUser ? 'items-end' : 'items-start'
+        }`}
+      >
         <span className="flex items-center gap-2 font-label-md text-on-surface-variant">
           {!isUser && (
             <span
@@ -396,13 +402,20 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           {label}
         </span>
         <div
-          className={`rounded-2xl px-4 py-3 shadow-sm ${
+          className={`rounded-2xl px-4 py-3 shadow-sm ${videos.length > 0 ? 'w-full' : ''} ${
             isUser
               ? 'rounded-br-sm bg-primary text-on-primary'
               : 'ml-10 rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] text-on-surface'
           }`}
         >
-          <p className="font-body-md">{message.text}</p>
+          <p className="whitespace-pre-line font-body-md">{message.text}</p>
+          {videos.length > 0 && (
+            <div className="mt-3 grid w-full gap-3">
+              {videos.map((video) => (
+                <YouTubeVideoCard key={video.id} title={video.title} url={video.url} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       {isUser && (

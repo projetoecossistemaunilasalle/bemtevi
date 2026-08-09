@@ -172,6 +172,43 @@ describe('OrientationScreen', () => {
     expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
   });
 
+  it('renders dashboard-managed YouTube videos with the matching orientation message', () => {
+    const bundled = getBundledContent();
+    const payload = {
+      ...bundled,
+      flows: bundled.flows.map((flow) =>
+        flow.id === 'orientation-understand-feelings'
+          ? {
+              ...flow,
+              nodes: {
+                ...flow.nodes,
+                [flow.entry.nodeId]: {
+                  ...flow.nodes[flow.entry.nodeId],
+                  videos: [
+                    {
+                      id: 'breathing-video',
+                      title: 'Respiração guiada',
+                      url: 'https://www.youtube.com/watch?v=abcdef12345',
+                    },
+                  ],
+                },
+              },
+            }
+          : flow,
+      ),
+    };
+
+    renderOrientation(payload);
+    startOrientationWithStarter();
+
+    expect(screen.getByText('Respiração guiada')).toBeInTheDocument();
+    expect(screen.getByTitle('Respiração guiada')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/abcdef12345',
+    );
+    expect(screen.getAllByTitle('Respiração guiada')).toHaveLength(1);
+  });
+
   it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
     renderOrientation();
     startOrientationWithStarter();

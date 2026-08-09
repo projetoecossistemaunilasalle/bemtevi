@@ -1,3 +1,4 @@
+import { parseYouTubeVideoId } from '../media/youtube';
 import type { ChoiceFlowNode, FlowEffect, FlowNode, FlowValidationResult, ScoreBranchFlowNode } from './types';
 
 const allowedFlowPurposes = ['orientation_entry', 'post_flow_routing'];
@@ -85,6 +86,8 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
     errors.push(`Flow ${flowLabel} node ${String(node.id)} must include text.`);
   }
 
+  validateNodeVideos(flowLabel, nodeKey, nodeValue.videos, errors);
+
   if (node.kind === 'choice') {
     validateChoiceNode(flowLabel, node, nodeIds, errors);
     return;
@@ -93,6 +96,38 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
   if (node.kind === 'score_branch') {
     validateScoreBranchNode(flowLabel, node, nodeIds, errors);
   }
+}
+
+function validateNodeVideos(flowLabel: string, nodeId: string, videos: unknown, errors: string[]) {
+  if (videos === undefined) return;
+  if (!Array.isArray(videos)) {
+    errors.push(`Flow ${flowLabel} node ${nodeId} videos must be a list.`);
+    return;
+  }
+
+  const ids = new Set<string>();
+  videos.forEach((video, index) => {
+    if (!isRecord(video)) {
+      errors.push(`Flow ${flowLabel} node ${nodeId} video at index ${index} must be an object.`);
+      return;
+    }
+
+    const videoId = hasText(video.id) ? String(video.id) : `index-${index}`;
+    if (!hasText(video.id)) {
+      errors.push(`Flow ${flowLabel} node ${nodeId} video at index ${index} must include an id.`);
+    } else if (ids.has(videoId)) {
+      errors.push(`Flow ${flowLabel} node ${nodeId} has duplicate video id ${videoId}.`);
+    } else {
+      ids.add(videoId);
+    }
+
+    if (!hasText(video.title)) {
+      errors.push(`Flow ${flowLabel} node ${nodeId} video ${videoId} must include a title.`);
+    }
+    if (!hasText(video.url) || parseYouTubeVideoId(String(video.url)) === null) {
+      errors.push(`Flow ${flowLabel} node ${nodeId} video ${videoId} must use a valid YouTube URL.`);
+    }
+  });
 }
 
 function validateChoiceNode(flowLabel: string, node: ChoiceFlowNode, nodeIds: Set<string>, errors: string[]) {

@@ -923,6 +923,50 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Nova opção')).toBeInTheDocument();
   });
 
+  it('adds, previews, and removes a YouTube video from an orientation step', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar vídeo do YouTube na etapa 1' }));
+    fireEvent.change(screen.getByLabelText('Título do vídeo 1 da etapa 1'), {
+      target: { value: 'Pausa guiada' },
+    });
+    fireEvent.change(screen.getByLabelText('Link do YouTube 1 da etapa 1'), {
+      target: { value: 'https://youtu.be/abcdef12345' },
+    });
+
+    expect(screen.getByTitle('Pausa guiada')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/abcdef12345',
+    );
+
+    const stored = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}') as {
+      flowPatches?: Array<{ patch?: { nodes?: Record<string, { videos?: unknown[] }> } }>;
+    };
+    expect(stored.flowPatches?.[0]?.patch?.nodes?.start?.videos).toEqual([
+      {
+        id: 'video',
+        title: 'Pausa guiada',
+        url: 'https://youtu.be/abcdef12345',
+      },
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Testar conversa' }));
+    expect(screen.getByRole('heading', { name: 'Testar conversa' })).toBeInTheDocument();
+    expect(screen.getByTitle('Pausa guiada')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/abcdef12345',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover vídeo Pausa guiada' }));
+    expect(screen.queryByLabelText('Título do vídeo 1 da etapa 1')).not.toBeInTheDocument();
+  });
+
   it('edits later etapas directly and keeps the final-step button after the etapa list', () => {
     render(
       <MemoryRouter>

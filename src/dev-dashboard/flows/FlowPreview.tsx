@@ -5,6 +5,7 @@ import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowState } from '../../domain/flow-engine/loadFlows';
 import { resolveOptions } from '../../domain/flow-engine/resolveOptions';
 import { Button } from '../../design-system/components/Button';
+import { YouTubeVideoCard } from '../../design-system/components/YouTubeVideoCard';
 
 export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFlow[] }) {
   const [state, setState] = useState(() => createInitialFlowState(flow, flows));
@@ -37,13 +38,20 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
         {state.transcript.map((message) => (
           <div
             key={message.id}
-            className={`rounded-2xl px-4 py-3 ${
+            className={`rounded-2xl px-4 py-3 ${message.videos?.length ? 'w-full max-w-2xl' : ''} ${
               message.sender === 'bot'
                 ? 'self-start rounded-bl-sm bg-primary-fixed/30'
                 : 'self-end rounded-br-sm bg-primary text-on-primary'
             }`}
           >
             <p className="font-body-md">{message.text}</p>
+            {message.sender === 'bot' && message.videos && message.videos.length > 0 && (
+              <div className="mt-3 grid gap-3">
+                {message.videos.map((video) => (
+                  <YouTubeVideoCard key={video.id} title={video.title} url={video.url} />
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {state.transcript.length > 2 && (

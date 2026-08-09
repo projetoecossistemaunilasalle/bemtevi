@@ -67,10 +67,17 @@ export interface FreeTextFlowAdvance {
   next: string;
 }
 
+export interface OrientationVideo {
+  id: string;
+  title: string;
+  url: string;
+}
+
 export interface ChoiceFlowNode {
   id: string;
   kind: 'choice';
   text: string;
+  videos?: OrientationVideo[];
   options: FlowOption[];
   freeText?: FreeTextFlowAdvance;
 }
@@ -79,6 +86,7 @@ export interface ResultFlowNode {
   id: string;
   kind: 'result';
   text: string;
+  videos?: OrientationVideo[];
   recommendations?: string[];
 }
 
@@ -94,6 +102,7 @@ export interface ScoreBranchFlowNode {
   id: string;
   kind: 'score_branch';
   text: string;
+  videos?: OrientationVideo[];
   scoreKey: string;
   branches: ScoreBranch[];
 }
@@ -119,6 +128,7 @@ export interface ChatMessage {
   text: string;
   flowId: string;
   nodeId?: string;
+  videos?: OrientationVideo[];
 }
 
 export interface SuspendedFlowState {
