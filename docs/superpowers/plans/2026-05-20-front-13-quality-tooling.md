@@ -1,5 +1,7 @@
 # Front 13 Quality Tooling Implementation Plan
 
+> Historical implementation plan. References to `/privacidade` and `PrivacyScreen` document the repository state at that time; the route was subsequently removed and is not an active requirement.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add reliable quality tooling for BemTeVi: explicit script names, ESLint, Prettier, content validation, broader tests, and one `pnpm run check` merge gate.

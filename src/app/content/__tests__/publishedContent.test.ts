@@ -37,6 +37,18 @@ describe('published content validation', () => {
     ).toThrow(/local/i);
   });
 
+  it('rejects blank cities and invalid states in managed locations', () => {
+    expect(() => validateLocations([{ id: 'blank-city', city: ' ', state: 'RS' }])).toThrow(/city/i);
+    expect(() => validateLocations([{ id: 'bad-state', city: 'Canoas', state: 'R1' }])).toThrow(/estado/i);
+  });
+
+  it('rejects contacts that reference an unknown location', () => {
+    const payload = getBundledContent();
+    payload.contacts = [{ ...payload.contacts[0], locationId: 'missing-location' }];
+
+    expect(() => parsePayload(payload)).toThrow(/desconhecido/i);
+  });
+
   it('does not silently add an orphan contact city to an explicit managed list', () => {
     const payload = getBundledContent();
     payload.locations = [{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }];

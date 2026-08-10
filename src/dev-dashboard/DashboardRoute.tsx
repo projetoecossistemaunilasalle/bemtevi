@@ -729,6 +729,7 @@ export function DashboardRoute() {
                   locationIndex,
                 );
                 if (!origin || origin.id !== locationId) return current;
+                if (mergedDrafts.contacts.some((contact) => contact.locationId === origin.id)) return current;
 
                 if (origin.kind === 'added') {
                   return {

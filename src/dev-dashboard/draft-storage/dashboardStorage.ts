@@ -210,6 +210,7 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
       .map(({ id }) => id),
   );
   const explicitlyPatchedLocationIds = new Set((drafts.locationPatches ?? []).map(({ id }) => id));
+  const hasLegacyLocationPatches = legacyLocationPatchIds.size > 0;
   const preservedContactIndexes = new Set<number>();
   contacts.forEach((contact, index) => {
     if (
@@ -220,7 +221,7 @@ export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: D
     }
   });
   const normalized = normalizeContactLocations(contacts, mergedLocations, {
-    allowDerivation: !Array.isArray(shipped.locations),
+    allowDerivation: !Array.isArray(shipped.locations) && !hasLegacyLocationPatches,
     preserveDenormalizedContactIndexes: preservedContactIndexes,
   });
 

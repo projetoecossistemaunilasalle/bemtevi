@@ -406,7 +406,7 @@ export function EducationDashboard({
                 <SourceCardPreview sourceText={selectedResource.source} />
               </Field>
 
-              <Field label="Miniatura da biblioteca" hint="Imagem pequena usada no cartão da biblioteca de Estudos.">
+              <Field label="Miniatura da biblioteca" hint="Imagem pequena usada no cartão da biblioteca de materiais.">
                 <div className="flex gap-2">
                   <input
                     aria-label="URL da miniatura da biblioteca"

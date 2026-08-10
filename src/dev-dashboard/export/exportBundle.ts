@@ -40,6 +40,8 @@ export function buildExportBundle({
   validation: DashboardValidationResult;
   exportedAt: string;
 }): DashboardExportBundle {
+  const shippedLocationIds = new Set((shipped.locations ?? []).map((location) => location.id));
+
   return {
     schemaVersion: DASHBOARD_EXPORT_SCHEMA_VERSION,
     exportedAt,
@@ -54,7 +56,7 @@ export function buildExportBundle({
       removedEducationGroupIds: drafts.removedEducationGroupIds ?? [],
       removedEducationMaterialIds: drafts.removedEducationMaterialIds ?? [],
       removedContactIds: drafts.removedContactIds ?? [],
-      removedLocationIds: drafts.removedLocationIds ?? [],
+      removedLocationIds: (drafts.removedLocationIds ?? []).filter((id) => shippedLocationIds.has(id)),
     },
     validation,
   };

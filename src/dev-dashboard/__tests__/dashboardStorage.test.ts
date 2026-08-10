@@ -172,6 +172,27 @@ describe('dashboardStorage', () => {
     });
   });
 
+  it('preserves legacy city edits when shipped content has no locations array', () => {
+    const { locationId: _locationId, ...legacyContact } = contact;
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      contactPatches: [{ id: legacyContact.id, sourceIndex: 0, patch: { city: 'Porto Alegre' } }],
+    };
+
+    const merged = mergeDashboardDrafts(
+      {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [legacyContact],
+      },
+      draft,
+    );
+
+    expect(merged.locations).toEqual([{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }]);
+    expect(merged.contacts[0]).toMatchObject({ locationId: null, city: 'Porto Alegre', state: 'RS' });
+  });
+
   it('persists the database revision on which a draft is based', () => {
     const draft = { ...emptyDraft, baseRevision: 7 };
 

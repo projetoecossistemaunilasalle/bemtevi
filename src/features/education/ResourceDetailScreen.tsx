@@ -36,7 +36,7 @@ export function ResourceDetailScreen() {
 
       <Link to={routes.education} className="inline-flex items-center gap-2 font-label-md text-primary">
         <ArrowLeft size={18} />
-        Estudos
+        Materiais
       </Link>
 
       <header className="flex flex-col gap-stack-sm">

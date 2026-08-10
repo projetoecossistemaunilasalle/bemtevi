@@ -260,6 +260,24 @@ describe('buildExportBundle', () => {
     expect(bundle.changes.removedLocationIds).toEqual([location.id]);
   });
 
+  it('does not export tombstones for locations that never shipped', () => {
+    const bundle = buildExportBundle({
+      shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [], locations: [] },
+      drafts: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [],
+        locations: [],
+        removedLocationIds: ['location-local-1'],
+      },
+      validation: { errors: [], warnings: [] },
+      exportedAt: '2026-06-15T00:00:00.000Z',
+    });
+
+    expect(bundle.changes.removedLocationIds).toEqual([]);
+  });
+
   it('exports with schema version 4.0.0', () => {
     const bundle = buildExportBundle({
       shipped: { flows: [], educationMaterials: [], educationGroups: [], contacts: [] },

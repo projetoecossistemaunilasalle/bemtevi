@@ -56,6 +56,24 @@ describe('validateDashboardContacts', () => {
     ]);
   });
 
+  it('reports duplicate location IDs and invalid managed location fields with paths', () => {
+    const result = validateDashboardContacts(
+      [],
+      [
+        { id: 'same-location', city: '', state: 'R1' },
+        { id: 'same-location', city: 'Canoas', state: 'RS' },
+      ],
+    );
+
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'duplicate-location-id:same-location' }),
+        expect.objectContaining({ id: 'missing-location-city:same-location:0', path: 'locations.0.city' }),
+        expect.objectContaining({ id: 'invalid-location-state:same-location:0', path: 'locations.0.state' }),
+      ]),
+    );
+  });
+
   it('rejects a sentence used as the short category', () => {
     const result = validateDashboardContacts([
       { ...service, type: 'Atendimento psicossocial para adultos em sofrimento.' },

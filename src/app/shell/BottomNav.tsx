@@ -6,7 +6,7 @@ function getNavItems() {
   return [
     { to: routes.home, label: 'Início', Icon: Home },
     { to: routes.orientation, label: 'Orientação', Icon: Compass },
-    { to: routes.education, label: 'Estudos', Icon: GraduationCap },
+    { to: routes.education, label: 'Materiais', Icon: GraduationCap },
     { to: routes.contacts, label: 'Contatos', Icon: Users },
     { to: routes.support, label: 'Apoio', Icon: HeartHandshake },
   ];
