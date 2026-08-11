@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_IMAGE_SOURCE_BYTES,
   MAX_IMAGE_UPLOAD_BYTES,
+  isImageFile,
   readFileAsDataUrl,
   type ImageProcessingDependencies,
 } from '../fileUpload';
@@ -31,6 +32,23 @@ function mockImageProcessing(toDataUrl: (quality?: number) => string): {
 }
 
 describe('readFileAsDataUrl', () => {
+  it('rejects an empty image with a user-facing Portuguese error', async () => {
+    const file = new File([], 'empty.png', { type: 'image/png' });
+
+    await expect(readFileAsDataUrl(file)).rejects.toThrow('O arquivo de imagem está vazio');
+  });
+
+  it('rejects unsupported file types with a user-facing Portuguese error', async () => {
+    const file = new File([new Uint8Array([1])], 'document.pdf', { type: 'application/pdf' });
+
+    await expect(readFileAsDataUrl(file)).rejects.toThrow('não é uma imagem compatível');
+  });
+
+  it('only accepts image types supported by the dashboard', () => {
+    expect(isImageFile(new File([new Uint8Array([1])], 'image.png', { type: 'image/png' }))).toBe(true);
+    expect(isImageFile(new File([new Uint8Array([1])], 'image.bmp', { type: 'image/bmp' }))).toBe(false);
+  });
+
   it('compresses a normal large raster source to WebP', async () => {
     const file = new File([new Uint8Array(MAX_IMAGE_UPLOAD_BYTES + 1)], 'large.png', { type: 'image/png' });
     const { dependencies, toDataURL, close } = mockImageProcessing(() => 'data:image/webp;base64,compressed');

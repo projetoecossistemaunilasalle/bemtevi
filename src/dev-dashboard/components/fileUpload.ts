@@ -28,6 +28,14 @@ export async function readFileAsDataUrl(
   file: File,
   dependencies: ImageProcessingDependencies = defaultImageProcessingDependencies,
 ): Promise<string> {
+  if (!isImageFile(file)) {
+    throw new Error('O arquivo selecionado não é uma imagem compatível. Use PNG, JPEG, WebP, GIF, SVG ou AVIF.');
+  }
+
+  if (file.size === 0) {
+    throw new Error('O arquivo de imagem está vazio. Escolha outro arquivo e tente novamente.');
+  }
+
   if (file.size > MAX_IMAGE_SOURCE_BYTES) {
     throw new Error('A imagem selecionada é muito grande. Escolha um arquivo de até 25 MiB.');
   }
@@ -143,7 +151,7 @@ export function acceptImageTypes(): string {
 }
 
 export function isImageFile(file: File): boolean {
-  return file.type.startsWith('image/');
+  return acceptImageTypes().split(',').includes(file.type.toLowerCase());
 }
 
 export function parseImageDataUrl(value: string | undefined): { mimeType: string; data: Uint8Array } | null {

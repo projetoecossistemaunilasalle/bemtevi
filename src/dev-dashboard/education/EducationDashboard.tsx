@@ -23,7 +23,7 @@ import {
   textareaClassTall,
 } from '../components/fieldStyles';
 import { ValidationSummary } from '../components/ValidationSummary';
-import { readFileAsDataUrl, acceptImageTypes, isImageFile } from '../components/fileUpload';
+import { readFileAsDataUrl, acceptImageTypes } from '../components/fileUpload';
 import { issuesForPath } from '../validation/fieldIssues';
 import type { FieldIssues } from '../validation/fieldIssues';
 import { validateDashboardEducation } from './educationValidation';
@@ -440,7 +440,7 @@ export function EducationDashboard({
                         className="sr-only"
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
-                          if (!file || !isImageFile(file)) return;
+                          if (!file) return;
                           const dataUrl = await readImageSafely(file);
                           if (dataUrl) changeField({ imageUrl: dataUrl, imageFileName: file.name });
                           event.target.value = '';
@@ -540,7 +540,7 @@ export function EducationDashboard({
                           className="sr-only"
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
-                            if (!file || !isImageFile(file)) return;
+                            if (!file) return;
                             const dataUrl = await readImageSafely(file);
                             if (dataUrl) updateFeaturedImage({ kind: 'uploaded', dataUrl, fileName: file.name });
                             event.target.value = '';
@@ -1072,7 +1072,7 @@ function BlockFields({
               className="sr-only"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
-                if (!file || !isImageFile(file)) return;
+                if (!file) return;
                 const dataUrl = await readImageFile(file);
                 if (dataUrl) onChange({ imageUrl: dataUrl, imageFileName: file.name });
                 event.target.value = '';
