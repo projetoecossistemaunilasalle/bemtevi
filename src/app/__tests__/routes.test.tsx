@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,8 +10,20 @@ import { Router } from '../router';
 
 const admin: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
 
-function createAuthService(initialAccount: AdminAccount | null = null): AdminAuthService {
+type TestAdminAuthService = AdminAuthService & {
+  emit(account: AdminAccount | null): void;
+};
+
+function createAuthService(initialAccount: AdminAccount | null = null): TestAdminAuthService {
   let currentAccount = initialAccount;
+  let listener: ((account: AdminAccount | null) => void) | undefined;
+  const subscribe = vi.fn((next: (account: AdminAccount | null) => void) => {
+    listener = next;
+    return () => {
+      if (listener === next) listener = undefined;
+    };
+  });
+
   return {
     restore: vi.fn(async () => currentAccount),
     login: vi.fn(async () => {
@@ -21,7 +33,11 @@ function createAuthService(initialAccount: AdminAccount | null = null): AdminAut
     logout: vi.fn(async () => {
       currentAccount = null;
     }),
-    subscribe: vi.fn().mockReturnValue(() => undefined),
+    subscribe,
+    emit(account) {
+      currentAccount = account;
+      listener?.(account);
+    },
   };
 }
 
@@ -135,28 +151,32 @@ describe('Router', () => {
 
   it('renders the dashboard for a restored authorized admin', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
-    renderRoute('/dashboard', createAuthService(admin));
+    const authService = renderRoute('/dashboard', createAuthService(admin));
 
     expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(authService.restore).toHaveBeenCalledOnce();
   });
 
-  it('revokes an active admin when route revalidation no longer finds membership', async () => {
+  it('keeps the dashboard mounted when the window regains focus', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
     const authService = createAuthService(admin);
-    let resolveRevalidation: ((account: AdminAccount | null) => void) | undefined;
-    vi.mocked(authService.restore)
-      .mockResolvedValueOnce(admin)
-      .mockReturnValueOnce(
-        new Promise<AdminAccount | null>((resolve) => {
-          resolveRevalidation = resolve;
-        }),
-      );
     renderRoute('/dashboard', authService);
 
-    await vi.waitFor(() => expect(authService.restore).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole('heading', { name: 'Dashboard' })).not.toBeInTheDocument();
+    const dashboard = await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 });
+    window.dispatchEvent(new Event('focus'));
 
-    resolveRevalidation?.(null);
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBe(dashboard);
+    expect(authService.restore).toHaveBeenCalledOnce();
+  });
+
+  it('redirects when the auth provider reports a revoked admin session', async () => {
+    vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
+    const authService = createAuthService(admin);
+    renderRoute('/dashboard', authService);
+
+    await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 });
+    act(() => authService.emit(null));
+
     expect(
       await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
