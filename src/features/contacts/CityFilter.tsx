@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { localCityCatalog } from '../../lib/geo/cities';
 import { nearestCity, roundToApproximate } from '../../lib/geo/geo';
 import { requestBrowserLocation } from '../../lib/geo/location';
+import type { GeoCoordinates } from '../../lib/geo/geo';
 import { Button } from '../../design-system/components/Button';
 
 export type CityFilterValue = string | null;
@@ -19,10 +20,12 @@ export function CityFilter({
   cities,
   value,
   onChange,
+  onUserCoordinatesChange,
 }: {
   cities: string[];
   value: CityFilterValue;
   onChange: (city: CityFilterValue) => void;
+  onUserCoordinatesChange?: (coords: GeoCoordinates | null) => void;
 }) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,6 +42,8 @@ export function CityFilter({
 
   function selectCity(option: string) {
     onChange(option === ALL_CITIES_LABEL ? null : option);
+    onUserCoordinatesChange?.(null);
+    setStatus({ kind: 'idle' });
     setOpen(false);
   }
 
@@ -70,6 +75,7 @@ export function CityFilter({
     // transmitted, discarded as soon as this function finishes.
     const coordinates = await requestBrowserLocation();
     if (coordinates === null) {
+      onUserCoordinatesChange?.(null);
       setStatus({
         kind: 'error',
         message: 'Não foi possível obter sua localização. Escolha uma cidade manualmente.',
@@ -77,6 +83,7 @@ export function CityFilter({
       return;
     }
     const approximate = roundToApproximate(coordinates);
+    onUserCoordinatesChange?.(approximate);
     const { city: match, distanceKm } = nearestCity(approximate, localCityCatalog);
     const cityLabel = `${match.city} - ${match.state}`;
     if (cities.includes(cityLabel)) {

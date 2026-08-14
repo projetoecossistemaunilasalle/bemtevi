@@ -184,6 +184,32 @@ export function validateDashboardContacts(
         path: `contacts.${index}.phoneHref`,
       });
     }
+
+    if (
+      service.lat !== undefined &&
+      (typeof service.lat !== 'number' || !Number.isFinite(service.lat) || service.lat < -90 || service.lat > 90)
+    ) {
+      issues.push({
+        level: 'error',
+        area: 'contacts',
+        id: `invalid-lat:${service.id}:${index}`,
+        message: 'A latitude deve ser um número entre -90 e 90.',
+        path: `contacts.${index}.lat`,
+      });
+    }
+
+    if (
+      service.lng !== undefined &&
+      (typeof service.lng !== 'number' || !Number.isFinite(service.lng) || service.lng < -180 || service.lng > 180)
+    ) {
+      issues.push({
+        level: 'error',
+        area: 'contacts',
+        id: `invalid-lng:${service.id}:${index}`,
+        message: 'A longitude deve ser um número entre -180 e 180.',
+        path: `contacts.${index}.lng`,
+      });
+    }
   });
 
   return createValidationResult(issues);

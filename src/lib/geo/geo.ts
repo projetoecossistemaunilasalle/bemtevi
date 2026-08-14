@@ -1,4 +1,4 @@
-import type { CityLocation } from './cities';
+import { localCityCatalog, KNOWN_LOCATION_PATTERNS, KNOWN_SERVICE_COORDINATES, type CityLocation } from './cities';
 
 export interface GeoCoordinates {
   lat: number;
@@ -42,4 +42,87 @@ export function nearestCity(coordinates: GeoCoordinates, catalog: CityLocation[]
     }
   }
   return { city: match, distanceKm: Math.round(closestDistance * 10) / 10 };
+}
+
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim();
+}
+
+function deterministicCityOffset(key: string): { latOffset: number; lngOffset: number } {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const angle = (Math.abs(hash) % 360) * (Math.PI / 180);
+  const radius = 0.003 + (Math.abs(hash >> 8) % 50) / 10000;
+  return {
+    latOffset: Math.round(Math.sin(angle) * radius * 10000) / 10000,
+    lngOffset: Math.round(Math.cos(angle) * radius * 10000) / 10000,
+  };
+}
+
+/**
+ * Resolves the geographic coordinates of a service.
+ * Precedence:
+ * 1. Explicit lat/lng on the service entry.
+ * 2. ID match in KNOWN_SERVICE_COORDINATES.
+ * 3. Keyword / address match in KNOWN_LOCATION_PATTERNS (e.g. CAPS Novos Tempos, Girassóis, Amanhecer, Travessia).
+ * 4. City-level coordinates with deterministic dispersion so pins do not stack on top of each other.
+ */
+export function getServiceCoordinates(service: {
+  id?: string;
+  name?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  city?: string;
+  state?: string;
+}): GeoCoordinates | null {
+  if (
+    typeof service.lat === 'number' &&
+    typeof service.lng === 'number' &&
+    Number.isFinite(service.lat) &&
+    Number.isFinite(service.lng)
+  ) {
+    return { lat: service.lat, lng: service.lng };
+  }
+
+  if (service.id && KNOWN_SERVICE_COORDINATES[service.id]) {
+    return KNOWN_SERVICE_COORDINATES[service.id];
+  }
+
+  const searchableText = normalizeText(
+    `${service.name ?? ''} ${service.id ?? ''} ${service.address ?? ''} ${service.city ?? ''}`,
+  );
+
+  for (const pattern of KNOWN_LOCATION_PATTERNS) {
+    const matched = pattern.keywords.some((kw) => searchableText.includes(normalizeText(kw)));
+    if (matched) {
+      return { lat: pattern.lat, lng: pattern.lng };
+    }
+  }
+
+  if (service.city && service.city.trim()) {
+    const normCity = service.city.trim().toLowerCase();
+    const normState = service.state ? service.state.trim().toUpperCase() : '';
+    const match = localCityCatalog.find(
+      (c) => c.city.toLowerCase() === normCity && (!normState || c.state.toUpperCase() === normState),
+    );
+    if (match) {
+      const key = service.id || service.name || service.address || service.city;
+      const { latOffset, lngOffset } = deterministicCityOffset(key);
+      return {
+        lat: Math.round((match.lat + latOffset) * 10000) / 10000,
+        lng: Math.round((match.lng + lngOffset) * 10000) / 10000,
+      };
+    }
+  }
+
+  return null;
 }

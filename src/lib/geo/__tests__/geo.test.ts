@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { localCityCatalog } from '../cities';
-import { haversineKm, nearestCity, roundToApproximate } from '../geo';
+import { getServiceCoordinates, haversineKm, nearestCity, roundToApproximate } from '../geo';
 
 describe('haversineKm', () => {
   it('returns ~0 for the same point', () => {
@@ -38,5 +38,48 @@ describe('nearestCity', () => {
   it('matches through the blurred coordinate used by the app flow', () => {
     const blurred = roundToApproximate({ lat: -29.9234, lng: -51.1765 });
     expect(nearestCity(blurred, localCityCatalog).city.city).toBe('Canoas');
+  });
+});
+
+describe('getServiceCoordinates', () => {
+  it('returns explicit coordinates when present', () => {
+    expect(getServiceCoordinates({ lat: -29.5, lng: -51.2 })).toEqual({ lat: -29.5, lng: -51.2 });
+  });
+
+  it('resolves known seed services even when lat/lng are missing', () => {
+    expect(getServiceCoordinates({ id: 'canoas-caps-praca-brasil' })).toEqual({
+      lat: -29.9145,
+      lng: -51.1812,
+    });
+  });
+
+  it('resolves specific Canoas CAPS locations by name patterns', () => {
+    const novosTempos = getServiceCoordinates({ name: 'CAPS II Novos Tempos', city: 'Canoas', state: 'RS' });
+    const girassois = getServiceCoordinates({ name: 'CAPS III Recanto dos Girassóis', city: 'Canoas', state: 'RS' });
+    const amanhecer = getServiceCoordinates({ name: 'CAPS AD III Amanhecer', city: 'Canoas', state: 'RS' });
+    const travessia = getServiceCoordinates({ name: 'CAPS AD III Travessia', city: 'Canoas', state: 'RS' });
+
+    expect(novosTempos).toEqual({ lat: -29.9073, lng: -51.1712 });
+    expect(girassois).toEqual({ lat: -29.9176, lng: -51.1865 });
+    expect(amanhecer).toEqual({ lat: -29.9234, lng: -51.1751 });
+    expect(travessia).toEqual({ lat: -29.9161, lng: -51.1824 });
+
+    // Confirm all 4 CAPS have distinct locations
+    const points = [novosTempos, girassois, amanhecer, travessia];
+    const uniqueKeys = new Set(points.map((p) => `${p?.lat},${p?.lng}`));
+    expect(uniqueKeys.size).toBe(4);
+  });
+
+  it('disperses multiple unmapped services in the same city so pins do not overlap', () => {
+    const s1 = getServiceCoordinates({ id: 'service-a', city: 'Canoas', state: 'RS' });
+    const s2 = getServiceCoordinates({ id: 'service-b', city: 'Canoas', state: 'RS' });
+
+    expect(s1).not.toBeNull();
+    expect(s2).not.toBeNull();
+    expect(`${s1?.lat},${s1?.lng}`).not.toEqual(`${s2?.lat},${s2?.lng}`);
+  });
+
+  it('returns null for unknown city without coordinates', () => {
+    expect(getServiceCoordinates({ city: 'Cidade Desconhecida', state: 'XX' })).toBeNull();
   });
 });

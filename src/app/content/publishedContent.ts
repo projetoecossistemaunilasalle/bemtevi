@@ -240,6 +240,12 @@ function validateContactRecords(contacts: unknown): ServiceDirectoryEntry[] {
     if (!SUPPORTED_BADGE_TONES.includes(contact.badgeTone as (typeof SUPPORTED_BADGE_TONES)[number])) {
       throw new PublishedContentValidationError(`Contato "${label}" tem "badgeTone" inválido.`);
     }
+    if (contact.lat !== undefined && (!isFiniteNumber(contact.lat) || contact.lat < -90 || contact.lat > 90)) {
+      throw new PublishedContentValidationError(`Contato "${label}" tem "lat" inválido.`);
+    }
+    if (contact.lng !== undefined && (!isFiniteNumber(contact.lng) || contact.lng < -180 || contact.lng > 180)) {
+      throw new PublishedContentValidationError(`Contato "${label}" tem "lng" inválido.`);
+    }
     if (!isRecord(contact.review)) {
       throw new PublishedContentValidationError(`Contato "${label}" precisa de um objeto "review".`);
     }

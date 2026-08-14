@@ -1,19 +1,56 @@
-import { Clock, Map, Phone } from 'lucide-react';
+import { Clock, Map, Navigation, Phone } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import { getServiceCoordinates } from '../../lib/geo/geo';
 import { Badge } from './Badge';
 import { LinkButton } from './Button';
 import { Card } from './Card';
 
-export function ServiceCard({ service, preview = false }: { service: ServiceDirectoryEntry; preview?: boolean }) {
+function formatDistance(km: number): string {
+  if (km < 1) {
+    const meters = Math.round(km * 1000);
+    return `a ~${meters} m de você`;
+  }
+  const formatted = (Math.round(km * 10) / 10).toFixed(1).replace('.', ',');
+  return `a ~${formatted} km de você`;
+}
+
+function getMapUrl(service: ServiceDirectoryEntry): string | null {
+  const coords = getServiceCoordinates(service);
+  if (coords) {
+    return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+  }
+  if (service.city && service.address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${service.name}, ${service.address}`)}`;
+  }
+  return null;
+}
+
+export function ServiceCard({
+  service,
+  distanceKm,
+  preview = false,
+}: {
+  service: ServiceDirectoryEntry;
+  distanceKm?: number;
+  preview?: boolean;
+}) {
+  const mapUrl = getMapUrl(service);
+
   return (
     <Card className="border-l-4 border-l-primary overflow-hidden flex flex-col bg-surface-container-low">
       <article className="p-6 flex flex-col flex-grow">
         <div className="flex justify-between items-start gap-2 mb-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex flex-wrap gap-1.5 items-center">
             <Badge tone={service.badgeTone}>
               <span className="block min-w-0 truncate whitespace-nowrap">{service.type}</span>
             </Badge>
+            {distanceKm !== undefined ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-container/70 px-2 py-0.5 text-xs font-semibold text-on-primary-container">
+                <Navigation size={12} aria-hidden="true" />
+                {formatDistance(distanceKm)}
+              </span>
+            ) : null}
           </div>
           {service.city ? (
             <span className="border border-outline-variant rounded-full px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant whitespace-nowrap">
@@ -39,16 +76,34 @@ export function ServiceCard({ service, preview = false }: { service: ServiceDire
           ) : null}
         </div>
         {service.notes ? <ExpandableNotes text={service.notes} /> : null}
-        <LinkButton
-          href={preview ? undefined : service.phoneHref}
-          aria-disabled={preview || undefined}
-          tabIndex={preview ? -1 : undefined}
-          onClick={preview ? (event) => event.preventDefault() : undefined}
-          className="mt-6 w-full"
-        >
-          <Phone size={20} />
-          Ligar agora
-        </LinkButton>
+        <div className="mt-6 flex flex-col sm:flex-row gap-2">
+          <LinkButton
+            href={preview ? undefined : service.phoneHref}
+            aria-disabled={preview || undefined}
+            tabIndex={preview ? -1 : undefined}
+            onClick={preview ? (event) => event.preventDefault() : undefined}
+            className="flex-1"
+          >
+            <Phone size={18} />
+            Ligar agora
+          </LinkButton>
+          {mapUrl ? (
+            <LinkButton
+              variant="secondary"
+              href={preview ? undefined : mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Como chegar ao endereço de ${service.name}`}
+              aria-disabled={preview || undefined}
+              tabIndex={preview ? -1 : undefined}
+              onClick={preview ? (event) => event.preventDefault() : undefined}
+              className="flex-1"
+            >
+              <Navigation size={18} />
+              Como chegar
+            </LinkButton>
+          ) : null}
+        </div>
       </article>
     </Card>
   );

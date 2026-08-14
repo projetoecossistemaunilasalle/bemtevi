@@ -9,8 +9,8 @@ const PHASES = [
   { label: 'Solte', duration: 6 },
 ] as const;
 
-const AMBIENT_AUDIO_VOLUME = 0.2;
-const ambientAudioUrl = `${import.meta.env.BASE_URL}audio/relaxation-loop.mp3`;
+const AMBIENT_AUDIO_VOLUME = 0.5;
+const ambientAudioUrl = `${import.meta.env.BASE_URL}audio/sunset-plains.mp3`;
 
 type PhaseIndex = 0 | 1 | 2;
 
@@ -18,7 +18,7 @@ export function BreathingExercise() {
   const [active, setActive] = useState(false);
   const [phase, setPhase] = useState<PhaseIndex>(0);
   const [countdown, setCountdown] = useState<number>(PHASES[0].duration);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundError, setSoundError] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -57,7 +57,10 @@ export function BreathingExercise() {
     audio.volume = AMBIENT_AUDIO_VOLUME;
     try {
       await audio.play();
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       setSoundEnabled(false);
       setSoundError('Não foi possível reproduzir o som neste dispositivo. O exercício continua sem áudio.');
     }
@@ -106,7 +109,7 @@ export function BreathingExercise() {
         ref={audioRef}
         src={ambientAudioUrl}
         loop
-        preload="metadata"
+        preload="auto"
         aria-hidden="true"
         onError={() => {
           setSoundEnabled(false);
@@ -187,7 +190,7 @@ export function BreathingExercise() {
               ? active
                 ? 'O som suave acompanha o exercício e para quando você encerrar.'
                 : 'O som começará quando você iniciar o exercício.'
-              : 'Opcional, sem reprodução automática. Você pode desligá-lo a qualquer momento.')}
+              : 'O som ambiente está desativado. Você pode ativá-lo a qualquer momento.')}
         </p>
       </div>
     </section>

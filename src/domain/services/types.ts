@@ -19,6 +19,8 @@ export interface ServiceDirectoryEntry {
   phoneHref: string;
   hours?: string;
   notes?: string;
+  lat?: number;
+  lng?: number;
   review: ReviewMetadata;
 }
 

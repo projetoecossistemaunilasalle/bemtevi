@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PublishedContentContext } from '../../../app/content/PublishedContentContext';
 import { getBundledContent } from '../../../app/content/bundledContent';
 import type { PublishedContentPayload } from '../../../app/content/publishedContent';
@@ -49,6 +49,8 @@ function buildDatabaseContactsPayload(): PublishedContentPayload {
       address: 'Rua do Banco de Dados, 1',
       phoneDisplay: '(51) 1111-1111',
       phoneHref: 'tel:5111111111',
+      lat: -29.92,
+      lng: -51.18,
       review: { status: 'pending_review' as const, reviewedBy: null, reviewedAt: null, notes: '' },
     },
   ];
@@ -60,7 +62,15 @@ function buildMultiCityContactsPayload(): PublishedContentPayload {
   return {
     ...bundled,
     contacts: [
-      bundled.contacts[0],
+      {
+        ...bundled.contacts[0],
+        id: 'canoas-caps',
+        name: 'CAPS II Praça Brasil',
+        city: 'Canoas',
+        state: 'RS',
+        lat: -29.9145,
+        lng: -51.1812,
+      },
       {
         id: 'porto-alegre-contato',
         name: 'CAPS Centro de Porto Alegre',
@@ -71,6 +81,8 @@ function buildMultiCityContactsPayload(): PublishedContentPayload {
         address: 'Rua da Independência, 100 - Centro, Porto Alegre - RS',
         phoneDisplay: '(51) 3222-2222',
         phoneHref: 'tel:5132222222',
+        lat: -30.0277,
+        lng: -51.2287,
         review: { status: 'pending_review' as const, reviewedBy: null, reviewedAt: null, notes: '' },
       },
       {
@@ -88,6 +100,23 @@ function buildMultiCityContactsPayload(): PublishedContentPayload {
     ],
   };
 }
+
+function mockGeolocationSuccess(lat: number, lng: number) {
+  Object.defineProperty(navigator, 'geolocation', {
+    configurable: true,
+    value: {
+      getCurrentPosition: (success: PositionCallback) =>
+        success({
+          coords: { latitude: lat, longitude: lng },
+        } as unknown as GeolocationPosition),
+    },
+  });
+}
+
+afterEach(() => {
+  delete (navigator as unknown as Record<string, unknown>).geolocation;
+  vi.restoreAllMocks();
+});
 
 describe('ContactsScreen', () => {
   it('renders all configured Canoas services', () => {
@@ -134,5 +163,57 @@ describe('ContactsScreen', () => {
 
     expect(screen.getByText('CAPS II Praça Brasil')).toBeInTheDocument();
     expect(screen.getByText('CAPS Centro de Porto Alegre')).toBeInTheDocument();
+  });
+
+  it('toggles between list and map views', async () => {
+    const user = userEvent.setup();
+    renderWithContent(<ContactsScreen />, getBundledContent());
+
+    const listBtn = screen.getByRole('radio', { name: /ver contatos em lista/i });
+    const mapBtn = screen.getByRole('radio', { name: /ver contatos no mapa/i });
+
+    expect(listBtn).toHaveAttribute('aria-checked', 'true');
+    expect(mapBtn).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(mapBtn);
+
+    expect(mapBtn).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTitle(/mapa de contatos da rede de apoio/i)).toBeInTheDocument();
+    expect(screen.getByText(/privacidade garantida/i)).toBeInTheDocument();
+
+    await user.click(listBtn);
+    expect(listBtn).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('calculates distance and displays proximity badge upon user location consent', async () => {
+    mockGeolocationSuccess(-29.9145, -51.1812);
+    const user = userEvent.setup();
+    const { container } = renderWithContent(<ContactsScreen />, getBundledContent());
+
+    await user.click(screen.getByRole('button', { name: /usar minha localização/i }));
+
+    expect(await screen.findByText(/localização aproximada/i)).toBeInTheDocument();
+    expect(container.textContent).toContain('m de você');
+  });
+
+  it('includes "Como chegar" navigation buttons with external map links', () => {
+    renderWithContent(<ContactsScreen />, getBundledContent());
+
+    const directionsButtons = screen.getAllByRole('link', { name: /como chegar/i });
+    expect(directionsButtons.length).toBeGreaterThan(0);
+    expect(directionsButtons[0]).toHaveAttribute('target', '_blank');
+    expect(directionsButtons[0]?.getAttribute('href')).toContain('google.com/maps');
+  });
+
+  it('renders map view even for database contacts without explicit lat/lng fields', async () => {
+    const user = userEvent.setup();
+    const payloadWithoutCoords = buildMultiCityContactsPayload();
+    payloadWithoutCoords.contacts = payloadWithoutCoords.contacts.map(({ lat: _lat, lng: _lng, ...rest }) => rest);
+    renderWithContent(<ContactsScreen />, payloadWithoutCoords);
+
+    await user.click(screen.getByRole('radio', { name: /ver contatos no mapa/i }));
+
+    expect(screen.getByTitle(/mapa de contatos da rede de apoio/i)).toBeInTheDocument();
+    expect(screen.queryByText(/nenhum endereço com coordenadas disponível/i)).not.toBeInTheDocument();
   });
 });

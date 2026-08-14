@@ -325,6 +325,8 @@ function ContactFields({
   );
   const hoursIssues = issuesForPath(validation, `${path}.hours`);
   const notesIssues = issuesForPath(validation, `${path}.notes`);
+  const latIssues = issuesForPath(validation, `${path}.lat`);
+  const lngIssues = issuesForPath(validation, `${path}.lng`);
 
   return (
     <div className="flex flex-col gap-4">
@@ -395,6 +397,36 @@ function ContactFields({
           onChange={(event) => onChange({ address: event.target.value })}
         />
       </Field>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Latitude (opcional)" htmlFor={`${fieldId}-lat`} hint="Ex.: -29.9145" issues={latIssues}>
+          <input
+            id={`${fieldId}-lat`}
+            type="number"
+            step="any"
+            className={fieldClass(latIssues)}
+            value={service.lat ?? ''}
+            onChange={(event) => {
+              const val = event.target.value.trim();
+              onChange({ lat: val === '' ? undefined : Number(val) });
+            }}
+          />
+        </Field>
+
+        <Field label="Longitude (opcional)" htmlFor={`${fieldId}-lng`} hint="Ex.: -51.1812" issues={lngIssues}>
+          <input
+            id={`${fieldId}-lng`}
+            type="number"
+            step="any"
+            className={fieldClass(lngIssues)}
+            value={service.lng ?? ''}
+            onChange={(event) => {
+              const val = event.target.value.trim();
+              onChange({ lng: val === '' ? undefined : Number(val) });
+            }}
+          />
+        </Field>
+      </div>
 
       <Field
         label="Telefone"
