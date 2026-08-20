@@ -34,11 +34,16 @@ export function PublishedContentProvider({
   const snapshotRef = useRef<PublishedContentSnapshot | null>(null);
   const refreshSequenceRef = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refreshLatest = useCallback(async (): Promise<PublishedContentSnapshot | null> => {
     const refreshSequence = ++refreshSequenceRef.current;
     try {
       const next = await repository.loadPublishedContent();
-      if (!active.current || refreshSequence !== refreshSequenceRef.current) return;
+      if (!active.current || refreshSequence !== refreshSequenceRef.current) return null;
+      if (next === null) {
+        setStatus('ready');
+        setLoadError(null);
+        return null;
+      }
       if (next && (snapshotRef.current === null || next.revision >= snapshotRef.current.revision)) {
         snapshotRef.current = next;
         setContent(next.payload);
@@ -47,12 +52,18 @@ export function PublishedContentProvider({
       }
       setStatus('ready');
       setLoadError(null);
+      return snapshotRef.current;
     } catch (error) {
-      if (!active.current || refreshSequence !== refreshSequenceRef.current) return;
+      if (!active.current || refreshSequence !== refreshSequenceRef.current) return null;
       setStatus('fallback');
       setLoadError(error as PublishedContentRepositoryError | PublishedContentValidationError);
+      return null;
     }
   }, [repository]);
+
+  const refresh = useCallback(async () => {
+    await refreshLatest();
+  }, [refreshLatest]);
 
   const publish = useCallback(
     async (
@@ -96,8 +107,8 @@ export function PublishedContentProvider({
   }, [refresh]);
 
   const value = useMemo<PublishedContentContextValue>(
-    () => ({ content, snapshot, source, status, loadError, refresh, publish }),
-    [content, snapshot, source, status, loadError, refresh, publish],
+    () => ({ content, snapshot, source, status, loadError, refresh, refreshLatest, publish }),
+    [content, snapshot, source, status, loadError, refresh, refreshLatest, publish],
   );
 
   return <PublishedContentContext.Provider value={value}>{children}</PublishedContentContext.Provider>;

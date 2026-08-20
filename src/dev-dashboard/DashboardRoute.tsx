@@ -4,6 +4,8 @@ import { PageHeader } from '../design-system/components/PageHeader';
 import { DashboardShell, type DashboardTab } from './components/DashboardShell';
 import {
   type DashboardRecordPatch,
+  type DashboardDraftState,
+  hasDashboardChanges,
   loadDashboardDrafts,
   mergeDashboardDrafts,
   resetDashboardDrafts,
@@ -28,6 +30,8 @@ import { createLocalLocation, createLocalService } from './contacts/contactDraft
 import { validateDashboardContacts } from './contacts/contactsValidation';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
 import { normalizeContactLocations } from '../domain/services/locations';
+import type { PublishedContentSnapshot } from '../app/content/publishedContent';
+import type { DashboardShippedContent } from './content/shippedContent';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -135,6 +139,17 @@ function findGroupIndex(groups: EducationResourceGroup[], groupId: string) {
   return groups.findIndex((group) => group.id === groupId);
 }
 
+function toPublishedContentPayload(content: DashboardShippedContent): PublishedContentPayload {
+  return {
+    flows: content.flows,
+    educationMaterials: content.educationMaterials,
+    educationGroups: content.educationGroups,
+    contacts: content.contacts,
+    locations: content.locations ?? [],
+    defaultGroupOrder: content.defaultGroupOrder ?? 0,
+  };
+}
+
 type ContactOrigin =
   | { kind: 'shipped'; sourceIndex: number; id: string }
   | { kind: 'added'; addedIndex: number; id: string };
@@ -228,12 +243,16 @@ export function DashboardRoute() {
     saveActiveTab(tab);
   }
 
-  function updateDraftState(updater: (current: typeof draftState) => typeof draftState) {
+  function updateDraftState(updater: (current: DashboardDraftState) => DashboardDraftState) {
     setDraftState((current) => {
+      const updatedDraft = updater(current);
+      const startsDraft = !hasDashboardChanges(current) && hasDashboardChanges(updatedDraft);
       const baseRevision = current.baseRevision === undefined ? (snapshot?.revision ?? null) : current.baseRevision;
+      const basePayload = current.basePayload ?? (startsDraft ? toPublishedContentPayload(shipped) : undefined);
       const next = {
-        ...updater(current),
+        ...updatedDraft,
         baseRevision,
+        ...(basePayload ? { basePayload } : {}),
         updatedAt: new Date().toISOString(),
       };
 
@@ -288,6 +307,21 @@ export function DashboardRoute() {
     }),
     [mergedDrafts],
   );
+
+  function rebaseDraftAfterMergeConflict(nextSnapshot: PublishedContentSnapshot) {
+    setDraftState((current) => {
+      if (!hasDashboardChanges(current)) return current;
+
+      const next = {
+        ...current,
+        baseRevision: nextSnapshot.revision,
+        basePayload: nextSnapshot.payload,
+        updatedAt: new Date().toISOString(),
+      };
+      saveDashboardDrafts(next);
+      return next;
+    });
+  }
   const changeSummary = useMemo(() => computeChangeSummary(shipped, publishedDraft), [shipped, publishedDraft]);
   const tabErrorCounts: Partial<Record<DashboardTab, number>> = {
     flows: flowValidation.errors.length,
@@ -757,6 +791,8 @@ export function DashboardRoute() {
               validation={validation}
               draftUpdatedAt={draftState.updatedAt}
               expectedRevision={draftState.baseRevision ?? null}
+              basePayload={draftState.basePayload}
+              onMergeConflict={rebaseDraftAfterMergeConflict}
               onPublished={() => setDraftState(resetDashboardDrafts())}
               onResetDrafts={() => setDraftState(resetDashboardDrafts())}
             />

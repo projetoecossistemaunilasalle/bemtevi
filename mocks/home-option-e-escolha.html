@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi · Opção E — Escolha</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./home-options-shared.css" />
+    <link rel="stylesheet" href="./home-options-current.css" />
+    <style>
+      .home-main {
+        width: min(1100px, calc(100% - 64px));
+        margin: 0 auto;
+        padding: 48px 0 40px;
+      }
+
+      .intro {
+        max-width: 720px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--display-font);
+        font-size: clamp(40px, 4.2vw, 56px);
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+      }
+
+      .lead {
+        margin: 15px auto 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      .privacy-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+        padding: 8px 13px;
+        border: 1px solid rgba(0, 106, 67, 0.18);
+        border-radius: 999px;
+        color: var(--primary);
+        background: var(--primary-container);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .privacy-note .icon {
+        width: 17px;
+        height: 17px;
+      }
+
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 38px;
+      }
+
+      .choice-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-height: 255px;
+        padding: 24px;
+        border: 1px solid rgba(189, 202, 191, 0.66);
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: 0 7px 22px rgba(17, 28, 44, 0.05);
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+
+      .choice-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 10px 26px rgba(17, 28, 44, 0.09);
+        transform: translateY(-2px);
+      }
+
+      .choice-card.featured {
+        border: 2px solid var(--primary);
+        padding: 23px;
+      }
+
+      .recommended {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        color: var(--primary);
+        background: var(--primary-container);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .card-icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        margin-bottom: 24px;
+        border-radius: 14px;
+        color: var(--secondary);
+        background: var(--secondary-container);
+      }
+
+      .featured .card-icon {
+        color: var(--primary);
+        background: var(--primary-container);
+      }
+
+      .choice-card h2 {
+        margin: 0 0 8px;
+        font-family: var(--display-font);
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.18;
+      }
+
+      .choice-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .card-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 24px;
+        color: var(--secondary);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .featured .card-action {
+        color: var(--primary);
+      }
+      .card-action .icon {
+        width: 18px;
+        height: 18px;
+      }
+
+      .lower-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+        margin-top: 18px;
+        padding: 17px 20px;
+        border-radius: 16px;
+        background: var(--surface-low);
+      }
+
+      .lower-row a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--secondary);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .legal {
+        text-align: right;
+      }
+
+      @media (max-width: 840px) {
+        .choice-grid {
+          grid-template-columns: 1fr;
+        }
+        .choice-card {
+          min-height: 190px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .home-main {
+          width: calc(100% - 36px);
+          padding: 36px 0 28px;
+        }
+        .intro {
+          text-align: left;
+        }
+        h1 {
+          font-size: 39px;
+        }
+        .privacy-note {
+          border-radius: 12px;
+        }
+        .choice-grid {
+          margin-top: 28px;
+        }
+        .choice-card {
+          min-height: 184px;
+          padding: 20px;
+        }
+        .choice-card.featured {
+          padding: 19px;
+        }
+        .card-icon {
+          margin-bottom: 18px;
+        }
+        .lower-row {
+          grid-template-columns: 1fr;
+        }
+        .legal {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="home" viewBox="0 0 24 24">
+        <path
+          d="m3 11 9-8 9 8v10h-6v-7H9v7H3Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8Z" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="book" viewBox="0 0 24 24">
+        <path
+          d="M4 4h6a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4Zm16 0h-4a3 3 0 0 0-3 3v14a3 3 0 0 1 3-3h4Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="M3 20c0-4 2-6 6-6s6 2 6 6m1-15a3 3 0 0 1 0 6m1 3c2.7.3 4 2.3 4 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="heart" viewBox="0 0 24 24">
+        <path
+          d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="m8.5 12 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="map" viewBox="0 0 24 24">
+        <path
+          d="M20 10c0 5.2-8 12-8 12S4 15.2 4 10a8 8 0 1 1 16 0Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#"><img src="../public/logo.png" alt="" />BemTeVi</a>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a href="#" aria-current="page">Início</a><a href="#">Orientação</a><a href="#">Materiais</a
+          ><a href="#">Contatos</a><a href="#">Apoio</a>
+        </nav>
+      </header>
+      <main class="home-main" id="conteudo">
+        <section class="intro">
+          <p class="eyebrow">Cuidado e informação para professores</p>
+          <h1>Por onde você quer começar hoje?</h1>
+          <p class="lead">Escolha a opção que mais combina com o que você precisa neste momento.</p>
+          <span class="privacy-note"
+            ><svg class="icon"><use href="#shield" /></svg>Sem cadastro. Suas respostas não ficam guardadas.</span
+          >
+        </section>
+        <section class="choice-grid" aria-label="Formas de começar">
+          <a class="choice-card featured" href="#"
+            ><span class="recommended">Caminho guiado</span
+            ><span class="card-icon"
+              ><svg class="icon"><use href="#compass" /></svg
+            ></span>
+            <h2>Entender como estou</h2>
+            <p>Uma orientação inicial com perguntas breves e sem julgamentos.</p>
+            <span class="card-action"
+              >Começar orientação <svg class="icon"><use href="#arrow" /></svg></span
+          ></a>
+          <a class="choice-card" href="#"
+            ><span class="card-icon"
+              ><svg class="icon"><use href="#heart" /></svg
+            ></span>
+            <h2>Encontrar apoio agora</h2>
+            <p>Canais gratuitos para conversar ou pedir ajuda quando precisar.</p>
+            <span class="card-action"
+              >Ver canais de apoio <svg class="icon"><use href="#arrow" /></svg></span
+          ></a>
+          <a class="choice-card" href="#"
+            ><span class="card-icon"
+              ><svg class="icon"><use href="#map" /></svg
+            ></span>
+            <h2>Buscar atendimento</h2>
+            <p>Serviços profissionais e comunitários disponíveis na sua região.</p>
+            <span class="card-action"
+              >Buscar serviços <svg class="icon"><use href="#arrow" /></svg></span
+          ></a>
+        </section>
+        <div class="lower-row">
+          <a href="#"
+            ><svg class="icon"><use href="#book" /></svg>Também quero conhecer os materiais educativos</a
+          >
+          <p class="legal">Conteúdo educativo e preventivo. Não substitui acompanhamento profissional.</p>
+        </div>
+      </main>
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <a href="#" aria-current="page"
+          ><svg class="nav-icon"><use href="#home" /></svg>Início</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#compass" /></svg>Orientação</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#book" /></svg>Materiais</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#users" /></svg>Contatos</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#heart" /></svg>Apoio</a
+        >
+      </nav>
+      <div class="mock-note">Mock E · Escolha</div>
+    </div>
+  </body>
+</html>

@@ -46,6 +46,14 @@ describe('HomeScreen onboarding', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-onboarding-screen]')).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'Como você está hoje?' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Que bom ter você aqui!' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Como você está hoje?' })).not.toBeInTheDocument();
+    expect(screen.getByText('Uma ferramenta de educação em saúde mental para professores.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'As informações têm caráter educativo e preventivo e não substituem acompanhamento profissional.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /qual serviço de saúde posso acessar/i })).toBeInTheDocument();
   });
 });

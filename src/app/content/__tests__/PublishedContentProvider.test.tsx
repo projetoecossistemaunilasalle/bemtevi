@@ -158,6 +158,30 @@ describe('PublishedContentProvider', () => {
     expect(repository.loadPublishedContent).toHaveBeenCalledTimes(2);
   });
 
+  it('returns the newest snapshot when a merge check explicitly refreshes content', async () => {
+    const repository = createFakeRepository({
+      loadPublishedContent: vi
+        .fn()
+        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 4 Contact'), 4))
+        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 5 Contact'), 5)),
+    });
+
+    render(
+      <PublishedContentProvider repository={repository}>
+        <Probe />
+      </PublishedContentProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('4'));
+    let latestSnapshot: PublishedContentSnapshot | null = null;
+    await act(async () => {
+      latestSnapshot = await latest!.refreshLatest!();
+    });
+
+    expect(latestSnapshot?.revision).toBe(5);
+    await waitFor(() => expect(screen.getByTestId('contact')).toHaveTextContent('Revision 5 Contact'));
+  });
+
   it('publishes with the current revision and replaces content in memory', async () => {
     const nextPayload = dbPayload('Next Contact');
     const repository = createFakeRepository({

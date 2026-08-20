@@ -4,9 +4,10 @@ import type { EducationResourceGroup } from '../../content/resources/groups';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import { deriveLocationsFromContacts, normalizeContactLocations } from '../../domain/services/locations';
 import type { DashboardShippedContent } from '../content/shippedContent';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 
 const STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
-export const DASHBOARD_DRAFT_SCHEMA_VERSION = '5.0.0' as const;
+export const DASHBOARD_DRAFT_SCHEMA_VERSION = '6.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {
   id: string;
@@ -28,6 +29,7 @@ export interface DashboardDraftState {
   addedContacts: ServiceDirectoryEntry[];
   addedLocations: ServiceLocation[];
   baseRevision?: number | null;
+  basePayload?: PublishedContentPayload;
   defaultGroupOrder?: number;
   removedGroupIds?: string[];
   removedFlowIds?: string[];
@@ -112,7 +114,12 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         addedLocations: [],
         removedLocationIds: [],
       } as DashboardDraftState;
-    } else if (version === '3.0.0' || version === '4.0.0' || version === DASHBOARD_DRAFT_SCHEMA_VERSION) {
+    } else if (
+      version === '3.0.0' ||
+      version === '4.0.0' ||
+      version === '5.0.0' ||
+      version === DASHBOARD_DRAFT_SCHEMA_VERSION
+    ) {
       const result = parsed as DashboardDraftState;
       state = {
         ...result,
@@ -132,6 +139,7 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
         removedContactIds: Array.isArray(result.removedContactIds) ? result.removedContactIds : [],
         removedLocationIds: Array.isArray(result.removedLocationIds) ? result.removedLocationIds : [],
       };
+      if (!isDashboardPayload(result.basePayload)) delete state.basePayload;
     } else {
       return createEmptyDashboardDraftState();
     }
@@ -159,6 +167,19 @@ export function loadDashboardDrafts(storage: Storage = localStorage): DashboardD
   } catch {
     return createEmptyDashboardDraftState();
   }
+}
+
+function isDashboardPayload(value: unknown): value is PublishedContentPayload {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    Array.isArray(record.flows) &&
+    Array.isArray(record.educationMaterials) &&
+    Array.isArray(record.educationGroups) &&
+    Array.isArray(record.contacts) &&
+    Array.isArray(record.locations) &&
+    typeof record.defaultGroupOrder === 'number'
+  );
 }
 
 export function saveDashboardDrafts(state: DashboardDraftState, storage: Storage = localStorage) {

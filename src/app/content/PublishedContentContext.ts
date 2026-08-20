@@ -13,6 +13,7 @@ export interface PublishedContentContextValue {
   status: PublishedContentStatus;
   loadError: PublishedContentRepositoryError | PublishedContentValidationError | null;
   refresh(): Promise<void>;
+  refreshLatest?: () => Promise<PublishedContentSnapshot | null>;
   publish(
     payload: PublishedContentPayload,
     publisherId: string,

@@ -1,0 +1,80 @@
+:root {
+  --page: #f9f9ff;
+  --ink: #111c2c;
+  --muted: #3e4942;
+  --primary: #006a43;
+  --primary-strong: #005536;
+  --primary-container: #e1f4e9;
+  --secondary: #425e91;
+  --secondary-container: #e7eeff;
+  --surface: #ffffff;
+  --surface-low: #f0f3ff;
+  --outline: #bdcabf;
+  --active: #e1f4e9;
+  --active-ink: #006a43;
+  --focus: #425e91;
+  --display-font: 'Nunito', sans-serif;
+  --body-font: 'Source Sans 3', sans-serif;
+}
+
+.app {
+  background: var(--page);
+}
+
+.topbar {
+  border-bottom: 1px solid rgba(189, 202, 191, 0.42);
+}
+
+.brand {
+  color: var(--primary);
+  font-weight: 850;
+}
+
+.desktop-nav a:not([aria-current='page']):hover {
+  background: var(--surface-low);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.subtle-label {
+  color: var(--secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--primary);
+  font-weight: 700;
+  box-shadow: 0 7px 18px rgba(0, 106, 67, 0.16);
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.primary-button:hover {
+  background: var(--primary-strong);
+  transform: translateY(-1px);
+}
+
+.legal {
+  margin: 0;
+  color: #68766e;
+  font-size: 12px;
+  line-height: 1.45;
+}

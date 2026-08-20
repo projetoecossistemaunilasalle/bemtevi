@@ -509,6 +509,10 @@ describe('DashboardRoute', () => {
         },
       },
     ]);
+    expect(draft.basePayload).toMatchObject({
+      contacts: [{ id: 'canoas-caps-praca-brasil', name: 'CAPS II Praça Brasil' }],
+      defaultGroupOrder: 0,
+    });
   });
 
   it('rebases a recovered unique contact patch when the reordered contact is edited again', () => {

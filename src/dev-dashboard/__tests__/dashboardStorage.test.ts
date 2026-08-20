@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { canoasServices } from '../../content/services/canoas-services';
 import type { DashboardDraftState } from '../draft-storage/dashboardStorage';
 import {
@@ -90,11 +91,11 @@ describe('dashboardStorage', () => {
 
     saveDashboardDrafts(v3Draft);
 
-    expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('5.0.0');
+    expect(DASHBOARD_DRAFT_SCHEMA_VERSION).toBe('6.0.0');
     expect(loadDashboardDrafts()).toEqual({ ...v3Draft, baseRevision: null });
   });
 
-  it('migrates v4 drafts to v5 without losing contact edits', () => {
+  it('migrates v4 drafts to v6 without losing contact edits', () => {
     localStorage.setItem(
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
@@ -117,7 +118,7 @@ describe('dashboardStorage', () => {
 
     const loaded = loadDashboardDrafts();
 
-    expect(loaded.schemaVersion).toBe('5.0.0');
+    expect(loaded.schemaVersion).toBe('6.0.0');
     expect(loaded.contactPatches).toEqual([{ id: contact.id, sourceIndex: 0, patch: { name: 'Contato editado' } }]);
     expect(loaded.locationPatches).toEqual([]);
     expect(loaded.addedLocations).toEqual([]);
@@ -199,6 +200,22 @@ describe('dashboardStorage', () => {
     saveDashboardDrafts(draft);
 
     expect(loadDashboardDrafts().baseRevision).toBe(7);
+  });
+
+  it('persists the content base used for concurrent merge checks', () => {
+    const basePayload: PublishedContentPayload = {
+      flows: [],
+      educationMaterials: [],
+      educationGroups: [],
+      contacts: [contact],
+      locations: [],
+      defaultGroupOrder: 0,
+    };
+    const draft = { ...emptyDraft, baseRevision: 7, basePayload };
+
+    saveDashboardDrafts(draft);
+
+    expect(loadDashboardDrafts().basePayload).toEqual(basePayload);
   });
 
   it('marks a pre-revision non-empty draft as conflict-only instead of rebasing it', () => {

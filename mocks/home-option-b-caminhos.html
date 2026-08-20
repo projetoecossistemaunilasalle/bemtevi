@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Opção B de redesign da tela inicial do BemTeVi." />
+    <title>BemTeVi · Opção B — Caminhos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Onest:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./home-options-shared.css" />
+    <style>
+      :root {
+        --page: #edf7fb;
+        --ink: #142f44;
+        --muted: #4d687a;
+        --blue: #156a85;
+        --blue-deep: #0c435b;
+        --green: #08765f;
+        --green-soft: #cfeee3;
+        --sky: #cbeaf5;
+        --peach: #ffb68f;
+        --white: #ffffff;
+        --active: #cfeee3;
+        --active-ink: #075544;
+        --focus: #c74819;
+        --display-font: 'Onest', sans-serif;
+        --body-font: 'IBM Plex Sans', sans-serif;
+      }
+
+      .app {
+        position: relative;
+        background:
+          radial-gradient(circle at 84% 14%, rgba(255, 182, 143, 0.4) 0 9%, transparent 9.2%),
+          radial-gradient(circle at 11% 93%, rgba(203, 234, 245, 0.9) 0 14%, transparent 14.2%), var(--page);
+      }
+
+      .app::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 34vw;
+        height: 34vw;
+        max-width: 500px;
+        max-height: 500px;
+        border: 1px solid rgba(21, 106, 133, 0.12);
+        border-radius: 50%;
+        content: '';
+        transform: translate(33%, -43%);
+      }
+
+      .topbar {
+        border-bottom: 1px solid rgba(20, 47, 68, 0.12);
+      }
+
+      .brand {
+        color: var(--blue-deep);
+      }
+
+      .desktop-nav a:not([aria-current='page']):hover {
+        background: rgba(203, 234, 245, 0.72);
+      }
+
+      .home-main {
+        position: relative;
+        z-index: 1;
+        width: min(1140px, calc(100% - 64px));
+        margin: 0 auto;
+        padding: 46px 0 70px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+        gap: clamp(40px, 8vw, 118px);
+        align-items: end;
+      }
+
+      .overline {
+        margin: 0 0 15px;
+        color: var(--green);
+        font-family: var(--display-font);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        color: var(--ink);
+        font-family: var(--display-font);
+        font-size: clamp(46px, 5.15vw, 72px);
+        font-weight: 700;
+        letter-spacing: -0.055em;
+        line-height: 0.98;
+      }
+
+      h1 span {
+        color: var(--blue);
+      }
+
+      .hero-aside {
+        position: relative;
+        padding: 25px 24px 23px 28px;
+        border-left: 4px solid var(--peach);
+        border-radius: 0 20px 20px 0;
+        background: rgba(255, 255, 255, 0.66);
+      }
+
+      .hero-aside .icon {
+        width: 28px;
+        height: 28px;
+        margin-bottom: 12px;
+        color: var(--green);
+      }
+
+      .hero-aside strong {
+        display: block;
+        margin-bottom: 5px;
+        font-family: var(--display-font);
+        font-size: 17px;
+      }
+
+      .hero-aside p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .path-section {
+        position: relative;
+        margin-top: 52px;
+        padding: 30px 34px 34px;
+        border: 1px solid rgba(20, 47, 68, 0.12);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.64);
+        box-shadow: 0 18px 60px rgba(16, 66, 83, 0.08);
+        backdrop-filter: blur(8px);
+      }
+
+      .section-heading {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .section-heading h2 {
+        margin: 0 0 4px;
+        font-family: var(--display-font);
+        font-size: 23px;
+        letter-spacing: -0.025em;
+      }
+
+      .section-heading p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .help-now {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 10px 14px;
+        border: 1px solid rgba(21, 106, 133, 0.24);
+        border-radius: 999px;
+        color: var(--blue-deep);
+        background: var(--white);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .help-now:hover {
+        border-color: var(--blue);
+      }
+
+      .route-map {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        align-items: stretch;
+        padding: 18px 0 4px;
+      }
+
+      .route-line {
+        position: absolute;
+        z-index: 0;
+        top: -12px;
+        left: 5%;
+        width: 90%;
+        height: 120px;
+        overflow: visible;
+        color: var(--sky);
+      }
+
+      .route-card {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 190px;
+        padding: 22px;
+        border: 1px solid rgba(20, 47, 68, 0.14);
+        border-radius: 20px;
+        background: var(--white);
+        box-shadow: 0 7px 20px rgba(20, 47, 68, 0.06);
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease;
+      }
+
+      .route-card:hover {
+        box-shadow: 0 12px 28px rgba(20, 47, 68, 0.11);
+        transform: translateY(-4px);
+      }
+
+      .route-card.featured {
+        color: #fff;
+        background: var(--blue-deep);
+        box-shadow: 0 15px 32px rgba(12, 67, 91, 0.22);
+        transform: translateY(-9px);
+      }
+
+      .route-card.featured:hover {
+        transform: translateY(-13px);
+      }
+
+      .map-pin {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        margin-bottom: 19px;
+        border-radius: 50% 50% 50% 8px;
+        color: var(--blue-deep);
+        background: var(--sky);
+        transform: rotate(-45deg);
+      }
+
+      .map-pin .icon {
+        transform: rotate(45deg);
+      }
+
+      .featured .map-pin {
+        color: var(--blue-deep);
+        background: var(--peach);
+      }
+
+      .route-card h3 {
+        margin: 0 0 7px;
+        font-family: var(--display-font);
+        font-size: 20px;
+        letter-spacing: -0.025em;
+        line-height: 1.15;
+      }
+
+      .route-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .route-card.featured p {
+        color: rgba(255, 255, 255, 0.74);
+      }
+
+      .card-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 18px;
+        color: var(--blue);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .featured .card-link {
+        color: var(--peach);
+      }
+
+      .card-link .icon {
+        width: 18px;
+        height: 18px;
+      }
+
+      .legal {
+        margin: 24px 0 0;
+        color: #667b88;
+        font-size: 12px;
+        line-height: 1.45;
+        text-align: center;
+      }
+
+      @media (max-width: 850px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+
+        .hero-aside {
+          max-width: 520px;
+        }
+
+        .route-map {
+          grid-template-columns: 1fr;
+        }
+
+        .route-line {
+          display: none;
+        }
+
+        .route-card.featured,
+        .route-card.featured:hover {
+          transform: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app::before {
+          display: none;
+        }
+
+        .home-main {
+          width: calc(100% - 36px);
+          padding: 34px 0 34px;
+        }
+
+        h1 {
+          font-size: clamp(41px, 12.7vw, 56px);
+        }
+
+        .hero-aside {
+          padding: 20px 18px 19px 21px;
+        }
+
+        .path-section {
+          margin-top: 34px;
+          padding: 22px 16px 18px;
+          border-radius: 22px;
+        }
+
+        .section-heading {
+          display: block;
+          margin-bottom: 20px;
+        }
+
+        .help-now {
+          margin-top: 14px;
+        }
+
+        .route-map {
+          gap: 12px;
+          padding-top: 0;
+        }
+
+        .route-card {
+          min-height: 164px;
+          padding: 18px;
+        }
+
+        .map-pin {
+          width: 38px;
+          height: 38px;
+          margin-bottom: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="i-home" viewBox="0 0 24 24">
+        <path
+          d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="M3 20c0-4 2-6 6-6s6 2 6 6M16 4.5a3 3 0 0 1 0 6M17 14c2.7.3 4 2.3 4 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24">
+        <path
+          d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m8.5 12 2.2 2.2 4.8-5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-map" viewBox="0 0 24 24">
+        <path
+          d="M20 10c0 5.2-8 12-8 12S4 15.2 4 10a8 8 0 1 1 16 0Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24">
+        <path
+          d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path
+          d="M5 12h14m-6-6 6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="BemTeVi, início"><img src="../public/logo.png" alt="" />BemTeVi</a>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a href="#" aria-current="page">Início</a><a href="#">Orientação</a><a href="#">Materiais</a
+          ><a href="#">Contatos</a><a href="#">Apoio</a>
+        </nav>
+      </header>
+
+      <main class="home-main" id="conteudo">
+        <section class="hero">
+          <div>
+            <p class="overline">Um caminho possível começa aqui</p>
+            <h1>Você não precisa dar nome ao que sente para <span>começar.</span></h1>
+          </div>
+          <aside class="hero-aside">
+            <svg class="icon"><use href="#i-shield" /></svg>
+            <strong>Seu espaço continua sendo seu.</strong>
+            <p>Sem login, nome ou escola. Suas respostas não ficam guardadas entre sessões.</p>
+          </aside>
+        </section>
+
+        <section class="path-section" aria-labelledby="path-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="path-title">O que faria diferença agora?</h2>
+              <p>Escolha o caminho mais próximo do que você precisa.</p>
+            </div>
+            <a class="help-now" href="#"
+              ><svg class="icon"><use href="#i-chat" /></svg>Preciso de apoio imediato</a
+            >
+          </div>
+          <div class="route-map">
+            <svg class="route-line" viewBox="0 0 1000 150" preserveAspectRatio="none" aria-hidden="true">
+              <path
+                d="M20 110 C180 10 300 10 420 86 S700 158 980 44"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="18"
+                stroke-linecap="round"
+                stroke-dasharray="1 32"
+              />
+            </svg>
+            <a class="route-card featured" href="#">
+              <span class="map-pin"
+                ><svg class="icon"><use href="#i-compass" /></svg
+              ></span>
+              <h3>Quero entender como estou</h3>
+              <p>Responda algumas perguntas e receba uma orientação inicial.</p>
+              <span class="card-link"
+                >Começar orientação <svg class="icon"><use href="#i-arrow" /></svg
+              ></span>
+            </a>
+            <a class="route-card" href="#">
+              <span class="map-pin"
+                ><svg class="icon"><use href="#i-heart" /></svg
+              ></span>
+              <h3>Quero conversar ou pedir ajuda</h3>
+              <p>Veja canais gratuitos de escuta e apoio disponíveis agora.</p>
+              <span class="card-link"
+                >Ver canais <svg class="icon"><use href="#i-arrow" /></svg
+              ></span>
+            </a>
+            <a class="route-card" href="#">
+              <span class="map-pin"
+                ><svg class="icon"><use href="#i-map" /></svg
+              ></span>
+              <h3>Quero encontrar atendimento</h3>
+              <p>Busque serviços profissionais e comunitários na sua região.</p>
+              <span class="card-link"
+                >Buscar serviços <svg class="icon"><use href="#i-arrow" /></svg
+              ></span>
+            </a>
+          </div>
+        </section>
+        <p class="legal">
+          O BemTeVi oferece conteúdo educativo e preventivo e não substitui acompanhamento profissional.
+        </p>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <a href="#" aria-current="page"
+          ><svg class="nav-icon"><use href="#i-home" /></svg>Início</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-compass" /></svg>Orientação</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-book" /></svg>Materiais</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-users" /></svg>Contatos</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-heart" /></svg>Apoio</a
+        >
+      </nav>
+      <div class="mock-note">Mock B · Caminhos</div>
+    </div>
+  </body>
+</html>

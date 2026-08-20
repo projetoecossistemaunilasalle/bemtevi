@@ -48,11 +48,11 @@ const validationWithError: DashboardValidationResult = {
   warnings: [],
 };
 
-function makeSnapshot(revision: number): PublishedContentSnapshot {
+function makeSnapshot(revision: number, payload: PublishedContentPayload = baseline): PublishedContentSnapshot {
   return {
     schemaVersion: '1.0.0',
     revision,
-    payload: baseline,
+    payload,
     publishedAt: '2026-07-12T00:00:00.000Z',
     publishedBy: 'admin-id',
   };
@@ -65,14 +65,20 @@ function renderPublish({
   snapshot = makeSnapshot(4),
   currentAccount = account as AdminAccount | null,
   draft = draftWithChanges,
+  basePayload,
+  refreshLatest,
   validation = emptyValidation,
+  onMergeConflict = vi.fn(),
   onPublished = vi.fn(),
 }: {
   publish?: PublishedContentContextValue['publish'];
   snapshot?: PublishedContentSnapshot | null;
   currentAccount?: AdminAccount | null;
   draft?: PublishedContentPayload;
+  basePayload?: PublishedContentPayload;
+  refreshLatest?: () => Promise<PublishedContentSnapshot | null>;
   validation?: DashboardValidationResult;
+  onMergeConflict?: (snapshot: PublishedContentSnapshot) => void;
   onPublished?: (next: PublishedContentSnapshot) => void;
 } = {}) {
   const publishedValue: PublishedContentContextValue = {
@@ -82,6 +88,7 @@ function renderPublish({
     status: 'ready',
     loadError: null,
     refresh: vi.fn(),
+    refreshLatest,
     publish,
   };
   const authValue: AdminAuthContextValue = {
@@ -100,6 +107,8 @@ function renderPublish({
           draft={draft}
           validation={validation}
           draftUpdatedAt="2026-07-12T00:00:00.000Z"
+          basePayload={basePayload}
+          onMergeConflict={onMergeConflict}
           onPublished={onPublished}
           onResetDrafts={vi.fn()}
         />
@@ -195,6 +204,74 @@ describe('PublishDashboard', () => {
       'Outra publicação foi salva antes desta. Recarregue o conteúdo publicado antes de tentar novamente.',
     );
     expect(onPublished).not.toHaveBeenCalled();
+  });
+
+  it('automatically retries with a merged payload for independent concurrent edits', async () => {
+    const user = userEvent.setup();
+    const base = { ...baseline, contacts: [contact] };
+    const local = { ...base, contacts: [{ ...contact, name: 'Nome local' }] };
+    const remote = { ...base, contacts: [{ ...contact, phoneDisplay: '(51) 3111-0000' }] };
+    const latestSnapshot = makeSnapshot(5, remote);
+    const publishedSnapshot = makeSnapshot(6, {
+      ...remote,
+      contacts: [{ ...contact, name: 'Nome local', phoneDisplay: '(51) 3111-0000' }],
+    });
+    const publish = vi
+      .fn<PublishedContentContextValue['publish']>()
+      .mockRejectedValueOnce(new PublishedContentRepositoryError('conflict', 'conflito'))
+      .mockResolvedValueOnce(publishedSnapshot);
+    const refreshLatest = vi.fn().mockResolvedValue(latestSnapshot);
+    const onPublished = vi.fn();
+
+    renderPublish({
+      publish,
+      snapshot: makeSnapshot(4, base),
+      draft: local,
+      basePayload: base,
+      refreshLatest,
+      onPublished,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
+
+    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(publishedSnapshot));
+    expect(refreshLatest).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenNthCalledWith(2, publishedSnapshot.payload, 'admin-id', 5);
+  });
+
+  it('keeps the draft and identifies overlapping concurrent edits', async () => {
+    const user = userEvent.setup();
+    const base = { ...baseline, contacts: [contact] };
+    const local = { ...base, contacts: [{ ...contact, name: 'Nome local' }] };
+    const remote = { ...base, contacts: [{ ...contact, name: 'Nome remoto' }] };
+    const latestSnapshot = makeSnapshot(5, remote);
+    const publish = vi
+      .fn<PublishedContentContextValue['publish']>()
+      .mockRejectedValue(new PublishedContentRepositoryError('conflict', 'conflito'));
+    const refreshLatest = vi.fn().mockResolvedValue(latestSnapshot);
+    const onMergeConflict = vi.fn();
+    const onPublished = vi.fn();
+
+    renderPublish({
+      publish,
+      snapshot: makeSnapshot(4, base),
+      draft: local,
+      basePayload: base,
+      refreshLatest,
+      onMergeConflict,
+      onPublished,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('contacts[contact-one].name');
+    expect(onMergeConflict).toHaveBeenCalledWith(latestSnapshot);
+    expect(onPublished).not.toHaveBeenCalled();
+    expect(publish).toHaveBeenCalledTimes(1);
   });
 
   it('reports real-auth requirement for unauthorized publication', async () => {

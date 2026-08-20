@@ -7,6 +7,7 @@ import type { PublishedContentPayload, PublishedContentSnapshot } from '../../ap
 import { PublishedContentRepositoryError } from '../../app/content/publishedContentRepository';
 import type { DashboardValidationResult } from '../validation/validationTypes';
 import { computeChangeSummary, type RecordChangeCount } from './changeSummary';
+import { mergePublishedContent, type PublishedContentMergeConflict } from './mergePublishedContent';
 
 import { ConfirmButton } from '../components/ConfirmButton';
 
@@ -16,6 +17,8 @@ interface PublishDashboardProps {
   validation: DashboardValidationResult;
   draftUpdatedAt: string | null;
   expectedRevision?: number | null;
+  basePayload?: PublishedContentPayload;
+  onMergeConflict?(snapshot: PublishedContentSnapshot): void;
   onPublished(snapshot: PublishedContentSnapshot): void;
   onResetDrafts(): void;
 }
@@ -25,7 +28,7 @@ type PublishState =
   | { kind: 'confirming' }
   | { kind: 'pending' }
   | { kind: 'success'; publishedAt: string; revision: number }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; conflicts?: PublishedContentMergeConflict[] };
 
 function messageForPublishError(error: unknown) {
   if (!(error instanceof PublishedContentRepositoryError)) {
@@ -45,16 +48,36 @@ function messageForPublishError(error: unknown) {
   }
 }
 
+function isRevisionConflict(error: unknown): error is PublishedContentRepositoryError {
+  return error instanceof PublishedContentRepositoryError && error.code === 'conflict';
+}
+
+function messageForMergeConflicts(conflicts: PublishedContentMergeConflict[]) {
+  const count = Math.max(conflicts.length, 1);
+  return `${count === 1 ? 'Uma alteração' : 'Algumas alterações'} também foi${count === 1 ? '' : 'ram'} modificada${count === 1 ? '' : 's'} por outra pessoa. Revise os campos conflitantes antes de publicar.`;
+}
+
+async function refreshForMerge(
+  refresh: () => Promise<void>,
+  refreshLatest?: () => Promise<PublishedContentSnapshot | null>,
+) {
+  if (refreshLatest) return refreshLatest();
+  await refresh();
+  return null;
+}
+
 export function PublishDashboard({
   baseline,
   draft,
   validation,
   draftUpdatedAt,
   expectedRevision,
+  basePayload,
+  onMergeConflict,
   onPublished,
   onResetDrafts,
 }: PublishDashboardProps) {
-  const { snapshot, publish } = usePublishedContent();
+  const { snapshot, publish, refresh, refreshLatest } = usePublishedContent();
   const { account } = useAdminAuth();
   const [state, setState] = useState<PublishState>({ kind: 'idle' });
 
@@ -76,7 +99,43 @@ export function PublishDashboard({
     setState({ kind: 'pending' });
     try {
       const publicationRevision = expectedRevision === undefined ? (snapshot?.revision ?? null) : expectedRevision;
-      const next = await publish(draft, account.id, publicationRevision);
+      let next: PublishedContentSnapshot;
+
+      try {
+        next = await publish(draft, account.id, publicationRevision);
+      } catch (error) {
+        if (!isRevisionConflict(error)) throw error;
+
+        const mergeBase =
+          basePayload ??
+          (expectedRevision !== undefined && (expectedRevision === null || snapshot?.revision === expectedRevision)
+            ? baseline
+            : undefined);
+        const latest = mergeBase ? await refreshForMerge(refresh, refreshLatest) : null;
+        if (!mergeBase || !latest) throw error;
+
+        const merged = mergePublishedContent(mergeBase, draft, latest.payload);
+        if (merged.conflicts.length > 0 || merged.payload === null) {
+          onMergeConflict?.(latest);
+          setState({
+            kind: 'error',
+            message: messageForMergeConflicts(merged.conflicts),
+            conflicts: merged.conflicts,
+          });
+          return;
+        }
+
+        try {
+          next = await publish(merged.payload, account.id, latest.revision);
+        } catch (retryError) {
+          if (isRevisionConflict(retryError)) {
+            const newest = await refreshForMerge(refresh, refreshLatest);
+            if (newest) onMergeConflict?.(newest);
+          }
+          throw retryError;
+        }
+      }
+
       setState({ kind: 'success', publishedAt: next.publishedAt, revision: next.revision });
       onPublished(next);
     } catch (error) {
@@ -117,9 +176,18 @@ export function PublishDashboard({
         )}
 
         {state.kind === 'error' ? (
-          <p role="alert" className="font-body-md text-error">
-            {state.message}
-          </p>
+          <div role="alert" className="font-body-md text-error">
+            <p>{state.message}</p>
+            {state.conflicts && state.conflicts.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-1 pl-5 font-label-sm">
+                {state.conflicts.slice(0, 8).map((conflict) => (
+                  <li key={conflict.path}>
+                    <code>{conflict.path}</code>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
 
         {state.kind === 'success' ? (

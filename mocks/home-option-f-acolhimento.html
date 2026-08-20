@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BemTeVi · Opção F — Acolhimento</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./home-options-shared.css" />
+    <link rel="stylesheet" href="./home-options-current.css" />
+    <style>
+      .home-main {
+        display: grid;
+        grid-template-columns: minmax(330px, 0.76fr) minmax(520px, 1.24fr);
+        gap: clamp(48px, 7vw, 90px);
+        align-items: center;
+        width: min(1120px, calc(100% - 64px));
+        min-height: calc(100dvh - 76px);
+        margin: 0 auto;
+        padding: 50px 0 58px;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--display-font);
+        font-size: clamp(42px, 4.2vw, 58px);
+        font-weight: 800;
+        letter-spacing: -0.045em;
+        line-height: 1.03;
+      }
+
+      .lead {
+        margin: 19px 0 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      .privacy-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 3px 12px;
+        align-items: center;
+        margin-top: 30px;
+        padding: 17px;
+        border-radius: 16px;
+        color: #345083;
+        background: var(--secondary-container);
+      }
+
+      .privacy-card .icon {
+        grid-row: 1 / 3;
+        width: 25px;
+        height: 25px;
+      }
+
+      .privacy-card strong {
+        font-size: 14px;
+      }
+      .privacy-card span {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .material-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 23px;
+        color: var(--secondary);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .actions-panel {
+        padding: 30px;
+        border: 1px solid rgba(189, 202, 191, 0.58);
+        border-radius: 24px;
+        background: var(--surface);
+        box-shadow: 0 12px 38px rgba(17, 28, 44, 0.07);
+      }
+
+      .actions-panel h2 {
+        margin: 0 0 5px;
+        font-family: var(--display-font);
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+
+      .panel-lead {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .action-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        gap: 14px;
+        align-items: center;
+        min-height: 88px;
+        padding: 15px 17px;
+        border: 1px solid rgba(189, 202, 191, 0.62);
+        border-radius: 15px;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease;
+      }
+
+      .action-row:hover {
+        border-color: var(--primary);
+        background: #fbfffc;
+      }
+
+      .action-row.primary {
+        border-color: rgba(0, 106, 67, 0.36);
+        background: var(--primary-container);
+      }
+
+      .row-icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        color: var(--secondary);
+        background: var(--secondary-container);
+      }
+
+      .primary .row-icon {
+        color: #fff;
+        background: var(--primary);
+      }
+
+      .row-copy strong {
+        display: block;
+        font-family: var(--display-font);
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .row-copy span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.3;
+      }
+
+      .action-row > .icon {
+        width: 19px;
+        height: 19px;
+        color: var(--secondary);
+      }
+
+      .primary > .icon {
+        color: var(--primary);
+      }
+
+      .immediate {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 17px;
+        padding-top: 17px;
+        border-top: 1px solid rgba(189, 202, 191, 0.56);
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .legal {
+        margin-top: 22px;
+      }
+
+      @media (max-width: 920px) {
+        .home-main {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+        .intro {
+          max-width: 650px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .home-main {
+          width: calc(100% - 36px);
+          gap: 30px;
+          padding: 38px 0 28px;
+        }
+        h1 {
+          font-size: 40px;
+        }
+        .lead {
+          font-size: 17px;
+        }
+        .privacy-card {
+          margin-top: 23px;
+        }
+        .actions-panel {
+          padding: 21px 16px 18px;
+          border-radius: 19px;
+        }
+        .action-row {
+          grid-template-columns: 42px 1fr auto;
+          padding: 14px 13px;
+        }
+        .row-icon {
+          width: 40px;
+          height: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="home" viewBox="0 0 24 24">
+        <path
+          d="m3 11 9-8 9 8v10h-6v-7H9v7H3Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8Z" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="book" viewBox="0 0 24 24">
+        <path
+          d="M4 4h6a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4Zm16 0h-4a3 3 0 0 0-3 3v14a3 3 0 0 1 3-3h4Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="M3 20c0-4 2-6 6-6s6 2 6 6m1-15a3 3 0 0 1 0 6m1 3c2.7.3 4 2.3 4 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="heart" viewBox="0 0 24 24">
+        <path
+          d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </symbol>
+      <symbol id="shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="m8.5 12 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="map" viewBox="0 0 24 24">
+        <path
+          d="M20 10c0 5.2-8 12-8 12S4 15.2 4 10a8 8 0 1 1 16 0Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#"><img src="../public/logo.png" alt="" />BemTeVi</a>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a href="#" aria-current="page">Início</a><a href="#">Orientação</a><a href="#">Materiais</a
+          ><a href="#">Contatos</a><a href="#">Apoio</a>
+        </nav>
+      </header>
+      <main class="home-main" id="conteudo">
+        <section class="intro">
+          <p class="eyebrow">Bem-estar docente</p>
+          <h1>Cuidar de você também faz parte do dia.</h1>
+          <p class="lead">
+            Um espaço de educação em saúde mental para refletir, encontrar apoio e seguir com mais clareza.
+          </p>
+          <div class="privacy-card">
+            <svg class="icon"><use href="#shield" /></svg><strong>Privacidade desde o início</strong
+            ><span>Não pedimos nome, escola ou cadastro. Suas respostas não ficam salvas.</span>
+          </div>
+          <a class="material-link" href="#"
+            ><svg class="icon"><use href="#book" /></svg>Explorar materiais educativos
+            <svg class="icon"><use href="#arrow" /></svg
+          ></a>
+          <p class="legal">Conteúdo educativo e preventivo. Não substitui acompanhamento profissional.</p>
+        </section>
+        <section class="actions-panel" aria-labelledby="action-title">
+          <h2 id="action-title">Como podemos ajudar agora?</h2>
+          <p class="panel-lead">Escolha o caminho mais útil para este momento.</p>
+          <div class="action-list">
+            <a class="action-row primary" href="#"
+              ><span class="row-icon"
+                ><svg class="icon"><use href="#compass" /></svg></span
+              ><span class="row-copy"
+                ><strong>Quero entender como estou</strong
+                ><span>Receba uma orientação inicial, no seu ritmo.</span></span
+              ><svg class="icon"><use href="#arrow" /></svg></a
+            ><a class="action-row" href="#"
+              ><span class="row-icon"
+                ><svg class="icon"><use href="#heart" /></svg></span
+              ><span class="row-copy"
+                ><strong>Quero encontrar apoio</strong><span>Veja canais gratuitos de escuta e acolhimento.</span></span
+              ><svg class="icon"><use href="#arrow" /></svg></a
+            ><a class="action-row" href="#"
+              ><span class="row-icon"
+                ><svg class="icon"><use href="#map" /></svg></span
+              ><span class="row-copy"
+                ><strong>Quero buscar atendimento</strong><span>Encontre serviços de saúde na sua região.</span></span
+              ><svg class="icon"><use href="#arrow" /></svg
+            ></a>
+          </div>
+          <a class="immediate" href="#"
+            ><svg class="icon"><use href="#heart" /></svg>Precisa conversar agora? Acesse os canais de ajuda
+            imediata.</a
+          >
+        </section>
+      </main>
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <a href="#" aria-current="page"
+          ><svg class="nav-icon"><use href="#home" /></svg>Início</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#compass" /></svg>Orientação</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#book" /></svg>Materiais</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#users" /></svg>Contatos</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#heart" /></svg>Apoio</a
+        >
+      </nav>
+      <div class="mock-note">Mock F · Acolhimento</div>
+    </div>
+  </body>
+</html>

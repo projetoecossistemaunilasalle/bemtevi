@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Opção A de redesign da tela inicial do BemTeVi." />
+    <title>BemTeVi · Opção A — Intervalo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./home-options-shared.css" />
+    <style>
+      :root {
+        --page: #f4faf5;
+        --ink: #123b32;
+        --muted: #49665f;
+        --forest: #075e4c;
+        --forest-deep: #034438;
+        --mint: #d9f1e4;
+        --sun: #ffc94a;
+        --paper: #fffef8;
+        --line: #c7ded5;
+        --active: #d9f1e4;
+        --active-ink: #064d3e;
+        --focus: #e5a800;
+        --display-font: 'Bricolage Grotesque', sans-serif;
+        --body-font: 'Atkinson Hyperlegible', sans-serif;
+      }
+
+      .app {
+        position: relative;
+        background:
+          radial-gradient(circle at 7% 22%, rgba(255, 201, 74, 0.22) 0 5px, transparent 6px),
+          linear-gradient(90deg, transparent 0 6.5%, rgba(7, 94, 76, 0.06) 6.6% 6.72%, transparent 6.82%), var(--page);
+      }
+
+      .topbar {
+        border-bottom: 1px solid rgba(7, 94, 76, 0.16);
+      }
+
+      .brand {
+        color: var(--forest);
+      }
+
+      .desktop-nav a:not([aria-current='page']):hover {
+        background: rgba(217, 241, 228, 0.62);
+      }
+
+      .home-main {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(390px, 0.78fr);
+        gap: clamp(42px, 6vw, 88px);
+        align-items: center;
+        width: min(1120px, calc(100% - 64px));
+        min-height: calc(100dvh - 76px);
+        margin: 0 auto;
+        padding: 56px 0 76px;
+      }
+
+      .hero-copy {
+        max-width: 660px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 22px;
+        color: var(--forest);
+        font-family: var(--display-font);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 30px;
+        height: 3px;
+        border-radius: 4px;
+        background: var(--sun);
+        content: '';
+      }
+
+      h1 {
+        max-width: 640px;
+        margin: 0;
+        color: var(--forest-deep);
+        font-family: var(--display-font);
+        font-size: clamp(50px, 5.3vw, 78px);
+        font-stretch: 82%;
+        font-weight: 700;
+        letter-spacing: -0.06em;
+        line-height: 0.97;
+      }
+
+      h1 em {
+        position: relative;
+        z-index: 0;
+        color: inherit;
+        font-style: normal;
+        white-space: nowrap;
+      }
+
+      h1 em::after {
+        position: absolute;
+        z-index: -1;
+        right: -4px;
+        bottom: 5px;
+        left: -4px;
+        height: 16px;
+        border-radius: 20px 4px 16px 5px;
+        background: var(--sun);
+        opacity: 0.72;
+        content: '';
+        transform: rotate(-1deg);
+      }
+
+      .intro {
+        max-width: 565px;
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: 19px;
+        line-height: 1.55;
+      }
+
+      .trust-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        margin-top: 30px;
+        padding: 0;
+        color: var(--forest);
+        list-style: none;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .trust-line li {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .trust-line .icon {
+        width: 18px;
+        height: 18px;
+      }
+
+      .interval-card {
+        position: relative;
+        padding: 30px;
+        border: 1px solid rgba(7, 68, 56, 0.25);
+        border-radius: 28px 28px 28px 6px;
+        background: repeating-linear-gradient(0deg, transparent 0 35px, rgba(7, 94, 76, 0.09) 36px 37px), var(--paper);
+        box-shadow: 18px 22px 0 var(--mint);
+        transform: rotate(0.7deg);
+      }
+
+      .interval-card::before {
+        position: absolute;
+        top: -18px;
+        right: 36px;
+        width: 94px;
+        height: 36px;
+        background: rgba(255, 201, 74, 0.83);
+        content: '';
+        transform: rotate(4deg);
+      }
+
+      .card-kicker {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 28px;
+        color: var(--forest);
+        font-family: var(--display-font);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .duration {
+        padding: 6px 9px;
+        border: 1px solid rgba(7, 94, 76, 0.2);
+        border-radius: 99px;
+        background: rgba(217, 241, 228, 0.75);
+        font-family: var(--body-font);
+        font-size: 12px;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .interval-card h2 {
+        max-width: 330px;
+        margin: 0 0 12px;
+        color: var(--forest-deep);
+        font-family: var(--display-font);
+        font-size: 29px;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        line-height: 1.08;
+      }
+
+      .interval-card > p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.45;
+      }
+
+      .primary-action {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        min-height: 62px;
+        margin-top: 24px;
+        padding: 14px 18px;
+        border: 0;
+        border-radius: 16px;
+        color: #fff;
+        background: var(--forest);
+        box-shadow: 0 8px 18px rgba(7, 94, 76, 0.22);
+        font-weight: 700;
+        text-align: left;
+        transition:
+          transform 160ms ease,
+          background 160ms ease;
+      }
+
+      .primary-action:hover {
+        background: var(--forest-deep);
+        transform: translateY(-2px);
+      }
+
+      .primary-action .action-copy {
+        flex: 1;
+      }
+
+      .primary-action small {
+        display: block;
+        margin-top: 2px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 12px;
+        font-weight: 400;
+      }
+
+      .secondary-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .secondary-actions a {
+        min-height: 112px;
+        padding: 15px;
+        border: 1px solid rgba(7, 94, 76, 0.2);
+        border-radius: 14px;
+        background: rgba(255, 254, 248, 0.86);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.25;
+        transition:
+          border-color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .secondary-actions a:hover {
+        border-color: var(--forest);
+        transform: translateY(-2px);
+      }
+
+      .secondary-actions .icon {
+        display: block;
+        margin-bottom: 15px;
+        color: var(--forest);
+      }
+
+      .legal {
+        grid-column: 1 / -1;
+        margin: -24px 0 0;
+        color: #647871;
+        font-size: 12px;
+        line-height: 1.45;
+        text-align: center;
+      }
+
+      @media (max-width: 900px) {
+        .home-main {
+          grid-template-columns: 1fr;
+          width: min(660px, calc(100% - 48px));
+          padding-top: 44px;
+        }
+
+        .interval-card {
+          transform: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          background:
+            linear-gradient(90deg, transparent 0 20px, rgba(7, 94, 76, 0.07) 21px 22px, transparent 23px), var(--page);
+        }
+
+        .home-main {
+          display: flex;
+          flex-direction: column;
+          gap: 34px;
+          width: calc(100% - 36px);
+          min-height: auto;
+          padding: 38px 0 36px;
+        }
+
+        h1 {
+          font-size: clamp(43px, 13.4vw, 58px);
+        }
+
+        h1 em {
+          white-space: normal;
+        }
+
+        .intro {
+          margin-top: 20px;
+          font-size: 17px;
+        }
+
+        .trust-line {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          margin-top: 24px;
+        }
+
+        .interval-card {
+          width: calc(100% - 8px);
+          padding: 26px 20px 22px;
+          border-radius: 22px 22px 22px 5px;
+          box-shadow: 8px 10px 0 var(--mint);
+        }
+
+        .interval-card::before {
+          right: 24px;
+          width: 78px;
+          height: 28px;
+        }
+
+        .secondary-actions a {
+          min-height: 105px;
+        }
+
+        .legal {
+          margin-top: -4px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="i-home" viewBox="0 0 24 24">
+        <path
+          d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="M3 20c0-4 2-6 6-6s6 2 6 6M16 4.5a3 3 0 0 1 0 6M17 14c2.7.3 4 2.3 4 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24">
+        <path
+          d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m8.5 12 2.2 2.2 4.8-5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-map" viewBox="0 0 24 24">
+        <path
+          d="M20 10c0 5.2-8 12-8 12S4 15.2 4 10a8 8 0 1 1 16 0Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path
+          d="M5 12h14m-6-6 6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="BemTeVi, início"><img src="../public/logo.png" alt="" />BemTeVi</a>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a href="#" aria-current="page">Início</a><a href="#">Orientação</a><a href="#">Materiais</a
+          ><a href="#">Contatos</a><a href="#">Apoio</a>
+        </nav>
+      </header>
+
+      <main class="home-main" id="conteudo">
+        <section class="hero-copy">
+          <p class="eyebrow">Bem-estar docente</p>
+          <h1>Uma pausa para quem <em>cuida</em> de tanta gente.</h1>
+          <p class="intro">Informação e orientação em saúde mental para professores, sem julgamentos e no seu ritmo.</p>
+          <ul class="trust-line" aria-label="Compromissos de privacidade">
+            <li>
+              <svg class="icon"><use href="#i-shield" /></svg>Sem cadastro
+            </li>
+            <li>
+              <svg class="icon"><use href="#i-heart" /></svg>Acolhimento gratuito
+            </li>
+            <li>
+              <svg class="icon"><use href="#i-home" /></svg>Nada fica salvo
+            </li>
+          </ul>
+        </section>
+
+        <section class="interval-card" aria-labelledby="interval-title">
+          <div class="card-kicker">
+            <span>Seu intervalo começa aqui</span><span class="duration">cerca de 5 min</span>
+          </div>
+          <h2 id="interval-title">Como você está chegando hoje?</h2>
+          <p>Algumas perguntas ajudam a organizar o que você sente e indicam um próximo passo.</p>
+          <button class="primary-action" type="button">
+            <svg class="icon"><use href="#i-compass" /></svg>
+            <span class="action-copy">Começar uma orientação<small>Você pode parar quando quiser</small></span>
+            <svg class="icon"><use href="#i-arrow" /></svg>
+          </button>
+          <div class="secondary-actions">
+            <a href="#"
+              ><svg class="icon"><use href="#i-heart" /></svg>Canais de apoio agora</a
+            >
+            <a href="#"
+              ><svg class="icon"><use href="#i-map" /></svg>Serviços perto de você</a
+            >
+          </div>
+        </section>
+
+        <p class="legal">Conteúdo educativo e preventivo. O BemTeVi não substitui acompanhamento profissional.</p>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <a href="#" aria-current="page"
+          ><svg class="nav-icon"><use href="#i-home" /></svg>Início</a
+        >
+        <a href="#"
+          ><svg class="nav-icon"><use href="#i-compass" /></svg>Orientação</a
+        >
+        <a href="#"
+          ><svg class="nav-icon"><use href="#i-book" /></svg>Materiais</a
+        >
+        <a href="#"
+          ><svg class="nav-icon"><use href="#i-users" /></svg>Contatos</a
+        >
+        <a href="#"
+          ><svg class="nav-icon"><use href="#i-heart" /></svg>Apoio</a
+        >
+      </nav>
+      <div class="mock-note">Mock A · Intervalo</div>
+    </div>
+  </body>
+</html>

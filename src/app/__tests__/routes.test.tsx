@@ -82,7 +82,7 @@ function renderRoute(initialEntry: string, authService = createAuthService()) {
 
 describe('Router', () => {
   it.each([
-    ['/', /bem-vindo ao bemtevi/i],
+    ['/', /que bom ter você aqui/i],
     ['/orientacao', /antes de começar/i],
     ['/apoio', /você não está sozinho/i],
     ['/contatos', /rede de apoio em canoas/i],
@@ -94,14 +94,14 @@ describe('Router', () => {
 
   it.each(['/login', '/dashboard'])('redirects %s home when the dashboard feature is disabled', async (route) => {
     renderRoute(route);
-    expect(await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /que bom ter você aqui/i })).toBeInTheDocument();
   });
 
   it('redirects an unauthenticated dashboard request home without exposing login', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
     renderRoute('/dashboard');
 
-    expect(await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /que bom ter você aqui/i })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /acesso administrativo/i })).not.toBeInTheDocument();
   });
 
@@ -178,7 +178,7 @@ describe('Router', () => {
     act(() => authService.emit(null));
 
     expect(
-      await screen.findByRole('heading', { name: /bem-vindo ao bemtevi/i }, { timeout: 3000 }),
+      await screen.findByRole('heading', { name: /que bom ter você aqui/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Dashboard' })).not.toBeInTheDocument();
   });

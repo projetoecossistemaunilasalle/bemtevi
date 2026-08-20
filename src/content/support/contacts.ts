@@ -34,12 +34,11 @@ export const supportContacts = {
       review: pendingReview,
     },
     {
-      id: 'support-bombeiros',
-      name: 'Bombeiros',
-      phoneDisplay: '193',
-      phoneHref: 'tel:193',
-      description:
-        'Corpo de Bombeiros. Para resgates, tentativas de suicídio em andamento ou situações de risco iminente à vida.',
+      id: 'support-disque-saude',
+      name: 'Disque Saúde',
+      phoneDisplay: '136',
+      phoneHref: 'tel:136',
+      description: 'Canal do Ministério da Saúde para informações e orientações sobre serviços e cuidados de saúde.',
       review: pendingReview,
     },
   ],

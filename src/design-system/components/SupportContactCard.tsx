@@ -1,4 +1,4 @@
-import { Heart, Phone, Siren, Stethoscope } from 'lucide-react';
+import { Heart, Phone, PhoneCall, Stethoscope } from 'lucide-react';
 import type { SupportContact } from '../../domain/support/types';
 import { LinkButton } from './Button';
 import { Card } from './Card';
@@ -6,7 +6,7 @@ import { Card } from './Card';
 const iconById = {
   'support-cvv': Heart,
   'support-samu': Stethoscope,
-  'support-bombeiros': Siren,
+  'support-disque-saude': PhoneCall,
 } as const;
 
 export function SupportContactCard({ contact }: { contact: SupportContact }) {

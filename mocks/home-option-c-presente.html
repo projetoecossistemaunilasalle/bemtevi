@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Opção C de redesign da tela inicial do BemTeVi." />
+    <title>BemTeVi · Opção C — Presente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@75..125,500..800&family=Atkinson+Hyperlegible:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./home-options-shared.css" />
+    <style>
+      :root {
+        --page: #f8fbff;
+        --ink: #152a3a;
+        --muted: #526572;
+        --cobalt: #174d8c;
+        --cobalt-deep: #0d376b;
+        --yellow: #ffdb62;
+        --green: #bde9d4;
+        --green-ink: #075f48;
+        --blue-soft: #cfeafa;
+        --white: #ffffff;
+        --active: #dcecff;
+        --active-ink: #174d8c;
+        --focus: #ffbd00;
+        --display-font: 'Anybody', sans-serif;
+        --body-font: 'Atkinson Hyperlegible', sans-serif;
+      }
+
+      .app {
+        background: var(--white);
+      }
+
+      .topbar {
+        border-bottom: 1px solid rgba(21, 42, 58, 0.12);
+      }
+
+      .brand {
+        color: var(--cobalt);
+      }
+
+      .desktop-nav a:not([aria-current='page']):hover {
+        background: var(--blue-soft);
+      }
+
+      .home-main {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(500px, 1.18fr);
+        min-height: calc(100dvh - 76px);
+      }
+
+      .manifesto {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        padding: 64px clamp(40px, 6vw, 92px) 70px max(32px, calc((100vw - 1180px) / 2));
+        overflow: hidden;
+        color: #fff;
+        background: var(--cobalt);
+      }
+
+      .manifesto::before,
+      .manifesto::after {
+        position: absolute;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        content: '';
+      }
+
+      .manifesto::before {
+        top: -130px;
+        left: -120px;
+        width: 360px;
+        height: 360px;
+      }
+
+      .manifesto::after {
+        right: -125px;
+        bottom: -125px;
+        width: 285px;
+        height: 285px;
+        border-width: 34px;
+        border-color: rgba(255, 219, 98, 0.28);
+      }
+
+      .manifesto > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 22px;
+        color: var(--yellow);
+        font-family: var(--display-font);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow span {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--yellow);
+        box-shadow:
+          17px 0 0 rgba(255, 219, 98, 0.5),
+          34px 0 0 rgba(255, 219, 98, 0.22);
+      }
+
+      h1 {
+        max-width: 620px;
+        margin: 0;
+        font-family: var(--display-font);
+        font-size: clamp(48px, 5vw, 76px);
+        font-stretch: 84%;
+        font-weight: 650;
+        letter-spacing: -0.06em;
+        line-height: 0.98;
+      }
+
+      h1 strong {
+        color: var(--yellow);
+        font-weight: inherit;
+      }
+
+      .manifesto-copy {
+        max-width: 500px;
+        margin: 25px 0 0;
+        color: rgba(255, 255, 255, 0.77);
+        font-size: 18px;
+        line-height: 1.55;
+      }
+
+      .privacy {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 3px 12px;
+        align-items: center;
+        max-width: 480px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.22);
+      }
+
+      .privacy .icon {
+        grid-row: 1 / 3;
+        width: 27px;
+        height: 27px;
+        color: var(--yellow);
+      }
+
+      .privacy strong {
+        font-size: 14px;
+      }
+
+      .privacy span {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .choice-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        padding: 55px max(32px, calc((100vw - 1180px) / 2)) 55px clamp(44px, 5vw, 78px);
+        background:
+          linear-gradient(90deg, rgba(23, 77, 140, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+          linear-gradient(rgba(23, 77, 140, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+          var(--page);
+      }
+
+      .choice-panel h2 {
+        margin: 0 0 8px;
+        font-family: var(--display-font);
+        font-size: 31px;
+        font-stretch: 90%;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+
+      .choice-lead {
+        margin: 0 0 25px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .choices {
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+      }
+
+      .choice {
+        display: grid;
+        grid-template-columns: 50px 52px 1fr auto;
+        gap: 14px;
+        align-items: center;
+        min-height: 104px;
+        padding: 16px 19px;
+        border: 1px solid rgba(21, 42, 58, 0.13);
+        border-radius: 18px;
+        background: var(--white);
+        box-shadow: 0 6px 18px rgba(21, 42, 58, 0.06);
+        transition:
+          transform 170ms ease,
+          box-shadow 170ms ease;
+      }
+
+      .choice:hover {
+        box-shadow: 0 12px 24px rgba(21, 42, 58, 0.11);
+        transform: translateX(5px);
+      }
+
+      .choice.featured {
+        border-color: #e7bd34;
+        background: var(--yellow);
+        box-shadow: 0 8px 0 rgba(23, 77, 140, 0.13);
+      }
+
+      .choice-number {
+        color: var(--cobalt);
+        font-family: var(--display-font);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+      }
+
+      .choice-icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 15px;
+        color: var(--cobalt);
+        background: var(--blue-soft);
+      }
+
+      .featured .choice-icon {
+        background: rgba(255, 255, 255, 0.58);
+      }
+
+      .choice:nth-child(2) .choice-icon {
+        color: var(--green-ink);
+        background: var(--green);
+      }
+
+      .choice-title {
+        min-width: 0;
+      }
+
+      .choice-title strong {
+        display: block;
+        margin-bottom: 3px;
+        font-family: var(--display-font);
+        font-size: 18px;
+        font-stretch: 90%;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .choice-title span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .featured .choice-title span {
+        color: #554918;
+      }
+
+      .choice > .icon {
+        color: var(--cobalt);
+      }
+
+      .materials {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 19px;
+        padding: 15px 4px;
+        border-top: 1px solid rgba(21, 42, 58, 0.14);
+        border-bottom: 1px solid rgba(21, 42, 58, 0.14);
+        color: var(--cobalt);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .materials span {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .legal {
+        margin: 16px 0 0;
+        color: #6a7a85;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 980px) {
+        .home-main {
+          grid-template-columns: 1fr;
+        }
+
+        .manifesto,
+        .choice-panel {
+          padding-right: max(32px, calc((100vw - 760px) / 2));
+          padding-left: max(32px, calc((100vw - 760px) / 2));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .home-main {
+          min-height: auto;
+        }
+
+        .manifesto {
+          padding: 46px 20px 44px;
+        }
+
+        h1 {
+          font-size: clamp(44px, 13.3vw, 60px);
+        }
+
+        .manifesto-copy {
+          margin-top: 20px;
+          font-size: 17px;
+        }
+
+        .choice-panel {
+          padding: 38px 18px 30px;
+        }
+
+        .choice-panel h2 {
+          font-size: 27px;
+        }
+
+        .choice {
+          grid-template-columns: 42px 1fr auto;
+          min-height: 96px;
+          padding: 14px;
+        }
+
+        .choice-number {
+          display: none;
+        }
+
+        .choice-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="i-home" viewBox="0 0 24 24">
+        <path
+          d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="M3 20c0-4 2-6 6-6s6 2 6 6M16 4.5a3 3 0 0 1 0 6M17 14c2.7.3 4 2.3 4 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24">
+        <path
+          d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path
+          d="m8.5 12 2.2 2.2 4.8-5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-map" viewBox="0 0 24 24">
+        <path
+          d="M20 10c0 5.2-8 12-8 12S4 15.2 4 10a8 8 0 1 1 16 0Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path
+          d="M5 12h14m-6-6 6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="BemTeVi, início"><img src="../public/logo.png" alt="" />BemTeVi</a>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <a href="#" aria-current="page">Início</a><a href="#">Orientação</a><a href="#">Materiais</a
+          ><a href="#">Contatos</a><a href="#">Apoio</a>
+        </nav>
+      </header>
+
+      <main class="home-main" id="conteudo">
+        <section class="manifesto">
+          <p class="eyebrow"><span></span>Presença para quem ensina</p>
+          <h1>Você não precisa esperar as férias para <strong>se cuidar.</strong></h1>
+          <p class="manifesto-copy">
+            O BemTeVi ajuda professores a entender o que estão sentindo e encontrar apoio possível para hoje.
+          </p>
+          <div class="privacy">
+            <svg class="icon"><use href="#i-shield" /></svg><strong>Privado de verdade</strong
+            ><span>Sem cadastro, identificação ou histórico das suas respostas.</span>
+          </div>
+        </section>
+
+        <section class="choice-panel" aria-labelledby="choice-title">
+          <h2 id="choice-title">Hoje, eu quero...</h2>
+          <p class="choice-lead">Comece pelo que parece mais útil neste momento.</p>
+          <div class="choices">
+            <a class="choice featured" href="#"
+              ><span class="choice-number">01</span
+              ><span class="choice-icon"
+                ><svg class="icon"><use href="#i-compass" /></svg></span
+              ><span class="choice-title"
+                ><strong>Entender como estou</strong><span>Uma orientação breve, feita no seu ritmo.</span></span
+              ><svg class="icon"><use href="#i-arrow" /></svg
+            ></a>
+            <a class="choice" href="#"
+              ><span class="choice-number">02</span
+              ><span class="choice-icon"
+                ><svg class="icon"><use href="#i-heart" /></svg></span
+              ><span class="choice-title"
+                ><strong>Falar com alguém agora</strong><span>Canais gratuitos de escuta e apoio.</span></span
+              ><svg class="icon"><use href="#i-arrow" /></svg
+            ></a>
+            <a class="choice" href="#"
+              ><span class="choice-number">03</span
+              ><span class="choice-icon"
+                ><svg class="icon"><use href="#i-map" /></svg></span
+              ><span class="choice-title"
+                ><strong>Encontrar um serviço</strong><span>Atendimento profissional perto de você.</span></span
+              ><svg class="icon"><use href="#i-arrow" /></svg
+            ></a>
+          </div>
+          <a class="materials" href="#"
+            ><span
+              ><svg class="icon"><use href="#i-book" /></svg>Prefiro começar lendo materiais sobre saúde mental</span
+            ><svg class="icon"><use href="#i-arrow" /></svg
+          ></a>
+          <p class="legal">Conteúdo educativo e preventivo. Não substitui acompanhamento profissional.</p>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Navegação principal">
+        <a href="#" aria-current="page"
+          ><svg class="nav-icon"><use href="#i-home" /></svg>Início</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-compass" /></svg>Orientação</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-book" /></svg>Materiais</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-users" /></svg>Contatos</a
+        ><a href="#"
+          ><svg class="nav-icon"><use href="#i-heart" /></svg>Apoio</a
+        >
+      </nav>
+      <div class="mock-note">Mock C · Presente</div>
+    </div>
+  </body>
+</html>

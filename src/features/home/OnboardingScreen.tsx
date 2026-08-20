@@ -9,8 +9,8 @@ export function OnboardingScreen({ onContinue }: { onContinue: () => void }) {
   const steps = [
     {
       icon: <Brain size={48} className="text-on-primary" />,
-      title: 'Bem-vindo ao BemTeVi',
-      body: 'Um espaço acolhedor para cuidar de você. Você não precisa se identificar para começar — só importa como está se sentindo.',
+      title: 'Que bom ter você aqui!',
+      body: 'Uma ferramenta de educação em saúde mental para professores. As informações têm caráter educativo e preventivo e não substituem acompanhamento profissional. Você não precisa se identificar para começar.',
     },
     {
       icon: <Shield size={48} className="text-on-primary" />,

@@ -7,8 +7,9 @@ export interface HomeActionCopy {
 }
 
 export interface HomeCopy extends ContentMetadata {
-  title: string;
+  greeting: string;
   subtitle: string;
+  educationalDisclaimer: string;
   privacyReassurance: string;
   actions: HomeActionCopy[];
 }

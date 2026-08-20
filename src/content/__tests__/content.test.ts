@@ -12,8 +12,9 @@ describe('Home copy', () => {
   it('has required fields', () => {
     expect(homeCopy.id).toBe('home-copy');
     expect(homeCopy.locale).toBe('pt-BR');
-    expect(homeCopy.title).toBeTruthy();
+    expect(homeCopy.greeting).toBeTruthy();
     expect(homeCopy.subtitle).toBeTruthy();
+    expect(homeCopy.educationalDisclaimer).toBeTruthy();
     expect(homeCopy.privacyReassurance).toBeTruthy();
   });
 
@@ -34,11 +35,12 @@ describe('Support contacts', () => {
     expect(supportContacts.title).toBeTruthy();
   });
 
-  it('has CVV, SAMU, and Bombeiros', () => {
+  it('has CVV, SAMU, and Disque Saúde', () => {
     const ids = supportContacts.contacts.map((c) => c.id);
     expect(ids).toContain('support-cvv');
     expect(ids).toContain('support-samu');
-    expect(ids).toContain('support-bombeiros');
+    expect(ids).toContain('support-disque-saude');
+    expect(ids).not.toContain('support-bombeiros');
   });
 
   it('every contact has a phone link', () => {
