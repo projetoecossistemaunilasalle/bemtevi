@@ -4,10 +4,7 @@ import { STATUS_LABELS } from './flowDisplay';
 import { flowPurposeLabels } from './flowLabels';
 import { selectClassName } from './flowEffectFields';
 import { setEntryNode, updateFlowSettings } from './flowMutations';
-// TargetSelect lives in NodeEditorPanel for now; moving it to a shared module
-// is deferred until a third consumer shows up (same reason DraftTextField
-// below mirrors it locally instead of importing it).
-import { TargetSelect } from './NodeEditorPanel';
+import { TargetSelect } from './flowTargetSelect';
 import { buildFlowTopology } from './flowTopology';
 
 const textFieldClassName =
@@ -28,8 +25,7 @@ interface DraftTextFieldProps {
 
 /**
  * Single-line field with a per-field draft sentinel; commits onBlur. Local
- * mirror of NodeEditorPanel's private DraftTextField (extraction deferred —
- * see import comment above).
+ * mirror of NodeEditorPanel's private DraftTextField.
  */
 function DraftTextField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
   const [draft, setDraft] = useState<string | null>(null);

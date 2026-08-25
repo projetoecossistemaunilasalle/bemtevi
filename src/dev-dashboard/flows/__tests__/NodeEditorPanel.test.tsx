@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { NodeEditorPanel, TargetSelect } from '../NodeEditorPanel';
+import { NodeEditorPanel } from '../NodeEditorPanel';
+import { TargetSelect } from '../flowTargetSelect';
 import type {
   ChoiceFlowNode,
   FlowEffect,
