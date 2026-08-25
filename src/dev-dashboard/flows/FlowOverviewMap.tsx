@@ -17,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 import './FlowOverviewMap.css';
 
 import type { GuidedFlow } from '../../domain/flow-engine/types';
+import { STATUS_LABELS } from './flowDisplay';
 import { buildSystemFlowTopology, type SystemFlowConnectionKind } from './flowTopology';
 
 type ExternalKind = SystemFlowConnectionKind | 'missing_flow';
@@ -38,13 +39,6 @@ type ExternalMapNodeData = { kind: 'external'; label: string; externalKind: Exte
 type OverviewNodeData = FlowMapNodeData | ExternalMapNodeData;
 type OverviewNode = Node<OverviewNodeData>;
 type OverviewEdge = Edge<{ optionLabel: string; effectKind: ExternalKind }>;
-
-const STATUS_LABELS: Record<GuidedFlow['status'], string> = {
-  draft: 'Rascunho',
-  pending_review: 'Em revisão',
-  approved: 'Aprovado',
-  archived: 'Arquivado',
-};
 
 function FlowOverviewNode({ data }: NodeProps<OverviewNode>) {
   if (data.kind !== 'flow') return null;
