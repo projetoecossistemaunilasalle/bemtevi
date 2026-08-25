@@ -19,18 +19,16 @@ type NodeFilter = 'all' | 'result' | 'safety' | 'branch';
 /** Panel sections available on the map editing surface ('configuracoes' = flow-level). */
 export type FlowValidationSection = 'texto' | 'opcoes' | 'ramificacao' | 'midia' | 'configuracoes';
 
+/**
+ * Where a validation issue lives on the map editing surface. `nodeId` present
+ * routes to that stage's NodeEditorPanel (`section` picks the panel section);
+ * absent routes to the flow-level settings panel ('configuracoes'). Consumed
+ * exclusively by openValidationTarget → FlowMap focusRequest routing.
+ */
 export type FlowValidationTarget = {
   flowId: string;
   nodeId?: string;
-  /**
-   * Section of the map surface this issue points at. Absent for node targets
-   * resolved before section inference could run (defensive only today).
-   */
   section?: FlowValidationSection;
-  /** Legacy editor control anchor, kept intact for the editor fallback route. */
-  ariaLabel?: string;
-  /** The initial flow configuration is collapsed, so it needs opening first. */
-  initialConfiguration?: boolean;
   description: string;
 };
 
@@ -459,8 +457,7 @@ export function FlowDashboard({
  * Maps a validation issue to the flow/node/section it belongs to. Exported for
  * unit testing; every branch has a map-surface representation (node panel
  * section or flow-level 'configuracoes'), so deep-links never need the legacy
- * editor — its anchor fields (ariaLabel/initialConfiguration) stay populated
- * for the manual "abrir no editor legado" fallback.
+ * editor — the target carries only what map routing consumes.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function resolveFlowValidationTarget(
@@ -485,7 +482,6 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'texto',
-        ariaLabel: `Tipo da etapa ${stepNumber}`,
         description: `revise o tipo de ${nodePrefix} no campo destacado.`,
       };
     }
@@ -495,7 +491,6 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'ramificacao',
-        ariaLabel: 'Pontuação usada',
         description: `corrija a chave de pontuação de ${nodePrefix}.`,
       };
     }
@@ -507,7 +502,6 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'ramificacao',
-        ariaLabel: `${field} da faixa ${branchId}`,
         description: `corrija ${field.toLocaleLowerCase('pt-BR')} da faixa "${branchId}" em ${nodePrefix}.`,
       };
     }
@@ -519,7 +513,6 @@ export function resolveFlowValidationTarget(
           flowId: flow.id,
           nodeId: node.id,
           section: 'opcoes',
-          ariaLabel: `Ações/Score da opção ${optionIndex + 1} da etapa ${stepNumber}`,
           description: `abra Ações/Score da opção ${optionIndex + 1} de ${nodePrefix} e corrija o efeito indicado.`,
         };
       }
@@ -532,7 +525,6 @@ export function resolveFlowValidationTarget(
           flowId: flow.id,
           nodeId: node.id,
           section: 'midia',
-          ariaLabel: `Link do YouTube ${videoIndex + 1} da etapa ${stepNumber}`,
           description: `corrija o link do vídeo em ${nodePrefix}.`,
         };
       }
@@ -551,8 +543,6 @@ export function resolveFlowValidationTarget(
     return {
       flowId: flow.id,
       section: 'configuracoes',
-      ariaLabel: 'Uso do fluxo',
-      initialConfiguration: true,
       description: 'abra a configuração inicial e corrija o uso do fluxo.',
     };
   }
@@ -562,8 +552,6 @@ export function resolveFlowValidationTarget(
     return {
       flowId: flow.id,
       section: 'configuracoes',
-      ariaLabel: pointsToMissingNode ? 'Primeira etapa' : 'Frase de entrada 1',
-      initialConfiguration: true,
       description: pointsToMissingNode
         ? 'abra a configuração de entrada e escolha uma primeira etapa existente.'
         : 'abra a configuração de entrada e adicione uma frase válida.',
@@ -573,8 +561,6 @@ export function resolveFlowValidationTarget(
   return {
     flowId: flow.id,
     section: 'configuracoes',
-    ariaLabel: 'Título do fluxo',
-    initialConfiguration: true,
     description: 'abra a configuração inicial do fluxo e revise o campo indicado na mensagem.',
   };
 }

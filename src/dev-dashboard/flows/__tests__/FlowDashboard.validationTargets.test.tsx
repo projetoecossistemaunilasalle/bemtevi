@@ -58,8 +58,9 @@ describe('resolveFlowValidationTarget', () => {
     const target = resolveFlowValidationTarget(issue(`${flow.id}.nodes.q1.options.go.effects`), [flow]);
 
     expect(target).toMatchObject({ flowId: flow.id, nodeId: 'q1', section: 'opcoes' });
-    // Legacy editor anchors stay intact for the manual editor fallback.
-    expect(target?.ariaLabel).toBe('Ações/Score da opção 1 da etapa 1');
+    // Representative shape pin: targets carry ONLY map-routing fields — no
+    // legacy editor anchors (ariaLabel/initialConfiguration) anywhere.
+    expect(Object.keys(target ?? {}).sort()).toEqual(['description', 'flowId', 'nodeId', 'section']);
     expect(target?.description).toContain('Ações/Score');
   });
 
