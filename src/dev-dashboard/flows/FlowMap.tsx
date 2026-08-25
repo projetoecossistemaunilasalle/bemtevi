@@ -28,9 +28,11 @@ export function FlowMap({
    * canvas and closes settings; a node-less ('configuracoes') target opens the
    * settings panel. The destination map owns selection/scrolling and reports
    * back via onFocusRequestApplied so mode toggles can't resurrect the link.
-   * Only a NODE target issued over the overview stays pending until that
-   * canvas mounts — a node-less target is fully applied on the spot (settings
-   * open) and never stashed, so nothing replays it later.
+   * Handshake: the map holds a request until it applies or ignores it, then
+   * calls onFocusRequestApplied exactly once per requestId — so only a NODE
+   * target issued over the overview stays pending until that canvas mounts,
+   * while a node-less target is fully applied on the spot (settings open) and
+   * never stashed.
    */
   focusRequest?: MapFocusRequest | null;
 }) {
@@ -120,6 +122,10 @@ export function FlowMap({
 
       {isDestination ? (
         <FlowDestinationMap
+          // Remount per flow: selection, search and sequence expansions are
+          // canvas-local state that must never survive a flow switch (also
+          // cures panel context leaking across flows that reuse node ids).
+          key={flow.id}
           flow={flow}
           flows={flows}
           onFlowChange={onFlowChange}

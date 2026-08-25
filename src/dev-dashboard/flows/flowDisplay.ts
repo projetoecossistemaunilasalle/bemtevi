@@ -1,6 +1,13 @@
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 
 /**
+ * Node-panel sections addressable by a map focus request. Flow-level
+ * ('configuracoes') targets never flow through this field — they are encoded
+ * by an absent `nodeId`, so this union stays panel-only.
+ */
+export type MapFocusSection = 'texto' | 'opcoes' | 'ramificacao' | 'midia';
+
+/**
  * Shared pt-BR labels for the flow status union. Single source for every
  * surface that renders or edits a status (overview map nodes, settings
  * selects), so wording can't drift between read-only and editable views.

@@ -34,6 +34,15 @@ const secondFlow: GuidedFlow = {
   nodes: { result: { id: 'result', kind: 'result', text: 'Segundo fim.' } },
 };
 
+/** Reuses firstFlow's 'question' id on purpose: canvas state must not leak across flows. */
+const collisionFlow: GuidedFlow = {
+  ...firstFlow,
+  id: 'collision',
+  title: 'Fluxo com ids repetidos',
+  entry: { ...firstFlow.entry, nodeId: 'question' },
+  nodes: { question: { id: 'question', kind: 'result', text: 'Outra etapa.' } },
+};
+
 describe('FlowMap', () => {
   it('opens by destination and switches to the complete system overview', async () => {
     const user = userEvent.setup();
@@ -119,6 +128,36 @@ describe('FlowMap', () => {
     await user.click(screen.getByRole('button', { name: /visão geral/i }));
     await user.click(screen.getByRole('button', { name: /por destino/i }));
     expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+  });
+
+  it('resets the destination map when switching to a flow that reuses node ids', async () => {
+    const user = userEvent.setup();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+    try {
+      const props: React.ComponentProps<typeof FlowMap> = {
+        flow: firstFlow,
+        flows: [firstFlow, secondFlow, collisionFlow],
+        onFlowChange: vi.fn(),
+        onEditNode: vi.fn(),
+        onSelectFlow: vi.fn(),
+      };
+      const view = render(<FlowMap {...props} focusRequest={{ nodeId: 'question', section: 'texto', requestId: 1 }} />);
+
+      // Deep-link applied on the first flow: panel open on its 'question'.
+      expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+      await user.type(screen.getByRole('searchbox', { name: /buscar etapa/i }), 'nada');
+
+      // Switching flows remounts the canvas (key={flow.id}): selection and
+      // search reset instead of showing collisionFlow's own 'question' with
+      // the previous flow's panel context.
+      view.rerender(<FlowMap {...props} flow={collisionFlow} />);
+
+      expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
+      expect(screen.getByRole('searchbox', { name: /buscar etapa/i })).toHaveValue('');
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
   });
 
   it('lands a node-level validation focusRequest with settings closed, once', async () => {

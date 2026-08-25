@@ -10,7 +10,7 @@ import { FlowEditor } from './FlowEditor';
 import { FlowMap } from './FlowMap';
 import { FlowPreview } from './FlowPreview';
 import { inputClassSm } from '../components/fieldStyles';
-import { getFlowNodeTitle } from './flowDisplay';
+import { getFlowNodeTitle, type MapFocusSection } from './flowDisplay';
 import type { MapFocusRequest } from './FlowDestinationMap';
 
 type FlowDetailTab = 'editor' | 'preview' | 'map';
@@ -31,6 +31,15 @@ export type FlowValidationTarget = {
   section?: FlowValidationSection;
   description: string;
 };
+
+/**
+ * Narrows a validation section to a NODE-PANEL section. 'configuracoes' never
+ * flows through MapFocusRequest.section — flow-level targets are encoded by an
+ * absent nodeId, and this guard keeps the section field honest at the boundary.
+ */
+function isNodePanelSection(section: FlowValidationSection | undefined): section is MapFocusSection {
+  return section !== undefined && section !== 'configuracoes';
+}
 
 const flowDetailTabs: Array<{ id: FlowDetailTab; label: string }> = [
   { id: 'editor', label: 'Editor' },
@@ -167,8 +176,10 @@ export function FlowDashboard({
     // map's settings panel. The legacy editor is only reachable by choice.
     setActiveDetailTab('map');
     setValidationFocusRequest((request) => ({
+      // 'configuracoes' is encoded by the absent nodeId; the section field
+      // carries panel sections only (guarded above, so the value can't leak).
       nodeId: target.nodeId,
-      section: target.section,
+      section: isNodePanelSection(target.section) ? target.section : undefined,
       requestId: (request?.requestId ?? 0) + 1,
     }));
   }

@@ -29,7 +29,7 @@ import type {
 export const selectClassName =
   'w-full rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
 
-/** Chip color conventions copied from FlowMapInspector so both editors read identically. */
+/** Chip color conventions shared by every editor surface so they read identically. */
 export const effectColors: Record<FlowEffect['kind'], string> = {
   score: 'bg-primary-container text-on-primary-container',
   deferred_safety: 'bg-warning-container text-on-warning-container',
@@ -44,7 +44,7 @@ type EffectSummaryWriters = {
   [K in FlowEffect['kind']]: (effect: Extract<FlowEffect, { kind: K }>) => string;
 };
 
-/** Compact PT chip summaries, mirroring FlowMapInspector. */
+/** Compact PT chip summaries shown on each effect chip. */
 export const effectSummaries: EffectSummaryWriters = {
   score: (effect: ScoreFlowEffect) => `+${effect.value} em ${effect.scoreKey}`,
   deferred_safety: (effect: DeferredSafetyFlowEffect) => `⚠ segurança adiada → ${effect.destination}`,

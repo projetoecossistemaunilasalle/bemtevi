@@ -10,6 +10,7 @@ import type {
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
 import { deleteNode, duplicateNode, setEntryNode } from './flowMutations';
+import type { MapFocusSection } from './flowDisplay';
 import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import { TargetSelect } from './flowTargetSelect';
 import {
@@ -588,8 +589,8 @@ export interface NodeEditorPanelProps {
   onClose: () => void;
   /** Opens the legacy full editor for this node. */
   onEditLegacy: () => void;
-  /** Scroll/focus request for a named section ('texto'|'opcoes'|'ramificacao'|'midia'); bump requestId to re-fire. */
-  focusRequest?: { section?: string; requestId: number } | null;
+  /** Scroll/focus request for a named panel section; bump requestId to re-fire. */
+  focusRequest?: { section?: MapFocusSection; requestId: number } | null;
 }
 
 export function NodeEditorPanel({

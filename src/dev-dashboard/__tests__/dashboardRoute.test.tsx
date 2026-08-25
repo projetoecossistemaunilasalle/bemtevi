@@ -975,7 +975,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByTestId('flow-map-canvas')).toBeInTheDocument();
   });
 
-  it('opens the inspector panel when a node is clicked in the flow map', async () => {
+  it('renders the flow stages on the destination map when Mapa visual is clicked', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>

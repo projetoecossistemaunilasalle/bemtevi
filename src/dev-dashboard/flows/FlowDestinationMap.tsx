@@ -31,6 +31,7 @@ import '@xyflow/react/dist/style.css';
 import './FlowDestinationMap.css';
 
 import type { FlowEffect, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
+import type { MapFocusSection } from './flowDisplay';
 import { addNode } from './flowMutations';
 import { NodeEditorPanel } from './NodeEditorPanel';
 import { buildFlowTopology } from './flowTopology';
@@ -865,10 +866,10 @@ function createPresentation(
  * request; `nodeId` absent means a flow-level target ('configuracoes').
  */
 export type MapFocusRequest = {
-  /** Stage to select on the destination canvas. */
+  /** Stage to select on the destination canvas; absent means a flow-level target. */
   nodeId?: string;
-  /** Node panel section to reveal ('texto'|'opcoes'|'ramificacao'|'midia'). */
-  section?: string;
+  /** Node panel section to reveal ('configuracoes' targets carry no nodeId and no section). */
+  section?: MapFocusSection;
   requestId: number;
 };
 
@@ -913,7 +914,9 @@ export function FlowDestinationMap({
    * deep-link selection lands — one commit BEFORE the panel mounts, so the
    * panel would never see it. Manual selections below clear it.
    */
-  const [panelFocusRequest, setPanelFocusRequest] = useState<{ section?: string; requestId: number } | null>(null);
+  const [panelFocusRequest, setPanelFocusRequest] = useState<{ section?: MapFocusSection; requestId: number } | null>(
+    null,
+  );
   const [addStageOpen, setAddStageOpen] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>([]);
