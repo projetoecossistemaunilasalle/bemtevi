@@ -141,8 +141,10 @@ describe('FlowDestinationMap', () => {
     expect(Object.keys(patches[0])).toEqual(['nodes']);
     expect(patches[0].nodes?.['step-4']).toMatchObject({ id: 'step-4', kind: 'choice' });
 
-    // The popover closed and the panel opened on the fresh empty node.
+    // The popover closed (focus back on the trigger) and the panel opened on
+    // the fresh empty node.
     expect(screen.queryByRole('button', { name: 'Pergunta' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Etapa' })).toHaveFocus();
     expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('');
     expect(stats).toHaveTextContent('4 etapas');
@@ -158,6 +160,7 @@ describe('FlowDestinationMap', () => {
 
     // Narrow structural patch carries exactly the keys addNode touched.
     expect(Object.keys(patches.at(-1) ?? {})).toEqual(['nodes', 'nodeOrder']);
+    expect(screen.getByRole('button', { name: 'Etapa' })).toHaveFocus();
     expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
     const stats = screen.getByLabelText('Resumo estrutural');
     expect(stats).toHaveTextContent('4 etapas');
@@ -173,7 +176,26 @@ describe('FlowDestinationMap', () => {
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('button', { name: 'Ramificação' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Etapa' })).toHaveAttribute('aria-expanded', 'false');
+    const trigger = screen.getByRole('button', { name: 'Etapa' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('shifts map overlays clear of the editor panel only while it is open', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    const canvas = screen.getByLabelText('Mapa por destino do fluxo Check-in');
+    expect(canvas).not.toHaveClass('flow-destination-map__canvas--with-panel');
+
+    fireEvent.click(screen.getByText('Como você está hoje?'));
+    expect(canvas).toHaveClass('flow-destination-map__canvas--with-panel');
+
+    await user.click(screen.getByRole('button', { name: /segurança imediata/i }));
+    expect(screen.getByRole('status')).toHaveClass('flow-destination-map__selection--clear-of-panel');
+
+    await user.click(screen.getByRole('button', { name: /fechar painel de edição/i }));
+    expect(canvas).not.toHaveClass('flow-destination-map__canvas--with-panel');
+    expect(screen.getByRole('status')).not.toHaveClass('flow-destination-map__selection--clear-of-panel');
   });
 
   it('deletes the selected stage through the panel and closes it', async () => {

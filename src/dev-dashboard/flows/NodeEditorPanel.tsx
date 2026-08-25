@@ -665,8 +665,10 @@ function RecommendationsField({ node, onNodeChange }: RecommendationsFieldProps)
 }
 
 /**
- * Structured side panel that will replace the map inspector (integration is a
- * later task).
+ * Structured side panel for editing a single flow stage in place, mounted
+ * inside the destination map: the map owns canvas selection and drives
+ * `nodeId`, forwards this panel's narrow patches through its `onFlowChange`,
+ * and routes `onEditLegacy` to the full legacy editor.
  *
  * Callers must remount this panel per node (key={nodeId}) — the text guard
  * assumes unmount on switch.

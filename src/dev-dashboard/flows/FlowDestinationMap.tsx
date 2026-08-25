@@ -880,6 +880,7 @@ export function FlowDestinationMap({
   const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const addStageTriggerRef = useRef<HTMLButtonElement>(null);
 
   const toggleSequence = useCallback((id: string) => {
     setExpandedSequences((current) => {
@@ -927,14 +928,18 @@ export function FlowDestinationMap({
       onFlowChange({ nodes: nextFlow.nodes, ...(nextFlow.nodeOrder ? { nodeOrder: nextFlow.nodeOrder } : {}) });
       setAddStageOpen(false);
       setSelectedNodeId(newNodeId);
+      // Keep the keyboard origin stable once the popover disappears.
+      addStageTriggerRef.current?.focus();
     },
     [flow, onFlowChange],
   );
 
-  /** Escape dismisses the add-stage popover from wherever the focus sits inside it. */
+  /** Escape dismisses the add-stage popover from wherever focus sits inside it. */
   const handleAddStageKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (addStageOpen && event.key === 'Escape') setAddStageOpen(false);
+      if (!addStageOpen || event.key !== 'Escape') return;
+      setAddStageOpen(false);
+      addStageTriggerRef.current?.focus();
     },
     [addStageOpen],
   );
@@ -1048,6 +1053,7 @@ export function FlowDestinationMap({
         </button>
         <div role="group" aria-label="Adicionar etapa" className="relative">
           <button
+            ref={addStageTriggerRef}
             type="button"
             className="flow-destination-map__tool-button"
             aria-haspopup="true"
@@ -1058,7 +1064,7 @@ export function FlowDestinationMap({
             <Plus aria-hidden="true" /> Etapa
           </button>
           {addStageOpen && (
-            <div className="absolute left-0 top-full z-20 mt-1 flex w-40 flex-col gap-1 rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 shadow-lg">
+            <div className="absolute right-0 top-full z-20 mt-1 flex w-40 flex-col gap-1 rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 shadow-lg">
               <button
                 type="button"
                 className="flow-destination-map__tool-button justify-start"
@@ -1095,7 +1101,7 @@ export function FlowDestinationMap({
 
       <div
         ref={canvasRef}
-        className="flow-destination-map__canvas"
+        className={`flow-destination-map__canvas ${selectedNode ? 'flow-destination-map__canvas--with-panel' : ''}`}
         aria-label={`Mapa por destino do fluxo ${flow.title}`}
       >
         <div className="flow-destination-map__depth-labels" aria-hidden="true">
@@ -1132,7 +1138,10 @@ export function FlowDestinationMap({
       </div>
 
       {selectedDestinationData && (
-        <div className="flow-destination-map__selection" role="status">
+        <div
+          className={`flow-destination-map__selection ${selectedNode ? 'flow-destination-map__selection--clear-of-panel' : ''}`}
+          role="status"
+        >
           <span>
             <Check aria-hidden="true" /> Destino selecionado
           </span>

@@ -662,6 +662,15 @@
   box-shadow: 0 8px 24px rgb(17 28 44 / 14%);
 }
 
+/* While the editor panel is open (w-80 = 20rem), keep overlays on its left. */
+.flow-destination-map__selection--clear-of-panel {
+  right: calc(20rem + 18px);
+}
+
+.flow-destination-map__canvas--with-panel .react-flow__minimap.react-flow__panel {
+  right: calc(20rem + 12px);
+}
+
 .flow-destination-map__selection > span {
   display: inline-flex;
   align-items: center;
