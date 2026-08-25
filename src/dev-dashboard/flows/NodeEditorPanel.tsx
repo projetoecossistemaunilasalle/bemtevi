@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChoiceFlowNode, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
 import { deleteNode, duplicateNode, setEntryNode } from './flowMutations';
+import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import { Button } from '../../design-system/components/Button';
 
 const kindLabels: Record<FlowNode['kind'], string> = {
@@ -36,6 +37,227 @@ function getOrderedNodes(flow: GuidedFlow): FlowNode[] {
 }
 
 /**
+ * Same collapsing rules as flowTopology's private excerpt helper: trims,
+ * collapses whitespace and ellipsizes past `length` characters.
+ */
+function excerpt(text: string, length: number) {
+  const normalized = text.trim().replace(/\s+/g, ' ');
+  return normalized.length <= length ? normalized : `${normalized.slice(0, length - 1).trimEnd()}…`;
+}
+
+/** First free `${node.id}-option-N`, matching switchNodeKind's naming convention. */
+function uniqueOptionId(node: ChoiceFlowNode): string {
+  let index = node.options.length + 1;
+  let candidate = `${node.id}-option-${index}`;
+  while (node.options.some((option) => option.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-option-${index}`;
+  }
+  return candidate;
+}
+
+/** Group bucket for a topology node; determines which `<optgroup>` lists it. */
+function targetGroupLabel(node: FlowTopologyNode): string {
+  if (node.kind === 'result') return 'Finais';
+  if (!node.reachable) return 'Sem acesso pela entrada';
+  if ((node.depth ?? 0) === 0) return 'Entrada';
+  return `Prof. ${node.depth}`;
+}
+
+const TARGET_GROUP_ORDER = ['Entrada', 'Prof.', 'Sem acesso pela entrada', 'Finais'];
+
+function targetGroupRank(label: string): number {
+  if (label.startsWith('Prof.')) return 1;
+  const index = TARGET_GROUP_ORDER.indexOf(label);
+  return index === -1 ? TARGET_GROUP_ORDER.length : index;
+}
+
+function groupTargetNodes(nodes: FlowTopologyNode[]): Array<{ label: string; nodes: FlowTopologyNode[] }> {
+  const buckets = new Map<string, FlowTopologyNode[]>();
+  for (const item of nodes) {
+    const label = targetGroupLabel(item);
+    const bucket = buckets.get(label);
+    if (bucket) bucket.push(item);
+    else buckets.set(label, [item]);
+  }
+  // Numeric compare keeps `Prof. 2` before `Prof. 10`.
+  return [...buckets.entries()]
+    .map(([label, grouped]) => ({ label, nodes: grouped }))
+    .sort(
+      (left, right) =>
+        targetGroupRank(left.label) - targetGroupRank(right.label) ||
+        left.label.localeCompare(right.label, undefined, { numeric: true }),
+    );
+}
+
+interface TargetSelectProps {
+  id?: string;
+  value: string;
+  onChange: (next: string) => void;
+  nodes: FlowTopologyNode[];
+  allowEmpty?: boolean;
+  emptyLabel?: string;
+  ariaLabel: string;
+}
+
+/**
+ * Native select over the flow's topology nodes grouped by depth/reachability.
+ * The current value is ALWAYS representable: when it points at a removed or
+ * unknown node it renders as `Destino ausente · <id>` instead of silently
+ * showing the wrong option.
+ */
+function TargetSelect({
+  id,
+  value,
+  onChange,
+  nodes,
+  allowEmpty,
+  emptyLabel = '— sem destino —',
+  ariaLabel,
+}: TargetSelectProps) {
+  const groups = useMemo(() => groupTargetNodes(nodes), [nodes]);
+  const knownIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
+  const isRepresentable = value === '' ? Boolean(allowEmpty) : knownIds.has(value);
+
+  return (
+    <select
+      {...(id ? { id } : {})}
+      aria-label={ariaLabel}
+      className="w-full rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      {allowEmpty && <option value="">{emptyLabel}</option>}
+      {groups.map((group) => (
+        <optgroup key={group.label} label={group.label}>
+          {group.nodes.map((node) => (
+            <option key={node.id} value={node.id}>{`Etapa ${node.stepNumber} · ${excerpt(node.node.text, 40)}`}</option>
+          ))}
+        </optgroup>
+      ))}
+      {!isRepresentable && <option value={value}>{`Destino ausente · ${value}`}</option>}
+    </select>
+  );
+}
+
+interface OptionRowProps {
+  option: FlowOption;
+  index: number;
+  targets: FlowTopologyNode[];
+  onLabelCommit: (label: string) => void;
+  onNextChange: (next: string) => void;
+  onRemove: () => void;
+}
+
+/**
+ * One editable option row. The label keeps a per-row draft (null = no pending
+ * edit, so external values flow straight through). Commit happens onBlur by
+ * comparing the draft to the last committed label — scoped per row on purpose,
+ * never via the shared document.activeElement guard, so editing a label can't
+ * clobber sibling rows or the texto textarea.
+ */
+function OptionRow({ option, index, targets, onLabelCommit, onNextChange, onRemove }: OptionRowProps) {
+  const [draftLabel, setDraftLabel] = useState<string | null>(null);
+  const displayedLabel = draftLabel ?? option.label;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
+      <input
+        aria-label={`Rótulo da opção ${index + 1}`}
+        className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
+        value={displayedLabel}
+        onChange={(event) => setDraftLabel(event.target.value)}
+        onBlur={() => {
+          setDraftLabel(null);
+          if (draftLabel !== null && draftLabel !== option.label) onLabelCommit(draftLabel);
+        }}
+      />
+      {/* Selects don't blur reliably; commit the target immediately on change. */}
+      <TargetSelect
+        ariaLabel={`Destino da opção ${index + 1}`}
+        value={option.next}
+        onChange={onNextChange}
+        nodes={targets}
+        allowEmpty
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
+      >
+        Remover opção
+      </button>
+    </div>
+  );
+}
+
+/** Opções body for choice nodes: one row per option plus free-text routing. */
+function ChoiceOptionsSection({
+  node,
+  targets,
+  onNodeChange,
+}: {
+  node: ChoiceFlowNode;
+  targets: FlowTopologyNode[];
+  onNodeChange: (next: ChoiceFlowNode) => void;
+}) {
+  const commitOptions = (options: FlowOption[]) => onNodeChange({ ...node, options });
+
+  return (
+    <>
+      {node.options.map((option, index) => (
+        <OptionRow
+          key={option.id}
+          option={option}
+          index={index}
+          targets={targets}
+          onLabelCommit={(label) =>
+            commitOptions(
+              node.options.map((candidate) => (candidate.id === option.id ? { ...candidate, label } : candidate)),
+            )
+          }
+          onNextChange={(next) =>
+            commitOptions(
+              node.options.map((candidate) => (candidate.id === option.id ? { ...candidate, next } : candidate)),
+            )
+          }
+          onRemove={() => commitOptions(node.options.filter((candidate) => candidate.id !== option.id))}
+        />
+      ))}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => commitOptions([...node.options, { id: uniqueOptionId(node), label: '', next: '' }])}
+      >
+        Adicionar opção
+      </Button>
+      <label className="flex items-center gap-2 font-label-sm text-sm text-on-surface">
+        <input
+          type="checkbox"
+          checked={Boolean(node.freeText)}
+          onChange={(event) => {
+            const { freeText, ...nodeWithoutFreeText } = node;
+            onNodeChange(
+              event.target.checked ? { ...node, freeText: { next: freeText?.next ?? '' } } : nodeWithoutFreeText,
+            );
+          }}
+        />
+        Aceitar resposta livre
+      </label>
+      {node.freeText && (
+        <TargetSelect
+          ariaLabel="Destino da resposta livre"
+          value={node.freeText.next}
+          onChange={(next) => onNodeChange({ ...node, freeText: { next } })}
+          nodes={targets}
+          allowEmpty
+        />
+      )}
+    </>
+  );
+}
+
+/**
  * Structured side panel that will replace the map inspector (integration is a
  * later task).
  *
@@ -56,6 +278,7 @@ export interface NodeEditorPanelProps {
 
 export function NodeEditorPanel({
   flow,
+  flows,
   nodeId,
   onFlowChange,
   onClose,
@@ -65,6 +288,8 @@ export function NodeEditorPanel({
   const node = flow.nodes[nodeId];
   const [localText, setLocalText] = useState(node?.text ?? '');
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Topology feeds every target select; recomputed only when flow/flows change.
+  const topology = useMemo(() => buildFlowTopology(flow, flows), [flow, flows]);
 
   // Follow external text changes unless the user is mid-edit in the textarea.
   if (node && localText !== node.text && document.activeElement?.tagName !== 'TEXTAREA') {
@@ -114,6 +339,11 @@ export function NodeEditorPanel({
     if (window.confirm(`Excluir esta etapa? ${consequence}`)) {
       onFlowChange(toNodesPatch(result.flow));
     }
+  };
+
+  /** Whole-node replacement scoped to this node's record key. */
+  const handleChoiceNodeChange = (next: ChoiceFlowNode) => {
+    onFlowChange({ nodes: { ...flow.nodes, [nodeId]: next } });
   };
 
   return (
@@ -168,10 +398,13 @@ export function NodeEditorPanel({
         />
       </section>
 
+      {node.kind === 'choice' && (
+        <section data-section="opcoes" className="flex flex-col gap-2">
+          <h3 className="font-label-sm text-xs text-on-surface-variant">Opções</h3>
+          <ChoiceOptionsSection node={node} targets={topology.nodes} onNodeChange={handleChoiceNodeChange} />
+        </section>
+      )}
       {/* Placeholder sections for later tasks; Task 10 fills in their fields. */}
-      <section data-section="opcoes">
-        <h3 className="font-label-sm text-xs text-on-surface-variant">Opções</h3>
-      </section>
       <section data-section="ramificacao">
         <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
       </section>
