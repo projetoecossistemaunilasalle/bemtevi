@@ -107,9 +107,9 @@ describe('validateDashboardFlows', () => {
       ['known-resource'],
     );
 
-    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('video pause must include a title');
-    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('video pause must use a valid YouTube URL');
-    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('duplicate video id pause');
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('precisa de um título');
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('URL válida do YouTube');
+    expect(result.errors.map((issue) => issue.message).join(' ')).toContain('mais de um vídeo');
   });
 
   it('warns when score branch ranges overlap or use a score key with no scoring options', () => {

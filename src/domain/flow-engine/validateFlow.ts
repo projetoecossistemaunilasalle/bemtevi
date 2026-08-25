@@ -20,19 +20,19 @@ export function validateFlow(flow: unknown): FlowValidationResult {
   const nodes = flowRecord.nodes;
 
   if (!hasText(flowRecord.id)) {
-    errors.push('Flow id is required.');
+    errors.push('O ID do fluxo é obrigatório.');
   }
 
   if (flowRecord.purpose !== undefined && !allowedFlowPurposes.includes(String(flowRecord.purpose))) {
-    errors.push(`Flow ${flowLabel} purpose must be one of ${allowedFlowPurposes.join(', ')}.`);
+    errors.push(`O propósito do fluxo ${flowLabel} deve ser um destes: ${allowedFlowPurposes.join(', ')}.`);
   }
 
   if (!isRecord(entry)) {
-    errors.push('Flow entry is required.');
+    errors.push('A entrada do fluxo é obrigatória.');
   }
 
   if (!isRecord(nodes)) {
-    errors.push('Flow nodes are required.');
+    errors.push('Os nós do fluxo são obrigatórios.');
   }
 
   if (!isRecord(entry) || !isRecord(nodes)) {
@@ -47,7 +47,7 @@ export function validateFlow(flow: unknown): FlowValidationResult {
   const enteringPhrases = entry.enteringPhrases;
 
   if (!hasText(entryNodeId) || !nodeIds.has(String(entryNodeId))) {
-    errors.push(`Flow ${flowLabel} entry points to missing node ${String(entryNodeId)}.`);
+    errors.push(`A entrada do fluxo ${flowLabel} aponta para um nó inexistente: ${String(entryNodeId)}.`);
   }
 
   if (
@@ -55,7 +55,7 @@ export function validateFlow(flow: unknown): FlowValidationResult {
     enteringPhrases.length === 0 ||
     enteringPhrases.some((phrase) => !hasText(phrase))
   ) {
-    errors.push(`Flow ${flowLabel} must define explicit entering phrases.`);
+    errors.push(`O fluxo ${flowLabel} precisa definir frases explícitas para iniciá-lo.`);
   }
 
   Object.entries(nodes).forEach(([nodeKey, nodeValue]) => {
@@ -70,20 +70,20 @@ export function validateFlow(flow: unknown): FlowValidationResult {
 
 function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, nodeIds: Set<string>, errors: string[]) {
   if (!isRecord(nodeValue)) {
-    errors.push(`Flow ${flowLabel} node ${nodeKey} must be an object.`);
+    errors.push(`O nó ${nodeKey} do fluxo ${flowLabel} precisa ser um objeto.`);
     return;
   }
 
   const node = nodeValue as unknown as FlowNode;
 
   if (!hasText(node.id)) {
-    errors.push(`Flow ${flowLabel} has a node without an id.`);
+    errors.push(`O fluxo ${flowLabel} tem um nó sem ID.`);
   } else if (nodeKey !== node.id) {
-    errors.push(`Flow ${flowLabel} node key ${nodeKey} must match node id ${node.id}.`);
+    errors.push(`A chave do nó ${nodeKey} no fluxo ${flowLabel} deve ser igual ao ID do nó ${node.id}.`);
   }
 
   if (!hasText(node.text)) {
-    errors.push(`Flow ${flowLabel} node ${String(node.id)} must include text.`);
+    errors.push(`O nó ${String(node.id)} do fluxo ${flowLabel} precisa informar um texto.`);
   }
 
   validateNodeVideos(flowLabel, nodeKey, nodeValue.videos, errors);
@@ -101,55 +101,57 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
 function validateNodeVideos(flowLabel: string, nodeId: string, videos: unknown, errors: string[]) {
   if (videos === undefined) return;
   if (!Array.isArray(videos)) {
-    errors.push(`Flow ${flowLabel} node ${nodeId} videos must be a list.`);
+    errors.push(`Os vídeos do nó ${nodeId} no fluxo ${flowLabel} precisam estar em uma lista.`);
     return;
   }
 
   const ids = new Set<string>();
   videos.forEach((video, index) => {
     if (!isRecord(video)) {
-      errors.push(`Flow ${flowLabel} node ${nodeId} video at index ${index} must be an object.`);
+      errors.push(`O vídeo no índice ${index} do nó ${nodeId}, no fluxo ${flowLabel}, precisa ser um objeto.`);
       return;
     }
 
     const videoId = hasText(video.id) ? String(video.id) : `index-${index}`;
     if (!hasText(video.id)) {
-      errors.push(`Flow ${flowLabel} node ${nodeId} video at index ${index} must include an id.`);
+      errors.push(`O vídeo no índice ${index} do nó ${nodeId}, no fluxo ${flowLabel}, precisa informar um ID.`);
     } else if (ids.has(videoId)) {
-      errors.push(`Flow ${flowLabel} node ${nodeId} has duplicate video id ${videoId}.`);
+      errors.push(`O nó ${nodeId} do fluxo ${flowLabel} tem o ID de vídeo repetido: ${videoId}.`);
     } else {
       ids.add(videoId);
     }
 
     if (!hasText(video.title)) {
-      errors.push(`Flow ${flowLabel} node ${nodeId} video ${videoId} must include a title.`);
+      errors.push(`O vídeo ${videoId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa informar um título.`);
     }
     if (!hasText(video.url) || parseYouTubeVideoId(String(video.url)) === null) {
-      errors.push(`Flow ${flowLabel} node ${nodeId} video ${videoId} must use a valid YouTube URL.`);
+      errors.push(`O vídeo ${videoId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa usar uma URL válida do YouTube.`);
     }
   });
 }
 
 function validateChoiceNode(flowLabel: string, node: ChoiceFlowNode, nodeIds: Set<string>, errors: string[]) {
   if (node.options.length === 0 && node.freeText === undefined) {
-    errors.push(`Flow ${flowLabel} choice node ${node.id} must include options.`);
+    errors.push(`O nó de escolhas ${node.id} do fluxo ${flowLabel} precisa ter pelo menos uma opção.`);
   }
 
   if (node.freeText !== undefined && !nodeIds.has(node.freeText.next)) {
-    errors.push(`Flow ${flowLabel} choice node ${node.id} freeText points to missing node ${node.freeText.next}.`);
+    errors.push(
+      `A opção de texto livre do nó ${node.id}, no fluxo ${flowLabel}, aponta para um nó inexistente: ${node.freeText.next}.`,
+    );
   }
 
   node.options.forEach((option) => {
     if (!hasText(option.id)) {
-      errors.push(`Flow ${flowLabel} node ${node.id} has an option without an id.`);
+      errors.push(`O nó ${node.id} do fluxo ${flowLabel} tem uma opção sem ID.`);
     }
 
     if (!hasText(option.label)) {
-      errors.push(`Flow ${flowLabel} option ${option.id} must include a label.`);
+      errors.push(`A opção ${option.id} do fluxo ${flowLabel} precisa informar um rótulo.`);
     }
 
     if (!nodeIds.has(option.next)) {
-      errors.push(`Flow ${flowLabel} option ${option.id} points to missing node ${option.next}.`);
+      errors.push(`A opção ${option.id} do fluxo ${flowLabel} aponta para um nó inexistente: ${option.next}.`);
     }
 
     option.effects?.forEach((effect) => validateEffect(flowLabel, option.id, effect, errors));
@@ -158,29 +160,31 @@ function validateChoiceNode(flowLabel: string, node: ChoiceFlowNode, nodeIds: Se
 
 function validateScoreBranchNode(flowLabel: string, node: ScoreBranchFlowNode, nodeIds: Set<string>, errors: string[]) {
   if (!hasText(node.scoreKey)) {
-    errors.push(`Flow ${flowLabel} score branch ${node.id} must include a scoreKey.`);
+    errors.push(
+      `O nó de ramificação de pontuação ${node.id} do fluxo ${flowLabel} precisa informar uma chave de pontuação (scoreKey).`,
+    );
   }
 
   if (!Array.isArray(node.branches) || node.branches.length === 0) {
-    errors.push(`Flow ${flowLabel} score branch ${node.id} must include branches.`);
+    errors.push(`O nó de ramificação de pontuação ${node.id} do fluxo ${flowLabel} precisa ter pelo menos uma faixa.`);
     return;
   }
 
   node.branches.forEach((branch) => {
     if (!hasText(branch.id) || typeof branch.min !== 'number' || typeof branch.max !== 'number') {
-      errors.push(`Flow ${flowLabel} score branch ${node.id} has an invalid branch.`);
+      errors.push(`O nó de ramificação de pontuação ${node.id} do fluxo ${flowLabel} tem uma faixa inválida.`);
       return;
     }
 
     if (!nodeIds.has(branch.next)) {
       errors.push(
-        `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} points to missing node ${branch.next}.`,
+        `A faixa ${branch.id} do nó de ramificação ${node.id}, no fluxo ${flowLabel}, aponta para um nó inexistente: ${branch.next}.`,
       );
     }
 
     if (branch.navigation !== undefined && !['/apoio', '/contatos', '/educacao'].includes(String(branch.navigation))) {
       errors.push(
-        `Flow ${flowLabel} score branch ${node.id} branch ${branch.id} navigation must be a supported destination.`,
+        `A faixa ${branch.id} do nó de ramificação ${node.id}, no fluxo ${flowLabel}, usa um destino de navegação não permitido.`,
       );
     }
   });
@@ -189,7 +193,9 @@ function validateScoreBranchNode(flowLabel: string, node: ScoreBranchFlowNode, n
 function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect, errors: string[]) {
   if (effect.kind === 'score') {
     if (!hasText(effect.scoreKey) || typeof effect.value !== 'number') {
-      errors.push(`Flow ${flowLabel} option ${optionId} score effect must include scoreKey and numeric value.`);
+      errors.push(
+        `O efeito de pontuação da opção ${optionId} do fluxo ${flowLabel} precisa informar uma chave de pontuação (scoreKey) e um valor numérico.`,
+      );
     }
     return;
   }
@@ -197,7 +203,7 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
   if (effect.kind === 'safety_interrupt') {
     if (!hasText(effect.message) || !hasText(effect.destination) || typeof effect.blockResume !== 'boolean') {
       errors.push(
-        `Flow ${flowLabel} option ${optionId} safety interrupt effect must include message, destination, and blockResume.`,
+        `O efeito de interrupção de segurança da opção ${optionId} do fluxo ${flowLabel} precisa informar mensagem, destino e se deve bloquear o retorno (blockResume).`,
       );
     }
     return;
@@ -210,7 +216,7 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
       !['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))
     ) {
       errors.push(
-        `Flow ${flowLabel} option ${optionId} deferred safety effect must include flagKey, message, and supported destination.`,
+        `O efeito de segurança adiada da opção ${optionId} do fluxo ${flowLabel} precisa informar a chave de sinalização (flagKey), mensagem e destino permitido.`,
       );
     }
     return;
@@ -218,26 +224,30 @@ function validateEffect(flowLabel: string, optionId: string, effect: FlowEffect,
 
   if (effect.kind === 'flow_start') {
     if (!hasText(effect.flowId)) {
-      errors.push(`Flow ${flowLabel} option ${optionId} flow_start effect must include flowId.`);
+      errors.push(
+        `O efeito de início de fluxo da opção ${optionId} do fluxo ${flowLabel} precisa informar o ID do fluxo de destino (flowId).`,
+      );
     }
     return;
   }
 
   if (effect.kind === 'navigate') {
     if (!['/apoio', '/contatos', '/educacao'].includes(String(effect.destination))) {
-      errors.push(`Flow ${flowLabel} option ${optionId} navigate effect must include a supported destination.`);
+      errors.push(
+        `O efeito de navegação da opção ${optionId} do fluxo ${flowLabel} precisa usar um destino permitido.`,
+      );
     }
     return;
   }
 
   if (effect.kind === 'end_flow') {
     if (!hasText(effect.message)) {
-      errors.push(`Flow ${flowLabel} option ${optionId} end_flow effect must include message.`);
+      errors.push(`O efeito de encerramento da opção ${optionId} do fluxo ${flowLabel} precisa informar uma mensagem.`);
     }
     return;
   }
 
   errors.push(
-    `Flow ${flowLabel} option ${optionId} has unsupported effect kind "${(effect as { kind: string }).kind}".`,
+    `A opção ${optionId} do fluxo ${flowLabel} contém um tipo de efeito não suportado: "${(effect as { kind: string }).kind}".`,
   );
 }

@@ -194,7 +194,7 @@ describe('validateFlow', () => {
 
     expect(validateFlow(invalidFlow)).toEqual({
       valid: false,
-      errors: ['Flow fixture-flow option missing points to missing node missing-node.'],
+      errors: ['A opção missing do fluxo fixture-flow aponta para um nó inexistente: missing-node.'],
     });
   });
 
@@ -215,13 +215,19 @@ describe('validateFlow', () => {
 
     expect(validateFlow(invalidFlow)).toEqual({
       valid: false,
-      errors: ['Flow fixture-flow choice node start freeText points to missing node missing-node.'],
+      errors: [
+        'A opção de texto livre do nó start, no fluxo fixture-flow, aponta para um nó inexistente: missing-node.',
+      ],
     });
   });
   it('returns validation errors for malformed JSON-shaped content instead of throwing', () => {
     expect(validateFlow({})).toEqual({
       valid: false,
-      errors: ['Flow id is required.', 'Flow entry is required.', 'Flow nodes are required.'],
+      errors: [
+        'O ID do fluxo é obrigatório.',
+        'A entrada do fluxo é obrigatória.',
+        'Os nós do fluxo são obrigatórios.',
+      ],
     });
   });
 
@@ -238,7 +244,7 @@ describe('validateFlow', () => {
     };
 
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow node key start must match node id different-start.',
+      'A chave do nó start no fluxo fixture-flow deve ser igual ao ID do nó different-start.',
     );
   });
 
@@ -250,7 +256,9 @@ describe('validateFlow', () => {
   });
 
   it('rejects invalid JSON-shaped flow content at the parser boundary', () => {
-    expect(() => parseGuidedFlow({ id: 'broken-flow' })).toThrow('Flow entry is required. Flow nodes are required.');
+    expect(() => parseGuidedFlow({ id: 'broken-flow' })).toThrow(
+      'A entrada do fluxo é obrigatória. Os nós do fluxo são obrigatórios.',
+    );
   });
 
   it('rejects score branch nodes with broken next references', () => {
@@ -270,7 +278,9 @@ describe('validateFlow', () => {
 
     expect(validateFlow(invalidFlow)).toEqual({
       valid: false,
-      errors: ['Flow scoring-flow score branch score-branch branch broken points to missing node missing-result.'],
+      errors: [
+        'A faixa broken do nó de ramificação score-branch, no fluxo scoring-flow, aponta para um nó inexistente: missing-result.',
+      ],
     });
   });
 
@@ -297,7 +307,9 @@ describe('validateFlow', () => {
 
     expect(validateFlow(invalidFlow)).toEqual({
       valid: false,
-      errors: ['Flow scoring-flow option bad score effect must include scoreKey and numeric value.'],
+      errors: [
+        'O efeito de pontuação da opção bad do fluxo scoring-flow precisa informar uma chave de pontuação (scoreKey) e um valor numérico.',
+      ],
     });
   });
 
@@ -318,7 +330,7 @@ describe('validateFlow', () => {
     };
 
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow purpose must be one of orientation_entry, post_flow_routing.',
+      'O propósito do fluxo fixture-flow deve ser um destes: orientation_entry, post_flow_routing.',
     );
   });
 
@@ -351,7 +363,7 @@ describe('validateFlow', () => {
     };
 
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option yes deferred safety effect must include flagKey, message, and supported destination.',
+      'O efeito de segurança adiada da opção yes do fluxo fixture-flow precisa informar a chave de sinalização (flagKey), mensagem e destino permitido.',
     );
   });
 
@@ -378,10 +390,10 @@ describe('validateFlow', () => {
     };
 
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option bad-start flow_start effect must include flowId.',
+      'O efeito de início de fluxo da opção bad-start do fluxo fixture-flow precisa informar o ID do fluxo de destino (flowId).',
     );
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option bad-start navigate effect must include a supported destination.',
+      'O efeito de navegação da opção bad-start do fluxo fixture-flow precisa usar um destino permitido.',
     );
   });
 
@@ -405,7 +417,7 @@ describe('validateFlow', () => {
     };
 
     expect(validateFlow(invalidFlow).errors).toContain(
-      'Flow fixture-flow option bad-kind has unsupported effect kind "flow_statr".',
+      'A opção bad-kind do fluxo fixture-flow contém um tipo de efeito não suportado: "flow_statr".',
     );
   });
 });
@@ -518,7 +530,7 @@ describe('flow runtime', () => {
     };
 
     expect(() => createInitialFlowStateFromRegistry([validFlow, invalidRegisteredFlow], 'fixture-flow')).toThrow(
-      'Flow second-flow option bad points to missing node missing.',
+      'A opção bad do fluxo second-flow aponta para um nó inexistente: missing.',
     );
   });
 
@@ -882,7 +894,7 @@ describe('flow runtime', () => {
     };
 
     expect(() => createInitialFlowStateFromRegistry([invalidFlow], 'fixture-flow')).toThrow(
-      'Flow fixture-flow option missing-flow starts missing flow missing-target.',
+      'A opção missing-flow do fluxo fixture-flow tenta iniciar um fluxo que não existe: missing-target.',
     );
   });
 
