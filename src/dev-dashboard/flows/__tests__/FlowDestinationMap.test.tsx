@@ -151,11 +151,13 @@ describe('FlowDestinationMap', () => {
   it('adds a final stage from the toolbar forwarding nodes and nodeOrder', async () => {
     const user = userEvent.setup();
     const ordered = { ...flow, nodeOrder: ['q1', 'result', 'orphan'] };
-    renderStatefulMap(ordered);
+    const { patches } = renderStatefulMap(ordered);
 
     await user.click(screen.getByRole('button', { name: 'Etapa' }));
     await user.click(screen.getByRole('button', { name: 'Final' }));
 
+    // Narrow structural patch carries exactly the keys addNode touched.
+    expect(Object.keys(patches.at(-1) ?? {})).toEqual(['nodes', 'nodeOrder']);
     expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
     const stats = screen.getByLabelText('Resumo estrutural');
     expect(stats).toHaveTextContent('4 etapas');
