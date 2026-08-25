@@ -20,6 +20,21 @@ function uniqueNodeId(flow: GuidedFlow): string {
   return candidate;
 }
 
+/** Smallest n ≥ 1 such that `${base}-copy-${n}` is free in `nodes`. */
+function copySuffixIndex(nodes: GuidedFlow['nodes'], base: string): number {
+  let index = 1;
+  while (nodes[`${base}-copy-${index}`]) {
+    index += 1;
+  }
+  return index;
+}
+
+function requireNode(flow: GuidedFlow, nodeId: string): FlowNode {
+  const node = flow.nodes[nodeId];
+  if (!node) throw new Error(`No such node: ${nodeId}`);
+  return node;
+}
+
 function createDefaultNode(id: string, kind: FlowNode['kind']): FlowNode {
   if (kind === 'choice') {
     return { id, kind: 'choice', text: '', options: [] };
@@ -72,4 +87,113 @@ export function addNode(
     nodeId,
     linked,
   };
+}
+
+/** Deep-copies a node's content, renaming option/branch ids with the same `-copy-N` suffix. */
+function deepCopyNode(source: FlowNode, newId: string, suffix: number): FlowNode {
+  const videos = source.videos?.map((video) => ({ ...video }));
+  if (source.kind === 'choice') {
+    return {
+      ...source,
+      id: newId,
+      ...(videos ? { videos } : {}),
+      options: source.options.map((option) => ({
+        ...option,
+        id: `${option.id}-copy-${suffix}`,
+        ...(option.effects ? { effects: option.effects.map((effect) => ({ ...effect })) } : {}),
+      })),
+      ...(source.freeText ? { freeText: { ...source.freeText } } : {}),
+    };
+  }
+  if (source.kind === 'score_branch') {
+    return {
+      ...source,
+      id: newId,
+      ...(videos ? { videos } : {}),
+      branches: source.branches.map((branch) => ({ ...branch, id: `${branch.id}-copy-${suffix}` })),
+    };
+  }
+  return {
+    ...source,
+    id: newId,
+    ...(videos ? { videos } : {}),
+    ...(source.recommendations ? { recommendations: [...source.recommendations] } : {}),
+  };
+}
+
+/**
+ * Returns a new flow plus the copy's id (`${nodeId}-copy-N`, first free N).
+ * Pure: never mutates inputs. Content is deep-copied with fresh option/branch
+ * ids sharing the node's N; no existing edge is repointed, so nothing
+ * references the copy.
+ */
+export function duplicateNode(flow: GuidedFlow, nodeId: string): { flow: GuidedFlow; newNodeId: string } {
+  const source = requireNode(flow, nodeId);
+  const suffix = copySuffixIndex(flow.nodes, nodeId);
+  const newNodeId = `${nodeId}-copy-${suffix}`;
+  const nodes: GuidedFlow['nodes'] = { ...flow.nodes, [newNodeId]: deepCopyNode(source, newNodeId, suffix) };
+
+  // Insert immediately after the original; append when nodeOrder lacks it.
+  let updatedOrder = flow.nodeOrder;
+  if (updatedOrder) {
+    const order = [...updatedOrder];
+    const index = order.indexOf(nodeId);
+    order.splice(index < 0 ? order.length : index + 1, 0, newNodeId);
+    updatedOrder = order;
+  }
+
+  return {
+    flow: updatedOrder ? { ...flow, nodes, nodeOrder: updatedOrder } : { ...flow, nodes },
+    newNodeId,
+  };
+}
+
+export interface BrokenLink {
+  sourceNodeId: string;
+  /** Set when the break is an option target. */
+  optionId?: string;
+  /** Set when the break is a score-branch target. */
+  branchId?: string;
+  via: 'option' | 'free-text' | 'branch';
+}
+
+/**
+ * Removes a node from the graph WITHOUT cleaning up inbound references: they
+ * stay pointing at the removed id (the map renders `Destino ausente` nodes and
+ * validation flags them), and every one is reported in `broken` instead.
+ * Removing the LAST remaining node is refused with `error: 'last-node'`.
+ * Deleting the entry node is permitted; validation handles it.
+ */
+export function deleteNode(
+  flow: GuidedFlow,
+  nodeId: string,
+): { flow: GuidedFlow; broken: BrokenLink[]; error?: 'last-node' } {
+  requireNode(flow, nodeId);
+  if (Object.keys(flow.nodes).length === 1) {
+    return { flow, broken: [], error: 'last-node' };
+  }
+
+  const broken: BrokenLink[] = [];
+  for (const node of Object.values(flow.nodes)) {
+    if (node.id === nodeId) continue; // self-references vanish with the node; only surviving links are reported
+    if (node.kind === 'choice') {
+      for (const option of node.options) {
+        if (option.next === nodeId) broken.push({ sourceNodeId: node.id, optionId: option.id, via: 'option' });
+      }
+      if (node.freeText?.next === nodeId) broken.push({ sourceNodeId: node.id, via: 'free-text' });
+    }
+    if (node.kind === 'score_branch') {
+      for (const branch of node.branches) {
+        if (branch.next === nodeId) broken.push({ sourceNodeId: node.id, branchId: branch.id, via: 'branch' });
+      }
+    }
+  }
+
+  const nodes: GuidedFlow['nodes'] = { ...flow.nodes };
+  delete nodes[nodeId];
+  let next: GuidedFlow = { ...flow, nodes };
+  if (next.nodeOrder) {
+    next = { ...next, nodeOrder: next.nodeOrder.filter((id) => id !== nodeId) };
+  }
+  return { flow: next, broken };
 }
