@@ -27,9 +27,10 @@ export function FlowMap({
    * here exactly once per request: a `nodeId` target forces the destination
    * canvas and closes settings; a node-less ('configuracoes') target opens the
    * settings panel. The destination map owns selection/scrolling and reports
-   * back via onFocusRequestApplied so mode toggles can't resurrect the link —
-   * which also means a request issued while the overview is showing survives
-   * until that canvas mounts and applies it.
+   * back via onFocusRequestApplied so mode toggles can't resurrect the link.
+   * Only a NODE target issued over the overview stays pending until that
+   * canvas mounts — a node-less target is fully applied on the spot (settings
+   * open) and never stashed, so nothing replays it later.
    */
   focusRequest?: MapFocusRequest | null;
 }) {
@@ -46,6 +47,16 @@ export function FlowMap({
   // keeps the request alive until it was actually seen).
   const [pendingFocusRequest, setPendingFocusRequest] = useState<MapFocusRequest | null>(null);
 
+  const isDestination = mode === 'destination';
+
+  // Latest mode, readable from the focus-request effect below WITHOUT adding
+  // `mode` to its deps: re-running that effect on mode toggles would re-stash
+  // an already-retired request and resurrect the deep-link.
+  const isDestinationRef = useRef(true);
+  useEffect(() => {
+    isDestinationRef.current = isDestination;
+  }, [isDestination]);
+
   useEffect(() => {
     // Consuming an externally-pushed request channel (validation summary
     // clicks arrive as props, not events here) — setState is the point.
@@ -59,6 +70,11 @@ export function FlowMap({
     } else {
       // Flow-level target: surface the settings panel.
       setSettingsOpen(true);
+      // Over the overview nothing would ever retire a stashed node-less
+      // request (no destination map mounts to call onFocusRequestApplied), so
+      // it would replay when that canvas later mounted. Opening settings IS
+      // the whole application — drop the payload unless the map can retire it.
+      if (!isDestinationRef.current) setPendingFocusRequest(null);
     }
   }, [focusRequest]);
 
@@ -67,8 +83,6 @@ export function FlowMap({
     setSettingsOpen(false);
     settingsTriggerRef.current?.focus();
   };
-
-  const isDestination = mode === 'destination';
 
   return (
     <section className="flow-visualizer relative" data-testid="flow-map-canvas">

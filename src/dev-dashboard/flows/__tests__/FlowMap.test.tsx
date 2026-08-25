@@ -81,6 +81,46 @@ describe('FlowMap', () => {
     expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
   });
 
+  it('applies a settings deep-link over the overview without replaying it on the destination', async () => {
+    const user = userEvent.setup();
+    const { view, props } = renderFlowMap();
+
+    await user.click(screen.getByRole('button', { name: /visão geral/i }));
+    view.rerender(<FlowMap {...props} focusRequest={{ requestId: 1 }} />);
+
+    // Applied right where it landed: the settings overlay opens over the
+    // overview (no destination map exists there to apply anything).
+    expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
+
+    // The user closes it again...
+    await user.click(screen.getByRole('button', { name: 'Configurações do fluxo' }));
+    expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+
+    // ...and mounting the destination canvas afterwards must NOT resurrect
+    // the retired request by spontaneously reopening settings.
+    await user.click(screen.getByRole('button', { name: /por destino/i }));
+    expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('flow-destination-map')).toBeInTheDocument();
+  });
+
+  it('still routes a settings deep-link through the destination map when it is showing', async () => {
+    const user = userEvent.setup();
+    const { view, props } = renderFlowMap();
+
+    // Destination mode: the map applies the node-less request itself —
+    // clearing any selection — and retires it via onFocusRequestApplied.
+    view.rerender(<FlowMap {...props} focusRequest={{ requestId: 1 }} />);
+    expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Configurações do fluxo' }));
+    expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+
+    // Retired means retired: mode toggles must not bring it back.
+    await user.click(screen.getByRole('button', { name: /visão geral/i }));
+    await user.click(screen.getByRole('button', { name: /por destino/i }));
+    expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+  });
+
   it('lands a node-level validation focusRequest with settings closed, once', async () => {
     const user = userEvent.setup();
     const originalScrollIntoView = Element.prototype.scrollIntoView;
