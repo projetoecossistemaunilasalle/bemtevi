@@ -482,7 +482,7 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'texto',
-        description: `revise o tipo de ${nodePrefix} no campo destacado.`,
+        description: `revise o tipo de ${nodePrefix} no painel da etapa.`,
       };
     }
 
@@ -491,7 +491,7 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'ramificacao',
-        description: `corrija a chave de pontuação de ${nodePrefix}.`,
+        description: `corrija a chave de pontuação de ${nodePrefix} no painel da etapa.`,
       };
     }
 
@@ -502,7 +502,7 @@ export function resolveFlowValidationTarget(
         flowId: flow.id,
         nodeId: node.id,
         section: 'ramificacao',
-        description: `corrija ${field.toLocaleLowerCase('pt-BR')} da faixa "${branchId}" em ${nodePrefix}.`,
+        description: `corrija ${field.toLocaleLowerCase('pt-BR')} da faixa "${branchId}" em ${nodePrefix} no painel da etapa.`,
       };
     }
 
@@ -513,7 +513,9 @@ export function resolveFlowValidationTarget(
           flowId: flow.id,
           nodeId: node.id,
           section: 'opcoes',
-          description: `abra Ações/Score da opção ${optionIndex + 1} de ${nodePrefix} e corrija o efeito indicado.`,
+          // Effects are edited inline under the option row in the panel, so
+          // the guidance names that surface instead of any legacy drawer.
+          description: `corrija o efeito indicado na opção ${optionIndex + 1} de ${nodePrefix} no painel da etapa.`,
         };
       }
     }
@@ -525,7 +527,7 @@ export function resolveFlowValidationTarget(
           flowId: flow.id,
           nodeId: node.id,
           section: 'midia',
-          description: `corrija o link do vídeo em ${nodePrefix}.`,
+          description: `corrija o link do vídeo em ${nodePrefix} no painel da etapa.`,
         };
       }
     }
@@ -534,7 +536,7 @@ export function resolveFlowValidationTarget(
       flowId: flow.id,
       nodeId: node.id,
       section: 'texto',
-      description: `revise ${nodePrefix} no Editor; o foco começa no primeiro campo da etapa.`,
+      description: `revise ${nodePrefix} no painel da etapa.`,
     };
   }
 
@@ -543,25 +545,26 @@ export function resolveFlowValidationTarget(
     return {
       flowId: flow.id,
       section: 'configuracoes',
-      description: 'abra a configuração inicial e corrija o uso do fluxo.',
+      description: 'abra as configurações do fluxo e corrija o uso.',
     };
   }
 
   if (pathParts[0] === 'entry' || hasEntryDiagnostic(normalizedMessage)) {
-    const pointsToMissingNode = normalizedMessage.includes('missing node') || normalizedMessage.includes('etapa ausente');
+    const pointsToMissingNode =
+      normalizedMessage.includes('missing node') || normalizedMessage.includes('etapa ausente');
     return {
       flowId: flow.id,
       section: 'configuracoes',
       description: pointsToMissingNode
-        ? 'abra a configuração de entrada e escolha uma primeira etapa existente.'
-        : 'abra a configuração de entrada e adicione uma frase válida.',
+        ? 'abra as configurações do fluxo e escolha uma primeira etapa existente.'
+        : 'abra as configurações do fluxo e adicione uma frase de entrada válida.',
     };
   }
 
   return {
     flowId: flow.id,
     section: 'configuracoes',
-    description: 'abra a configuração inicial do fluxo e revise o campo indicado na mensagem.',
+    description: 'abra as configurações do fluxo e revise o campo indicado na mensagem.',
   };
 }
 

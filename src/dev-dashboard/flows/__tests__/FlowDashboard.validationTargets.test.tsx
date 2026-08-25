@@ -61,7 +61,7 @@ describe('resolveFlowValidationTarget', () => {
     // Representative shape pin: targets carry ONLY map-routing fields — no
     // legacy editor anchors (ariaLabel/initialConfiguration) anywhere.
     expect(Object.keys(target ?? {}).sort()).toEqual(['description', 'flowId', 'nodeId', 'section']);
-    expect(target?.description).toContain('Ações/Score');
+    expect(target?.description).toContain('no painel da etapa');
   });
 
   it('maps branch and scoreKey issues to the ramificacao section', () => {
@@ -126,7 +126,7 @@ describe('FlowDashboard validation deep links', () => {
       // resolves to the map's Opções section for that stage.
       const item = screen
         .getAllByRole('listitem')
-        .find((candidate) => candidate.textContent?.includes('Ações/Score da opção 1'));
+        .find((candidate) => candidate.textContent?.includes('corrija o efeito indicado na opção 1'));
       expect(item).toBeDefined();
       await user.click(within(item as HTMLElement).getByRole('button', { name: /corrigir no mapa/i }));
 
