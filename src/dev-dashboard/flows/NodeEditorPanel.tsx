@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChoiceFlowNode, FlowEffect, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
+import type {
+  ChoiceFlowNode,
+  FlowEffect,
+  FlowNode,
+  FlowOption,
+  GuidedFlow,
+  ResultFlowNode,
+  ScoreBranch,
+  ScoreBranchFlowNode,
+} from '../../domain/flow-engine/types';
 import { deleteNode, duplicateNode, setEntryNode } from './flowMutations';
 import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import {
@@ -34,6 +43,29 @@ function uniqueOptionId(node: ChoiceFlowNode): string {
   while (node.options.some((option) => option.id === candidate)) {
     index += 1;
     candidate = `${node.id}-option-${index}`;
+  }
+  return candidate;
+}
+
+/** First free `${node.id}-faixa-N` within the branch list, same convention as switchNodeKind. */
+function uniqueBranchId(node: ScoreBranchFlowNode): string {
+  let index = node.branches.length + 1;
+  let candidate = `${node.id}-faixa-${index}`;
+  while (node.branches.some((branch) => branch.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-faixa-${index}`;
+  }
+  return candidate;
+}
+
+/** First free `${node.id}-video-N`, available to every node kind. */
+function uniqueVideoId(node: FlowNode): string {
+  const videos = node.videos ?? [];
+  let index = videos.length + 1;
+  let candidate = `${node.id}-video-${index}`;
+  while (videos.some((video) => video.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-video-${index}`;
   }
   return candidate;
 }
@@ -120,6 +152,71 @@ export function TargetSelect({
       {/* An empty value without allowEmpty is a caller bug, not "missing data" — don't render a bogus option. */}
       {!isRepresentable && value !== '' && <option value={value}>{`Destino ausente · ${value}`}</option>}
     </select>
+  );
+}
+
+/**
+ * Advisory-only YouTube detection for the video URL hint; authoritative URL
+ * validation stays in the flow summary (single source of truth).
+ */
+const YOUTUBE_URL_PATTERN = /youtube\.com|youtu\.be/i;
+
+const textFieldClassName =
+  'rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
+
+interface DraftTextFieldProps {
+  ariaLabel: string;
+  value: string;
+  /** Invoked at most once per blur and only when the draft differs from `value`. */
+  onCommit: (next: string) => void;
+}
+
+/** Single-line text field with a per-field draft sentinel; commits onBlur like option labels. */
+function DraftTextField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      aria-label={ariaLabel}
+      className={textFieldClassName}
+      value={draft ?? value}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setDraft(null);
+        if (draft !== null && draft !== value) onCommit(draft);
+      }}
+    />
+  );
+}
+
+interface DraftNumberFieldProps {
+  ariaLabel: string;
+  value: number;
+  /** Never receives NaN: empty or non-numeric drafts are ignored on blur. */
+  onCommit: (next: number) => void;
+}
+
+/**
+ * Number input that never emits NaN — same contract as the effects module's
+ * private EffectNumberField, addressed by aria-label for row-scoped fields.
+ */
+function DraftNumberField({ ariaLabel, value, onCommit }: DraftNumberFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      aria-label={ariaLabel}
+      className={textFieldClassName}
+      value={draft ?? String(value)}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setDraft(null);
+        const trimmed = draft?.trim() ?? '';
+        if (trimmed === '') return; // Number('') === 0, so guard before parsing.
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed) || parsed === value) return;
+        onCommit(parsed);
+      }}
+    />
   );
 }
 
@@ -351,6 +448,222 @@ function ChoiceOptionsSection({
   );
 }
 
+interface ScoreBranchSectionProps {
+  node: ScoreBranchFlowNode;
+  targets: FlowTopologyNode[];
+  /** Same one-commit-per-event contract as the panel-level handler below. */
+  onNodeChange: (update: (current: ScoreBranchFlowNode) => ScoreBranchFlowNode) => void;
+}
+
+/** Ramificação body: the score key plus one editable range row per branch. */
+function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionProps) {
+  /**
+   * Routes one branch-scoped edit through the node-level updater. The mapping
+   * runs against the LATEST branches at event time — never against this
+   * render's snapshot — and addresses rows by position so duplicate legacy ids
+   * can't fan a commit out to sibling rows. Exactly one commit per event.
+   */
+  const commitBranch = (index: number, update: (current: ScoreBranch) => ScoreBranch) =>
+    onNodeChange((current) => ({
+      ...current,
+      branches: current.branches.map((candidate, candidateIndex) =>
+        candidateIndex === index ? update(candidate) : candidate,
+      ),
+    }));
+
+  return (
+    <>
+      <DraftTextField
+        ariaLabel="Pontuação usada"
+        value={node.scoreKey}
+        onCommit={(scoreKey) => onNodeChange((current) => ({ ...current, scoreKey }))}
+      />
+      {node.branches.map((branch, index) => (
+        <div
+          key={branch.id}
+          data-testid={`branch-row-${index + 1}`}
+          className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
+        >
+          <div className="flex gap-2">
+            <DraftNumberField
+              ariaLabel={`De ${index + 1}`}
+              value={branch.min}
+              onCommit={(min) => commitBranch(index, (current) => ({ ...current, min }))}
+            />
+            <DraftNumberField
+              ariaLabel={`Até ${index + 1}`}
+              value={branch.max}
+              onCommit={(max) => commitBranch(index, (current) => ({ ...current, max }))}
+            />
+          </div>
+          {/* Selects don't blur reliably; commit the target immediately on change. */}
+          <TargetSelect
+            ariaLabel={`Destino da faixa ${index + 1}`}
+            value={branch.next}
+            onChange={(next) => commitBranch(index, (current) => ({ ...current, next }))}
+            nodes={targets}
+            allowEmpty
+          />
+          <button
+            type="button"
+            aria-label={`Remover faixa ${index + 1}`}
+            onClick={() =>
+              onNodeChange((current) => ({
+                ...current,
+                branches: current.branches.filter((_, candidateIndex) => candidateIndex !== index),
+              }))
+            }
+            className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
+          >
+            Remover faixa
+          </button>
+        </div>
+      ))}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() =>
+          onNodeChange((current) => ({
+            ...current,
+            branches: [...current.branches, { id: uniqueBranchId(current), min: 0, max: 0, next: '' }],
+          }))
+        }
+      >
+        Adicionar faixa
+      </Button>
+    </>
+  );
+}
+
+type MediaNodeChange = (update: (current: FlowNode) => FlowNode) => void;
+
+interface MediaSectionProps {
+  node: FlowNode;
+  /** Same one-commit-per-event contract as the panel-level handler below. */
+  onNodeChange: MediaNodeChange;
+}
+
+/** Mídia body: video rows for every kind, recommendations for result nodes only. */
+function MediaSection({ node, onNodeChange }: MediaSectionProps) {
+  const videos = node.videos ?? [];
+
+  return (
+    <>
+      {videos.map((video, index) => (
+        <div
+          key={video.id}
+          data-testid={`video-row-${index + 1}`}
+          className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
+        >
+          <DraftTextField
+            ariaLabel={`Título do vídeo ${index + 1}`}
+            value={video.title}
+            onCommit={(title) =>
+              onNodeChange((current) => ({
+                ...current,
+                videos: (current.videos ?? []).map((candidate, candidateIndex) =>
+                  candidateIndex === index ? { ...candidate, title } : candidate,
+                ),
+              }))
+            }
+          />
+          <div>
+            <DraftTextField
+              ariaLabel={`URL do vídeo ${index + 1}`}
+              value={video.url}
+              onCommit={(url) =>
+                onNodeChange((current) => ({
+                  ...current,
+                  videos: (current.videos ?? []).map((candidate, candidateIndex) =>
+                    candidateIndex === index ? { ...candidate, url } : candidate,
+                  ),
+                }))
+              }
+            />
+            {/* Advisory only; the summary owns authoritative URL validation. */}
+            {video.url !== '' && !YOUTUBE_URL_PATTERN.test(video.url) && (
+              <p className="mt-1 font-body-md text-xs text-on-surface-variant">Use um link completo do YouTube.</p>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label={`Remover vídeo ${index + 1}`}
+            onClick={() =>
+              onNodeChange((current) => {
+                const remaining = (current.videos ?? []).filter((_, candidateIndex) => candidateIndex !== index);
+                if (remaining.length === 0) {
+                  // Dropping the last video removes the key entirely.
+                  const { videos: _dropped, ...nodeWithoutVideos } = current;
+                  return nodeWithoutVideos;
+                }
+                return { ...current, videos: remaining };
+              })
+            }
+            className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
+          >
+            Remover vídeo
+          </button>
+        </div>
+      ))}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() =>
+          onNodeChange((current) => ({
+            ...current,
+            videos: [...(current.videos ?? []), { id: uniqueVideoId(current), title: '', url: '' }],
+          }))
+        }
+      >
+        Adicionar vídeo
+      </Button>
+      {node.kind === 'result' && <RecommendationsField node={node} onNodeChange={onNodeChange} />}
+    </>
+  );
+}
+
+interface RecommendationsFieldProps {
+  node: ResultFlowNode;
+  onNodeChange: MediaNodeChange;
+}
+
+/**
+ * One recommendation per line: displays the committed list joined by newlines
+ * and commits the draft split back into trimmed, non-empty lines. A no-op edit
+ * commits nothing; an emptied list drops the `recommendations` key entirely.
+ */
+function RecommendationsField({ node, onNodeChange }: RecommendationsFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const joined = (node.recommendations ?? []).join('\n');
+  return (
+    <textarea
+      aria-label="Recomendações da etapa final"
+      placeholder="Uma recomendação por linha."
+      className={`min-h-[80px] ${textFieldClassName}`}
+      value={draft ?? joined}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setDraft(null);
+        if (draft === null) return;
+        const nextLines = draft
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line !== '');
+        const currentLines = node.recommendations ?? [];
+        if (nextLines.length === currentLines.length && nextLines.every((line, i) => line === currentLines[i])) return;
+        onNodeChange((current) => {
+          if (current.kind !== 'result') return current; // narrowing guard, mirrors patchEffect
+          if (nextLines.length === 0) {
+            const { recommendations: _dropped, ...nodeWithoutRecommendations } = current;
+            return nodeWithoutRecommendations;
+          }
+          return { ...current, recommendations: nextLines };
+        });
+      }}
+    />
+  );
+}
+
 /**
  * Structured side panel that will replace the map inspector (integration is a
  * later task).
@@ -451,6 +764,25 @@ export function NodeEditorPanel({
     onFlowChange({ nodes: { ...flow.nodes, [nodeId]: update(currentNode) } });
   };
 
+  /** Score-branch twin of the choice channel above: same updater-at-event-time, one-commit-per-event contract. */
+  const handleScoreBranchNodeChange = (update: (current: ScoreBranchFlowNode) => ScoreBranchFlowNode) => {
+    const currentNode = flow.nodes[nodeId];
+    if (currentNode?.kind !== 'score_branch') return;
+    onFlowChange({ nodes: { ...flow.nodes, [nodeId]: update(currentNode) } });
+  };
+
+  /**
+   * Kind-agnostic media channel (videos on every kind, recommendations on
+   * results): resolves the UPDATER against the flow props current at event
+   * time and emits one narrow `{nodes}` patch per user event, like the
+   * kind-scoped channels above.
+   */
+  const handleNodeMediaChange = (update: (current: FlowNode) => FlowNode) => {
+    const currentNode = flow.nodes[nodeId];
+    if (!currentNode) return;
+    onFlowChange({ nodes: { ...flow.nodes, [nodeId]: update(currentNode) } });
+  };
+
   return (
     <div
       ref={containerRef}
@@ -514,12 +846,16 @@ export function NodeEditorPanel({
           />
         </section>
       )}
-      {/* Placeholder sections for later tasks; Task 10 fills in their fields. */}
-      <section data-section="ramificacao">
-        <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
-      </section>
-      <section data-section="midia">
+      {node.kind === 'score_branch' && (
+        <section data-section="ramificacao" className="flex flex-col gap-2">
+          <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
+          <ScoreBranchSection node={node} targets={topology.nodes} onNodeChange={handleScoreBranchNodeChange} />
+        </section>
+      )}
+      {/* Mídia stays renderable for every kind: the add-video affordance is always available. */}
+      <section data-section="midia" className="flex flex-col gap-2">
         <h3 className="font-label-sm text-xs text-on-surface-variant">Mídia</h3>
+        <MediaSection node={node} onNodeChange={handleNodeMediaChange} />
       </section>
 
       <div className="mt-auto flex flex-col gap-2 pt-2">

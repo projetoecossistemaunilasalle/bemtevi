@@ -3,7 +3,15 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { NodeEditorPanel, TargetSelect } from '../NodeEditorPanel';
-import type { ChoiceFlowNode, FlowEffect, GuidedFlow, ResultFlowNode } from '../../../domain/flow-engine/types';
+import type {
+  ChoiceFlowNode,
+  FlowEffect,
+  FlowNode,
+  GuidedFlow,
+  OrientationVideo,
+  ResultFlowNode,
+  ScoreBranchFlowNode,
+} from '../../../domain/flow-engine/types';
 
 const choiceNode: ChoiceFlowNode = {
   id: 'q1',
@@ -772,5 +780,369 @@ describe('NodeEditorPanel opções', () => {
       expect(applied.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'foco', value: 1 }]);
       expect(applied.options[1]?.effects).toEqual([{ kind: 'navigate', destination: '/contatos' }]);
     });
+  });
+});
+
+describe('NodeEditorPanel ramificação', () => {
+  /** Unreachable choice node so faixa targets have a third selectable id. */
+  const lostTargetNode: ChoiceFlowNode = {
+    id: 'alvo',
+    kind: 'choice',
+    text: 'Alvo',
+    options: [{ id: 'alvo-option-1', label: 'Seguir', next: 'fim' }],
+  };
+
+  function createScoreBranchFlow(
+    { branchIds = ['r1-faixa-1', 'r1-faixa-2'] } = {} as { branchIds?: [string, string] },
+  ): GuidedFlow {
+    const r1: ScoreBranchFlowNode = {
+      id: 'r1',
+      kind: 'score_branch',
+      text: 'Ramificação por pontuação',
+      scoreKey: 'pontuacao',
+      branches: [
+        { id: branchIds[0], min: 0, max: 5, next: 'fim' },
+        { id: branchIds[1], min: 6, max: 10, next: 'q1' },
+      ],
+    };
+    return createFlow({
+      entry: { nodeId: 'r1', enteringPhrases: [], transitionMessage: '' },
+      nodes: { r1, alvo: lostTargetNode, q1: choiceNode, fim: resultNode },
+      nodeOrder: ['r1', 'alvo', 'q1', 'fim'],
+    });
+  }
+
+  function renderScorePanel(flow: GuidedFlow = createScoreBranchFlow()) {
+    const props = makePanelProps(flow, 'r1');
+    render(<NodeEditorPanel {...props} />);
+    return props;
+  }
+
+  /** Host that applies patches like the real map does, recording every commit. */
+  function renderStatefulScorePanel(initialFlow: GuidedFlow) {
+    const history: Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }> = [];
+    function Host() {
+      const [flow, setFlow] = useState(initialFlow);
+      return (
+        <NodeEditorPanel
+          {...makePanelProps(flow, 'r1', {
+            flows: [flow],
+            onFlowChange: (patch) => {
+              const applied = { ...flow, ...patch };
+              history.push({ patch, applied });
+              setFlow(applied);
+            },
+          })}
+        />
+      );
+    }
+    render(<Host />);
+    return history;
+  }
+
+  function patchedScoreBranchNode(patch: Partial<GuidedFlow>, nodeId = 'r1'): ScoreBranchFlowNode {
+    const node = patch.nodes?.[nodeId];
+    if (!node || node.kind !== 'score_branch') throw new Error(`expected a score_branch node patch for ${nodeId}`);
+    return node;
+  }
+
+  it('renders the score key plus De/Até/Destino fields for every faixa', () => {
+    renderScorePanel();
+
+    expect(screen.getByLabelText('Pontuação usada')).toHaveValue('pontuacao');
+    expect(screen.getByLabelText('De 1')).toHaveValue(0);
+    expect(screen.getByLabelText('Até 1')).toHaveValue(5);
+    expect(screen.getByRole('combobox', { name: 'Destino da faixa 1' })).toHaveValue('fim');
+    expect(screen.getByLabelText('De 2')).toHaveValue(6);
+    expect(screen.getByLabelText('Até 2')).toHaveValue(10);
+    expect(screen.getByRole('combobox', { name: 'Destino da faixa 2' })).toHaveValue('q1');
+    expect(screen.getByRole('button', { name: 'Remover faixa 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remover faixa 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adicionar faixa' })).toBeInTheDocument();
+  });
+
+  it('commits a Pontuação usada edit on blur with a whole-node payload', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    const input = screen.getByLabelText('Pontuação usada');
+    await user.clear(input);
+    await user.type(input, 'risco');
+    await user.tab();
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    expect(node.text).toBe('Ramificação por pontuação');
+    expect(node.scoreKey).toBe('risco');
+    expect(node.branches).toHaveLength(2); // untouched by the key edit
+  });
+
+  it('commits De/Até as numeric payloads and ignores non-numeric drafts', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulScorePanel(createScoreBranchFlow());
+
+    const deInput = screen.getByLabelText('De 2');
+    await user.clear(deInput);
+    await user.type(deInput, '9');
+    await user.tab();
+
+    expect(history).toHaveLength(1);
+    const branch = patchedScoreBranchNode(history[0].patch).branches[1];
+    expect(branch?.min).toBe(9);
+    expect(branch && typeof branch.min === 'number').toBe(true);
+
+    // Non-numeric drafts never reach the payload.
+    await user.clear(deInput);
+    await user.type(deInput, 'abc');
+    await user.tab();
+    expect(history).toHaveLength(1); // no new commit
+    expect(patchedScoreBranchNode(history[0].patch).branches[1]?.min).toBe(9);
+  });
+
+  it('adds a zeroed faixa using the first free sequential id', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    await user.click(screen.getByRole('button', { name: 'Adicionar faixa' }));
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    expect(node.branches).toHaveLength(3);
+    expect(node.branches[2]).toEqual({ id: 'r1-faixa-3', min: 0, max: 0, next: '' });
+  });
+
+  it('skips taken faixa ids when appending', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel(createScoreBranchFlow({ branchIds: ['r1-faixa-1', 'r1-faixa-3'] }));
+    await user.click(screen.getByRole('button', { name: 'Adicionar faixa' }));
+
+    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    expect(node.branches[2]?.id).toBe('r1-faixa-4');
+  });
+
+  it('removes only the clicked faixa row', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    await user.click(screen.getByRole('button', { name: 'Remover faixa 1' }));
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    expect(node.branches).toHaveLength(1);
+    expect(node.branches[0]?.id).toBe('r1-faixa-2');
+  });
+
+  it('patches only the chosen faixa target when a select changes', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da faixa 1' }), 'alvo');
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    expect(node.branches[0]?.next).toBe('alvo');
+    expect(node.branches[1]?.next).toBe('q1'); // sibling untouched
+  });
+
+  it('routes successive faixa edits through the updater so each commit builds on the latest node', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulScorePanel(createScoreBranchFlow());
+
+    const keyInput = screen.getByLabelText('Pontuação usada');
+    await user.clear(keyInput);
+    await user.type(keyInput, 'risco');
+    await user.tab();
+    expect(history).toHaveLength(1);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da faixa 2' }), 'alvo');
+    expect(history).toHaveLength(2);
+
+    const second = patchedScoreBranchNode(history[1].patch);
+    expect(second.scoreKey).toBe('risco'); // composed over the prior commit
+    expect(second.branches[1]).toMatchObject({ id: 'r1-faixa-2', min: 6, max: 10, next: 'alvo' });
+  });
+
+  it('renders no ramificação section for non-score_branch nodes', () => {
+    const { container } = render(<NodeEditorPanel {...makePanelProps(createFlow(), 'q1')} />);
+
+    expect(container.querySelector('[data-section="ramificacao"]')).toBeNull();
+    expect(screen.queryByLabelText('Pontuação usada')).not.toBeInTheDocument();
+  });
+});
+
+describe('NodeEditorPanel mídia', () => {
+  const videoA: OrientationVideo = {
+    id: 'fim-video-1',
+    title: 'Respiração',
+    url: 'https://www.youtube.com/watch?v=abc',
+  };
+  const videoB: OrientationVideo = { id: 'fim-video-2', title: 'Sono', url: 'https://youtu.be/xyz' };
+
+  function createMediaFlow(nodeOverrides: Partial<ResultFlowNode> = {}): GuidedFlow {
+    const fim: ResultFlowNode = { ...resultNode, ...nodeOverrides };
+    return createFlow({ nodes: { q1: choiceNode, fim }, nodeOrder: ['q1', 'fim'] });
+  }
+
+  function renderMediaPanel(flow: GuidedFlow = createMediaFlow(), nodeId = 'fim') {
+    const props = makePanelProps(flow, nodeId);
+    render(<NodeEditorPanel {...props} />);
+    return props;
+  }
+
+  /** Host that applies patches like the real map does, recording every commit. */
+  function renderStatefulMediaPanel(initialFlow: GuidedFlow, nodeId = 'fim') {
+    const history: Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }> = [];
+    function Host() {
+      const [flow, setFlow] = useState(initialFlow);
+      return (
+        <NodeEditorPanel
+          {...makePanelProps(flow, nodeId, {
+            flows: [flow],
+            onFlowChange: (patch) => {
+              const applied = { ...flow, ...patch };
+              history.push({ patch, applied });
+              setFlow(applied);
+            },
+          })}
+        />
+      );
+    }
+    render(<Host />);
+    return history;
+  }
+
+  function patchedNode(patch: Partial<GuidedFlow>, nodeId = 'fim'): FlowNode {
+    const node = patch.nodes?.[nodeId];
+    if (!node) throw new Error(`expected a node patch for ${nodeId}`);
+    return node;
+  }
+
+  function patchedResultNode(patch: Partial<GuidedFlow>, nodeId = 'fim'): ResultFlowNode {
+    const node = patch.nodes?.[nodeId];
+    if (!node || node.kind !== 'result') throw new Error(`expected a result node patch for ${nodeId}`);
+    return node;
+  }
+
+  it('shows only the add button while the node has no videos', () => {
+    renderMediaPanel();
+
+    expect(screen.queryByLabelText(/Título do vídeo/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/URL do vídeo/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adicionar vídeo' })).toBeInTheDocument();
+  });
+
+  it('renders title/url rows for existing videos without hinting YouTube links', () => {
+    renderMediaPanel(createMediaFlow({ videos: [videoA, videoB] }));
+
+    expect(screen.getByLabelText('Título do vídeo 1')).toHaveValue('Respiração');
+    expect(screen.getByLabelText('URL do vídeo 1')).toHaveValue(videoA.url);
+    expect(screen.getByLabelText('Título do vídeo 2')).toHaveValue('Sono');
+    expect(screen.getByLabelText('URL do vídeo 2')).toHaveValue(videoB.url);
+    expect(screen.getByRole('button', { name: 'Remover vídeo 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remover vídeo 2' })).toBeInTheDocument();
+    // youtube.com and youtu.be links never trigger the advisory hint.
+    expect(screen.queryByText('Use um link completo do YouTube.')).not.toBeInTheDocument();
+  });
+
+  it('round-trips videos through the updater and drops the key when the last one goes', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulMediaPanel(createMediaFlow());
+
+    await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
+    expect(history).toHaveLength(1);
+    expect(patchedNode(history[0].patch).videos).toEqual([{ id: 'fim-video-1', title: '', url: '' }]);
+
+    await user.type(screen.getByLabelText('Título do vídeo 1'), 'Vídeo útil');
+    await user.tab();
+    expect(history).toHaveLength(2);
+    expect(patchedNode(history[1].patch).videos?.[0]).toEqual({
+      id: 'fim-video-1',
+      title: 'Vídeo útil',
+      url: '',
+    });
+
+    await user.type(screen.getByLabelText('URL do vídeo 1'), 'https://example.com/apoio');
+    await user.tab();
+    expect(history).toHaveLength(3);
+    expect(patchedNode(history[2].patch).videos?.[0]?.url).toBe('https://example.com/apoio');
+
+    await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
+    expect(patchedNode(history[3].patch).videos?.[1]?.id).toBe('fim-video-2');
+
+    await user.click(screen.getByRole('button', { name: 'Remover vídeo 1' }));
+    expect(history).toHaveLength(5);
+    expect(patchedNode(history[4].patch).videos).toEqual([{ id: 'fim-video-2', title: '', url: '' }]);
+
+    await user.click(screen.getByRole('button', { name: 'Remover vídeo 1' }));
+    expect(history).toHaveLength(6);
+    expect(patchedNode(history[5].patch)).not.toHaveProperty('videos'); // last removal drops the key entirely
+  });
+
+  it('shows the YouTube hint only for non-empty non-YouTube URLs', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulMediaPanel(
+      createMediaFlow({ videos: [{ id: 'fim-video-1', title: 'Dica', url: 'https://example.com/x' }] }),
+    );
+
+    expect(screen.getByText('Use um link completo do YouTube.')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('URL do vídeo 1'));
+    await user.type(screen.getByLabelText('URL do vídeo 1'), 'https://youtu.be/z9');
+    await user.tab();
+
+    expect(history).toHaveLength(1);
+    expect(patchedNode(history[0].patch).videos?.[0]?.url).toBe('https://youtu.be/z9');
+    expect(screen.queryByText('Use um link completo do YouTube.')).not.toBeInTheDocument();
+  });
+
+  it('hides the hint while the URL field is empty', () => {
+    renderMediaPanel(createMediaFlow({ videos: [{ id: 'fim-video-1', title: '', url: '' }] }));
+
+    expect(screen.queryByText('Use um link completo do YouTube.')).not.toBeInTheDocument();
+  });
+
+  it('splits recommendations one per line and joins them back for display', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulMediaPanel(createMediaFlow({ recommendations: ['Durma bem', 'Procure apoio'] }));
+    const textarea = screen.getByLabelText('Recomendações da etapa final');
+
+    expect(textarea).toHaveValue('Durma bem\nProcure apoio'); // joined back for display
+    expect(textarea).toHaveAttribute('placeholder', 'Uma recomendação por linha.');
+
+    await user.type(textarea, '\nFale com alguém de confiança');
+    await user.tab();
+
+    expect(history).toHaveLength(1);
+    expect(patchedResultNode(history[0].patch).recommendations).toEqual([
+      'Durma bem',
+      'Procure apoio',
+      'Fale com alguém de confiança',
+    ]);
+
+    // Blank lines are dropped and neighbors trimmed on the next commit.
+    await user.clear(textarea);
+    await user.type(textarea, 'a\n\n b ');
+    await user.tab();
+    expect(history).toHaveLength(2);
+    expect(patchedResultNode(history[1].patch).recommendations).toEqual(['a', 'b']);
+  });
+
+  it('drops the recommendations key entirely when every line is removed', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulMediaPanel(createMediaFlow({ recommendations: ['Só uma linha'] }));
+
+    await user.clear(screen.getByLabelText('Recomendações da etapa final'));
+    await user.tab();
+
+    expect(history).toHaveLength(1);
+    expect(patchedResultNode(history[0].patch)).not.toHaveProperty('recommendations');
+  });
+
+  it('omits recommendations for non-result nodes but keeps the video affordance everywhere', async () => {
+    const user = userEvent.setup();
+    const props = renderMediaPanel(createMediaFlow(), 'q1');
+
+    expect(screen.queryByLabelText('Recomendações da etapa final')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adicionar vídeo' })).toBeInTheDocument(); // mídia works on choices too
+
+    await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    expect(patchedNode(lastPatch(props.onFlowChange), 'q1').videos).toEqual([{ id: 'q1-video-1', title: '', url: '' }]);
   });
 });
