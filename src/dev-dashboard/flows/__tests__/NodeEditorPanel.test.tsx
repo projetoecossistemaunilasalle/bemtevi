@@ -67,6 +67,54 @@ function lastPatch(mock: PanelProps['onFlowChange']): Partial<GuidedFlow> {
   return calls.at(-1)?.[0] as Partial<GuidedFlow>;
 }
 
+type PatchHistory = Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }>;
+
+/**
+ * Shared host for multi-commit scenarios: applies patches like the real map
+ * does, recording every commit so later events must compose over earlier ones.
+ */
+function renderStatefulPanel(
+  initialFlow: GuidedFlow,
+  nodeId = 'q1',
+  opts: { flows?: GuidedFlow[] } = {},
+): PatchHistory {
+  const history: PatchHistory = [];
+  function Host() {
+    const [flow, setFlow] = useState(initialFlow);
+    return (
+      <NodeEditorPanel
+        {...makePanelProps(flow, nodeId, {
+          flows: opts.flows ?? [flow],
+          onFlowChange: (patch) => {
+            const applied = { ...flow, ...patch };
+            history.push({ patch, applied });
+            setFlow(applied);
+          },
+        })}
+      />
+    );
+  }
+  render(<Host />);
+  return history;
+}
+
+const isChoiceNode = (node: FlowNode): node is ChoiceFlowNode => node.kind === 'choice';
+const isScoreBranchNode = (node: FlowNode): node is ScoreBranchFlowNode => node.kind === 'score_branch';
+const isResultNode = (node: FlowNode): node is ResultFlowNode => node.kind === 'result';
+
+/** Extracts the patched node from a commit; `predicate` narrows the payload by kind. */
+function patchedNodeOf<T extends FlowNode>(
+  patch: Partial<GuidedFlow>,
+  nodeId: string,
+  predicate?: (node: FlowNode) => node is T,
+): T {
+  const node = patch.nodes?.[nodeId];
+  if (!node || (predicate && !predicate(node))) {
+    throw new Error(`expected a${predicate ? ' matching' : ''} node patch for ${nodeId}`);
+  }
+  return node;
+}
+
 /** Flow where "alvo" receives inbound option(s) from "origem". */
 function createBranchyFlow(inboundOptionCount = 1): GuidedFlow {
   return createFlow({
@@ -325,34 +373,6 @@ describe('NodeEditorPanel opções', () => {
     return props;
   }
 
-  /** Host that applies patches like the real map does, recording every commit. */
-  function renderStatefulChoicePanel(initialFlow: GuidedFlow, flows?: GuidedFlow[]) {
-    const history: Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }> = [];
-    function Host() {
-      const [flow, setFlow] = useState(initialFlow);
-      return (
-        <NodeEditorPanel
-          {...makePanelProps(flow, 'q1', {
-            flows: flows ?? [flow],
-            onFlowChange: (patch) => {
-              const applied = { ...flow, ...patch };
-              history.push({ patch, applied });
-              setFlow(applied);
-            },
-          })}
-        />
-      );
-    }
-    render(<Host />);
-    return history;
-  }
-
-  function patchedChoiceNode(patch: Partial<GuidedFlow>, nodeId = 'q1'): ChoiceFlowNode {
-    const node = patch.nodes?.[nodeId];
-    if (!node || node.kind !== 'choice') throw new Error(`expected a choice node patch for ${nodeId}`);
-    return node;
-  }
-
   it('renders one labeled input and one target select per option with grouped targets', () => {
     renderChoicePanel();
 
@@ -387,7 +407,7 @@ describe('NodeEditorPanel opções', () => {
     await user.tab();
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.text).toBe('Como você está?');
     expect(node.options[0]).toMatchObject({ id: 'q1-option-1', label: 'Tudo certo', next: 'fim' });
     expect(node.options[1]?.label).toBe('Mais ou menos');
@@ -399,7 +419,7 @@ describe('NodeEditorPanel opções', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da opção 2' }), 'perdido');
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.options[1]?.next).toBe('perdido');
     expect(node.options[0]?.next).toBe('fim');
   });
@@ -413,7 +433,7 @@ describe('NodeEditorPanel opções', () => {
     expect(within(select).getByRole('option', { name: 'Destino ausente · fantasma' })).toBeInTheDocument();
 
     await user.selectOptions(select, 'fim');
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.options[0]?.next).toBe('fim');
   });
 
@@ -423,7 +443,7 @@ describe('NodeEditorPanel opções', () => {
     await user.click(screen.getByRole('button', { name: 'Adicionar opção' }));
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.options).toHaveLength(3);
     expect(node.options[2]).toEqual({ id: 'q1-option-3', label: '', next: '' });
     expect(node.options[0]).toMatchObject({ id: 'q1-option-1', label: 'Ok', next: 'fim' });
@@ -434,7 +454,7 @@ describe('NodeEditorPanel opções', () => {
     const props = renderChoicePanel(createChoiceFlow({ optionIds: ['q1-option-1', 'q1-option-3'] }));
     await user.click(screen.getByRole('button', { name: 'Adicionar opção' }));
 
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.options[2]?.id).toBe('q1-option-4');
   });
 
@@ -444,25 +464,25 @@ describe('NodeEditorPanel opções', () => {
     await user.click(screen.getByRole('button', { name: 'Remover opção 1' }));
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.options).toHaveLength(1);
     expect(node.options[0]?.id).toBe('q1-option-2');
   });
 
   it('routes successive option edits through the updater so each commit builds on the latest node', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulChoicePanel(createChoiceFlow());
+    const history = renderStatefulPanel(createChoiceFlow());
 
     // Event 1: label edit on option 1 → exactly one commit.
     await user.type(screen.getByRole('textbox', { name: 'Rótulo da opção 1' }), '!');
     await user.tab();
     expect(history).toHaveLength(1);
-    expect(patchedChoiceNode(history[0].patch).options[0]?.label).toBe('Ok!');
+    expect(patchedNodeOf(history[0].patch, 'q1', isChoiceNode).options[0]?.label).toBe('Ok!');
 
     // Event 2: a different field, committed from the state event 1 produced.
     await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da opção 2' }), 'perdido');
     expect(history).toHaveLength(2);
-    const second = patchedChoiceNode(history[1].patch);
+    const second = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);
     expect(second.options[0]?.label).toBe('Ok!'); // composed over the prior commit
     expect(second.options[1]?.next).toBe('perdido');
   });
@@ -472,7 +492,7 @@ describe('NodeEditorPanel opções', () => {
     const props = renderChoicePanel();
     await user.click(screen.getByRole('checkbox', { name: 'Aceitar resposta livre' }));
 
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.freeText).toEqual({ next: '' });
     expect(node.options).toHaveLength(2);
   });
@@ -485,7 +505,7 @@ describe('NodeEditorPanel opções', () => {
 
     await user.click(checkbox);
 
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node).not.toHaveProperty('freeText');
   });
 
@@ -497,7 +517,7 @@ describe('NodeEditorPanel opções', () => {
 
     await user.selectOptions(select, 'perdido');
 
-    const node = patchedChoiceNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'q1', isChoiceNode);
     expect(node.freeText).toEqual({ next: 'perdido' });
   });
 
@@ -510,7 +530,7 @@ describe('NodeEditorPanel opções', () => {
 
   it('editing an option label then the texto field commits both payloads without clobbering', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulChoicePanel(createChoiceFlow());
+    const history = renderStatefulPanel(createChoiceFlow());
 
     await user.type(screen.getByRole('textbox', { name: 'Rótulo da opção 1' }), '!');
     await user.click(screen.getByRole('textbox', { name: /texto da etapa/i }));
@@ -521,11 +541,11 @@ describe('NodeEditorPanel opções', () => {
     await user.tab();
 
     expect(history).toHaveLength(2);
-    const labelNode = patchedChoiceNode(history[0].patch);
+    const labelNode = patchedNodeOf(history[0].patch, 'q1', isChoiceNode);
     expect(labelNode.options[0]?.label).toBe('Ok!');
     expect(labelNode.text).toBe('Como você está?'); // label commit carries the untouched text
 
-    const textNode = patchedChoiceNode(history[1].patch);
+    const textNode = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);
     expect(textNode.text).toBe('Como você está??'); // textarea was not reset by the label commit
     expect(textNode.options[0]?.label).toBe('Ok!'); // text commit carries the committed label
   });
@@ -564,18 +584,18 @@ describe('NodeEditorPanel opções', () => {
 
     it.each(EFFECT_DEFAULTS)('appends the exact $kind default from the add-effect menu', async ({ kind, expected }) => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, kind);
 
       expect(history).toHaveLength(1);
-      const node = patchedChoiceNode(history[0].patch);
+      const node = patchedNodeOf(history[0].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([expected]);
       expect(node.options[1]?.effects).toBeUndefined();
     });
 
     it('lists only kinds missing from the option, always keeping score available', async () => {
       const user = userEvent.setup();
-      renderStatefulChoicePanel(createChoiceFlow());
+      renderStatefulPanel(createChoiceFlow());
 
       const menu = () => screen.getByRole('combobox', { name: 'Adicionar efeito à opção 1' });
       // Before anything is added, every kind is offered.
@@ -599,12 +619,12 @@ describe('NodeEditorPanel opções', () => {
 
     it('allows several score effects on the same option', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'score');
       await addEffectFromMenu(user, 1, 'score');
 
       expect(history).toHaveLength(2);
-      const node = patchedChoiceNode(history[1].patch);
+      const node = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([
         { kind: 'score', scoreKey: 'pontuacao', value: 1 },
         { kind: 'score', scoreKey: 'pontuacao', value: 1 },
@@ -613,7 +633,7 @@ describe('NodeEditorPanel opções', () => {
 
     it('commits score edits as numbers and ignores non-numeric drafts', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'score');
 
       const row = optionRow(1);
@@ -623,7 +643,7 @@ describe('NodeEditorPanel opções', () => {
       await user.tab();
 
       expect(history).toHaveLength(2);
-      const effect = patchedChoiceNode(history[1].patch).options[0]?.effects?.[0];
+      const effect = patchedNodeOf(history[1].patch, 'q1', isChoiceNode).options[0]?.effects?.[0];
       expect(effect).toEqual({ kind: 'score', scoreKey: 'pontuacao', value: 3 });
       expect(effect?.kind === 'score' && typeof effect.value === 'number').toBe(true);
 
@@ -632,7 +652,7 @@ describe('NodeEditorPanel opções', () => {
       await user.type(valorInput, 'abc');
       await user.tab();
       expect(history).toHaveLength(2); // no new commit
-      expect(patchedChoiceNode(history[1].patch).options[0]?.effects?.[0]).toEqual({
+      expect(patchedNodeOf(history[1].patch, 'q1', isChoiceNode).options[0]?.effects?.[0]).toEqual({
         kind: 'score',
         scoreKey: 'pontuacao',
         value: 3,
@@ -641,7 +661,7 @@ describe('NodeEditorPanel opções', () => {
 
     it('removes an effect from its chip without touching sibling rows', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'score');
       await addEffectFromMenu(user, 2, 'navigate');
 
@@ -655,7 +675,7 @@ describe('NodeEditorPanel opções', () => {
       await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (navigate) da opção 2' }));
 
       expect(history).toHaveLength(3);
-      const node = patchedChoiceNode(history[2].patch);
+      const node = patchedNodeOf(history[2].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'pontuacao', value: 1 }]);
       expect(node.options[1]).not.toHaveProperty('effects'); // last chip drops the key entirely
     });
@@ -665,7 +685,7 @@ describe('NodeEditorPanel opções', () => {
       const flow = createChoiceFlow();
       const q1 = flow.nodes.q1;
       if (q1.kind === 'choice') q1.options[0].effects = [{ kind: 'score', scoreKey: 'foco', value: 1 }];
-      const history = renderStatefulChoicePanel(flow);
+      const history = renderStatefulPanel(flow);
 
       await addEffectFromMenu(user, 1, 'score');
       const row = optionRow(1);
@@ -676,13 +696,15 @@ describe('NodeEditorPanel opções', () => {
       await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (score) da opção 1' }));
 
       expect(history).toHaveLength(2);
-      const node = patchedChoiceNode(history[1].patch);
+      const node = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'pontuacao', value: 1 }]);
     });
 
     it('lists real flow titles in the flow_start destination select and commits the choice', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow(), [createChoiceFlow(), createSecondaryFlow()]);
+      const history = renderStatefulPanel(createChoiceFlow(), 'q1', {
+        flows: [createChoiceFlow(), createSecondaryFlow()],
+      });
       await addEffectFromMenu(user, 1, 'flow_start');
 
       const select = within(optionRow(1)).getByRole('combobox', { name: 'Fluxo de destino' });
@@ -691,13 +713,13 @@ describe('NodeEditorPanel opções', () => {
       expect(within(select).getByRole('option', { name: 'Fluxo de apoio (flow-2)' })).toBeInTheDocument();
 
       await user.selectOptions(select, 'flow-2');
-      const effect = patchedChoiceNode(history[1].patch).options[0]?.effects?.[0];
+      const effect = patchedNodeOf(history[1].patch, 'q1', isChoiceNode).options[0]?.effects?.[0];
       expect(effect).toEqual({ kind: 'flow_start', flowId: 'flow-2' });
     });
 
     it('limits destination selects to the three supported areas', async () => {
       const user = userEvent.setup();
-      renderStatefulChoicePanel(createChoiceFlow());
+      renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'safety_interrupt');
       await addEffectFromMenu(user, 2, 'navigate');
 
@@ -712,7 +734,7 @@ describe('NodeEditorPanel opções', () => {
 
     it('applies consecutive safety_interrupt field edits one commit per event', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'safety_interrupt');
 
       const row = optionRow(1);
@@ -726,7 +748,7 @@ describe('NodeEditorPanel opções', () => {
       await user.selectOptions(within(row).getByLabelText('Destino'), '/educacao');
       expect(history).toHaveLength(4);
 
-      const node = patchedChoiceNode(history[3].patch);
+      const node = patchedNodeOf(history[3].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([
         { kind: 'safety_interrupt', message: 'Pare', destination: '/educacao', blockResume: true },
       ]);
@@ -734,7 +756,7 @@ describe('NodeEditorPanel opções', () => {
 
     it('commits deferred_safety flag and message independently of the default destino', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'deferred_safety');
 
       const row = optionRow(1);
@@ -744,7 +766,7 @@ describe('NodeEditorPanel opções', () => {
       await user.tab();
 
       expect(history).toHaveLength(3);
-      const node = patchedChoiceNode(history[2].patch);
+      const node = patchedNodeOf(history[2].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([
         { kind: 'deferred_safety', flagKey: 'risco', message: 'Cuidado', destination: '/apoio' },
       ]);
@@ -752,20 +774,20 @@ describe('NodeEditorPanel opções', () => {
 
     it('commits the end_flow closing message on blur', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'end_flow');
 
       await user.type(within(optionRow(1)).getByLabelText('Mensagem de encerramento'), 'Até mais');
       await user.tab();
 
       expect(history).toHaveLength(2);
-      const node = patchedChoiceNode(history[1].patch);
+      const node = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);
       expect(node.options[0]?.effects).toEqual([{ kind: 'end_flow', message: 'Até mais' }]);
     });
 
     it('composes effect edits across sibling rows without clobbering', async () => {
       const user = userEvent.setup();
-      const history = renderStatefulChoicePanel(createChoiceFlow());
+      const history = renderStatefulPanel(createChoiceFlow());
       await addEffectFromMenu(user, 1, 'score');
       await addEffectFromMenu(user, 2, 'navigate');
 
@@ -776,7 +798,7 @@ describe('NodeEditorPanel opções', () => {
       await user.selectOptions(within(optionRow(2)).getByLabelText('Destino'), '/contatos');
 
       expect(history).toHaveLength(4);
-      const applied = patchedChoiceNode(history[3].patch);
+      const applied = patchedNodeOf(history[3].patch, 'q1', isChoiceNode);
       expect(applied.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'foco', value: 1 }]);
       expect(applied.options[1]?.effects).toEqual([{ kind: 'navigate', destination: '/contatos' }]);
     });
@@ -818,34 +840,6 @@ describe('NodeEditorPanel ramificação', () => {
     return props;
   }
 
-  /** Host that applies patches like the real map does, recording every commit. */
-  function renderStatefulScorePanel(initialFlow: GuidedFlow) {
-    const history: Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }> = [];
-    function Host() {
-      const [flow, setFlow] = useState(initialFlow);
-      return (
-        <NodeEditorPanel
-          {...makePanelProps(flow, 'r1', {
-            flows: [flow],
-            onFlowChange: (patch) => {
-              const applied = { ...flow, ...patch };
-              history.push({ patch, applied });
-              setFlow(applied);
-            },
-          })}
-        />
-      );
-    }
-    render(<Host />);
-    return history;
-  }
-
-  function patchedScoreBranchNode(patch: Partial<GuidedFlow>, nodeId = 'r1'): ScoreBranchFlowNode {
-    const node = patch.nodes?.[nodeId];
-    if (!node || node.kind !== 'score_branch') throw new Error(`expected a score_branch node patch for ${nodeId}`);
-    return node;
-  }
-
   it('renders the score key plus De/Até/Destino fields for every faixa', () => {
     renderScorePanel();
 
@@ -870,7 +864,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.tab();
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
     expect(node.text).toBe('Ramificação por pontuação');
     expect(node.scoreKey).toBe('risco');
     expect(node.branches).toHaveLength(2); // untouched by the key edit
@@ -878,7 +872,7 @@ describe('NodeEditorPanel ramificação', () => {
 
   it('commits De/Até as numeric payloads and ignores non-numeric drafts', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulScorePanel(createScoreBranchFlow());
+    const history = renderStatefulPanel(createScoreBranchFlow(), 'r1');
 
     const deInput = screen.getByLabelText('De 2');
     await user.clear(deInput);
@@ -886,7 +880,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.tab();
 
     expect(history).toHaveLength(1);
-    const branch = patchedScoreBranchNode(history[0].patch).branches[1];
+    const branch = patchedNodeOf(history[0].patch, 'r1', isScoreBranchNode).branches[1];
     expect(branch?.min).toBe(9);
     expect(branch && typeof branch.min === 'number').toBe(true);
 
@@ -895,7 +889,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.type(deInput, 'abc');
     await user.tab();
     expect(history).toHaveLength(1); // no new commit
-    expect(patchedScoreBranchNode(history[0].patch).branches[1]?.min).toBe(9);
+    expect(patchedNodeOf(history[0].patch, 'r1', isScoreBranchNode).branches[1]?.min).toBe(9);
   });
 
   it('adds a zeroed faixa using the first free sequential id', async () => {
@@ -904,7 +898,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.click(screen.getByRole('button', { name: 'Adicionar faixa' }));
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
     expect(node.branches).toHaveLength(3);
     expect(node.branches[2]).toEqual({ id: 'r1-faixa-3', min: 0, max: 0, next: '' });
   });
@@ -914,7 +908,7 @@ describe('NodeEditorPanel ramificação', () => {
     const props = renderScorePanel(createScoreBranchFlow({ branchIds: ['r1-faixa-1', 'r1-faixa-3'] }));
     await user.click(screen.getByRole('button', { name: 'Adicionar faixa' }));
 
-    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
     expect(node.branches[2]?.id).toBe('r1-faixa-4');
   });
 
@@ -924,7 +918,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.click(screen.getByRole('button', { name: 'Remover faixa 1' }));
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
     expect(node.branches).toHaveLength(1);
     expect(node.branches[0]?.id).toBe('r1-faixa-2');
   });
@@ -935,14 +929,14 @@ describe('NodeEditorPanel ramificação', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da faixa 1' }), 'alvo');
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    const node = patchedScoreBranchNode(lastPatch(props.onFlowChange));
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
     expect(node.branches[0]?.next).toBe('alvo');
     expect(node.branches[1]?.next).toBe('q1'); // sibling untouched
   });
 
   it('routes successive faixa edits through the updater so each commit builds on the latest node', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulScorePanel(createScoreBranchFlow());
+    const history = renderStatefulPanel(createScoreBranchFlow(), 'r1');
 
     const keyInput = screen.getByLabelText('Pontuação usada');
     await user.clear(keyInput);
@@ -953,7 +947,7 @@ describe('NodeEditorPanel ramificação', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da faixa 2' }), 'alvo');
     expect(history).toHaveLength(2);
 
-    const second = patchedScoreBranchNode(history[1].patch);
+    const second = patchedNodeOf(history[1].patch, 'r1', isScoreBranchNode);
     expect(second.scoreKey).toBe('risco'); // composed over the prior commit
     expect(second.branches[1]).toMatchObject({ id: 'r1-faixa-2', min: 6, max: 10, next: 'alvo' });
   });
@@ -985,40 +979,6 @@ describe('NodeEditorPanel mídia', () => {
     return props;
   }
 
-  /** Host that applies patches like the real map does, recording every commit. */
-  function renderStatefulMediaPanel(initialFlow: GuidedFlow, nodeId = 'fim') {
-    const history: Array<{ patch: Partial<GuidedFlow>; applied: GuidedFlow }> = [];
-    function Host() {
-      const [flow, setFlow] = useState(initialFlow);
-      return (
-        <NodeEditorPanel
-          {...makePanelProps(flow, nodeId, {
-            flows: [flow],
-            onFlowChange: (patch) => {
-              const applied = { ...flow, ...patch };
-              history.push({ patch, applied });
-              setFlow(applied);
-            },
-          })}
-        />
-      );
-    }
-    render(<Host />);
-    return history;
-  }
-
-  function patchedNode(patch: Partial<GuidedFlow>, nodeId = 'fim'): FlowNode {
-    const node = patch.nodes?.[nodeId];
-    if (!node) throw new Error(`expected a node patch for ${nodeId}`);
-    return node;
-  }
-
-  function patchedResultNode(patch: Partial<GuidedFlow>, nodeId = 'fim'): ResultFlowNode {
-    const node = patch.nodes?.[nodeId];
-    if (!node || node.kind !== 'result') throw new Error(`expected a result node patch for ${nodeId}`);
-    return node;
-  }
-
   it('shows only the add button while the node has no videos', () => {
     renderMediaPanel();
 
@@ -1042,16 +1002,16 @@ describe('NodeEditorPanel mídia', () => {
 
   it('round-trips videos through the updater and drops the key when the last one goes', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulMediaPanel(createMediaFlow());
+    const history = renderStatefulPanel(createMediaFlow(), 'fim');
 
     await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
     expect(history).toHaveLength(1);
-    expect(patchedNode(history[0].patch).videos).toEqual([{ id: 'fim-video-1', title: '', url: '' }]);
+    expect(patchedNodeOf(history[0].patch, 'fim').videos).toEqual([{ id: 'fim-video-1', title: '', url: '' }]);
 
     await user.type(screen.getByLabelText('Título do vídeo 1'), 'Vídeo útil');
     await user.tab();
     expect(history).toHaveLength(2);
-    expect(patchedNode(history[1].patch).videos?.[0]).toEqual({
+    expect(patchedNodeOf(history[1].patch, 'fim').videos?.[0]).toEqual({
       id: 'fim-video-1',
       title: 'Vídeo útil',
       url: '',
@@ -1060,24 +1020,25 @@ describe('NodeEditorPanel mídia', () => {
     await user.type(screen.getByLabelText('URL do vídeo 1'), 'https://example.com/apoio');
     await user.tab();
     expect(history).toHaveLength(3);
-    expect(patchedNode(history[2].patch).videos?.[0]?.url).toBe('https://example.com/apoio');
+    expect(patchedNodeOf(history[2].patch, 'fim').videos?.[0]?.url).toBe('https://example.com/apoio');
 
     await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
-    expect(patchedNode(history[3].patch).videos?.[1]?.id).toBe('fim-video-2');
+    expect(patchedNodeOf(history[3].patch, 'fim').videos?.[1]?.id).toBe('fim-video-2');
 
     await user.click(screen.getByRole('button', { name: 'Remover vídeo 1' }));
     expect(history).toHaveLength(5);
-    expect(patchedNode(history[4].patch).videos).toEqual([{ id: 'fim-video-2', title: '', url: '' }]);
+    expect(patchedNodeOf(history[4].patch, 'fim').videos).toEqual([{ id: 'fim-video-2', title: '', url: '' }]);
 
     await user.click(screen.getByRole('button', { name: 'Remover vídeo 1' }));
     expect(history).toHaveLength(6);
-    expect(patchedNode(history[5].patch)).not.toHaveProperty('videos'); // last removal drops the key entirely
+    expect(patchedNodeOf(history[5].patch, 'fim')).not.toHaveProperty('videos'); // last removal drops the key entirely
   });
 
   it('shows the YouTube hint only for non-empty non-YouTube URLs', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulMediaPanel(
+    const history = renderStatefulPanel(
       createMediaFlow({ videos: [{ id: 'fim-video-1', title: 'Dica', url: 'https://example.com/x' }] }),
+      'fim',
     );
 
     expect(screen.getByText('Use um link completo do YouTube.')).toBeInTheDocument();
@@ -1087,7 +1048,7 @@ describe('NodeEditorPanel mídia', () => {
     await user.tab();
 
     expect(history).toHaveLength(1);
-    expect(patchedNode(history[0].patch).videos?.[0]?.url).toBe('https://youtu.be/z9');
+    expect(patchedNodeOf(history[0].patch, 'fim').videos?.[0]?.url).toBe('https://youtu.be/z9');
     expect(screen.queryByText('Use um link completo do YouTube.')).not.toBeInTheDocument();
   });
 
@@ -1099,7 +1060,7 @@ describe('NodeEditorPanel mídia', () => {
 
   it('splits recommendations one per line and joins them back for display', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulMediaPanel(createMediaFlow({ recommendations: ['Durma bem', 'Procure apoio'] }));
+    const history = renderStatefulPanel(createMediaFlow({ recommendations: ['Durma bem', 'Procure apoio'] }), 'fim');
     const textarea = screen.getByLabelText('Recomendações da etapa final');
 
     expect(textarea).toHaveValue('Durma bem\nProcure apoio'); // joined back for display
@@ -1109,7 +1070,7 @@ describe('NodeEditorPanel mídia', () => {
     await user.tab();
 
     expect(history).toHaveLength(1);
-    expect(patchedResultNode(history[0].patch).recommendations).toEqual([
+    expect(patchedNodeOf(history[0].patch, 'fim', isResultNode).recommendations).toEqual([
       'Durma bem',
       'Procure apoio',
       'Fale com alguém de confiança',
@@ -1120,18 +1081,18 @@ describe('NodeEditorPanel mídia', () => {
     await user.type(textarea, 'a\n\n b ');
     await user.tab();
     expect(history).toHaveLength(2);
-    expect(patchedResultNode(history[1].patch).recommendations).toEqual(['a', 'b']);
+    expect(patchedNodeOf(history[1].patch, 'fim', isResultNode).recommendations).toEqual(['a', 'b']);
   });
 
   it('drops the recommendations key entirely when every line is removed', async () => {
     const user = userEvent.setup();
-    const history = renderStatefulMediaPanel(createMediaFlow({ recommendations: ['Só uma linha'] }));
+    const history = renderStatefulPanel(createMediaFlow({ recommendations: ['Só uma linha'] }), 'fim');
 
     await user.clear(screen.getByLabelText('Recomendações da etapa final'));
     await user.tab();
 
     expect(history).toHaveLength(1);
-    expect(patchedResultNode(history[0].patch)).not.toHaveProperty('recommendations');
+    expect(patchedNodeOf(history[0].patch, 'fim', isResultNode)).not.toHaveProperty('recommendations');
   });
 
   it('omits recommendations for non-result nodes but keeps the video affordance everywhere', async () => {
@@ -1143,6 +1104,8 @@ describe('NodeEditorPanel mídia', () => {
 
     await user.click(screen.getByRole('button', { name: 'Adicionar vídeo' }));
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
-    expect(patchedNode(lastPatch(props.onFlowChange), 'q1').videos).toEqual([{ id: 'q1-video-1', title: '', url: '' }]);
+    expect(patchedNodeOf(lastPatch(props.onFlowChange), 'q1').videos).toEqual([
+      { id: 'q1-video-1', title: '', url: '' },
+    ]);
   });
 });
