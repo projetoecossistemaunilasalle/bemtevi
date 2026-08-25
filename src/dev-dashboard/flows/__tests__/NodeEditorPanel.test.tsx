@@ -637,18 +637,39 @@ describe('NodeEditorPanel opções', () => {
       await addEffectFromMenu(user, 1, 'score');
       await addEffectFromMenu(user, 2, 'navigate');
 
-      // Chip summaries use the inspector conventions; remove buttons are per-row.
+      // Chip summaries use the inspector conventions; remove buttons name the
+      // effect's position + kind + row so identical kinds stay distinguishable.
       expect(within(optionRow(1)).getByText('+1 em pontuacao')).toBeInTheDocument();
       expect(within(optionRow(2)).getByText('→ /apoio')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Remover efeito score da opção 1' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Remover efeito navigate da opção 2' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remover efeito 1 (score) da opção 1' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remover efeito 1 (navigate) da opção 2' })).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Remover efeito navigate da opção 2' }));
+      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (navigate) da opção 2' }));
 
       expect(history).toHaveLength(3);
       const node = patchedChoiceNode(history[2].patch);
       expect(node.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'pontuacao', value: 1 }]);
       expect(node.options[1]).not.toHaveProperty('effects'); // last chip drops the key entirely
+    });
+
+    it('removes the targeted chip when identical kinds repeat, keeping later ones', async () => {
+      const user = userEvent.setup();
+      const flow = createChoiceFlow();
+      const q1 = flow.nodes.q1;
+      if (q1.kind === 'choice') q1.options[0].effects = [{ kind: 'score', scoreKey: 'foco', value: 1 }];
+      const history = renderStatefulChoicePanel(flow);
+
+      await addEffectFromMenu(user, 1, 'score');
+      const row = optionRow(1);
+      expect(within(row).getAllByRole('button', { name: /Remover efeito/ })).toHaveLength(2);
+
+      // Chip 1 is the seeded 'foco' effect; removing it must not shift the
+      // filter onto the wrong survivor.
+      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (score) da opção 1' }));
+
+      expect(history).toHaveLength(2);
+      const node = patchedChoiceNode(history[1].patch);
+      expect(node.options[0]?.effects).toEqual([{ kind: 'score', scoreKey: 'pontuacao', value: 1 }]);
     });
 
     it('lists real flow titles in the flow_start destination select and commits the choice', async () => {

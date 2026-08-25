@@ -192,7 +192,7 @@ function OptionRow({ option, index, targets, flows, onOptionUpdate, onRemove }: 
               }
               <button
                 type="button"
-                aria-label={`Remover efeito ${effect.kind} da opção ${index + 1}`}
+                aria-label={`Remover efeito ${effectIndex + 1} (${effect.kind}) da opção ${index + 1}`}
                 onClick={() =>
                   onOptionUpdate((current) => {
                     const remaining =
