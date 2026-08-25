@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChoiceFlowNode, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
+import type { ChoiceFlowNode, FlowEffect, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
 import { deleteNode, duplicateNode, setEntryNode } from './flowMutations';
 import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import { Button } from '../../design-system/components/Button';
@@ -43,6 +43,72 @@ const TARGET_GROUP_ORDER = ['Entrada', 'Prof.', 'Sem acesso pela entrada', 'Fina
 /** Shared styling for every native select in the panel. */
 const selectClassName =
   'w-full rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
+
+/** Chip color conventions copied from FlowMapInspector so both editors read identically. */
+const effectColors: Record<FlowEffect['kind'], string> = {
+  score: 'bg-primary-container text-on-primary-container',
+  deferred_safety: 'bg-warning-container text-on-warning-container',
+  safety_interrupt: 'bg-error-container text-on-error-container',
+  flow_start: 'bg-secondary-container text-on-secondary-container',
+  navigate: 'bg-surface-container text-on-surface',
+  end_flow: 'bg-surface-container text-on-surface',
+};
+
+/** Compact PT chip summaries, mirroring FlowMapInspector. */
+const effectSummaries: Record<string, (effect: Record<string, unknown>) => string> = {
+  score: (effect) => `+${effect.value} em ${effect.scoreKey}`,
+  deferred_safety: (effect) => `⚠ segurança adiada → ${effect.destination}`,
+  safety_interrupt: (effect) => `⚠ interrompe → ${effect.destination}`,
+  flow_start: (effect) => `→ fluxo ${effect.flowId}`,
+  navigate: (effect) => `→ ${effect.destination}`,
+  end_flow: () => 'encerrar',
+};
+
+/** Add-effect menu entries in canonical order; labels shown in the option list. */
+const EFFECT_KIND_OPTIONS: Array<{ kind: FlowEffect['kind']; label: string }> = [
+  { kind: 'score', label: 'Pontuar' },
+  { kind: 'safety_interrupt', label: 'Interromper por segurança' },
+  { kind: 'deferred_safety', label: 'Segurança ao concluir' },
+  { kind: 'navigate', label: 'Navegar para área' },
+  { kind: 'flow_start', label: 'Iniciar outro fluxo' },
+  { kind: 'end_flow', label: 'Encerrar fluxo' },
+];
+
+const SAFETY_DESTINATIONS = ['/apoio', '/contatos', '/educacao'] as const;
+
+const fieldLabelClassName = 'font-label-sm text-xs text-on-surface-variant';
+const fieldClassName =
+  'rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
+
+/**
+ * Typed default payload appended when a kind is picked from the menu.
+ * `score` may repeat on one option, so its default is always freshly built.
+ */
+function buildDefaultEffect(kind: FlowEffect['kind'], flows: GuidedFlow[]): FlowEffect {
+  switch (kind) {
+    case 'score':
+      return { kind: 'score', scoreKey: 'pontuacao', value: 1 };
+    case 'safety_interrupt':
+      return { kind: 'safety_interrupt', message: '', destination: '/apoio', blockResume: false };
+    case 'deferred_safety':
+      return { kind: 'deferred_safety', flagKey: '', message: '', destination: '/apoio' };
+    case 'navigate':
+      return { kind: 'navigate', destination: '/apoio' };
+    case 'flow_start':
+      return { kind: 'flow_start', flowId: flows[0]?.id ?? '' };
+    case 'end_flow':
+      return { kind: 'end_flow', message: '' };
+  }
+}
+
+/** Narrowing helper: applies a patch only when the current effect kept its kind. */
+function patchEffect<K extends FlowEffect['kind']>(
+  kind: K,
+  patch: (current: Extract<FlowEffect, { kind: K }>) => FlowEffect,
+): (current: FlowEffect) => FlowEffect {
+  // The generic kind check can't narrow the union for TS, hence the cast.
+  return (current) => (current.kind === kind ? patch(current as Extract<FlowEffect, { kind: K }>) : current);
+}
 
 function targetGroupRank(label: string): number {
   if (label.startsWith('Prof.')) return 1;
@@ -119,10 +185,283 @@ export function TargetSelect({
   );
 }
 
+type SafetyDestination = (typeof SAFETY_DESTINATIONS)[number];
+
+interface DestinationSelectProps {
+  id: string;
+  value: SafetyDestination;
+  onChange: (next: SafetyDestination) => void;
+}
+
+/**
+ * Closed select over the three supported navigation areas. Out-of-range legacy
+ * values stay representable via an explicit `Destino ausente` option instead
+ * of silently snapping to the first entry.
+ */
+function DestinationSelect({ id, value, onChange }: DestinationSelectProps) {
+  const known = (SAFETY_DESTINATIONS as readonly string[]).includes(value);
+  return (
+    <select
+      id={id}
+      className={selectClassName}
+      value={value}
+      onChange={(event) => onChange(event.target.value as SafetyDestination)}
+    >
+      {(SAFETY_DESTINATIONS as readonly string[]).map((destination) => (
+        <option key={destination} value={destination}>
+          {destination}
+        </option>
+      ))}
+      {/* Defensive for unvalidated legacy data: an empty value is a caller bug, not "missing data". */}
+      {!known && (value as string) !== '' && <option value={value}>{`Destino ausente · ${value}`}</option>}
+    </select>
+  );
+}
+
+interface EffectTextFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onCommit: (next: string) => void;
+}
+
+/** Labeled text input with a per-field draft sentinel; commits onBlur like option labels. */
+function EffectTextField({ id, label, value, onCommit }: EffectTextFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <>
+      <label htmlFor={id} className={fieldLabelClassName}>
+        {label}
+      </label>
+      <input
+        id={id}
+        className={fieldClassName}
+        value={draft ?? value}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          setDraft(null);
+          if (draft !== null && draft !== value) onCommit(draft);
+        }}
+      />
+    </>
+  );
+}
+
+/** Multiline variant of EffectTextField for closing messages. */
+function EffectTextAreaField({ id, label, value, onCommit }: EffectTextFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <>
+      <label htmlFor={id} className={fieldLabelClassName}>
+        {label}
+      </label>
+      <textarea
+        id={id}
+        className={`min-h-[60px] ${fieldClassName}`}
+        value={draft ?? value}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          setDraft(null);
+          if (draft !== null && draft !== value) onCommit(draft);
+        }}
+      />
+    </>
+  );
+}
+
+interface EffectNumberFieldProps {
+  id: string;
+  label: string;
+  value: number;
+  onCommit: (next: number) => void;
+}
+
+/**
+ * Number input that never emits NaN: empty or non-numeric drafts are ignored
+ * on blur and the committed payload always carries a real number.
+ */
+function EffectNumberField({ id, label, value, onCommit }: EffectNumberFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <>
+      <label htmlFor={id} className={fieldLabelClassName}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        className={fieldClassName}
+        value={draft ?? String(value)}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          setDraft(null);
+          const trimmed = draft?.trim() ?? '';
+          if (trimmed === '') return; // Number('') === 0, so guard before parsing.
+          const parsed = Number(trimmed);
+          if (!Number.isFinite(parsed) || parsed === value) return;
+          onCommit(parsed);
+        }}
+      />
+    </>
+  );
+}
+
+interface EffectFieldsProps {
+  effect: FlowEffect;
+  effectIndex: number;
+  optionId: string;
+  flows: GuidedFlow[];
+  /**
+   * Updater-style field channel with the panel's one-commit-per-event
+   * contract: each blur/change invokes it exactly once.
+   */
+  onEffectUpdate: (update: (current: FlowEffect) => FlowEffect) => void;
+}
+
+/** Expanded editors under the option row — one labeled block per present effect. */
+function EffectFields({ effect, effectIndex, optionId, flows, onEffectUpdate }: EffectFieldsProps) {
+  const idPrefix = `${optionId}-effect-${effectIndex}`;
+  switch (effect.kind) {
+    case 'score':
+      return (
+        <>
+          <EffectTextField
+            id={`${idPrefix}-score-key`}
+            label="Chave de pontuação"
+            value={effect.scoreKey}
+            onCommit={(scoreKey) => onEffectUpdate(patchEffect('score', (current) => ({ ...current, scoreKey })))}
+          />
+          <EffectNumberField
+            id={`${idPrefix}-score-value`}
+            label="Valor da pontuação"
+            value={effect.value}
+            onCommit={(value) => onEffectUpdate(patchEffect('score', (current) => ({ ...current, value })))}
+          />
+        </>
+      );
+    case 'safety_interrupt':
+      return (
+        <>
+          <EffectTextField
+            id={`${idPrefix}-message`}
+            label="Mensagem da interrupção"
+            value={effect.message}
+            onCommit={(message) =>
+              onEffectUpdate(patchEffect('safety_interrupt', (current) => ({ ...current, message })))
+            }
+          />
+          <label htmlFor={`${idPrefix}-destination`} className={fieldLabelClassName}>
+            Destino
+          </label>
+          <DestinationSelect
+            id={`${idPrefix}-destination`}
+            value={effect.destination}
+            onChange={(destination) =>
+              onEffectUpdate(patchEffect('safety_interrupt', (current) => ({ ...current, destination })))
+            }
+          />
+          <label className="flex items-center gap-2 font-label-sm text-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={effect.blockResume}
+              onChange={(event) =>
+                onEffectUpdate(
+                  patchEffect('safety_interrupt', (current) => ({ ...current, blockResume: event.target.checked })),
+                )
+              }
+            />
+            Impede retorno
+          </label>
+        </>
+      );
+    case 'deferred_safety':
+      return (
+        <>
+          <EffectTextField
+            id={`${idPrefix}-flag-key`}
+            label="Chave da sinalização"
+            value={effect.flagKey}
+            onCommit={(flagKey) =>
+              onEffectUpdate(patchEffect('deferred_safety', (current) => ({ ...current, flagKey })))
+            }
+          />
+          <EffectTextField
+            id={`${idPrefix}-message`}
+            label="Mensagem"
+            value={effect.message}
+            onCommit={(message) =>
+              onEffectUpdate(patchEffect('deferred_safety', (current) => ({ ...current, message })))
+            }
+          />
+          <label htmlFor={`${idPrefix}-destination`} className={fieldLabelClassName}>
+            Destino
+          </label>
+          <DestinationSelect
+            id={`${idPrefix}-destination`}
+            value={effect.destination}
+            onChange={(destination) =>
+              onEffectUpdate(patchEffect('deferred_safety', (current) => ({ ...current, destination })))
+            }
+          />
+        </>
+      );
+    case 'navigate':
+      return (
+        <>
+          <label htmlFor={`${idPrefix}-destination`} className={fieldLabelClassName}>
+            Destino
+          </label>
+          <DestinationSelect
+            id={`${idPrefix}-destination`}
+            value={effect.destination}
+            onChange={(destination) =>
+              onEffectUpdate(patchEffect('navigate', (current) => ({ ...current, destination })))
+            }
+          />
+        </>
+      );
+    case 'flow_start': {
+      const knownFlow = flows.some((candidate) => candidate.id === effect.flowId);
+      return (
+        <>
+          <label htmlFor={`${idPrefix}-flow-id`} className={fieldLabelClassName}>
+            Fluxo de destino
+          </label>
+          <select
+            id={`${idPrefix}-flow-id`}
+            className={selectClassName}
+            value={effect.flowId}
+            onChange={(event) =>
+              onEffectUpdate(patchEffect('flow_start', (current) => ({ ...current, flowId: event.target.value })))
+            }
+          >
+            {flows.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>{`${candidate.title} (${candidate.id})`}</option>
+            ))}
+            {!knownFlow && effect.flowId !== '' && (
+              <option value={effect.flowId}>{`Fluxo ausente · ${effect.flowId}`}</option>
+            )}
+          </select>
+        </>
+      );
+    }
+    case 'end_flow':
+      return (
+        <EffectTextAreaField
+          id={`${idPrefix}-message`}
+          label="Mensagem de encerramento"
+          value={effect.message}
+          onCommit={(message) => onEffectUpdate(patchEffect('end_flow', (current) => ({ ...current, message })))}
+        />
+      );
+  }
+}
+
 interface OptionRowProps {
   option: FlowOption;
   index: number;
   targets: FlowTopologyNode[];
+  flows: GuidedFlow[];
   /**
    * Updater-style edit channel for this row's option. Callers must invoke it
    * AT MOST ONCE per user event (single synchronous commit per event); the
@@ -134,18 +473,24 @@ interface OptionRowProps {
 }
 
 /**
- * One editable option row. The label keeps a per-row draft (null = no pending
- * edit, so external values flow straight through). Commit happens onBlur by
- * comparing the draft to the last committed label — scoped per row on purpose,
- * never via the shared document.activeElement guard, so editing a label can't
- * clobber sibling rows or the texto textarea.
+ * One editable option row: label, target, typed effect builder and remove
+ * action. The label keeps a per-row draft (null = no pending edit, so external
+ * values flow straight through). Commit happens onBlur by comparing the draft
+ * to the last committed label — scoped per row on purpose, never via the
+ * shared document.activeElement guard, so editing a label can't clobber
+ * sibling rows or the texto textarea.
  */
-function OptionRow({ option, index, targets, onOptionUpdate, onRemove }: OptionRowProps) {
+function OptionRow({ option, index, targets, flows, onOptionUpdate, onRemove }: OptionRowProps) {
   const [draftLabel, setDraftLabel] = useState<string | null>(null);
   const displayedLabel = draftLabel ?? option.label;
+  const effects = option.effects ?? [];
+  const presentKinds = new Set(effects.map((effect) => effect.kind));
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
+    <div
+      data-testid={`option-row-${index + 1}`}
+      className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
+    >
       <input
         aria-label={`Rótulo da opção ${index + 1}`}
         className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
@@ -166,6 +511,82 @@ function OptionRow({ option, index, targets, onOptionUpdate, onRemove }: OptionR
         nodes={targets}
         allowEmpty
       />
+      {effects.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {effects.map((effect, effectIndex) => (
+            <span
+              key={effectIndex}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${effectColors[effect.kind]}`}
+            >
+              {effectSummaries[effect.kind]?.(effect as unknown as Record<string, unknown>) ?? effect.kind}
+              <button
+                type="button"
+                aria-label={`Remover efeito ${effect.kind} da opção ${index + 1}`}
+                onClick={() =>
+                  onOptionUpdate((current) => {
+                    const remaining =
+                      current.effects?.filter((_, candidateIndex) => candidateIndex !== effectIndex) ?? [];
+                    if (remaining.length === 0) {
+                      // Dropping the last chip removes the key entirely.
+                      const { effects: _dropped, ...optionWithoutEffects } = current;
+                      return optionWithoutEffects;
+                    }
+                    return { ...current, effects: remaining };
+                  })
+                }
+                className="ml-0.5 rounded-full hover:opacity-70"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Controlled "menu" select: always resets to the placeholder after appending. */}
+      <select
+        aria-label={`Adicionar efeito à opção ${index + 1}`}
+        className={selectClassName}
+        value=""
+        onChange={(event) => {
+          const { value } = event.target;
+          if (value === '') return;
+          const kind = value as FlowEffect['kind'];
+          onOptionUpdate((current) => ({
+            ...current,
+            effects: [...(current.effects ?? []), buildDefaultEffect(kind, flows)],
+          }));
+        }}
+      >
+        <option value="">Adicionar efeito…</option>
+        {EFFECT_KIND_OPTIONS.filter((candidate) => candidate.kind === 'score' || !presentKinds.has(candidate.kind)).map(
+          (candidate) => (
+            <option key={candidate.kind} value={candidate.kind}>
+              {candidate.label}
+            </option>
+          ),
+        )}
+      </select>
+      {effects.map((effect, effectIndex) => (
+        <div
+          key={`${effect.kind}-${effectIndex}`}
+          className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-2"
+        >
+          <EffectFields
+            effect={effect}
+            effectIndex={effectIndex}
+            optionId={option.id}
+            flows={flows}
+            onEffectUpdate={(update) =>
+              onOptionUpdate((current) => ({
+                ...current,
+                effects: (current.effects ?? []).map((candidate, candidateIndex) =>
+                  candidateIndex === effectIndex ? update(candidate) : candidate,
+                ),
+              }))
+            }
+          />
+        </div>
+      ))}
       <button
         type="button"
         aria-label={`Remover opção ${index + 1}`}
@@ -182,10 +603,12 @@ function OptionRow({ option, index, targets, onOptionUpdate, onRemove }: OptionR
 function ChoiceOptionsSection({
   node,
   targets,
+  flows,
   onNodeChange,
 }: {
   node: ChoiceFlowNode;
   targets: FlowTopologyNode[];
+  flows: GuidedFlow[];
   /** Same one-commit-per-event contract as the panel-level handler below. */
   onNodeChange: (update: (current: ChoiceFlowNode) => ChoiceFlowNode) => void;
 }) {
@@ -208,6 +631,7 @@ function ChoiceOptionsSection({
           option={option}
           index={index}
           targets={targets}
+          flows={flows}
           onOptionUpdate={(update) => commitOption(option.id, update)}
           onRemove={() =>
             onNodeChange((current) => ({
@@ -411,7 +835,12 @@ export function NodeEditorPanel({
       {node.kind === 'choice' && (
         <section data-section="opcoes" className="flex flex-col gap-2">
           <h3 className="font-label-sm text-xs text-on-surface-variant">Opções</h3>
-          <ChoiceOptionsSection node={node} targets={topology.nodes} onNodeChange={handleChoiceNodeChange} />
+          <ChoiceOptionsSection
+            node={node}
+            targets={topology.nodes}
+            flows={flows}
+            onNodeChange={handleChoiceNodeChange}
+          />
         </section>
       )}
       {/* Placeholder sections for later tasks; Task 10 fills in their fields. */}
