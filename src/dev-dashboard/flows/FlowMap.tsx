@@ -1,225 +1,54 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ArrowRightLeft } from 'lucide-react';
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState, type NodeMouseHandler } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useState } from 'react';
+import { GitBranch, Map } from 'lucide-react';
 
-import type { GuidedFlow, FlowNode } from '../../domain/flow-engine/types';
-import { buildFlowGraph, type FlowNodeData } from './flowMapLayout';
-import { FlowMapInspector } from './FlowMapInspector';
+import type { GuidedFlow } from '../../domain/flow-engine/types';
+import { FlowDestinationMap } from './FlowDestinationMap';
+import { FlowOverviewMap } from './FlowOverviewMap';
+import './FlowMap.css';
 
-// ─── Custom node components ────────────────────────────────────────────────
-
-function nodeColor(node: FlowNode): { border: string; bg: string; text: string } {
-  if (node.kind === 'result')
-    return {
-      border: 'var(--color-outline-variant)',
-      bg: 'var(--color-surface-container-low)',
-      text: 'var(--color-on-surface)',
-    };
-  if (node.kind === 'score_branch')
-    return {
-      border: 'var(--color-warning)',
-      bg: 'var(--color-warning-container)',
-      text: 'var(--color-on-warning-container)',
-    };
-  if (node.kind !== 'choice')
-    return {
-      border: 'var(--color-outline-variant)',
-      bg: 'var(--color-surface-container-lowest)',
-      text: 'var(--color-on-surface)',
-    };
-
-  const hasSafetyInterrupt = node.options.some((o) => o.effects?.some((e) => e.kind === 'safety_interrupt'));
-  const hasDeferredSafety = node.options.some((o) => o.effects?.some((e) => e.kind === 'deferred_safety'));
-
-  if (hasSafetyInterrupt)
-    return {
-      border: 'var(--color-error)',
-      bg: 'var(--color-error-container)',
-      text: 'var(--color-on-error-container)',
-    };
-  if (hasDeferredSafety)
-    return {
-      border: 'var(--color-warning)',
-      bg: 'var(--color-warning-container)',
-      text: 'var(--color-on-warning-container)',
-    };
-  return {
-    border: 'var(--color-outline-variant)',
-    bg: 'var(--color-surface-container-lowest)',
-    text: 'var(--color-on-surface)',
-  };
-}
-
-function ChoiceNodeComponent({ data }: { data: FlowNodeData }) {
-  const { node } = data;
-  const colors = nodeColor(node);
-  const hasScore = node.kind === 'choice' && node.options.some((o) => o.effects?.some((e) => e.kind === 'score'));
-
-  return (
-    <div
-      style={{ border: `2px solid ${colors.border}`, background: colors.bg, color: colors.text }}
-      className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-1">
-        <p className="break-all font-medium leading-tight">
-          {node.text.slice(0, 80)}
-          {node.text.length > 80 ? '…' : ''}
-        </p>
-        {hasScore && (
-          <span className="ml-1 shrink-0 rounded-full bg-secondary-container px-1.5 py-0.5 text-[10px] font-bold text-on-secondary-container">
-            +pts
-          </span>
-        )}
-      </div>
-      <p className="mt-1 text-[10px] opacity-60">{node.kind === 'choice' ? `${node.options.length} opções` : ''}</p>
-    </div>
-  );
-}
-
-function ScoreBranchNodeComponent({ data }: { data: FlowNodeData }) {
-  const { node } = data;
-  return (
-    <div
-      style={{
-        border: '2px solid var(--color-warning)',
-        background: 'var(--color-warning-container)',
-        color: 'var(--color-on-warning-container)',
-      }}
-      className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
-    >
-      <div className="flex items-center gap-1">
-        <ArrowRightLeft aria-hidden="true" className="h-4 w-4 shrink-0" />
-        <p className="break-all font-medium leading-tight">{node.text.slice(0, 60)}</p>
-      </div>
-      <p className="mt-1 text-[10px] opacity-60">
-        {node.kind === 'score_branch' ? `${node.branches.length} faixas · ${node.scoreKey}` : ''}
-      </p>
-    </div>
-  );
-}
-
-function ResultNodeComponent({ data }: { data: FlowNodeData }) {
-  const { node } = data;
-  return (
-    <div
-      style={{
-        border: '1px solid var(--color-outline-variant)',
-        background: 'var(--color-surface-container-low)',
-        color: 'var(--color-on-surface)',
-      }}
-      className="min-w-[160px] max-w-[220px] overflow-hidden rounded-lg px-3 py-2 text-sm shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-1">
-        <p className="break-all leading-tight text-on-surface-variant">
-          {node.text.slice(0, 60)}
-          {node.text.length > 60 ? '…' : ''}
-        </p>
-        <span className="ml-1 shrink-0 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant">
-          FIM
-        </span>
-      </div>
-    </div>
-  );
-}
-
-const nodeTypes = {
-  choiceNode: ChoiceNodeComponent,
-  scoreBranchNode: ScoreBranchNodeComponent,
-  resultNode: ResultNodeComponent,
-};
-
-// ─── Main component ────────────────────────────────────────────────────────
+type FlowMapMode = 'destination' | 'overview';
 
 export function FlowMap({
   flow,
   flows,
   onFlowChange,
   onEditNode,
+  onSelectFlow,
 }: {
   flow: GuidedFlow;
   flows: GuidedFlow[];
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
-  onEditNode: (nodeId: string) => void;
+  onEditNode: (flowId: string, nodeId: string) => void;
+  onSelectFlow: (flowId: string) => void;
 }) {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildFlowGraph(flow), [flow]);
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-  const selectedNode = selectedNodeId ? (Object.values(flow.nodes).find((n) => n.id === selectedNodeId) ?? null) : null;
-
-  const handleNodeClick: NodeMouseHandler = useCallback((_event, rfNode) => {
-    setSelectedNodeId(rfNode.id);
-  }, []);
-
-  const handleTextChange = useCallback(
-    (text: string) => {
-      if (!selectedNodeId) return;
-      const updatedNodes = {
-        ...flow.nodes,
-        [selectedNodeId]: { ...flow.nodes[selectedNodeId], text },
-      };
-      onFlowChange({ nodes: updatedNodes });
-    },
-    [flow.nodes, onFlowChange, selectedNodeId],
-  );
-
-  const handleRemoveEffect = useCallback(
-    (optionId: string, effectIndex: number) => {
-      if (!selectedNodeId) return;
-      const node = flow.nodes[selectedNodeId];
-      if (node.kind !== 'choice') return;
-      const updatedOptions = node.options.map((opt) => {
-        if (opt.id !== optionId) return opt;
-        const newEffects = (opt.effects ?? []).filter((_, i) => i !== effectIndex);
-        return { ...opt, effects: newEffects.length > 0 ? newEffects : undefined };
-      });
-      const updatedNodes = {
-        ...flow.nodes,
-        [selectedNodeId]: { ...node, options: updatedOptions },
-      };
-      onFlowChange({ nodes: updatedNodes as GuidedFlow['nodes'] });
-    },
-    [flow.nodes, onFlowChange, selectedNodeId],
-  );
-
-  const flowNodesList = useMemo(() => Object.values(flow.nodes), [flow.nodes]);
+  const [mode, setMode] = useState<FlowMapMode>('destination');
+  const isDestination = mode === 'destination';
 
   return (
-    <section
-      className="relative rounded-lg border border-outline-variant/50 bg-surface-container-lowest"
-      data-testid="flow-map-canvas"
-      style={{ height: '600px' }}
-    >
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        style={{ width: selectedNode ? 'calc(100% - 320px)' : '100%' }}
-        proOptions={{ hideAttribution: false }}
-      >
-        <Background />
-        <Controls />
-      </ReactFlow>
+    <section className="flow-visualizer" data-testid="flow-map-canvas">
+      <header className="flow-visualizer__header">
+        <div>
+          <h2>{isDestination ? 'Mapa por destino' : 'Visão geral'}</h2>
+          <p>
+            {isDestination
+              ? 'Veja todas as etapas e confirme onde cada escolha termina.'
+              : 'Veja como os fluxos se conectam entre si e onde terminam fora do sistema.'}
+          </p>
+        </div>
+        <div className="flow-view-toggle" aria-label="Modo de visualização">
+          <button type="button" aria-pressed={isDestination} onClick={() => setMode('destination')}>
+            <Map aria-hidden="true" /> Por destino
+          </button>
+          <button type="button" aria-pressed={!isDestination} onClick={() => setMode('overview')}>
+            <GitBranch aria-hidden="true" /> Visão geral
+          </button>
+        </div>
+      </header>
 
-      {selectedNode && (
-        <FlowMapInspector
-          node={selectedNode}
-          nodes={flowNodesList}
-          flows={flows}
-          onTextChange={handleTextChange}
-          onRemoveEffect={handleRemoveEffect}
-          onEditFully={() => {
-            if (selectedNodeId) onEditNode(selectedNodeId);
-          }}
-          onClose={() => setSelectedNodeId(null)}
-        />
+      {isDestination ? (
+        <FlowDestinationMap flow={flow} flows={flows} onFlowChange={onFlowChange} onEditNode={onEditNode} />
+      ) : (
+        <FlowOverviewMap flows={flows} selectedFlowId={flow.id} onOpenFlow={onSelectFlow} />
       )}
     </section>
   );

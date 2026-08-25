@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import type { EducationResource } from '../../domain/resources/types';
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 import { Button } from '../../design-system/components/Button';
-import { ValidationSummary } from '../components/ValidationSummary';
+import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
+import type { DashboardValidationIssue } from '../validation/validationTypes';
 import { validateDashboardFlows } from './flowValidation';
 import { FlowEditor } from './FlowEditor';
 import { FlowMap } from './FlowMap';
@@ -13,6 +14,16 @@ import { getFlowNodeTitle } from './flowDisplay';
 
 type FlowDetailTab = 'editor' | 'preview' | 'map';
 type NodeFilter = 'all' | 'result' | 'safety' | 'branch';
+
+type FlowValidationTarget = {
+  flowId: string;
+  nodeId?: string;
+  /** The editor control to focus after the flow/node has been selected. */
+  ariaLabel?: string;
+  /** The initial flow configuration is collapsed, so it needs opening first. */
+  initialConfiguration?: boolean;
+  description: string;
+};
 
 const flowDetailTabs: Array<{ id: FlowDetailTab; label: string }> = [
   { id: 'editor', label: 'Editor' },
@@ -42,6 +53,10 @@ export function FlowDashboard({
   const [nodeScrollRequest, setNodeScrollRequest] = useState<{ nodeId: string; requestId: number } | null>(null);
   const [nodeSearch, setNodeSearch] = useState('');
   const [activeNodeFilter, setActiveNodeFilter] = useState<NodeFilter>('all');
+  const [validationFocusRequest, setValidationFocusRequest] = useState<{
+    target: FlowValidationTarget;
+    requestId: number;
+  } | null>(null);
 
   const selectedIndex = useMemo(() => flows.findIndex((flow) => flow.id === selectedFlowId), [flows, selectedFlowId]);
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
@@ -102,6 +117,71 @@ export function FlowDashboard({
     [flows, resources],
   );
 
+  useEffect(() => {
+    if (!validationFocusRequest) return;
+
+    let focusTimer: number | undefined;
+
+    const focusTarget = () => {
+      const { target } = validationFocusRequest;
+      const nodeElement = target.nodeId ? document.getElementById(`flow-node-${target.nodeId}`) : null;
+
+      if (nodeElement && typeof nodeElement.scrollIntoView === 'function') {
+        nodeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      const root = nodeElement ?? document;
+      let control: HTMLElement | null = null;
+      if (target.ariaLabel) {
+        control =
+          Array.from(root.querySelectorAll<HTMLElement>('input, select, textarea, button')).find(
+            (element) => element.getAttribute('aria-label') === target.ariaLabel,
+          ) ?? null;
+      }
+
+      if (!control && target.initialConfiguration) {
+        const initialConfiguration = Array.from(
+          document.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]'),
+        ).find((element) => element.textContent?.includes('Configurações Iniciais'));
+
+        if (initialConfiguration?.getAttribute('aria-expanded') === 'false') {
+          initialConfiguration.click();
+          focusTimer = window.setTimeout(focusTarget, 0);
+          return;
+        }
+
+        if (initialConfiguration) {
+          control =
+            Array.from(document.querySelectorAll<HTMLElement>('input, select, textarea, button')).find(
+              (element) => element.getAttribute('aria-label') === target.ariaLabel,
+            ) ?? null;
+        }
+      }
+
+      // Node-level diagnostics still get a keyboard focus target when no
+      // specific field exists (for example, a missing recommendation).
+      if (!control && nodeElement) {
+        control = nodeElement.querySelector<HTMLElement>('textarea, input, select, button');
+      }
+
+      if (control) {
+        control.focus({ preventScroll: true });
+      } else if (nodeElement) {
+        nodeElement.setAttribute('tabindex', '-1');
+        nodeElement.focus({ preventScroll: true });
+      }
+    };
+
+    // The selected flow and editor tab are changed in the same event as this
+    // request. Waiting one frame lets React mount the target editor panel.
+    const retryTimer = window.setTimeout(focusTarget, 0);
+
+    return () => {
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      if (focusTimer !== undefined) window.clearTimeout(focusTimer);
+    };
+  }, [validationFocusRequest]);
+
   if (!selectedFlow) {
     return (
       <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
@@ -127,9 +207,42 @@ export function FlowDashboard({
     setNodeScrollRequest((request) => ({ nodeId, requestId: (request?.requestId ?? 0) + 1 }));
   }
 
-  function handleEditNode(nodeId: string) {
+  function handleEditNode(flowId: string, nodeId: string) {
+    if (flowId !== selectedFlow.id) {
+      setSelectedFlowId(flowId);
+    }
     selectNode(nodeId);
     setActiveDetailTab('editor');
+  }
+
+  function openValidationTarget(target: FlowValidationTarget) {
+    setSelectedFlowId(target.flowId);
+    setSelectedNodeId(target.nodeId ?? null);
+    setNodeSearch('');
+    setActiveNodeFilter('all');
+    setActiveDetailTab('editor');
+
+    if (target.nodeId) {
+      setNodeScrollRequest((request) => ({
+        nodeId: target.nodeId as string,
+        requestId: (request?.requestId ?? 0) + 1,
+      }));
+    } else {
+      setNodeScrollRequest(null);
+    }
+
+    setValidationFocusRequest((request) => ({ target, requestId: (request?.requestId ?? 0) + 1 }));
+  }
+
+  function getIssueAction(issue: DashboardValidationIssue): ValidationIssueAction | null {
+    const target = resolveFlowValidationTarget(issue, flows);
+    if (!target) return null;
+
+    return {
+      label: target.nodeId ? 'Abrir no Editor' : 'Abrir fluxo no Editor',
+      description: target.description,
+      onClick: () => openValidationTarget(target),
+    };
   }
 
   return (
@@ -386,12 +499,189 @@ export function FlowDashboard({
             flows={flows}
             onFlowChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
             onEditNode={handleEditNode}
+            onSelectFlow={handleSelectFlow}
           />
         )}
 
-        <ValidationSummary result={validation} />
+        <ValidationSummary result={validation} getIssueAction={getIssueAction} />
       </div>
     </section>
+  );
+}
+
+function resolveFlowValidationTarget(
+  issue: DashboardValidationIssue,
+  flows: GuidedFlow[],
+): FlowValidationTarget | null {
+  const flow = findFlowForIssue(issue, flows);
+  if (!flow) return null;
+
+  const pathParts = getFlowPathParts(issue.path, flow);
+  const nodePathIndex = pathParts.indexOf('nodes');
+  const pathNodeId = nodePathIndex >= 0 ? pathParts[nodePathIndex + 1] : undefined;
+  const nodeId = pathNodeId && flow.nodes[pathNodeId] ? pathNodeId : inferNodeId(issue, flow);
+  const node = nodeId ? flow.nodes[nodeId] : undefined;
+  const stepNumber = node ? getOrderedFlowNodes(flow).findIndex((item) => item.id === node.id) + 1 : 0;
+  const nodePrefix = node ? `a etapa ${stepNumber || node.id}` : 'a etapa indicada';
+  const nodePath = nodePathIndex >= 0 ? pathParts.slice(nodePathIndex + 2) : [];
+
+  if (node) {
+    if (nodePath[0] === 'kind') {
+      return {
+        flowId: flow.id,
+        nodeId: node.id,
+        ariaLabel: `Tipo da etapa ${stepNumber}`,
+        description: `revise o tipo de ${nodePrefix} no campo destacado.`,
+      };
+    }
+
+    if (nodePath[0] === 'scoreKey') {
+      return {
+        flowId: flow.id,
+        nodeId: node.id,
+        ariaLabel: 'Pontuação usada',
+        description: `corrija a chave de pontuação de ${nodePrefix}.`,
+      };
+    }
+
+    if (nodePath[0] === 'branches' && nodePath[1]) {
+      const branchId = nodePath[1];
+      const field = nodePath[2] === 'navigation' ? 'Destino de página' : 'Nome da faixa';
+      return {
+        flowId: flow.id,
+        nodeId: node.id,
+        ariaLabel: `${field} da faixa ${branchId}`,
+        description: `corrija ${field.toLocaleLowerCase('pt-BR')} da faixa "${branchId}" em ${nodePrefix}.`,
+      };
+    }
+
+    if (nodePath[0] === 'options' && nodePath[1] && node.kind === 'choice') {
+      const optionIndex = node.options.findIndex((option) => option.id === nodePath[1]);
+      if (optionIndex >= 0) {
+        return {
+          flowId: flow.id,
+          nodeId: node.id,
+          ariaLabel: `Ações/Score da opção ${optionIndex + 1} da etapa ${stepNumber}`,
+          description: `abra Ações/Score da opção ${optionIndex + 1} de ${nodePrefix} e corrija o efeito indicado.`,
+        };
+      }
+    }
+
+    if (nodePath[0] === 'videos' && nodePath[1]) {
+      const videoIndex = (node.videos ?? []).findIndex((video) => video.id === nodePath[1]);
+      if (videoIndex >= 0) {
+        return {
+          flowId: flow.id,
+          nodeId: node.id,
+          ariaLabel: `Link do YouTube ${videoIndex + 1} da etapa ${stepNumber}`,
+          description: `corrija o link do vídeo em ${nodePrefix}.`,
+        };
+      }
+    }
+
+    return {
+      flowId: flow.id,
+      nodeId: node.id,
+      description: `revise ${nodePrefix} no Editor; o foco começa no primeiro campo da etapa.`,
+    };
+  }
+
+  const normalizedMessage = issue.message.toLocaleLowerCase('pt-BR');
+  if (pathParts[0] === 'purpose' || normalizedMessage.includes('purpose') || normalizedMessage.includes('finalidade')) {
+    return {
+      flowId: flow.id,
+      ariaLabel: 'Uso do fluxo',
+      initialConfiguration: true,
+      description: 'abra a configuração inicial e corrija o uso do fluxo.',
+    };
+  }
+
+  if (pathParts[0] === 'entry' || hasEntryDiagnostic(normalizedMessage)) {
+    const pointsToMissingNode = normalizedMessage.includes('missing node') || normalizedMessage.includes('etapa ausente');
+    return {
+      flowId: flow.id,
+      ariaLabel: pointsToMissingNode ? 'Primeira etapa' : 'Frase de entrada 1',
+      initialConfiguration: true,
+      description: pointsToMissingNode
+        ? 'abra a configuração de entrada e escolha uma primeira etapa existente.'
+        : 'abra a configuração de entrada e adicione uma frase válida.',
+    };
+  }
+
+  return {
+    flowId: flow.id,
+    ariaLabel: 'Título do fluxo',
+    initialConfiguration: true,
+    description: 'abra a configuração inicial do fluxo e revise o campo indicado na mensagem.',
+  };
+}
+
+function findFlowForIssue(issue: DashboardValidationIssue, flows: GuidedFlow[]) {
+  return flows.find((flow) => {
+    if (issue.path && (issue.path === flow.id || issue.path.startsWith(`${flow.id}.`))) return true;
+
+    return (
+      issue.id.startsWith(`structural:${flow.id}:`) ||
+      issue.id.startsWith(`duplicate-flow-id:${flow.id}`) ||
+      issue.id.includes(`:${flow.id}:`) ||
+      issue.id.endsWith(`:${flow.id}`)
+    );
+  });
+}
+
+function getFlowPathParts(path: string | undefined, flow: GuidedFlow) {
+  if (!path) return [];
+  if (path === flow.id) return [];
+  const prefix = `${flow.id}.`;
+  return path.startsWith(prefix) ? path.slice(prefix.length).split('.') : [];
+}
+
+function inferNodeId(issue: DashboardValidationIssue, flow: GuidedFlow) {
+  const normalizedMessage = issue.message.toLocaleLowerCase('pt-BR');
+  const nodes = getOrderedFlowNodes(flow);
+
+  const explicitNode = nodes.find((node) => {
+    const id = node.id.toLocaleLowerCase('pt-BR');
+    return (
+      normalizedMessage.includes(`node ${id}`) ||
+      normalizedMessage.includes(`nó ${id}`) ||
+      normalizedMessage.includes(`etapa ${id}`)
+    );
+  });
+  if (explicitNode) return explicitNode.id;
+
+  const choiceNode = nodes.find(
+    (node) =>
+      node.kind === 'choice' &&
+      node.options.some((option) => {
+        const optionId = option.id.toLocaleLowerCase('pt-BR');
+        return normalizedMessage.includes(`option ${optionId}`) || normalizedMessage.includes(`opção ${optionId}`);
+      }),
+  );
+  if (choiceNode) return choiceNode.id;
+
+  const videoNode = nodes.find((node) =>
+    (node.videos ?? []).some((video) => normalizedMessage.includes(`video ${video.id.toLocaleLowerCase('pt-BR')}`)),
+  );
+  return videoNode?.id;
+}
+
+function getOrderedFlowNodes(flow: GuidedFlow) {
+  if (!flow.nodeOrder) return Object.values(flow.nodes);
+
+  const ordered = flow.nodeOrder.filter((id) => flow.nodes[id]).map((id) => flow.nodes[id]);
+  Object.values(flow.nodes).forEach((node) => {
+    if (!flow.nodeOrder?.includes(node.id)) ordered.push(node);
+  });
+  return ordered;
+}
+
+function hasEntryDiagnostic(message: string) {
+  return (
+    message.includes('entry') ||
+    message.includes('entrada') ||
+    message.includes('entering phrase') ||
+    message.includes('frase de entrada')
   );
 }
 

@@ -80,6 +80,11 @@ describe('FlowMapInspector', () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
+  it('shows kind badge with "Escolha" for choice nodes', () => {
+    renderInspector();
+    expect(screen.getByText('Escolha')).toBeInTheDocument();
+  });
+
   it('shows branch ranges for score_branch nodes instead of options', () => {
     const branchNode = {
       id: 'branch',
@@ -96,10 +101,5 @@ describe('FlowMapInspector', () => {
     expect(screen.getByText('6')).toBeInTheDocument();
     expect(screen.getByText('7')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument();
-  });
-
-  it('shows kind badge with "Escolha" for choice nodes', () => {
-    renderInspector();
-    expect(screen.getByText('Escolha')).toBeInTheDocument();
   });
 });
