@@ -143,6 +143,23 @@ describe('FlowSettingsPanel', () => {
     expect(patch.purpose).toBe('orientation_entry');
   });
 
+  it('keeps an unknown purpose representable before switching to a valid one', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel(createFlow({ purpose: 'valor-estranho' as GuidedFlow['purpose'] }));
+
+    // The out-of-union current renders as its own selected option instead of
+    // silently falling back to the first valid choice.
+    const select = screen.getByRole('combobox', { name: 'Uso do fluxo' }) as HTMLSelectElement;
+    expect(select.value).toBe('valor-estranho');
+    expect(screen.getByRole('option', { name: 'Uso desconhecido · valor-estranho' })).toBeInTheDocument();
+
+    await user.selectOptions(select, 'orientation_entry');
+
+    const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['purpose']);
+    expect(patch.purpose).toBe('orientation_entry');
+  });
+
   it('renders the shared status labels and commits a narrow {status} patch', async () => {
     const user = userEvent.setup();
     const props = renderPanel();
@@ -250,6 +267,33 @@ describe('FlowSettingsPanel', () => {
 
     const patch = lastPatch(props.onFlowChange);
     expect(patch.entry?.enteringPhrases).toEqual(['uma', 'três']);
+  });
+
+  it('leaves no stale draft behind when a removal lands next to an unblurred append', async () => {
+    const user = userEvent.setup();
+    const patches = renderStatefulPanel(createFlow());
+
+    // Append a row and type into it without ever blurring.
+    await user.click(screen.getByRole('button', { name: 'Adicionar frase' }));
+    const appended = screen.getByRole('textbox', { name: 'Frase de entrada 2' });
+    expect(appended).toHaveFocus();
+    await user.type(appended, 'lixo');
+
+    // Removing ANOTHER row first blurs the appended row (its draft commits),
+    // then drops the removed phrase — the typed text must survive, the
+    // removed row's text must not.
+    await user.click(screen.getByRole('button', { name: 'Remover frase 1' }));
+
+    expect(patches.map((patch) => patch.entry?.enteringPhrases)).toEqual([
+      ['oi', 'lixo'], // blur merged the pending draft
+      ['lixo'], // then the removal committed
+    ]);
+
+    // A fresh append starts from a clean draft: nothing reattached.
+    await user.click(screen.getByRole('button', { name: 'Adicionar frase' }));
+    const freshRow = screen.getByRole('textbox', { name: 'Frase de entrada 2' });
+    expect(freshRow).toHaveFocus();
+    expect(freshRow).toHaveValue('');
   });
 });
 

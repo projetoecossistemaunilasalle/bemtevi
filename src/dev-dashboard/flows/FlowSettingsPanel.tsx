@@ -134,8 +134,13 @@ function EnteringPhrasesSection({ flow, onEntryChange }: EnteringPhrasesSectionP
               // Removal commits immediately through the same merge path.
               if (commitMergedPhrases({ skipIndex: index })) return;
               // No-op removal: removing a COMMITTED phrase always shrinks the
-              // list, so only an untouched appended row can land here — just
-              // drop it from the local view.
+              // list, so only an untouched appended row can land here. Drop
+              // the row from the local view AND any draft parked on it, so a
+              // stale draft can't reattach to a later appended row.
+              setDrafts((current) => {
+                const { [index]: _dropped, ...rest } = current;
+                return rest;
+              });
               setAddedRows((count) => Math.max(0, count - 1));
             }}
             className="shrink-0 self-stretch rounded-full px-2 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
