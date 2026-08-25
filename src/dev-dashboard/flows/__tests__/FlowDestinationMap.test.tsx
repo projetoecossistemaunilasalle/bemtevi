@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlowDestinationMap } from '../FlowDestinationMap';
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
 
 vi.mock('../flowTopology', () => ({
-  buildFlowTopology: vi.fn(() => ({})),
+  // Minimal shape: the map falls back to its local analysis, and the editor
+  // panel only needs stable `nodes`/`nodeById` containers.
+  buildFlowTopology: vi.fn(() => ({ nodes: [], nodeById: {} })),
 }));
 
 const flow: GuidedFlow = {
@@ -53,7 +56,32 @@ function renderMap(overrides: Partial<React.ComponentProps<typeof FlowDestinatio
   return { ...render(<FlowDestinationMap {...props} />), props };
 }
 
+/** Host that applies patches like FlowDashboard does, so stats re-render from mutations. */
+function renderStatefulMap(initialFlow: GuidedFlow) {
+  const patches: Array<Partial<GuidedFlow>> = [];
+  function Host() {
+    const [flow, setFlow] = useState(initialFlow);
+    return (
+      <FlowDestinationMap
+        flow={flow}
+        flows={[flow]}
+        onFlowChange={(patch) => {
+          patches.push(patch);
+          setFlow((current) => ({ ...current, ...patch }));
+        }}
+        onEditNode={vi.fn()}
+      />
+    );
+  }
+  render(<Host />);
+  return { patches };
+}
+
 describe('FlowDestinationMap', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('renders the complete destination index and structural counts', () => {
     renderMap();
 
@@ -86,14 +114,81 @@ describe('FlowDestinationMap', () => {
     expect(screen.getByRole('heading', { name: 'Mapa por destino' })).toBeInTheDocument();
   });
 
-  it('opens the existing inspector when a stage is selected', async () => {
+  it('opens the node editor panel when a stage is selected', async () => {
     const user = userEvent.setup();
     const { props } = renderMap();
 
     fireEvent.click(screen.getByText('Como você está hoje?'));
-    expect(screen.getByTestId('flow-map-inspector')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /editar completamente/i }));
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /abrir no editor legado/i }));
     expect(props.onEditNode).toHaveBeenCalledWith('check-in', 'q1');
+  });
+
+  it('adds a question stage from the toolbar and opens the panel on it', async () => {
+    const user = userEvent.setup();
+    const { patches } = renderStatefulMap(flow);
+    const stats = screen.getByLabelText('Resumo estrutural');
+
+    const addStage = screen.getByRole('button', { name: 'Etapa' });
+    expect(addStage).toHaveAttribute('aria-expanded', 'false');
+    await user.click(addStage);
+    expect(addStage).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Pergunta' }));
+
+    // Narrow structural patch ({nodes} only — this fixture has no nodeOrder).
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0])).toEqual(['nodes']);
+    expect(patches[0].nodes?.['step-4']).toMatchObject({ id: 'step-4', kind: 'choice' });
+
+    // The popover closed and the panel opened on the fresh empty node.
+    expect(screen.queryByRole('button', { name: 'Pergunta' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('');
+    expect(stats).toHaveTextContent('4 etapas');
+  });
+
+  it('adds a final stage from the toolbar forwarding nodes and nodeOrder', async () => {
+    const user = userEvent.setup();
+    const ordered = { ...flow, nodeOrder: ['q1', 'result', 'orphan'] };
+    renderStatefulMap(ordered);
+
+    await user.click(screen.getByRole('button', { name: 'Etapa' }));
+    await user.click(screen.getByRole('button', { name: 'Final' }));
+
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+    const stats = screen.getByLabelText('Resumo estrutural');
+    expect(stats).toHaveTextContent('4 etapas');
+    expect(stats).toHaveTextContent('3 finais');
+  });
+
+  it('closes the add-stage popover on Escape', async () => {
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(screen.getByRole('button', { name: 'Etapa' }));
+    expect(screen.getByRole('button', { name: 'Ramificação' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'Ramificação' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Etapa' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('deletes the selected stage through the panel and closes it', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderStatefulMap(flow);
+
+    fireEvent.click(screen.getByText('Como você está hoje?'));
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Excluir etapa' }));
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
+    const stats = screen.getByLabelText('Resumo estrutural');
+    expect(stats).toHaveTextContent('2 etapas');
+    expect(stats).not.toHaveTextContent('3 etapas');
   });
 
   it('compacts a long linear run and allows expanding it', async () => {

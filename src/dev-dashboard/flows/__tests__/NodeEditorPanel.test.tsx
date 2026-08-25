@@ -109,10 +109,13 @@ function patchedNodeOf<T extends FlowNode>(
   predicate?: (node: FlowNode) => node is T,
 ): T {
   const node = patch.nodes?.[nodeId];
-  if (!node || (predicate && !predicate(node))) {
-    throw new Error(`expected a${predicate ? ' matching' : ''} node patch for ${nodeId}`);
+  if (!node) throw new Error(`expected a node patch for ${nodeId}`);
+  if (predicate) {
+    if (!predicate(node)) throw new Error(`expected a matching node patch for ${nodeId}`);
+    return node;
   }
-  return node;
+  // No predicate: callers rely on the default FlowNode instantiation.
+  return node as T;
 }
 
 /** Flow where "alvo" receives inbound option(s) from "origem". */

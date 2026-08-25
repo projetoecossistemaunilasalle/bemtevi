@@ -8,6 +8,7 @@ import {
   GitBranch,
   ListTree,
   Maximize2,
+  Plus,
   Search,
   ShieldAlert,
   Unplug,
@@ -30,7 +31,8 @@ import '@xyflow/react/dist/style.css';
 import './FlowDestinationMap.css';
 
 import type { FlowEffect, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
-import { FlowMapInspector } from './FlowMapInspector';
+import { addNode } from './flowMutations';
+import { NodeEditorPanel } from './NodeEditorPanel';
 import { buildFlowTopology } from './flowTopology';
 
 type DestinationKind =
@@ -874,6 +876,7 @@ export function FlowDestinationMap({
   const [showLabels, setShowLabels] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [addStageOpen, setAddStageOpen] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -905,29 +908,35 @@ export function FlowDestinationMap({
     },
     [flow.nodes],
   );
-  const handleTextChange = useCallback(
-    (text: string) => {
-      if (!selectedNodeId || !flow.nodes[selectedNodeId]) return;
-      onFlowChange({ nodes: { ...flow.nodes, [selectedNodeId]: { ...flow.nodes[selectedNodeId], text } } });
+
+  /** Clears the selection and best-effort restores focus to the canvas node. */
+  const handleCloseNodePanel = useCallback(() => {
+    const nodeId = selectedNodeId;
+    setSelectedNodeId(null);
+    // React Flow nodes aren't guaranteed focusable — absence is silent.
+    document.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`)?.focus?.();
+  }, [selectedNodeId]);
+
+  /**
+   * Appends a stage via the pure mutation and forwards only the keys it
+   * touched ({nodes} plus nodeOrder when present), like the editor panel.
+   */
+  const handleAddStage = useCallback(
+    (kind: FlowNode['kind']) => {
+      const { flow: nextFlow, nodeId: newNodeId } = addNode(flow, { kind });
+      onFlowChange({ nodes: nextFlow.nodes, ...(nextFlow.nodeOrder ? { nodeOrder: nextFlow.nodeOrder } : {}) });
+      setAddStageOpen(false);
+      setSelectedNodeId(newNodeId);
     },
-    [flow.nodes, onFlowChange, selectedNodeId],
+    [flow, onFlowChange],
   );
-  const handleRemoveEffect = useCallback(
-    (optionId: string, effectIndex: number) => {
-      if (!selectedNodeId) return;
-      const node = flow.nodes[selectedNodeId];
-      if (!node || node.kind !== 'choice') return;
-      const options = node.options.map((option) =>
-        option.id !== optionId
-          ? option
-          : {
-              ...option,
-              effects: (option.effects ?? []).filter((_, index) => index !== effectIndex),
-            },
-      );
-      onFlowChange({ nodes: { ...flow.nodes, [selectedNodeId]: { ...node, options } } });
+
+  /** Escape dismisses the add-stage popover from wherever the focus sits inside it. */
+  const handleAddStageKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (addStageOpen && event.key === 'Escape') setAddStageOpen(false);
     },
-    [flow.nodes, onFlowChange, selectedNodeId],
+    [addStageOpen],
   );
 
   if (Object.keys(flow.nodes).length === 0) {
@@ -1037,6 +1046,46 @@ export function FlowDestinationMap({
         >
           <Maximize2 aria-hidden="true" /> Ajustar tudo
         </button>
+        <div role="group" aria-label="Adicionar etapa" className="relative">
+          <button
+            type="button"
+            className="flow-destination-map__tool-button"
+            aria-haspopup="true"
+            aria-expanded={addStageOpen}
+            onKeyDown={handleAddStageKeyDown}
+            onClick={() => setAddStageOpen((current) => !current)}
+          >
+            <Plus aria-hidden="true" /> Etapa
+          </button>
+          {addStageOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1 flex w-40 flex-col gap-1 rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 shadow-lg">
+              <button
+                type="button"
+                className="flow-destination-map__tool-button justify-start"
+                onKeyDown={handleAddStageKeyDown}
+                onClick={() => handleAddStage('choice')}
+              >
+                Pergunta
+              </button>
+              <button
+                type="button"
+                className="flow-destination-map__tool-button justify-start"
+                onKeyDown={handleAddStageKeyDown}
+                onClick={() => handleAddStage('result')}
+              >
+                Final
+              </button>
+              <button
+                type="button"
+                className="flow-destination-map__tool-button justify-start"
+                onKeyDown={handleAddStageKeyDown}
+                onClick={() => handleAddStage('score_branch')}
+              >
+                Ramificação
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       {search.trim() && !presentation.hasMatches && (
         <p className="flow-destination-map__search-note" role="status">
@@ -1096,15 +1145,15 @@ export function FlowDestinationMap({
       )}
 
       {selectedNode && (
-        <FlowMapInspector
+        <NodeEditorPanel
+          // Remount per node: the panel's text guard assumes unmount on switch.
           key={selectedNode.id}
-          node={selectedNode}
-          nodes={Object.values(flow.nodes)}
+          flow={flow}
           flows={flows}
-          onTextChange={handleTextChange}
-          onRemoveEffect={handleRemoveEffect}
-          onEditFully={() => onEditNode(flow.id, selectedNode.id)}
-          onClose={() => setSelectedNodeId(null)}
+          nodeId={selectedNode.id}
+          onFlowChange={onFlowChange}
+          onClose={handleCloseNodePanel}
+          onEditLegacy={() => onEditNode(flow.id, selectedNode.id)}
         />
       )}
     </section>
