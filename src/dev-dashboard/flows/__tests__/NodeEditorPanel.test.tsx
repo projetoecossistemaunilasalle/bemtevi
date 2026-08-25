@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { NodeEditorPanel } from '../NodeEditorPanel';
+import { NodeEditorPanel, TargetSelect } from '../NodeEditorPanel';
 import type { ChoiceFlowNode, GuidedFlow, ResultFlowNode } from '../../../domain/flow-engine/types';
 
 const choiceNode: ChoiceFlowNode = {
@@ -29,21 +29,34 @@ function createFlow(overrides: Partial<GuidedFlow> = {}): GuidedFlow {
   };
 }
 
-function renderPanel(flow: GuidedFlow = createFlow(), nodeId = 'q1') {
-  const props = {
+/** Single factory for every render site; overrides keep specialized hosts terse. */
+function makePanelProps(
+  flow: GuidedFlow = createFlow(),
+  nodeId = 'q1',
+  overrides: Partial<{ flows: GuidedFlow[]; onFlowChange: (patch: Partial<GuidedFlow>) => void }> = {},
+) {
+  return {
     flow,
     flows: [flow],
     nodeId,
     onFlowChange: vi.fn(),
     onClose: vi.fn(),
     onEditLegacy: vi.fn(),
+    ...overrides,
   };
+}
+
+type PanelProps = ReturnType<typeof makePanelProps>;
+
+function renderPanel(flow: GuidedFlow = createFlow(), nodeId = 'q1') {
+  const props = makePanelProps(flow, nodeId);
   render(<NodeEditorPanel {...props} />);
   return props;
 }
 
-function lastPatch(mock: ReturnType<typeof vi.fn>): Partial<GuidedFlow> {
-  return mock.mock.calls.at(-1)?.[0] as Partial<GuidedFlow>;
+function lastPatch(mock: PanelProps['onFlowChange']): Partial<GuidedFlow> {
+  const calls = (mock as ReturnType<typeof vi.fn>).mock.calls as Array<[Partial<GuidedFlow>]>;
+  return calls.at(-1)?.[0] as Partial<GuidedFlow>;
 }
 
 /** Flow where "alvo" receives inbound option(s) from "origem". */
@@ -211,14 +224,7 @@ describe('NodeEditorPanel', () => {
     const scrollIntoViewStub = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoViewStub;
     try {
-      const base = {
-        flow: createFlow(),
-        flows: [createFlow()],
-        nodeId: 'q1',
-        onFlowChange: vi.fn(),
-        onClose: vi.fn(),
-        onEditLegacy: vi.fn(),
-      };
+      const base = makePanelProps();
       const view = render(<NodeEditorPanel {...base} focusRequest={{ section: 'texto', requestId: 1 }} />);
       view.rerender(<NodeEditorPanel {...base} focusRequest={{ section: 'texto', requestId: 2 }} />);
 
@@ -239,19 +245,29 @@ describe('NodeEditorPanel', () => {
   });
 
   it('renders nothing for an unknown nodeId', () => {
-    const { container } = render(
-      <NodeEditorPanel
-        flow={createFlow()}
-        flows={[]}
-        nodeId="fantasma"
-        onFlowChange={vi.fn()}
-        onClose={vi.fn()}
-        onEditLegacy={vi.fn()}
-      />,
-    );
+    const { container } = render(<NodeEditorPanel {...makePanelProps(createFlow(), 'fantasma')} />);
 
     expect(container.querySelector('[data-testid="node-editor-panel"]')).toBeNull();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('derives the header step number from topology even without nodeOrder', () => {
+    renderPanel(createFlow({ nodeOrder: undefined }), 'fim');
+    expect(screen.getByRole('heading', { name: 'Etapa 2', level: 2 })).toBeInTheDocument();
+  });
+
+  it('omits the Destino ausente fallback for an empty value on a required select', () => {
+    render(<TargetSelect ariaLabel="Destino obrigatório" value="" onChange={() => {}} nodes={[]} />);
+    const select = screen.getByRole('combobox', { name: 'Destino obrigatório' });
+    // No bogus "Destino ausente · " placeholder for an empty value.
+    expect(within(select).queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('keeps the Destino ausente fallback for a non-empty unknown value', () => {
+    render(<TargetSelect ariaLabel="Destino" value="fantasma" onChange={() => {}} nodes={[]} />);
+    const select = screen.getByRole('combobox', { name: 'Destino' });
+    expect(select).toHaveValue('fantasma');
+    expect(within(select).getByRole('option', { name: 'Destino ausente · fantasma' })).toBeInTheDocument();
   });
 });
 
@@ -296,14 +312,7 @@ describe('NodeEditorPanel opções', () => {
   }
 
   function renderChoicePanel(flow: GuidedFlow = createChoiceFlow()) {
-    const props = {
-      flow,
-      flows: [flow],
-      nodeId: 'q1',
-      onFlowChange: vi.fn(),
-      onClose: vi.fn(),
-      onEditLegacy: vi.fn(),
-    };
+    const props = makePanelProps(flow);
     render(<NodeEditorPanel {...props} />);
     return props;
   }
@@ -315,16 +324,13 @@ describe('NodeEditorPanel opções', () => {
       const [flow, setFlow] = useState(initialFlow);
       return (
         <NodeEditorPanel
-          flow={flow}
-          flows={[flow]}
-          nodeId="q1"
-          onFlowChange={(patch) => {
-            const applied = { ...flow, ...patch };
-            history.push({ patch, applied });
-            setFlow(applied);
-          }}
-          onClose={() => {}}
-          onEditLegacy={() => {}}
+          {...makePanelProps(flow, 'q1', {
+            onFlowChange: (patch) => {
+              const applied = { ...flow, ...patch };
+              history.push({ patch, applied });
+              setFlow(applied);
+            },
+          })}
         />
       );
     }
@@ -426,12 +432,30 @@ describe('NodeEditorPanel opções', () => {
   it('removes only the clicked option row', async () => {
     const user = userEvent.setup();
     const props = renderChoicePanel();
-    await user.click(screen.getAllByRole('button', { name: 'Remover opção' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Remover opção 1' }));
 
     expect(props.onFlowChange).toHaveBeenCalledTimes(1);
     const node = patchedChoiceNode(lastPatch(props.onFlowChange));
     expect(node.options).toHaveLength(1);
     expect(node.options[0]?.id).toBe('q1-option-2');
+  });
+
+  it('routes successive option edits through the updater so each commit builds on the latest node', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulChoicePanel(createChoiceFlow());
+
+    // Event 1: label edit on option 1 → exactly one commit.
+    await user.type(screen.getByRole('textbox', { name: 'Rótulo da opção 1' }), '!');
+    await user.tab();
+    expect(history).toHaveLength(1);
+    expect(patchedChoiceNode(history[0].patch).options[0]?.label).toBe('Ok!');
+
+    // Event 2: a different field, committed from the state event 1 produced.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Destino da opção 2' }), 'perdido');
+    expect(history).toHaveLength(2);
+    const second = patchedChoiceNode(history[1].patch);
+    expect(second.options[0]?.label).toBe('Ok!'); // composed over the prior commit
+    expect(second.options[1]?.next).toBe('perdido');
   });
 
   it('adds freeText with an empty next when toggled on', async () => {
@@ -470,16 +494,7 @@ describe('NodeEditorPanel opções', () => {
 
   it('renders no opções section for a non-choice node', () => {
     const flow = createChoiceFlow();
-    const { container } = render(
-      <NodeEditorPanel
-        flow={flow}
-        flows={[flow]}
-        nodeId="fim"
-        onFlowChange={vi.fn()}
-        onClose={vi.fn()}
-        onEditLegacy={vi.fn()}
-      />,
-    );
+    const { container } = render(<NodeEditorPanel {...makePanelProps(flow, 'fim')} />);
 
     expect(container.querySelector('[data-section="opcoes"]')).toBeNull();
   });

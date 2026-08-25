@@ -11,32 +11,6 @@ const kindLabels: Record<FlowNode['kind'], string> = {
 };
 
 /**
- * Same ordering rules as flowTopology's `getOrderedNodes`: `nodeOrder` ids
- * first (skipping unknown/duplicate ids), then remaining nodes in insertion
- * order. Kept local because neither copy is exported today.
- */
-function getOrderedNodes(flow: GuidedFlow): FlowNode[] {
-  const ordered: FlowNode[] = [];
-  const seen = new Set<string>();
-  if (flow.nodeOrder) {
-    for (const id of flow.nodeOrder) {
-      const node = flow.nodes[id];
-      if (node && !seen.has(node.id)) {
-        ordered.push(node);
-        seen.add(node.id);
-      }
-    }
-  }
-  for (const node of Object.values(flow.nodes)) {
-    if (!seen.has(node.id)) {
-      ordered.push(node);
-      seen.add(node.id);
-    }
-  }
-  return ordered;
-}
-
-/**
  * Same collapsing rules as flowTopology's private excerpt helper: trims,
  * collapses whitespace and ellipsizes past `length` characters.
  */
@@ -65,6 +39,10 @@ function targetGroupLabel(node: FlowTopologyNode): string {
 }
 
 const TARGET_GROUP_ORDER = ['Entrada', 'Prof.', 'Sem acesso pela entrada', 'Finais'];
+
+/** Shared styling for every native select in the panel. */
+const selectClassName =
+  'w-full rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
 
 function targetGroupRank(label: string): number {
   if (label.startsWith('Prof.')) return 1;
@@ -104,9 +82,9 @@ interface TargetSelectProps {
  * Native select over the flow's topology nodes grouped by depth/reachability.
  * The current value is ALWAYS representable: when it points at a removed or
  * unknown node it renders as `Destino ausente · <id>` instead of silently
- * showing the wrong option.
+ * showing the wrong option. Exported for direct testing of the fallback guard.
  */
-function TargetSelect({
+export function TargetSelect({
   id,
   value,
   onChange,
@@ -123,7 +101,7 @@ function TargetSelect({
     <select
       {...(id ? { id } : {})}
       aria-label={ariaLabel}
-      className="w-full rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
+      className={selectClassName}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
@@ -135,7 +113,8 @@ function TargetSelect({
           ))}
         </optgroup>
       ))}
-      {!isRepresentable && <option value={value}>{`Destino ausente · ${value}`}</option>}
+      {/* An empty value without allowEmpty is a caller bug, not "missing data" — don't render a bogus option. */}
+      {!isRepresentable && value !== '' && <option value={value}>{`Destino ausente · ${value}`}</option>}
     </select>
   );
 }
@@ -144,8 +123,13 @@ interface OptionRowProps {
   option: FlowOption;
   index: number;
   targets: FlowTopologyNode[];
-  onLabelCommit: (label: string) => void;
-  onNextChange: (next: string) => void;
+  /**
+   * Updater-style edit channel for this row's option. Callers must invoke it
+   * AT MOST ONCE per user event (single synchronous commit per event); the
+   * `update` function is resolved against the latest committed option when the
+   * panel handles the event, so it must never capture a render-time snapshot.
+   */
+  onOptionUpdate: (update: (current: FlowOption) => FlowOption) => void;
   onRemove: () => void;
 }
 
@@ -156,7 +140,7 @@ interface OptionRowProps {
  * never via the shared document.activeElement guard, so editing a label can't
  * clobber sibling rows or the texto textarea.
  */
-function OptionRow({ option, index, targets, onLabelCommit, onNextChange, onRemove }: OptionRowProps) {
+function OptionRow({ option, index, targets, onOptionUpdate, onRemove }: OptionRowProps) {
   const [draftLabel, setDraftLabel] = useState<string | null>(null);
   const displayedLabel = draftLabel ?? option.label;
 
@@ -169,19 +153,22 @@ function OptionRow({ option, index, targets, onLabelCommit, onNextChange, onRemo
         onChange={(event) => setDraftLabel(event.target.value)}
         onBlur={() => {
           setDraftLabel(null);
-          if (draftLabel !== null && draftLabel !== option.label) onLabelCommit(draftLabel);
+          if (draftLabel !== null && draftLabel !== option.label) {
+            onOptionUpdate((current) => ({ ...current, label: draftLabel }));
+          }
         }}
       />
       {/* Selects don't blur reliably; commit the target immediately on change. */}
       <TargetSelect
         ariaLabel={`Destino da opção ${index + 1}`}
         value={option.next}
-        onChange={onNextChange}
+        onChange={(next) => onOptionUpdate((current) => ({ ...current, next }))}
         nodes={targets}
         allowEmpty
       />
       <button
         type="button"
+        aria-label={`Remover opção ${index + 1}`}
         onClick={onRemove}
         className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
       >
@@ -199,9 +186,19 @@ function ChoiceOptionsSection({
 }: {
   node: ChoiceFlowNode;
   targets: FlowTopologyNode[];
-  onNodeChange: (next: ChoiceFlowNode) => void;
+  /** Same one-commit-per-event contract as the panel-level handler below. */
+  onNodeChange: (update: (current: ChoiceFlowNode) => ChoiceFlowNode) => void;
 }) {
-  const commitOptions = (options: FlowOption[]) => onNodeChange({ ...node, options });
+  /**
+   * Routes one option-scoped edit through the node-level updater. The mapping
+   * runs against the LATEST options at event time — never against this
+   * render's snapshot — and performs exactly one commit.
+   */
+  const commitOption = (optionId: string, update: (current: FlowOption) => FlowOption) =>
+    onNodeChange((current) => ({
+      ...current,
+      options: current.options.map((candidate) => (candidate.id === optionId ? update(candidate) : candidate)),
+    }));
 
   return (
     <>
@@ -211,23 +208,24 @@ function ChoiceOptionsSection({
           option={option}
           index={index}
           targets={targets}
-          onLabelCommit={(label) =>
-            commitOptions(
-              node.options.map((candidate) => (candidate.id === option.id ? { ...candidate, label } : candidate)),
-            )
+          onOptionUpdate={(update) => commitOption(option.id, update)}
+          onRemove={() =>
+            onNodeChange((current) => ({
+              ...current,
+              options: current.options.filter((candidate) => candidate.id !== option.id),
+            }))
           }
-          onNextChange={(next) =>
-            commitOptions(
-              node.options.map((candidate) => (candidate.id === option.id ? { ...candidate, next } : candidate)),
-            )
-          }
-          onRemove={() => commitOptions(node.options.filter((candidate) => candidate.id !== option.id))}
         />
       ))}
       <Button
         variant="secondary"
         size="sm"
-        onClick={() => commitOptions([...node.options, { id: uniqueOptionId(node), label: '', next: '' }])}
+        onClick={() =>
+          onNodeChange((current) => ({
+            ...current,
+            options: [...current.options, { id: uniqueOptionId(current), label: '', next: '' }],
+          }))
+        }
       >
         Adicionar opção
       </Button>
@@ -235,12 +233,13 @@ function ChoiceOptionsSection({
         <input
           type="checkbox"
           checked={Boolean(node.freeText)}
-          onChange={(event) => {
-            const { freeText, ...nodeWithoutFreeText } = node;
-            onNodeChange(
-              event.target.checked ? { ...node, freeText: { next: freeText?.next ?? '' } } : nodeWithoutFreeText,
-            );
-          }}
+          onChange={(event) =>
+            onNodeChange((current) => {
+              if (event.target.checked) return { ...current, freeText: { next: current.freeText?.next ?? '' } };
+              const { freeText: _dropped, ...nodeWithoutFreeText } = current;
+              return nodeWithoutFreeText;
+            })
+          }
         />
         Aceitar resposta livre
       </label>
@@ -248,7 +247,7 @@ function ChoiceOptionsSection({
         <TargetSelect
           ariaLabel="Destino da resposta livre"
           value={node.freeText.next}
-          onChange={(next) => onNodeChange({ ...node, freeText: { next } })}
+          onChange={(next) => onNodeChange((current) => ({ ...current, freeText: { next } }))}
           nodes={targets}
           allowEmpty
         />
@@ -307,7 +306,9 @@ export function NodeEditorPanel({
   if (!node) return null;
 
   const isEntry = flow.entry.nodeId === nodeId;
-  const stepNumber = getOrderedNodes(flow).findIndex((item) => item.id === nodeId) + 1;
+  // Same ordering the topology uses for TargetSelect step labels; 0 only for a
+  // node missing from its own topology (defensive, not reachable today).
+  const stepNumber = topology.nodeById[nodeId]?.stepNumber ?? 0;
 
   /** Structural patches stay narrow: only the keys the mutation actually touched. */
   const toNodesPatch = (next: GuidedFlow): Partial<GuidedFlow> => ({
@@ -341,9 +342,18 @@ export function NodeEditorPanel({
     }
   };
 
-  /** Whole-node replacement scoped to this node's record key. */
-  const handleChoiceNodeChange = (next: ChoiceFlowNode) => {
-    onFlowChange({ nodes: { ...flow.nodes, [nodeId]: next } });
+  /**
+   * Whole-node replacement scoped to this node's record key.
+   *
+   * One-commit-per-event contract: editing helpers hand this an UPDATER and it
+   * is resolved against the flow props current at event time — never against a
+   * render-time snapshot captured in a closure. Helpers must call it at most
+   * once per user event; multi-field edits must compose into a single updater.
+   */
+  const handleChoiceNodeChange = (update: (current: ChoiceFlowNode) => ChoiceFlowNode) => {
+    const currentNode = flow.nodes[nodeId];
+    if (currentNode?.kind !== 'choice') return;
+    onFlowChange({ nodes: { ...flow.nodes, [nodeId]: update(currentNode) } });
   };
 
   return (
