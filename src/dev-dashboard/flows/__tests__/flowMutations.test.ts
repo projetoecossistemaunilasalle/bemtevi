@@ -403,6 +403,21 @@ describe('updateFlowSettings', () => {
     expect(next).not.toBe(flow); // always a fresh object…
     expect(next).toEqual(flow); // …structurally identical when no key was provided
   });
+
+  it('keeps the existing purpose when the patch passes purpose: undefined (cannot clear via patch)', () => {
+    const flow: GuidedFlow = {
+      ...baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } }),
+      purpose: 'orientation_entry',
+    };
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const next = updateFlowSettings(flow, { purpose: undefined });
+
+    expect(next.purpose).toBe('orientation_entry');
+    expect(next.title).toBe('F'); // other keys still apply normally
+    // Purity: the input flow is untouched.
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
 });
 
 describe('switchNodeKind', () => {
@@ -428,9 +443,14 @@ describe('switchNodeKind', () => {
 
     const { flow: next, node } = switchNodeKind(flow, 'q1', { kind: 'result' });
 
-    expect(node).toEqual({ id: 'q1', kind: 'result', text: 'Escolha' });
-    expect(Object.keys(node).sort()).toEqual(['id', 'kind', 'text']); // plain result: nothing else leaks in
-    expect(node.id).toBe('q1');
+    const result = node as ResultFlowNode;
+    expect(result.kind).toBe('result');
+    expect(result.id).toBe('q1');
+    expect(result.text).toBe('Escolha');
+    expect(Object.keys(node).sort()).toEqual(['id', 'kind', 'text', 'videos']); // plain result: nothing leaks beyond carried videos
+    // Media survives re-kinding as a fresh copy, never shared with the input.
+    expect(result.videos).toEqual([{ id: 'v1', title: 'Vídeo', url: 'https://x' }]);
+    expect(result.videos![0]).not.toBe((flow.nodes.q1 as ChoiceFlowNode).videos![0]);
     expect(node).toBe(next.nodes.q1); // record key preserved
     // Inbound references still point at the same id (content shape changed; validated downstream).
     expect((next.nodes.src as ChoiceFlowNode).options[0].next).toBe('q1');
@@ -453,7 +473,8 @@ describe('switchNodeKind', () => {
     expect(branched.text).toBe('Fim'); // text always preserved
     expect(branched.scoreKey).toBe('pontuacao'); // DEFAULT_SCORE_KEY
     expect(branched.branches).toEqual([{ id: 'fim-faixa-1', min: 0, max: 10, next: '' }]);
-    expect(Object.keys(branched)).not.toContain('recommendations');
+    // Source had no videos: no videos key may appear; old extras stay dropped.
+    expect(Object.keys(branched).sort()).toEqual(['branches', 'id', 'kind', 'scoreKey', 'text']);
     expect(node).toBe(next.nodes.fim); // record key preserved
   });
 
@@ -463,6 +484,7 @@ describe('switchNodeKind', () => {
         id: 'calc',
         kind: 'score_branch',
         text: 'Calc',
+        videos: [{ id: 'v9', title: 'Tutorial', url: 'https://y' }],
         scoreKey: 'pontuacao',
         branches: [{ id: 'alta', min: 6, max: 10, next: 'fim' }],
       },
@@ -479,6 +501,9 @@ describe('switchNodeKind', () => {
     expect(choice.options).toEqual([{ id: 'calc-option-1', label: '', next: '' }]);
     expect(choice).not.toHaveProperty('branches');
     expect(choice).not.toHaveProperty('scoreKey');
+    // Media survives the switch to choice as a fresh copy.
+    expect(choice.videos).toEqual([{ id: 'v9', title: 'Tutorial', url: 'https://y' }]);
+    expect(choice.videos![0]).not.toBe((flow.nodes.calc as ScoreBranchFlowNode).videos![0]);
     expect(node).toBe(next.nodes.calc);
     // Purity: the input flow is untouched.
     expect((flow.nodes.calc as ScoreBranchFlowNode).branches).toHaveLength(1);

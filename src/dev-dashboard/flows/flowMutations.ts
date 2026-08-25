@@ -203,14 +203,14 @@ export interface SwitchKindInput {
 }
 
 /**
- * Rebuilds `nodeId` as `input.kind`, keeping ONLY its text: the node id and
- * record key survive while everything else (options, branches, scoreKey,
- * videos…) is replaced by kind defaults — a fresh choice gains one empty
- * `${id}-option-1`; a fresh score_branch gains `DEFAULT_SCORE_KEY` plus a
- * single default range. Inbound references still point at the same id and
- * nodeOrder keeps its position; the changed content shape is expected and
- * validated downstream. A same-kind request is a no-op returning the current
- * references. Pure: never mutates inputs.
+ * Rebuilds `nodeId` as `input.kind`, keeping its text and media: the node id,
+ * record key, text, and a deep copy of `videos` survive while everything else
+ * (options, branches, scoreKey…) is replaced by kind defaults — a fresh choice
+ * gains one empty `${id}-option-1`; a fresh score_branch gains
+ * `DEFAULT_SCORE_KEY` plus a single default range. Inbound references still
+ * point at the same id and nodeOrder keeps its position; the changed content
+ * shape is expected and validated downstream. A same-kind request is a no-op
+ * returning the current references. Pure: never mutates inputs.
  *
  * (`keepText` was dropped from the planned API: text is ALWAYS preserved, so
  * the flag had nothing to toggle.)
@@ -229,6 +229,7 @@ export function switchNodeKind(
       id: nodeId,
       kind: 'choice',
       text: current.text,
+      ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
       options: [{ id: `${nodeId}-option-1`, label: '', next: '' }],
     };
   } else if (input.kind === 'score_branch') {
@@ -236,11 +237,17 @@ export function switchNodeKind(
       id: nodeId,
       kind: 'score_branch',
       text: current.text,
+      ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
       scoreKey: DEFAULT_SCORE_KEY,
       branches: [{ id: `${nodeId}-faixa-1`, ...DEFAULT_BRANCH_RANGE, next: '' }],
     };
   } else {
-    node = { id: nodeId, kind: 'result', text: current.text };
+    node = {
+      id: nodeId,
+      kind: 'result',
+      text: current.text,
+      ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
+    };
   }
 
   return { flow: { ...flow, nodes: { ...flow.nodes, [nodeId]: node } }, node };
@@ -268,10 +275,11 @@ export interface FlowSettingsPatch {
 
 /**
  * Applies a partial patch to the flow's presentation settings.
- * Pure: never mutates inputs. Keys left out (or explicitly undefined) keep
- * their current value; `enteringPhrases` replaces the whole list and is
- * copied defensively. A no-op patch returns a structurally NEW but equivalent
- * flow — never the same reference (pinned by test).
+ * Pure: never mutates inputs. Keys left out keep their current value; passing
+ * `purpose: undefined` also keeps it — purpose cannot be cleared via patch.
+ * `enteringPhrases` replaces the whole list and is copied defensively. A
+ * no-op patch returns a structurally NEW but equivalent flow — never the same
+ * reference (pinned by test).
  */
 export function updateFlowSettings(flow: GuidedFlow, patch: FlowSettingsPatch): GuidedFlow {
   const next: GuidedFlow = { ...flow };
