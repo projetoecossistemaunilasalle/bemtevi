@@ -498,4 +498,9 @@ describe('switchNodeKind', () => {
     expect((node as ChoiceFlowNode).options).toHaveLength(1);
     expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
   });
+
+  it('throws when the target node does not exist', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    expect(() => switchNodeKind(flow, 'ghost', { kind: 'result' })).toThrow('No such node: ghost');
+  });
 });
