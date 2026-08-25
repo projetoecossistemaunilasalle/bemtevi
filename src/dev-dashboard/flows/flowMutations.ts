@@ -1,8 +1,11 @@
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 
+const DEFAULT_SCORE_KEY = 'pontuacao';
+const DEFAULT_BRANCH_RANGE = { min: 0, max: 10 };
+
 export interface AddNodeInput {
   kind: FlowNode['kind'];
-  /** When provided, the option is repointed to the created node. */
+  /** When provided WITH optionId, that option is repointed to the created node. */
   connectFrom?: { nodeId: string; optionId?: string };
 }
 
@@ -26,31 +29,39 @@ function createDefaultNode(id: string, kind: FlowNode['kind']): FlowNode {
       id,
       kind: 'score_branch',
       text: '',
-      scoreKey: 'pontuacao',
-      branches: [{ id: `${id}-faixa-1`, min: 0, max: 10, next: '' }],
+      scoreKey: DEFAULT_SCORE_KEY,
+      branches: [{ id: `${id}-faixa-1`, ...DEFAULT_BRANCH_RANGE, next: '' }],
     };
   }
   return { id, kind: 'result', text: '' };
 }
 
-/** Returns a new flow plus the generated node id. Pure: never mutates inputs. */
-export function addNode(flow: GuidedFlow, input: AddNodeInput): { flow: GuidedFlow; nodeId: string } {
+/**
+ * Returns a new flow plus the generated node id.
+ * Pure: never mutates inputs. An origin option is repointed only when
+ * `connectFrom.optionId` is explicitly provided and found (`linked` reports it).
+ */
+export function addNode(
+  flow: GuidedFlow,
+  input: AddNodeInput,
+): { flow: GuidedFlow; nodeId: string; linked: boolean } {
   const nodeId = uniqueNodeId(flow);
   let nodes: Record<string, FlowNode> = { ...flow.nodes, [nodeId]: createDefaultNode(nodeId, input.kind) };
+  let linked = false;
 
-  if (input.connectFrom) {
-    const origin = nodes[input.connectFrom.nodeId];
+  if (input.connectFrom?.optionId) {
+    const { nodeId: originId, optionId } = input.connectFrom;
+    const origin = nodes[originId];
     // Only choice nodes own options; unknown origins are left untouched.
     if (origin && origin.kind === 'choice') {
-      const index = input.connectFrom.optionId
-        ? origin.options.findIndex((option) => option.id === input.connectFrom?.optionId)
-        : 0;
+      const index = origin.options.findIndex((option) => option.id === optionId);
       if (index >= 0) {
         const linkedOrigin: FlowNode = {
           ...origin,
           options: origin.options.map((option, i) => (i === index ? { ...option, next: nodeId } : option)),
         };
         nodes = { ...nodes, [origin.id]: linkedOrigin };
+        linked = true;
       }
     }
   }
@@ -59,5 +70,6 @@ export function addNode(flow: GuidedFlow, input: AddNodeInput): { flow: GuidedFl
   return {
     flow: next.nodeOrder ? { ...next, nodeOrder: [...next.nodeOrder, nodeId] } : next,
     nodeId,
+    linked,
   };
 }
