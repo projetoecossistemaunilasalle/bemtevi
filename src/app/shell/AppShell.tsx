@@ -13,7 +13,7 @@ const PageViewTracker = import.meta.env.PROD
 
 export function AppShell() {
   return (
-    <div className="bg-background text-on-background min-h-[100dvh] flex flex-col font-body-md pb-24 md:pb-0 relative overflow-x-hidden w-full">
+    <div className="app-shell bg-background text-on-background min-h-[100dvh] flex flex-col font-body-md pb-24 md:pb-0 relative overflow-x-hidden w-full">
       {PageViewTracker ? (
         <Suspense fallback={null}>
           <PageViewTracker />
@@ -22,7 +22,7 @@ export function AppShell() {
       <ScrollToTop />
       <TopBar />
       <TestVersionBanner />
-      <div className="flex-grow flex flex-col w-full relative">
+      <div className="app-content flex-grow flex flex-col w-full relative">
         <Outlet />
       </div>
       <BottomNav />

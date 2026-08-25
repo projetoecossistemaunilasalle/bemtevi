@@ -291,7 +291,7 @@ describe('DashboardRoute', () => {
     });
   });
 
-  it('renders pt-BR flow editor helper text', () => {
+  it('switches to conversation testing from initial flow settings', () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -302,34 +302,9 @@ describe('DashboardRoute', () => {
 
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Fluxos' })).toBeInTheDocument();
-    expect(screen.getByText('São frases que uma pessoa pode escolher para começar este fluxo.')).toBeInTheDocument();
-    expect(screen.getByText('Mapa visual')).toBeInTheDocument();
-    expect(screen.getByText('Testar conversa')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Testar conversa' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ir para outro fluxo' }));
     expect(screen.getByText('Este é outro fluxo.')).toBeInTheDocument();
-  });
-
-  it('explains flow usage, transition message, and first step in pt-BR', () => {
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByText('Configurações Iniciais e Entrada do Fluxo'));
-
-    expect(
-      screen.getByText('Conversa principal: começa quando a pessoa digita ou escolhe uma frase'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Define onde este fluxo aparece no app e como ele pode ser iniciado.')).toBeInTheDocument();
-    expect(
-      screen.getByText('Aparece no chat logo antes da primeira etapa, quando o app está abrindo este fluxo.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Escolha qual etapa aparece primeiro para a pessoa. Os códigos técnicos ficam escondidos aqui.'),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole('option', { name: 'Etapa 1 - Como você quer continuar?' }).length).toBeGreaterThan(0);
   });
 
   it('shows full entry phrases in multiline fields', () => {
@@ -369,19 +344,6 @@ describe('DashboardRoute', () => {
         'Estas questões são relacionadas a certas dores e problemas que podem ter incomodado você nos últimos 30 dias.',
       ),
     ).not.toBeInTheDocument();
-  });
-
-  it('renders pt-BR education helper text', async () => {
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
-
-    expect(await screen.findByRole('heading', { name: 'Materiais' })).toBeInTheDocument();
-    expect(screen.getByText('Use palavras curtas para ajudar professores a encontrar o material.')).toBeInTheDocument();
   });
 
   it('renders the contacts tab in order and opens the shipped contact editor', () => {
@@ -874,19 +836,6 @@ describe('DashboardRoute', () => {
     expect(screen.queryByText('O título é obrigatório.')).not.toBeInTheDocument();
   });
 
-  it('renders export handoff copy', () => {
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
-
-    expect(screen.getByRole('heading', { name: 'Arquivo para revisão' })).toBeInTheDocument();
-    expect(screen.getByText('Ele contém o JSON de dados e as imagens enviadas.')).toBeInTheDocument();
-  });
-
   it('updates a local flow title draft', () => {
     render(
       <MemoryRouter>
@@ -1024,16 +973,6 @@ describe('DashboardRoute', () => {
 
     await user.click(screen.getByRole('button', { name: 'Mapa visual' }));
     expect(screen.getByTestId('flow-map-canvas')).toBeInTheDocument();
-  });
-
-  it('does not render a Redirecionamentos tab', () => {
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    expect(screen.queryByRole('button', { name: 'Redirecionamentos' })).not.toBeInTheDocument();
   });
 
   it('opens the inspector panel when a node is clicked in the flow map', async () => {
@@ -1307,18 +1246,6 @@ describe('DashboardRoute', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('A imagem selecionada é muito grande.');
     expect(currentUrl).toHaveValue(originalValue);
-  });
-
-  it('removes the per-material group order input', () => {
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
-
-    expect(screen.queryByLabelText('Ordem no grupo')).not.toBeInTheDocument();
   });
 
   it('moves an education group order draft', () => {

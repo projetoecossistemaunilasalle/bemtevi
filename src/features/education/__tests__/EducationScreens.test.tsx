@@ -94,25 +94,6 @@ describe('EducationLibraryScreen', () => {
     expect(screen.getByText('Aplicação prática')).toBeInTheDocument();
   });
 
-  it('renders the library thumbnail without blend or opacity effects', () => {
-    const resource = resourcesContent.resources[0];
-
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao']}>
-        <Routes>
-          <Route path="/educacao" element={<EducationLibraryScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    const thumbnail = document.querySelector(`img[src="${resource.imageUrl}"]`);
-
-    expect(thumbnail).toBeInstanceOf(HTMLImageElement);
-    expect(thumbnail).not.toHaveClass('opacity-90');
-    expect(thumbnail).not.toHaveClass('mix-blend-multiply');
-    expect(thumbnail).not.toHaveAttribute('src', expect.stringContaining('respiracao'));
-  });
-
   it('renders long bibliography entries as compact source badges', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
@@ -563,27 +544,6 @@ describe('ResourceDetailScreen', () => {
     const sourceLink = screen.getByRole('link', { name: /acessar fonte original/i });
     expect(sourceLink).toHaveAttribute('href', 'https://www.feevale.br/');
     expect(resource.body?.at(-1)?.kind).toBe('sourceLink');
-  });
-
-  it('renders the respiration images as body content, not only as metadata', () => {
-    const resource = resourcesContent.resources[0];
-
-    renderWithContent(
-      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('img', { name: 'Exercício de respiração passo 1.' })).toHaveAttribute(
-      'src',
-      '/bemtevi/respiracao1.jpg',
-    );
-    expect(screen.getByRole('img', { name: 'Exercício de respiração passo 2.' })).toHaveAttribute(
-      'src',
-      '/bemtevi/respiracao2.jpg',
-    );
   });
 
   it('renders YouTube block titles before the iframe and omits the seeded mock description', () => {

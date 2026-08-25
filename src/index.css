@@ -134,3 +134,152 @@ input[type='range'] {
   width: 100%;
   background: transparent;
 }
+
+/* Keep onboarding calm and readable when both width and height are limited. */
+@media (max-width: 420px), (max-height: 700px) {
+  .top-bar-inner {
+    height: 3.5rem;
+  }
+
+  .top-bar-logo {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .top-bar-brand {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .test-version-banner {
+    padding: 0.375rem 0.75rem;
+    font-size: 12px;
+    line-height: 17px;
+    letter-spacing: 0.25px;
+  }
+
+  .onboarding-content {
+    padding-block: clamp(0.75rem, 2.5dvh, 1.25rem);
+  }
+
+  .onboarding-panel {
+    gap: clamp(0.625rem, 2dvh, 0.875rem);
+  }
+
+  .onboarding-icon {
+    width: clamp(3.25rem, 10dvh, 4rem);
+    height: clamp(3.25rem, 10dvh, 4rem);
+  }
+
+  .onboarding-icon > svg {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .onboarding-title {
+    font-size: clamp(1.75rem, 8vw, 2rem);
+    line-height: 1.15;
+  }
+
+  .onboarding-body {
+    font-size: clamp(0.9375rem, 4.2vw, 1rem);
+    line-height: 1.45;
+  }
+
+  .onboarding-actions {
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+  }
+}
+
+.onboarding-screen {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-shell:has(.onboarding-screen) {
+  height: 100dvh;
+  min-height: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.app-shell:has(.onboarding-screen) > header,
+.app-shell:has(.onboarding-screen) > .test-version-banner,
+.app-shell:has(.onboarding-screen) > .bottom-nav {
+  display: none;
+}
+
+.app-shell:has(.onboarding-screen) .app-content {
+  min-height: 0;
+}
+
+@media (max-width: 340px) {
+  .top-bar-inner {
+    height: 3.25rem;
+  }
+
+  .onboarding-content {
+    padding: 0.5rem 1rem;
+  }
+
+  .onboarding-panel {
+    gap: 0.5rem;
+  }
+
+  .onboarding-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .onboarding-icon > svg {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .onboarding-title {
+    font-size: 1.625rem;
+    line-height: 1.12;
+  }
+
+  .onboarding-body {
+    font-size: 0.90625rem;
+    line-height: 1.4;
+  }
+
+  .onboarding-actions > button:first-of-type {
+    min-height: 3rem;
+    padding-block: 0.5rem;
+  }
+
+  .bottom-nav {
+    padding-inline: 0.25rem;
+  }
+
+  .bottom-nav-link {
+    padding-inline: 0.125rem;
+  }
+
+  .bottom-nav-link > span {
+    font-size: 10px;
+  }
+}
+
+.onboarding-icon.onboarding-logo-frame {
+  width: clamp(5.5rem, 16dvh, 8rem);
+  height: clamp(5.5rem, 16dvh, 8rem);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.onboarding-logo-frame .onboarding-logo {
+  padding: clamp(0.625rem, 2dvh, 1rem);
+}
+
+@media (max-width: 340px) {
+  .onboarding-icon.onboarding-logo-frame {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+}

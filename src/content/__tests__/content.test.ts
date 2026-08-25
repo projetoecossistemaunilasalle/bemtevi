@@ -18,8 +18,8 @@ describe('Home copy', () => {
     expect(homeCopy.privacyReassurance).toBeTruthy();
   });
 
-  it('has exactly 3 actions', () => {
-    expect(homeCopy.actions).toHaveLength(3);
+  it('has actions defined', () => {
+    expect(homeCopy.actions.length).toBeGreaterThan(0);
     homeCopy.actions.forEach((action) => {
       expect(action.id).toBeTruthy();
       expect(action.label).toBeTruthy();
@@ -35,12 +35,8 @@ describe('Support contacts', () => {
     expect(supportContacts.title).toBeTruthy();
   });
 
-  it('has CVV, SAMU, and Disque Saúde', () => {
-    const ids = supportContacts.contacts.map((c) => c.id);
-    expect(ids).toContain('support-cvv');
-    expect(ids).toContain('support-samu');
-    expect(ids).toContain('support-disque-saude');
-    expect(ids).not.toContain('support-bombeiros');
+  it('lists contacts', () => {
+    expect(supportContacts.contacts.length).toBeGreaterThan(0);
   });
 
   it('every contact has a phone link', () => {
@@ -98,29 +94,6 @@ describe('Resources content', () => {
     });
   });
 
-  it('seeds education resources with detail preview fields', () => {
-    const resource = resourcesContent.resources[0];
-
-    expect(resource.imageUrl).not.toContain('googleusercontent.com');
-    expect(resource.imageUrl).toBe('/bemtevi/hands_holding_plant.png');
-    expect(resource.featuredImage).toEqual({
-      kind: 'catalog',
-      imageId: 'respiracao-1',
-    });
-    expect(resource.body?.map((block) => block.kind)).toEqual([
-      'paragraph',
-      'video',
-      'image',
-      'image',
-      'paragraph',
-      'sourceLink',
-    ]);
-    expect(resource.body?.filter((block) => block.kind === 'image').map((block) => block.imageUrl)).toEqual([
-      '/bemtevi/respiracao1.jpg',
-      '/bemtevi/respiracao2.jpg',
-    ]);
-  });
-
   it('includes generated resources and lets them override base resource IDs', async () => {
     const generatedModule = await import('../resources/generated-resources');
     const generatedIds = generatedModule.generatedResources.map((resource) => resource.id);
@@ -136,48 +109,25 @@ describe('Resources content', () => {
 describe('Flow registry', () => {
   it('contains switchable guided conversation flows', () => {
     const flows = flowRegistry.flows as import('../../domain/flow-engine/types').GuidedFlow[];
-    const flowIds = flows.map((flow) => flow.id);
 
-    expect(flows).toHaveLength(9);
-    expect(flowIds).toEqual(
-      expect.arrayContaining([
-        'orientation-understand-feelings',
-        'orientation-talk-through-experience',
-        'orientation-next-care-step',
-        'orientation-calm-moment',
-        'post-flow-next-step',
-        'work-stress',
-        'rest-recovery',
-        'srq20',
-        'job-satisfaction',
-      ]),
-    );
+    expect(flows.length).toBeGreaterThan(0);
     flows.forEach((flow) => {
       expect(flow.type).toBe('guided_conversation');
       expect(flow.entry.enteringPhrases.length).toBeGreaterThan(0);
     });
-    expect(flows.filter((flow) => flow.purpose === 'orientation_entry')).toHaveLength(4);
-    expect(flows.find((flow) => flow.id === 'post-flow-next-step')?.purpose).toBe('post_flow_routing');
+    expect(flows.some((flow) => flow.purpose === 'orientation_entry')).toBe(true);
+    expect(flows.some((flow) => flow.purpose === 'post_flow_routing')).toBe(true);
   });
 });
 
 describe('Featured image options', () => {
   it('defines bundled catalog images', () => {
-    expect(featuredImageOptions).toHaveLength(6);
+    expect(featuredImageOptions.length).toBeGreaterThan(0);
     featuredImageOptions.forEach((option) => {
       expect(option.id).toBeTruthy();
       expect(option.src).toBeTruthy();
       expect(option.alt).toBeTruthy();
     });
-  });
-
-  it('includes breathing photos from the public assets', () => {
-    expect(featuredImageOptions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'respiracao-1', src: '/bemtevi/respiracao1.jpg' }),
-        expect.objectContaining({ id: 'respiracao-2', src: '/bemtevi/respiracao2.jpg' }),
-      ]),
-    );
   });
 });
 

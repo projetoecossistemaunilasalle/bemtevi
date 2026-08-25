@@ -17,7 +17,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 w-full z-50 grid items-center px-2 py-2 bg-surface shadow-[0_-4px_12px_0_rgba(27,58,107,0.1)] rounded-t-xl md:hidden"
+      className="bottom-nav fixed bottom-0 w-full z-50 grid items-center px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-surface shadow-[0_-4px_12px_0_rgba(27,58,107,0.1)] rounded-t-xl md:hidden"
       style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
       aria-label="Navegação principal"
     >
@@ -26,7 +26,7 @@ export function BottomNav() {
           key={to}
           to={to}
           className={({ isActive }) =>
-            `flex flex-col items-center justify-center min-h-14 px-1 py-1 duration-200 ease-in-out font-label-md rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
+            `bottom-nav-link flex flex-col items-center justify-center min-h-14 px-1 py-1 duration-200 ease-in-out font-label-md rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
               isActive ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-primary'
             }`
           }
@@ -34,7 +34,7 @@ export function BottomNav() {
           {({ isActive }) => (
             <>
               <Icon size={22} fill="none" className="mb-1" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[11px] leading-tight">{label}</span>
+              <span className="text-[11px] leading-tight tracking-normal">{label}</span>
             </>
           )}
         </NavLink>

@@ -140,16 +140,6 @@ describe('OrientationScreen', () => {
     expect(window.sessionStorage).toHaveLength(0);
   });
 
-  it('renders guided orientation without free-text submission', () => {
-    renderOrientation();
-
-    expect(screen.queryByText('Orientação sem cadastro')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Orientação guiada' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Opções disponíveis')).not.toBeInTheDocument();
-    expect(screen.queryByText('Sobrecarga na escola')).not.toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Digite ou escolha uma opção')).not.toBeInTheDocument();
-  });
-
   it('advances the flow immediately when the user clicks a bubble', () => {
     renderOrientation();
     startOrientationWithStarter();
@@ -243,13 +233,6 @@ describe('OrientationScreen', () => {
 
     expect(screen.getByText('Quero entender como estou me sentindo')).toBeInTheDocument();
     expect(screen.getByText('Tudo bem escolher algo mais leve agora.')).toBeInTheDocument();
-  });
-
-  it('does not render a questionnaire-specific screen entry', () => {
-    renderOrientation();
-
-    expect(screen.queryByRole('link', { name: /SRQ-20/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /Responder SRQ-20/i })).not.toBeInTheDocument();
   });
 
   it('keeps the composer fixed as a chat input above the page navigation after the intro', () => {

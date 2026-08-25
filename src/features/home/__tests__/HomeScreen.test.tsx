@@ -17,17 +17,12 @@ describe('HomeScreen onboarding', () => {
     window.sessionStorage.clear();
   });
 
-  it('shows onboarding on the first visit and marks it seen when skipped', async () => {
+  it('shows mandatory onboarding on the first visit', () => {
     renderHome();
 
     expect(document.querySelector('[data-onboarding-screen]')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Pular' }));
-
-    expect(window.localStorage.getItem('bemtevi:onboarding-seen')).toBe('true');
-    await waitFor(() => {
-      expect(document.querySelector('[data-onboarding-screen]')).not.toBeInTheDocument();
-    });
+    expect(screen.queryByRole('button', { name: 'Pular' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('bemtevi:onboarding-seen')).toBeNull();
   });
 
   it('marks onboarding seen when completed and does not show it on a later visit', async () => {
@@ -48,12 +43,6 @@ describe('HomeScreen onboarding', () => {
     });
     expect(screen.getByRole('heading', { name: 'Que bom ter você aqui!' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Como você está hoje?' })).not.toBeInTheDocument();
-    expect(screen.getByText('Uma ferramenta de educação em saúde mental para professores.')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'As informações têm caráter educativo e preventivo e não substituem acompanhamento profissional.',
-      ),
-    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /qual serviço de saúde posso acessar/i })).toBeInTheDocument();
   });
 });

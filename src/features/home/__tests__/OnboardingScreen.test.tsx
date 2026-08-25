@@ -8,6 +8,13 @@ describe('OnboardingScreen', () => {
     window.sessionStorage.clear();
   });
 
+  it('requires onboarding interaction and shows the BemTeVi logo first', () => {
+    render(<OnboardingScreen onContinue={vi.fn()} />);
+
+    expect(screen.getByRole('img', { name: 'BemTeVi' })).toHaveAttribute('src', '/logo.png');
+    expect(screen.queryByRole('button', { name: 'Pular' })).not.toBeInTheDocument();
+  });
+
   it('explains what is and is not stored without absolute privacy claims', () => {
     render(<OnboardingScreen onContinue={vi.fn()} />);
 

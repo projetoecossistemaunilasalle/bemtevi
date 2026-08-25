@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "bemtevi",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -35,25 +35,24 @@
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
     "@neondatabase/neon-js": "0.6.2-beta",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.11.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "react-router-dom": "^7.15.1",
-    "vite": "^6.2.3"
+    "react-router-dom": "^7.15.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.14",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^10.4.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",

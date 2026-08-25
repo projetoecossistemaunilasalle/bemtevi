@@ -5,12 +5,6 @@ describe('firstVisit', () => {
     window.localStorage.clear();
   });
 
-  it('exports isFirstVisit and markVisited functions', async () => {
-    const { isFirstVisit, markVisited } = await import('../firstVisit');
-    expect(typeof isFirstVisit).toBe('function');
-    expect(typeof markVisited).toBe('function');
-  });
-
   it('treats users as first-time visitors until onboarding is completed', async () => {
     const { isFirstVisit } = await import('../firstVisit');
 

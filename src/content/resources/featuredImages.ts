@@ -1,7 +1,7 @@
 import handsHoldingPlant from '../../assets/featured-images/hands_holding_plant.png';
-import classroom1 from '../../assets/featured-images/classroom_1.png';
-import classroom2 from '../../assets/featured-images/classroom_2.png';
-import greenPatch from '../../assets/featured-images/green_patch.png';
+import classroom1 from '../../assets/featured-images/classroom_1.webp';
+import classroom2 from '../../assets/featured-images/classroom_2.webp';
+import greenPatch from '../../assets/featured-images/green_patch.webp';
 
 export interface FeaturedImageOption {
   id: string;

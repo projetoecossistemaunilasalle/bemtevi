@@ -21,15 +21,15 @@ export function TopBar() {
 
   return (
     <header className="bg-surface sticky top-0 z-40 w-full border-b border-outline-variant/30">
-      <div className="flex items-center px-container-padding-mobile h-16 w-full max-w-7xl mx-auto justify-between">
+      <div className="top-bar-inner flex items-center px-container-padding-mobile h-16 w-full max-w-7xl mx-auto justify-between">
         <Link to={routes.home} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
             alt=""
             aria-hidden="true"
-            className="h-10 w-10 object-contain"
+            className="top-bar-logo h-10 w-10 object-contain"
           />
-          <span className="font-brand text-primary">BemTeVi</span>
+          <span className="top-bar-brand font-brand text-primary">BemTeVi</span>
         </Link>
 
         <div className="flex items-center gap-2">
