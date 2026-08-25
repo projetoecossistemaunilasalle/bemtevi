@@ -45,8 +45,8 @@ function lastPatch(mock: ReturnType<typeof vi.fn>): Partial<GuidedFlow> {
   return mock.mock.calls.at(-1)?.[0] as Partial<GuidedFlow>;
 }
 
-/** Flow where "alvo" receives exactly one inbound option (from "origem"). */
-function createBranchyFlow(): GuidedFlow {
+/** Flow where "alvo" receives inbound option(s) from "origem". */
+function createBranchyFlow(inboundOptionCount = 1): GuidedFlow {
   return createFlow({
     entry: { nodeId: 'origem', enteringPhrases: [], transitionMessage: '' },
     nodes: {
@@ -54,7 +54,11 @@ function createBranchyFlow(): GuidedFlow {
         id: 'origem',
         kind: 'choice',
         text: 'Origem',
-        options: [{ id: 'origem-option-1', label: 'Ir', next: 'alvo' }],
+        options: Array.from({ length: inboundOptionCount }, (_, index) => ({
+          id: `origem-option-${index + 1}`,
+          label: `Ir ${index + 1}`,
+          next: 'alvo',
+        })),
       },
       alvo: {
         id: 'alvo',
@@ -84,7 +88,8 @@ describe('NodeEditorPanel', () => {
   it('renders the kind badge, ordered step number and existing text', () => {
     renderPanel(createFlow(), 'fim');
     expect(screen.getByText('Final')).toBeInTheDocument();
-    expect(screen.getByText('Etapa 2')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Etapa 2', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Texto', level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Fim.');
   });
 
@@ -111,14 +116,26 @@ describe('NodeEditorPanel', () => {
     expect(props.onFlowChange).not.toHaveBeenCalled();
   });
 
-  it('duplicates the node and forwards the whole resulting flow', async () => {
+  it('duplicates the node and forwards a narrow nodes/nodeOrder patch', async () => {
     const user = userEvent.setup();
     const props = renderPanel(createFlow(), 'q1');
     await user.click(screen.getByRole('button', { name: 'Duplicar etapa' }));
 
     const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['nodes', 'nodeOrder']);
     expect(patch.nodes?.['q1-copy-1']).toMatchObject({ id: 'q1-copy-1' });
     expect(patch.nodeOrder).toEqual(['q1', 'q1-copy-1', 'fim']);
+  });
+
+  it('omits nodeOrder from duplicate patches for flows without an explicit order', async () => {
+    const user = userEvent.setup();
+    const unordered = createFlow({ nodeOrder: undefined });
+    const props = renderPanel(unordered, 'q1');
+    await user.click(screen.getByRole('button', { name: 'Duplicar etapa' }));
+
+    const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['nodes']);
+    expect(patch.nodes?.['q1-copy-1']).toBeDefined();
   });
 
   it('confirms deletion with the breakage count and removes the node on accept', async () => {
@@ -130,8 +147,20 @@ describe('NodeEditorPanel', () => {
     expect(String(confirmSpy.mock.calls[0][0])).toContain('1 conexão');
 
     const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['nodes', 'nodeOrder']);
     expect(patch.nodes?.alvo).toBeUndefined();
     expect(patch.nodes?.origem).toBeDefined();
+  });
+
+  it('uses the plural confirm message with two inbound connections', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel(createBranchyFlow(2), 'alvo');
+    await user.click(screen.getByRole('button', { name: 'Excluir etapa' }));
+
+    expect(String(confirmSpy.mock.calls[0][0])).toContain('2 conexões ficarão sem destino');
+
+    const patch = lastPatch(props.onFlowChange);
+    expect(patch.nodes?.alvo).toBeUndefined();
   });
 
   it('applies nothing when deletion is declined', async () => {
@@ -162,17 +191,40 @@ describe('NodeEditorPanel', () => {
     renderPanel(createFlow(), 'q1');
     const button = screen.getByRole('button', { name: 'Definir como entrada' });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('patches entry.nodeId when setting another node as entry', async () => {
+  it('patches only the entry when setting another node as entry', async () => {
     const user = userEvent.setup();
     const props = renderPanel(createFlow(), 'fim');
     const button = screen.getByRole('button', { name: 'Definir como entrada' });
     expect(button).toBeEnabled();
     await user.click(button);
 
-    expect(lastPatch(props.onFlowChange)?.entry?.nodeId).toBe('fim');
+    const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['entry']);
+    expect(patch.entry?.nodeId).toBe('fim');
+  });
+
+  it('re-fires section scrolling when requestId bumps for the same section', () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoViewStub = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    try {
+      const base = {
+        flow: createFlow(),
+        flows: [createFlow()],
+        nodeId: 'q1',
+        onFlowChange: vi.fn(),
+        onClose: vi.fn(),
+        onEditLegacy: vi.fn(),
+      };
+      const view = render(<NodeEditorPanel {...base} focusRequest={{ section: 'texto', requestId: 1 }} />);
+      view.rerender(<NodeEditorPanel {...base} focusRequest={{ section: 'texto', requestId: 2 }} />);
+
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(2);
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
   });
 
   it('fires the legacy editor and close callbacks', async () => {

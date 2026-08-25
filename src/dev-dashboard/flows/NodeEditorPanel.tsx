@@ -35,6 +35,13 @@ function getOrderedNodes(flow: GuidedFlow): FlowNode[] {
   return ordered;
 }
 
+/**
+ * Structured side panel that will replace the map inspector (integration is a
+ * later task).
+ *
+ * Callers must remount this panel per node (key={nodeId}) — the text guard
+ * assumes unmount on switch.
+ */
 export interface NodeEditorPanelProps {
   flow: GuidedFlow;
   flows: GuidedFlow[];
@@ -43,8 +50,8 @@ export interface NodeEditorPanelProps {
   onClose: () => void;
   /** Opens the legacy full editor for this node. */
   onEditLegacy: () => void;
-  /** Scroll/focus a named section ('texto'|'opcoes'|'ramificacao'|'midia'); wired fully in a later task. */
-  focusSection?: string;
+  /** Scroll/focus request for a named section ('texto'|'opcoes'|'ramificacao'|'midia'); bump requestId to re-fire. */
+  focusRequest?: { section?: string; requestId: number } | null;
 }
 
 export function NodeEditorPanel({
@@ -53,7 +60,7 @@ export function NodeEditorPanel({
   onFlowChange,
   onClose,
   onEditLegacy,
-  focusSection,
+  focusRequest,
 }: NodeEditorPanelProps) {
   const node = flow.nodes[nodeId];
   const [localText, setLocalText] = useState(node?.text ?? '');
@@ -65,15 +72,31 @@ export function NodeEditorPanel({
   }
 
   useEffect(() => {
-    if (!focusSection) return;
-    const section = containerRef.current?.querySelector<HTMLElement>(`[data-section="${focusSection}"]`);
+    if (!focusRequest?.section) return;
+    const section = containerRef.current?.querySelector<HTMLElement>(`[data-section="${focusRequest.section}"]`);
     section?.scrollIntoView({ block: 'nearest' });
-  }, [focusSection]);
+    // Keyed on requestId only so repeated identical requests re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest?.requestId]);
 
   if (!node) return null;
 
   const isEntry = flow.entry.nodeId === nodeId;
   const stepNumber = getOrderedNodes(flow).findIndex((item) => item.id === nodeId) + 1;
+
+  /** Structural patches stay narrow: only the keys the mutation actually touched. */
+  const toNodesPatch = (next: GuidedFlow): Partial<GuidedFlow> => ({
+    nodes: next.nodes,
+    ...(next.nodeOrder ? { nodeOrder: next.nodeOrder } : {}),
+  });
+
+  const handleSetEntryClick = () => {
+    onFlowChange({ entry: setEntryNode(flow, nodeId).entry });
+  };
+
+  const handleDuplicateClick = () => {
+    onFlowChange(toNodesPatch(duplicateNode(flow, nodeId).flow));
+  };
 
   const handleDeleteClick = () => {
     const result = deleteNode(flow, nodeId);
@@ -89,7 +112,7 @@ export function NodeEditorPanel({
           ? '1 conexão ficará sem destino'
           : `${brokenCount} conexões ficarão sem destino`;
     if (window.confirm(`Excluir esta etapa? ${consequence}`)) {
-      onFlowChange(result.flow);
+      onFlowChange(toNodesPatch(result.flow));
     }
   };
 
@@ -101,7 +124,7 @@ export function NodeEditorPanel({
     >
       <header className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-label-md text-on-surface">{`Etapa ${stepNumber}`}</p>
+          <h2 className="font-label-md text-on-surface">{`Etapa ${stepNumber}`}</h2>
           <span className="mt-1 inline-block rounded-full bg-surface-container px-2 py-0.5 font-label-sm text-xs text-on-surface-variant">
             {kindLabels[node.kind]}
           </span>
@@ -131,11 +154,8 @@ export function NodeEditorPanel({
       </header>
 
       <section data-section="texto" className="flex flex-col gap-1">
-        <label className="font-label-sm text-xs text-on-surface-variant" htmlFor="node-editor-text">
-          Texto da etapa
-        </label>
+        <h3 className="font-label-sm text-xs text-on-surface-variant">Texto</h3>
         <textarea
-          id="node-editor-text"
           aria-label="Texto da etapa"
           className="min-h-[80px] rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
           value={localText}
@@ -148,28 +168,22 @@ export function NodeEditorPanel({
         />
       </section>
 
-      {/* Placeholder anchors for later tasks (options, branching, media). */}
-      <div data-section="opcoes" />
-      <div data-section="ramificacao" />
-      <div data-section="midia" />
+      {/* Placeholder sections for later tasks; Task 10 fills in their fields. */}
+      <section data-section="opcoes">
+        <h3 className="font-label-sm text-xs text-on-surface-variant">Opções</h3>
+      </section>
+      <section data-section="ramificacao">
+        <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
+      </section>
+      <section data-section="midia">
+        <h3 className="font-label-sm text-xs text-on-surface-variant">Mídia</h3>
+      </section>
 
       <div className="mt-auto flex flex-col gap-2 pt-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          disabled={isEntry}
-          aria-disabled={isEntry}
-          onClick={() => onFlowChange(setEntryNode(flow, nodeId))}
-        >
+        <Button variant="secondary" size="sm" className="w-full" disabled={isEntry} onClick={handleSetEntryClick}>
           Definir como entrada
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          onClick={() => onFlowChange(duplicateNode(flow, nodeId).flow)}
-        >
+        <Button variant="secondary" size="sm" className="w-full" onClick={handleDuplicateClick}>
           Duplicar etapa
         </Button>
         <Button variant="danger" size="sm" className="w-full" onClick={handleDeleteClick}>
