@@ -56,4 +56,61 @@ describe('FlowMap', () => {
     expect(screen.getByTestId('flow-overview-canvas')).toBeInTheDocument();
     expect(screen.getByText('2', { selector: '.flow-overview__summary strong' })).toBeInTheDocument();
   });
+
+  function renderFlowMap(focusRequest?: Parameters<typeof FlowMap>[0]['focusRequest']) {
+    const props: React.ComponentProps<typeof FlowMap> = {
+      flow: firstFlow,
+      flows: [firstFlow, secondFlow],
+      onFlowChange: vi.fn(),
+      onEditNode: vi.fn(),
+      onSelectFlow: vi.fn(),
+      focusRequest,
+    };
+    const view = render(<FlowMap {...props} />);
+    return { view, props };
+  }
+
+  it('opens the settings panel for a flow-level validation focusRequest', () => {
+    const { view, props } = renderFlowMap();
+    expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+
+    view.rerender(<FlowMap {...props} focusRequest={{ requestId: 1 }} />);
+
+    // 'configuracoes' target: the settings overlay surfaces without any node.
+    expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
+    expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
+  });
+
+  it('lands a node-level validation focusRequest with settings closed, once', async () => {
+    const user = userEvent.setup();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoViewStub = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewStub;
+
+    try {
+      const { view, props } = renderFlowMap();
+
+      // Start from the worst case: overview mode with the settings overlay open.
+      await user.click(screen.getByRole('button', { name: /visão geral/i }));
+      await user.click(screen.getByRole('button', { name: 'Configurações do fluxo' }));
+      expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
+
+      view.rerender(<FlowMap {...props} focusRequest={{ nodeId: 'question', section: 'texto', requestId: 1 }} />);
+
+      expect(screen.getByRole('button', { name: /por destino/i })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByTestId('flow-settings-panel')).not.toBeInTheDocument();
+      expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Para onde seguir?');
+      // The panel mounted one commit after selection, but must still scroll.
+      expect(scrollIntoViewStub).toHaveBeenCalledWith({ block: 'nearest' });
+
+      // The request is retired after being applied: toggling views must not
+      // resurrect the deep-link panel.
+      await user.click(screen.getByRole('button', { name: /visão geral/i }));
+      await user.click(screen.getByRole('button', { name: /por destino/i }));
+      expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
 });

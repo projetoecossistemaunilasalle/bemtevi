@@ -859,16 +859,47 @@ function createPresentation(
   return { nodes, edges, hasMatches: analysis.nodes.some(matches), maxDisplayDepth: Math.max(0, resultDepth - 1) };
 }
 
+/**
+ * Validation deep-link payload handed from the dashboard's validation summary
+ * down through FlowMap to this map. Bump `requestId` to re-fire an identical
+ * request; `nodeId` absent means a flow-level target ('configuracoes').
+ */
+export type MapFocusRequest = {
+  /** Stage to select on the destination canvas. */
+  nodeId?: string;
+  /** Node panel section to reveal ('texto'|'opcoes'|'ramificacao'|'midia'). */
+  section?: string;
+  requestId: number;
+};
+
+/**
+ * Selection semantics for a focusRequest, applied once per requestId:
+ * - with `nodeId`: selects that stage (unknown ids are ignored — the flow may
+ *   have changed under the summary); the panel remounts and its own requestId
+ *   effect scrolls to `section`.
+ * - without `nodeId` (flow-level 'configuracoes'): clears any node selection so
+ *   the settings overlay stands alone and notifies `onRequestSettingsOpen`.
+ * Calls `onFocusRequestApplied` afterwards so the owner can retire the request
+ * and mode toggles won't resurrect it.
+ */
 export function FlowDestinationMap({
   flow,
   flows,
   onFlowChange,
   onEditNode,
+  focusRequest,
+  onRequestSettingsOpen,
+  onFocusRequestApplied,
 }: {
   flow: GuidedFlow;
   flows: GuidedFlow[];
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
   onEditNode: (flowId: string, nodeId: string) => void;
+  focusRequest?: MapFocusRequest | null;
+  /** Wired by FlowMap to its settings toggle; safe to call repeatedly. */
+  onRequestSettingsOpen?: () => void;
+  /** Retires the applied request upstream, keyed by its requestId. */
+  onFocusRequestApplied?: (requestId: number) => void;
 }) {
   const analysis = useMemo(() => topologyFor(flow, flows), [flow, flows]);
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
@@ -876,6 +907,13 @@ export function FlowDestinationMap({
   const [showLabels, setShowLabels] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  /**
+   * Section target held for the node panel. Kept separate from the upstream
+   * focusRequest because the owner retires that one the same commit a
+   * deep-link selection lands — one commit BEFORE the panel mounts, so the
+   * panel would never see it. Manual selections below clear it.
+   */
+  const [panelFocusRequest, setPanelFocusRequest] = useState<{ section?: string; requestId: number } | null>(null);
   const [addStageOpen, setAddStageOpen] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>([]);
@@ -905,7 +943,10 @@ export function FlowDestinationMap({
   const selectedDestinationData = analysis.destinations.find((destination) => destination.id === selectedDestination);
   const handleNodeClick: NodeMouseHandler<DestinationRFNode> = useCallback(
     (_event, node) => {
-      if (flow.nodes[node.id]) setSelectedNodeId(node.id);
+      if (flow.nodes[node.id]) {
+        setSelectedNodeId(node.id);
+        setPanelFocusRequest(null);
+      }
     },
     [flow.nodes],
   );
@@ -914,6 +955,7 @@ export function FlowDestinationMap({
   const handleCloseNodePanel = useCallback(() => {
     const nodeId = selectedNodeId;
     setSelectedNodeId(null);
+    setPanelFocusRequest(null);
     // React Flow nodes aren't guaranteed focusable — absence is silent.
     document.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`)?.focus?.();
   }, [selectedNodeId]);
@@ -928,6 +970,7 @@ export function FlowDestinationMap({
       onFlowChange({ nodes: nextFlow.nodes, ...(nextFlow.nodeOrder ? { nodeOrder: nextFlow.nodeOrder } : {}) });
       setAddStageOpen(false);
       setSelectedNodeId(newNodeId);
+      setPanelFocusRequest(null);
       // Keep the keyboard origin stable once the popover disappears.
       addStageTriggerRef.current?.focus();
     },
@@ -943,6 +986,29 @@ export function FlowDestinationMap({
     },
     [addStageOpen],
   );
+
+  // Validation deep-links: selection semantics per the MapFocusRequest contract.
+  // Applying an externally-pushed request channel IS state mutation by design,
+  // so the no-setState-in-effect rule is scoped off for exactly this body.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!focusRequest) return;
+    if (focusRequest.nodeId) {
+      // Unknown ids are ignored: the flow may have changed under the summary.
+      if (flow.nodes[focusRequest.nodeId]) {
+        setSelectedNodeId(focusRequest.nodeId);
+        setPanelFocusRequest({ section: focusRequest.section, requestId: focusRequest.requestId });
+      }
+    } else {
+      setSelectedNodeId(null);
+      setPanelFocusRequest(null);
+      onRequestSettingsOpen?.();
+    }
+    onFocusRequestApplied?.(focusRequest.requestId);
+    // Keyed on requestId only so repeated identical requests re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest?.requestId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (Object.keys(flow.nodes).length === 0) {
     return (
@@ -1163,6 +1229,7 @@ export function FlowDestinationMap({
           onFlowChange={onFlowChange}
           onClose={handleCloseNodePanel}
           onEditLegacy={() => onEditNode(flow.id, selectedNode.id)}
+          focusRequest={panelFocusRequest ?? undefined}
         />
       )}
     </section>

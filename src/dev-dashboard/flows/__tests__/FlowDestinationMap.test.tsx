@@ -45,6 +45,26 @@ const flow: GuidedFlow = {
   },
 };
 
+/** Two chained stages so validation deep-links can land on a second stage. */
+const focusFlow: GuidedFlow = {
+  ...flow,
+  nodes: {
+    q1: {
+      id: 'q1',
+      kind: 'choice',
+      text: 'Como você está hoje?',
+      options: [{ id: 'next', label: 'Próxima', next: 'q2' }],
+    },
+    q2: {
+      id: 'q2',
+      kind: 'choice',
+      text: 'Quer deixar um recado?',
+      options: [{ id: 'enviar', label: 'Enviar', next: 'result' }],
+    },
+    result: { id: 'result', kind: 'result', text: 'Obrigado por responder.' },
+  },
+};
+
 function renderMap(overrides: Partial<React.ComponentProps<typeof FlowDestinationMap>> = {}) {
   const props: React.ComponentProps<typeof FlowDestinationMap> = {
     flow,
@@ -234,5 +254,67 @@ describe('FlowDestinationMap', () => {
     expect(screen.getByText(/sequência linear/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /expandir sequência/i }));
     expect(screen.getByText('Pergunta 1')).toBeInTheDocument();
+  });
+
+  it('selects the requested stage and scrolls its panel section on focusRequest', () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoViewStub = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    try {
+      renderMap({ flow: focusFlow, flows: [focusFlow], focusRequest: { nodeId: 'q2', section: 'opcoes', requestId: 1 } });
+
+      expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Quer deixar um recado?');
+      expect(scrollIntoViewStub).toHaveBeenCalledWith({ block: 'nearest' });
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+
+  it('re-fires the section scroll when the same stage is requested again', () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoViewStub = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    try {
+      const view = renderMap({
+        flow: focusFlow,
+        flows: [focusFlow],
+        focusRequest: { nodeId: 'q2', section: 'texto', requestId: 1 },
+      });
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(1);
+
+      view.rerender(
+        <FlowDestinationMap
+          {...view.props}
+          focusRequest={{ nodeId: 'q2', section: 'texto', requestId: 2 }}
+        />,
+      );
+
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+
+  it('clears the node selection and requests settings for a node-less focusRequest', () => {
+    const onRequestSettingsOpen = vi.fn();
+    const view = renderMap({ onRequestSettingsOpen });
+
+    fireEvent.click(screen.getByText('Como você está hoje?'));
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+
+    view.rerender(<FlowDestinationMap {...view.props} focusRequest={{ requestId: 1 }} />);
+
+    // Flow-level ('configuracoes') target: the panel steps aside so the
+    // settings overlay can stand alone.
+    expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
+    expect(onRequestSettingsOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a focusRequest pointing at an unknown stage', () => {
+    renderMap({ flow: focusFlow, flows: [focusFlow], focusRequest: { nodeId: 'fantasma', section: 'texto', requestId: 1 } });
+
+    expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
   });
 });

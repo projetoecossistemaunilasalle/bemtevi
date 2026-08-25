@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import type { EducationResource } from '../../domain/resources/types';
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
@@ -11,6 +11,7 @@ import { FlowMap } from './FlowMap';
 import { FlowPreview } from './FlowPreview';
 import { inputClassSm } from '../components/fieldStyles';
 import { getFlowNodeTitle } from './flowDisplay';
+import type { MapFocusRequest } from './FlowDestinationMap';
 
 type FlowDetailTab = 'editor' | 'preview' | 'map';
 type NodeFilter = 'all' | 'result' | 'safety' | 'branch';
@@ -61,10 +62,9 @@ export function FlowDashboard({
   const [nodeScrollRequest, setNodeScrollRequest] = useState<{ nodeId: string; requestId: number } | null>(null);
   const [nodeSearch, setNodeSearch] = useState('');
   const [activeNodeFilter, setActiveNodeFilter] = useState<NodeFilter>('all');
-  const [validationFocusRequest, setValidationFocusRequest] = useState<{
-    target: FlowValidationTarget;
-    requestId: number;
-  } | null>(null);
+  // Deep-link from the validation summary onto the map surface. Consumed by
+  // FlowMap/FlowDestinationMap; cleared when the user navigates manually.
+  const [validationFocusRequest, setValidationFocusRequest] = useState<MapFocusRequest | null>(null);
 
   const selectedIndex = useMemo(() => flows.findIndex((flow) => flow.id === selectedFlowId), [flows, selectedFlowId]);
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
@@ -125,71 +125,6 @@ export function FlowDashboard({
     [flows, resources],
   );
 
-  useEffect(() => {
-    if (!validationFocusRequest) return;
-
-    let focusTimer: number | undefined;
-
-    const focusTarget = () => {
-      const { target } = validationFocusRequest;
-      const nodeElement = target.nodeId ? document.getElementById(`flow-node-${target.nodeId}`) : null;
-
-      if (nodeElement && typeof nodeElement.scrollIntoView === 'function') {
-        nodeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      const root = nodeElement ?? document;
-      let control: HTMLElement | null = null;
-      if (target.ariaLabel) {
-        control =
-          Array.from(root.querySelectorAll<HTMLElement>('input, select, textarea, button')).find(
-            (element) => element.getAttribute('aria-label') === target.ariaLabel,
-          ) ?? null;
-      }
-
-      if (!control && target.initialConfiguration) {
-        const initialConfiguration = Array.from(
-          document.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]'),
-        ).find((element) => element.textContent?.includes('Configurações Iniciais'));
-
-        if (initialConfiguration?.getAttribute('aria-expanded') === 'false') {
-          initialConfiguration.click();
-          focusTimer = window.setTimeout(focusTarget, 0);
-          return;
-        }
-
-        if (initialConfiguration) {
-          control =
-            Array.from(document.querySelectorAll<HTMLElement>('input, select, textarea, button')).find(
-              (element) => element.getAttribute('aria-label') === target.ariaLabel,
-            ) ?? null;
-        }
-      }
-
-      // Node-level diagnostics still get a keyboard focus target when no
-      // specific field exists (for example, a missing recommendation).
-      if (!control && nodeElement) {
-        control = nodeElement.querySelector<HTMLElement>('textarea, input, select, button');
-      }
-
-      if (control) {
-        control.focus({ preventScroll: true });
-      } else if (nodeElement) {
-        nodeElement.setAttribute('tabindex', '-1');
-        nodeElement.focus({ preventScroll: true });
-      }
-    };
-
-    // The selected flow and editor tab are changed in the same event as this
-    // request. Waiting one frame lets React mount the target editor panel.
-    const retryTimer = window.setTimeout(focusTarget, 0);
-
-    return () => {
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-      if (focusTimer !== undefined) window.clearTimeout(focusTimer);
-    };
-  }, [validationFocusRequest]);
-
   if (!selectedFlow) {
     return (
       <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
@@ -208,6 +143,8 @@ export function FlowDashboard({
     setSelectedNodeId(null);
     setNodeScrollRequest(null);
     setConfirmDeleteFlowId(null);
+    // Manual navigation retires any pending validation deep-link.
+    setValidationFocusRequest(null);
   }
 
   function selectNode(nodeId: string) {
@@ -225,21 +162,17 @@ export function FlowDashboard({
 
   function openValidationTarget(target: FlowValidationTarget) {
     setSelectedFlowId(target.flowId);
-    setSelectedNodeId(target.nodeId ?? null);
     setNodeSearch('');
     setActiveNodeFilter('all');
-    setActiveDetailTab('editor');
-
-    if (target.nodeId) {
-      setNodeScrollRequest((request) => ({
-        nodeId: target.nodeId as string,
-        requestId: (request?.requestId ?? 0) + 1,
-      }));
-    } else {
-      setNodeScrollRequest(null);
-    }
-
-    setValidationFocusRequest((request) => ({ target, requestId: (request?.requestId ?? 0) + 1 }));
+    // Every target has a map representation: node targets select the stage and
+    // reveal its panel section; flow-level targets ('configuracoes') open the
+    // map's settings panel. The legacy editor is only reachable by choice.
+    setActiveDetailTab('map');
+    setValidationFocusRequest((request) => ({
+      nodeId: target.nodeId,
+      section: target.section,
+      requestId: (request?.requestId ?? 0) + 1,
+    }));
   }
 
   function getIssueAction(issue: DashboardValidationIssue): ValidationIssueAction | null {
@@ -247,7 +180,7 @@ export function FlowDashboard({
     if (!target) return null;
 
     return {
-      label: target.nodeId ? 'Abrir no Editor' : 'Abrir fluxo no Editor',
+      label: target.nodeId ? 'Corrigir no mapa' : 'Abrir configurações no mapa',
       description: target.description,
       onClick: () => openValidationTarget(target),
     };
@@ -470,7 +403,11 @@ export function FlowDashboard({
               key={tab.id}
               type="button"
               aria-pressed={activeDetailTab === tab.id}
-              onClick={() => setActiveDetailTab(tab.id)}
+              onClick={() => {
+                setActiveDetailTab(tab.id);
+                // Manual navigation retires any pending validation deep-link.
+                setValidationFocusRequest(null);
+              }}
               className={`min-h-9 rounded-full px-4 font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 activeDetailTab === tab.id
                   ? 'bg-primary text-on-primary'
@@ -508,6 +445,7 @@ export function FlowDashboard({
             onFlowChange={(patch) => onFlowChange(effectiveIndex, selectedFlow.id, patch)}
             onEditNode={handleEditNode}
             onSelectFlow={handleSelectFlow}
+            focusRequest={validationFocusRequest}
           />
         )}
 

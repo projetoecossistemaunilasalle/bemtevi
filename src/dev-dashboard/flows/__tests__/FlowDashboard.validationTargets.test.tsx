@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
 import type { DashboardValidationIssue } from '../../validation/validationTypes';
-import { resolveFlowValidationTarget } from '../FlowDashboard';
+import { FlowDashboard, resolveFlowValidationTarget } from '../FlowDashboard';
 
 const flow: GuidedFlow = {
   id: 'check-in',
@@ -10,13 +12,25 @@ const flow: GuidedFlow = {
   title: 'Check-in',
   type: 'guided_conversation',
   status: 'draft',
-  entry: { nodeId: 'q1', enteringPhrases: [], transitionMessage: '' },
+  entry: { nodeId: 'q1', enteringPhrases: ['Oi'], transitionMessage: '' },
   nodes: {
     q1: {
       id: 'q1',
       kind: 'choice',
       text: 'Como você está hoje?',
-      options: [{ id: 'go', label: 'Ir', next: 'result', effects: [{ kind: 'navigate', destination: '/apoio' }] }],
+      // Dangling `next` below yields the single validation error used by the
+      // dashboard deep-link test; the other effects stay valid.
+      options: [
+        {
+          id: 'go',
+          label: 'Ir',
+          next: 'fantasma',
+          effects: [
+            { kind: 'score', scoreKey: 'srq20', value: 1 },
+            { kind: 'navigate', destination: '/apoio' },
+          ],
+        },
+      ],
     },
     brancher: {
       id: 'brancher',
@@ -94,5 +108,33 @@ describe('resolveFlowValidationTarget', () => {
 
   it('returns null when no flow owns the issue', () => {
     expect(resolveFlowValidationTarget(issue('outro-fluxo.nodes.x.text'), [flow])).toBeNull();
+  });
+});
+
+describe('FlowDashboard validation deep links', () => {
+  it('lands an option issue action on the map tab with the node panel open on its section', async () => {
+    const user = userEvent.setup();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoViewStub = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewStub;
+
+    try {
+      render(<FlowDashboard flows={[flow]} resources={[]} onFlowChange={vi.fn()} />);
+
+      // The dangling option target is the fixture's single error; its action
+      // resolves to the map's Opções section for that stage.
+      const item = screen
+        .getAllByRole('listitem')
+        .find((candidate) => candidate.textContent?.includes('Ações/Score da opção 1'));
+      expect(item).toBeDefined();
+      await user.click(within(item as HTMLElement).getByRole('button', { name: /corrigir no mapa/i }));
+
+      expect(screen.getByTestId('flow-map-canvas')).toBeInTheDocument();
+      expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Como você está hoje?');
+      expect(scrollIntoViewStub).toHaveBeenCalledWith({ block: 'nearest' });
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
   });
 });

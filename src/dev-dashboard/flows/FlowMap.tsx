@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GitBranch, Map, Settings } from 'lucide-react';
 
 import type { GuidedFlow } from '../../domain/flow-engine/types';
-import { FlowDestinationMap } from './FlowDestinationMap';
+import { FlowDestinationMap, type MapFocusRequest } from './FlowDestinationMap';
 import { FlowOverviewMap } from './FlowOverviewMap';
 import { FlowSettingsPanel } from './FlowSettingsPanel';
 import './FlowMap.css';
@@ -15,12 +15,23 @@ export function FlowMap({
   onFlowChange,
   onEditNode,
   onSelectFlow,
+  focusRequest,
 }: {
   flow: GuidedFlow;
   flows: GuidedFlow[];
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
   onEditNode: (flowId: string, nodeId: string) => void;
   onSelectFlow: (flowId: string) => void;
+  /**
+   * Validation deep-link (see MapFocusRequest). Viewport chrome is applied
+   * here exactly once per request: a `nodeId` target forces the destination
+   * canvas and closes settings; a node-less ('configuracoes') target opens the
+   * settings panel. The destination map owns selection/scrolling and reports
+   * back via onFocusRequestApplied so mode toggles can't resurrect the link —
+   * which also means a request issued while the overview is showing survives
+   * until that canvas mounts and applies it.
+   */
+  focusRequest?: MapFocusRequest | null;
 }) {
   const [mode, setMode] = useState<FlowMapMode>('destination');
   // Flow-level settings overlay, toggled from the header gear. Opening it
@@ -30,6 +41,26 @@ export function FlowMap({
   // own trigger/Escape.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  // Latest deep-link not yet applied by the destination map; retired through
+  // onFocusRequestApplied (the map remounts on mode toggles, so guarding here
+  // keeps the request alive until it was actually seen).
+  const [pendingFocusRequest, setPendingFocusRequest] = useState<MapFocusRequest | null>(null);
+
+  useEffect(() => {
+    // Consuming an externally-pushed request channel (validation summary
+    // clicks arrive as props, not events here) — setState is the point.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingFocusRequest(focusRequest ?? null);
+    if (!focusRequest) return;
+    if (focusRequest.nodeId) {
+      // Node target: land on the destination canvas, settings out of the way.
+      setMode('destination');
+      setSettingsOpen(false);
+    } else {
+      // Flow-level target: surface the settings panel.
+      setSettingsOpen(true);
+    }
+  }, [focusRequest]);
 
   /** Single close path so Escape and ✕ both hand focus back to the trigger. */
   const handleCloseSettings = () => {
@@ -74,7 +105,15 @@ export function FlowMap({
       </header>
 
       {isDestination ? (
-        <FlowDestinationMap flow={flow} flows={flows} onFlowChange={onFlowChange} onEditNode={onEditNode} />
+        <FlowDestinationMap
+          flow={flow}
+          flows={flows}
+          onFlowChange={onFlowChange}
+          onEditNode={onEditNode}
+          focusRequest={pendingFocusRequest}
+          onRequestSettingsOpen={() => setSettingsOpen(true)}
+          onFocusRequestApplied={() => setPendingFocusRequest(null)}
+        />
       ) : (
         <FlowOverviewMap flows={flows} selectedFlowId={flow.id} onOpenFlow={onSelectFlow} />
       )}
