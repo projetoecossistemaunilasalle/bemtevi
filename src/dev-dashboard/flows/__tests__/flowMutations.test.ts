@@ -5,7 +5,14 @@ import type {
   ResultFlowNode,
   ScoreBranchFlowNode,
 } from '../../../domain/flow-engine/types';
-import { addNode, deleteNode, duplicateNode } from '../flowMutations';
+import {
+  addNode,
+  deleteNode,
+  duplicateNode,
+  setEntryNode,
+  switchNodeKind,
+  updateFlowSettings,
+} from '../flowMutations';
 
 function baseFlow(nodes: GuidedFlow['nodes']): GuidedFlow {
   return {
@@ -167,6 +174,29 @@ describe('duplicateNode', () => {
     expect(next.nodeOrder).toBeUndefined();
   });
 
+  it('appends the copy to nodeOrder when the original is missing from it', () => {
+    const flow = {
+      ...baseFlow({
+        a: { id: 'a', kind: 'result', text: 'A' },
+        b: { id: 'b', kind: 'result', text: 'B' },
+        c: { id: 'c', kind: 'result', text: 'C' }, // in nodes but absent from nodeOrder
+      }),
+      nodeOrder: ['a', 'b'],
+    };
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, newNodeId } = duplicateNode(flow, 'c');
+
+    expect(newNodeId).toBe('c-copy-1');
+    expect(next.nodes[newNodeId].text).toBe('C');
+    // Pinned behavior: with no anchor position (indexOf → -1) the splice lands
+    // at order.length, so the copy is APPENDED to nodeOrder — it is neither
+    // inserted mid-list nor omitted from ordering.
+    expect(next.nodeOrder).toEqual(['a', 'b', 'c-copy-1']);
+    // Purity: the input flow is untouched.
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
   it('skips occupied copy ids and still inserts right after the original in nodeOrder', () => {
     const flow = {
       ...baseFlow({
@@ -246,6 +276,24 @@ describe('deleteNode', () => {
     expect(next.nodes.alvo).toBeUndefined();
   });
 
+  it('does not report the deleted node’s own self-reference as broken', () => {
+    const flow = baseFlow({
+      q1: { id: 'q1', kind: 'choice', text: 'Q', options: [{ id: 'loop', label: 'Repetir', next: 'q1' }] },
+      done: { id: 'done', kind: 'result', text: 'Fim' },
+    });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, broken, error } = deleteNode(flow, 'q1');
+
+    expect(error).toBeUndefined();
+    // Self-references vanish together with their node; only surviving links are reported.
+    expect(broken).toEqual([]);
+    expect(next.nodes.q1).toBeUndefined();
+    expect(Object.keys(next.nodes)).toEqual(['done']);
+    // Purity: the input flow is untouched.
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
   it('allows deleting the entry node with no special casing', () => {
     const flow = baseFlow({
       start: { id: 'start', kind: 'choice', text: 'Q', options: [] },
@@ -269,5 +317,185 @@ describe('deleteNode', () => {
   it('throws when the target node does not exist', () => {
     const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
     expect(() => deleteNode(flow, 'ghost')).toThrow('No such node: ghost');
+  });
+});
+
+describe('setEntryNode', () => {
+  it('points entry.nodeId at the target and leaves phrases, transitionMessage and nodes untouched', () => {
+    const flow = baseFlow({
+      start: { id: 'start', kind: 'choice', text: 'Q', options: [] },
+      done: { id: 'done', kind: 'result', text: 'Fim' },
+    });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const next = setEntryNode(flow, 'done');
+
+    expect(next.entry.nodeId).toBe('done');
+    expect(next.entry.enteringPhrases).toEqual(['oi']);
+    expect(next.entry.transitionMessage).toBe('');
+    expect(Object.keys(next.nodes)).toEqual(['start', 'done']);
+    expect(next).toEqual({ ...flow, entry: { nodeId: 'done', enteringPhrases: ['oi'], transitionMessage: '' } });
+    // Purity: the input flow keeps its old entry.
+    expect(flow.entry.nodeId).toBe('start');
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('throws when the target node does not exist', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    expect(() => setEntryNode(flow, 'ghost')).toThrow('No such node: ghost');
+  });
+});
+
+describe('updateFlowSettings', () => {
+  it('changes only the provided title/purpose/status keys and keeps the entry object identity', () => {
+    const flow: GuidedFlow = {
+      ...baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } }),
+      purpose: 'orientation_entry',
+    };
+
+    const titled = updateFlowSettings(flow, { title: 'Novo título' });
+    expect(titled.title).toBe('Novo título');
+    expect(titled.status).toBe('draft');
+    expect(titled.purpose).toBe('orientation_entry');
+    expect(titled.entry).toBe(flow.entry);
+
+    const purposed = updateFlowSettings(flow, { purpose: 'post_flow_routing' });
+    expect(purposed.purpose).toBe('post_flow_routing');
+    expect(purposed.title).toBe('F');
+    expect(purposed.status).toBe('draft');
+
+    const statused = updateFlowSettings(flow, { status: 'approved' });
+    expect(statused.status).toBe('approved');
+    expect(statused.title).toBe('F');
+    expect(statused.purpose).toBe('orientation_entry');
+
+    // Purity: none of the patches touched the input.
+    expect(flow.title).toBe('F');
+    expect(flow.status).toBe('draft');
+    expect(flow.purpose).toBe('orientation_entry');
+  });
+
+  it('replaces enteringPhrases wholesale while keeping transitionMessage; empty array is allowed', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    const phrases = ['bom dia', 'tudo bem?'];
+
+    const next = updateFlowSettings(flow, { enteringPhrases: phrases });
+
+    expect(next.entry.enteringPhrases).toEqual(['bom dia', 'tudo bem?']);
+    expect(next.entry.transitionMessage).toBe('');
+    // The list is copied: later edits to the caller's array cannot leak in.
+    expect(next.entry.enteringPhrases).not.toBe(phrases);
+    phrases.push('injeção tardia');
+    expect(next.entry.enteringPhrases).toEqual(['bom dia', 'tudo bem?']);
+
+    const emptied = updateFlowSettings(flow, { enteringPhrases: [] });
+    expect(emptied.entry.enteringPhrases).toEqual([]); // validation flags emptiness elsewhere
+    expect(emptied.entry.transitionMessage).toBe('');
+    expect(emptied.title).toBe('F');
+
+    // Purity
+    expect(flow.entry.enteringPhrases).toEqual(['oi']);
+  });
+
+  it('returns a structurally new but equivalent flow for a no-op patch (documented decision)', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    const next = updateFlowSettings(flow, {});
+    expect(next).not.toBe(flow); // always a fresh object…
+    expect(next).toEqual(flow); // …structurally identical when no key was provided
+  });
+});
+
+describe('switchNodeKind', () => {
+  it('switches choice → result keeping id/key/text and dropping options/freeText/videos', () => {
+    const flow = {
+      ...baseFlow({
+        q1: {
+          id: 'q1',
+          kind: 'choice',
+          text: 'Escolha',
+          videos: [{ id: 'v1', title: 'Vídeo', url: 'https://x' }],
+          options: [
+            { id: 'yes', label: 'Sim', next: 'done', effects: [{ kind: 'score', scoreKey: 'pontuacao', value: 2 }] },
+          ],
+          freeText: { next: 'done' },
+        },
+        src: { id: 'src', kind: 'choice', text: 'Src', options: [{ id: 'back', label: 'Voltar', next: 'q1' }] },
+        done: { id: 'done', kind: 'result', text: 'Fim' },
+      }),
+      nodeOrder: ['q1', 'src', 'done'],
+    };
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, node } = switchNodeKind(flow, 'q1', { kind: 'result' });
+
+    expect(node).toEqual({ id: 'q1', kind: 'result', text: 'Escolha' });
+    expect(Object.keys(node).sort()).toEqual(['id', 'kind', 'text']); // plain result: nothing else leaks in
+    expect(node.id).toBe('q1');
+    expect(node).toBe(next.nodes.q1); // record key preserved
+    // Inbound references still point at the same id (content shape changed; validated downstream).
+    expect((next.nodes.src as ChoiceFlowNode).options[0].next).toBe('q1');
+    expect(next.nodeOrder).toBe(flow.nodeOrder); // position untouched
+    expect(next.entry.nodeId).toBe('q1');
+    // Purity: the input flow is untouched.
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('switches result → score_branch with the default score key and one default branch range', () => {
+    const flow = baseFlow({
+      fim: { id: 'fim', kind: 'result', text: 'Fim', recommendations: ['Levar documentos'] },
+    });
+
+    const { flow: next, node } = switchNodeKind(flow, 'fim', { kind: 'score_branch' });
+
+    const branched = node as ScoreBranchFlowNode;
+    expect(branched.kind).toBe('score_branch');
+    expect(branched.id).toBe('fim'); // id preserved
+    expect(branched.text).toBe('Fim'); // text always preserved
+    expect(branched.scoreKey).toBe('pontuacao'); // DEFAULT_SCORE_KEY
+    expect(branched.branches).toEqual([{ id: 'fim-faixa-1', min: 0, max: 10, next: '' }]);
+    expect(Object.keys(branched)).not.toContain('recommendations');
+    expect(node).toBe(next.nodes.fim); // record key preserved
+  });
+
+  it('switches score_branch → choice with one empty placeholder option, dropping branches/scoreKey', () => {
+    const flow = baseFlow({
+      calc: {
+        id: 'calc',
+        kind: 'score_branch',
+        text: 'Calc',
+        scoreKey: 'pontuacao',
+        branches: [{ id: 'alta', min: 6, max: 10, next: 'fim' }],
+      },
+      fim: { id: 'fim', kind: 'result', text: 'Fim' },
+    });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, node } = switchNodeKind(flow, 'calc', { kind: 'choice' });
+
+    const choice = node as ChoiceFlowNode;
+    expect(choice.kind).toBe('choice');
+    expect(choice.id).toBe('calc');
+    expect(choice.text).toBe('Calc');
+    expect(choice.options).toEqual([{ id: 'calc-option-1', label: '', next: '' }]);
+    expect(choice).not.toHaveProperty('branches');
+    expect(choice).not.toHaveProperty('scoreKey');
+    expect(node).toBe(next.nodes.calc);
+    // Purity: the input flow is untouched.
+    expect((flow.nodes.calc as ScoreBranchFlowNode).branches).toHaveLength(1);
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('is a same-kind no-op returning the current flow and node by reference', () => {
+    const flow = baseFlow({
+      q1: { id: 'q1', kind: 'choice', text: 'Q', options: [{ id: 'yes', label: 'Sim', next: '' }] },
+    });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, node } = switchNodeKind(flow, 'q1', { kind: 'choice' });
+
+    expect(next).toBe(flow); // documented no-op: same references out
+    expect(node).toBe(flow.nodes.q1);
+    expect((node as ChoiceFlowNode).options).toHaveLength(1);
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
   });
 });
