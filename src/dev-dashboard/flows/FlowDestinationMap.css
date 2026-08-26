@@ -762,6 +762,10 @@
   right: -5px;
 }
 
+.flow-destination-map__edge {
+  cursor: pointer;
+}
+
 .flow-destination-map__canvas .flow-destination-map__edge .react-flow__edge-path {
   transition:
     stroke-width 120ms ease-out,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dagre from '@dagrejs/dagre';
 import { AlertTriangle, ExternalLink, Flag, GitBranch, Search, Unplug, Workflow } from 'lucide-react';
 import {
@@ -203,6 +203,9 @@ export function buildOverviewGraph(
       source: connection.source,
       target: connection.target,
       type: 'smoothstep',
+      className: 'flow-overview__edge',
+      interactionWidth: 24,
+      focusable: true,
       data: {
         optionLabels: connection.labels,
         count: connection.count,
@@ -241,6 +244,51 @@ export function FlowOverviewMap({
   );
   const compactViewport = typeof window !== 'undefined' && window.innerWidth <= 620;
   const connectedFlowCount = graph.nodes.filter((node) => node.data.kind === 'flow').length;
+  const edgePointerDownRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isPanningRef = useRef(false);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      edgePointerDownRef.current = { x: event.clientX, y: event.clientY, time: Date.now() };
+    };
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, []);
+
+  const handleEdgeClick = useCallback(
+    (event: { clientX: number; clientY: number }, edge: OverviewEdge) => {
+      if (isPanningRef.current) return;
+      const down = edgePointerDownRef.current;
+      if (down) {
+        const dx = event.clientX - down.x;
+        const dy = event.clientY - down.y;
+        const dist = Math.hypot(dx, dy);
+        const elapsed = Date.now() - down.time;
+        if (dist > 8 || elapsed > 700) return;
+      }
+      const targetId = edge.target;
+      if (!targetId) return;
+      const rfNode = instance?.getNode(targetId);
+      const fallbackNode = graph.nodes.find((node) => node.id === targetId);
+      const position = rfNode?.position ?? fallbackNode?.position;
+      if (!position) return;
+      const isFlow =
+        (rfNode?.data as OverviewNodeData | undefined)?.kind === 'flow' ||
+        (fallbackNode?.data as OverviewNodeData | undefined)?.kind === 'flow';
+      const width = rfNode?.measured?.width ?? (isFlow ? FLOW_NODE_WIDTH : DESTINATION_NODE_WIDTH);
+      const height = rfNode?.measured?.height ?? (isFlow ? FLOW_NODE_HEIGHT : DESTINATION_NODE_HEIGHT);
+      const centerX = position.x + width / 2;
+      const centerY = position.y + height / 2;
+      const zoom = instance?.getZoom() ?? 0.84;
+      try {
+        instance?.setCenter(centerX, centerY, { zoom, duration: 420 });
+      } catch {
+        instance?.setCenter(centerX, centerY, { zoom });
+      }
+    },
+    [graph.nodes, instance],
+  );
+
   const handleInit = (flowInstance: ReactFlowInstance<OverviewNode, OverviewEdge>) => {
     setInstance(flowInstance);
     if (!compactViewport) return;
@@ -325,7 +373,8 @@ export function FlowOverviewMap({
 
       <div className="flow-overview__canvas" data-testid="flow-overview-canvas" aria-label="Mapa geral dos fluxos">
         <div className="flow-overview__guide" aria-hidden="true">
-          As linhas destacadas pertencem ao fluxo selecionado · clique em um fluxo para abrir
+          As linhas destacadas pertencem ao fluxo selecionado · clique na linha para ir ao destino · clique no fluxo
+          para abrir
         </div>
         <ReactFlow
           nodes={graph.nodes}
@@ -336,6 +385,15 @@ export function FlowOverviewMap({
           minZoom={0.22}
           maxZoom={1.4}
           onInit={handleInit}
+          onEdgeClick={handleEdgeClick}
+          onMoveStart={() => {
+            isPanningRef.current = true;
+          }}
+          onMoveEnd={() => {
+            window.setTimeout(() => {
+              isPanningRef.current = false;
+            }, 120);
+          }}
           proOptions={{ hideAttribution: false }}
         >
           <Background color="var(--color-outline-variant)" gap={28} size={1} />

@@ -4,12 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { resolveEducationResourcesForPreview } from './educationResourcePreview';
-import { Badge } from '../../design-system/components/Badge';
 import { Button } from '../../design-system/components/Button';
 import { Card } from '../../design-system/components/Card';
 import { Page } from '../../design-system/components/Page';
 import { PageHeader } from '../../design-system/components/PageHeader';
-import { formatCitationSourceLabel, parseSourceCitations } from './sourceFormatter';
 
 export function EducationLibraryScreen() {
   const navigate = useNavigate();
@@ -75,20 +73,10 @@ export function EducationLibraryScreen() {
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-stack-md ${isGeral ? '' : 'mb-8'}`}>
               {groupResourceIndices.map((resourceIndex) => {
                 const resource = resources[resourceIndex];
-                const citations = parseSourceCitations(resource.source);
                 return (
                   <Card key={resource.id} className="p-6 flex flex-col gap-stack-sm">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex flex-col gap-stack-sm flex-1">
-                        <div className="flex flex-wrap gap-2" aria-label="Fontes do material">
-                          {citations.map((citation) => (
-                            <span key={citation.id} title={citation.rawText}>
-                              <Badge tone="secondary">{formatCitationSourceLabel(citation.rawText)}</Badge>
-                            </span>
-                          ))}
-                        </div>
-                        <h3 className="font-headline-sm text-on-surface">{resource.title}</h3>
-                      </div>
+                      <h3 className="font-headline-sm text-on-surface flex-1">{resource.title}</h3>
                       {resource.imageUrl ? (
                         <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-surface-container-low flex items-center justify-center border border-outline-variant/20">
                           <img alt="" className="w-full h-full object-cover" src={resource.imageUrl} />

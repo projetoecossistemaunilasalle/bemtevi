@@ -94,7 +94,7 @@ describe('EducationLibraryScreen', () => {
     expect(screen.getByText('Aplicação prática')).toBeInTheDocument();
   });
 
-  it('renders long bibliography entries as compact source badges', () => {
+  it('does not render source badges at the top of library cards', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(
       'bemtevi:dev-dashboard:drafts:v1',
@@ -122,8 +122,8 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('OMS')).toBeInTheDocument();
-    expect(screen.getByText('PARROTT et al.')).toBeInTheDocument();
+    expect(screen.queryByText('OMS')).not.toBeInTheDocument();
+    expect(screen.queryByText('PARROTT et al.')).not.toBeInTheDocument();
     expect(screen.queryByText('Fontes e referências')).not.toBeInTheDocument();
     expect(screen.queryByText(/Saúde mental e bem-estar/)).not.toBeInTheDocument();
   });

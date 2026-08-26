@@ -29,6 +29,7 @@ import {
   type Edge,
   type Node,
   type NodeMouseHandler,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './FlowDestinationMap.css';
@@ -1554,6 +1555,9 @@ export function FlowDestinationMap({
   const canvasRef = useRef<HTMLDivElement>(null);
   const addStageTriggerRef = useRef<HTMLButtonElement>(null);
   const compactViewport = typeof window !== 'undefined' && window.innerWidth <= 620;
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<DestinationRFNode, DestinationRFEdge> | null>(null);
+  const edgePointerDownRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isPanningRef = useRef(false);
 
   const toggleSequence = useCallback((id: string) => {
     setExpandedSequences((current) => {
@@ -1608,6 +1612,14 @@ export function FlowDestinationMap({
     },
     [flow, onFlowChange],
   );
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      edgePointerDownRef.current = { x: event.clientX, y: event.clientY, time: Date.now() };
+    };
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, []);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -1715,6 +1727,37 @@ export function FlowDestinationMap({
     setNodes(presentation.nodes);
     setEdges(presentation.edges);
   }, [presentation.edges, presentation.nodes, setEdges, setNodes]);
+
+  const handleEdgeClick = useCallback(
+    (_event: { clientX: number; clientY: number }, edge: DestinationRFEdge) => {
+      if (isPanningRef.current) return;
+      const down = edgePointerDownRef.current;
+      if (down) {
+        const dx = _event.clientX - down.x;
+        const dy = _event.clientY - down.y;
+        const dist = Math.hypot(dx, dy);
+        const elapsed = Date.now() - down.time;
+        if (dist > 8 || elapsed > 700) return;
+      }
+      const targetId = edge.target;
+      if (!targetId) return;
+      const rfNode = rfInstance?.getNode(targetId);
+      const fallbackNode = nodes.find((node) => node.id === targetId);
+      const position = rfNode?.position ?? fallbackNode?.position;
+      if (!position) return;
+      const width = rfNode?.measured?.width ?? fallbackNode?.measured?.width ?? NODE_WIDTH;
+      const height = rfNode?.measured?.height ?? fallbackNode?.measured?.height ?? 110;
+      const centerX = position.x + width / 2;
+      const centerY = position.y + height / 2;
+      const zoom = rfInstance?.getZoom() ?? 0.88;
+      try {
+        rfInstance?.setCenter(centerX, centerY, { zoom, duration: 420 });
+      } catch {
+        rfInstance?.setCenter(centerX, centerY, { zoom });
+      }
+    },
+    [rfInstance, nodes],
+  );
 
   const selectedNode = selectedNodeId ? (flow.nodes[selectedNodeId] ?? null) : null;
   const selectedDestinationData = analysis.destinations.find((destination) => destination.id === selectedDestination);
@@ -1985,7 +2028,7 @@ export function FlowDestinationMap({
         aria-label={`Mapa por destino do fluxo ${flow.title}`}
       >
         <div className="flow-destination-map__canvas-guide" aria-hidden="true">
-          Arraste para navegar · clique em uma etapa para editar
+          Arraste para navegar · clique na linha para ir ao destino · clique na etapa para editar
         </div>
         <ReactFlow
           nodes={nodes}
@@ -1995,6 +2038,16 @@ export function FlowDestinationMap({
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           onConnect={onConnect}
+          onInit={setRfInstance}
+          onEdgeClick={handleEdgeClick}
+          onMoveStart={() => {
+            isPanningRef.current = true;
+          }}
+          onMoveEnd={() => {
+            window.setTimeout(() => {
+              isPanningRef.current = false;
+            }, 120);
+          }}
           fitView={!compactViewport}
           defaultViewport={compactViewport ? { x: 20, y: 24, zoom: 0.72 } : undefined}
           fitViewOptions={{ padding: 0.14, maxZoom: 1.08 }}
