@@ -359,6 +359,7 @@ describe('DashboardRoute', () => {
       'Fluxos',
       'Materiais',
       'Contatos',
+      'Assistente IA',
       'Estatísticas',
       'Exportar',
     ]);
@@ -383,6 +384,7 @@ describe('DashboardRoute', () => {
     const flowsTab = screen.getByRole('tab', { name: 'Fluxos' });
     const materialsTab = screen.getByRole('tab', { name: 'Materiais' });
     const contactsTab = screen.getByRole('tab', { name: 'Contatos' });
+    const aiTab = screen.getByRole('tab', { name: 'Assistente IA' });
     const analyticsTab = screen.getByRole('tab', { name: 'Estatísticas' });
     const exportTab = screen.getByRole('tab', { name: 'Exportar' });
     const flowsPanel = screen.getByRole('tabpanel', { name: 'Fluxos' });
@@ -392,7 +394,7 @@ describe('DashboardRoute', () => {
     expect(flowsTab).toHaveAttribute('id', 'dashboard-tab-flows');
     expect(flowsPanel).toHaveAttribute('id', 'dashboard-tabpanel');
     expect(flowsPanel).toHaveAttribute('aria-labelledby', 'dashboard-tab-flows');
-    [flowsTab, materialsTab, contactsTab, analyticsTab, exportTab].forEach((tab) => {
+    [flowsTab, materialsTab, contactsTab, aiTab, analyticsTab, exportTab].forEach((tab) => {
       expect(tab).toHaveAttribute('aria-controls', 'dashboard-tabpanel');
       expect(document.getElementById(tab.getAttribute('aria-controls') ?? '')).toBe(flowsPanel);
     });

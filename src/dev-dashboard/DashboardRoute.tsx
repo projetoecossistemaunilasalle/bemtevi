@@ -39,8 +39,11 @@ import { validateDashboardContacts } from './contacts/contactsValidation';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
 import { normalizeContactLocations } from '../domain/services/locations';
 import type { PublishedContentSnapshot } from '../app/content/publishedContent';
+import { parsePayload, validatePublicationPayload } from '../app/content/publishedContent';
 import type { DashboardShippedContent } from './content/shippedContent';
 import { scheduleValidationSummaryScroll } from './validation/validationNavigation';
+import { AiArchiveSection } from './ai/AiArchiveSection';
+import { createDraftFromAiPayload } from './ai/aiDraft';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -503,6 +506,29 @@ export function DashboardRoute() {
       setStorageError(
         'A publicação foi concluída, mas o navegador não conseguiu apagar a cópia local antiga. Evite recarregar a página até liberar o armazenamento.',
       );
+    }
+  }
+
+  function handleAiApply(nextPayload: PublishedContentPayload) {
+    if (!shipped) {
+      setStorageError('Aguarde o carregamento do conteúdo publicado antes de aplicar o arquivo da IA.');
+      return;
+    }
+    try {
+      // Valida estrutura completa e tamanho (5 MiB) usando validador existente
+      const validated = validatePublicationPayload(nextPayload);
+      // Converte payload da IA em rascunho local (patches/adicionados/removidos) comparando com o publicado
+      const aiDraft = createDraftFromAiPayload(shipped, publishedDraft, validated);
+      // Verifica se parsePayload não lança (estrutura profunda)
+      parsePayload(validated);
+      updateDraftState(() => aiDraft);
+      // Leva o admin para a aba Publicar/Exportar para revisar antes de publicar
+      setActiveTab('export');
+      scheduleValidationSummaryScroll();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Conteúdo da IA inválido.';
+      setStorageError(`Arquivo da IA não pôde ser aplicado: ${message}`);
+      // Mantém rascunho atual intacto
     }
   }
 
@@ -1003,6 +1029,7 @@ export function DashboardRoute() {
             }
           />
         )}
+        {activeTab === 'ai' && <AiArchiveSection draft={publishedDraft} onApply={handleAiApply} />}
         {activeTab === 'analytics' && <AnalyticsDashboard />}
         {activeTab === 'export' &&
           (publishMode === 'database' ? (

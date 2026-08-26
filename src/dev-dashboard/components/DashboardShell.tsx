@@ -3,7 +3,7 @@ import { FileEdit } from 'lucide-react';
 import { DashboardNotice } from './DashboardNotice';
 import type { DashboardPublishMode } from '../publishing/publishMode';
 
-export type DashboardTab = 'flows' | 'education' | 'contacts' | 'analytics' | 'export';
+export type DashboardTab = 'flows' | 'education' | 'contacts' | 'analytics' | 'export' | 'ai';
 
 export function DashboardShell({
   activeTab,
@@ -28,6 +28,7 @@ export function DashboardShell({
     { id: 'flows', label: 'Fluxos' },
     { id: 'education', label: 'Materiais' },
     { id: 'contacts', label: 'Contatos' },
+    { id: 'ai', label: 'Assistente IA' },
     { id: 'analytics', label: 'Estatísticas' },
     { id: 'export', label: finalTabLabel },
   ];
