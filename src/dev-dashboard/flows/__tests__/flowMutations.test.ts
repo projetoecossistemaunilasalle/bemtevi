@@ -9,6 +9,7 @@ import {
   addNode,
   deleteNode,
   duplicateNode,
+  moveNode,
   setEntryNode,
   switchNodeKind,
   updateFlowSettings,
@@ -418,6 +419,47 @@ describe('updateFlowSettings', () => {
     // Purity: the input flow is untouched.
     expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
   });
+
+  it('rewrites only transitionMessage inside entry, carrying phrases over untouched', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const next = updateFlowSettings(flow, { transitionMessage: 'Vamos começar.' });
+
+    expect(next.entry.transitionMessage).toBe('Vamos começar.');
+    expect(next.entry.enteringPhrases).toEqual(['oi']);
+    expect(next.entry.nodeId).toBe('solo');
+    expect(next.title).toBe('F'); // nothing else moved
+    // Purity: the input keeps its old message.
+    expect(flow.entry.transitionMessage).toBe('');
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('allows an empty transitionMessage to clear the field (only undefined keeps it)', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    flow.entry = { ...flow.entry, transitionMessage: 'Antiga mensagem' };
+
+    const cleared = updateFlowSettings(flow, { transitionMessage: '' });
+    expect(cleared.entry.transitionMessage).toBe('');
+    expect(cleared.entry.enteringPhrases).toEqual(['oi']);
+
+    const kept = updateFlowSettings(flow, { title: 'Novo' });
+    expect(kept.entry.transitionMessage).toBe('Antiga mensagem'); // key left out → untouched
+  });
+
+  it('composes enteringPhrases and transitionMessage supplied together in one entry rewrite', () => {
+    const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const next = updateFlowSettings(flow, {
+      enteringPhrases: ['olá'],
+      transitionMessage: 'Começando',
+    });
+
+    expect(next.entry).toEqual({ nodeId: 'solo', enteringPhrases: ['olá'], transitionMessage: 'Começando' });
+    // Purity
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
 });
 
 describe('switchNodeKind', () => {
@@ -527,5 +569,112 @@ describe('switchNodeKind', () => {
   it('throws when the target node does not exist', () => {
     const flow = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
     expect(() => switchNodeKind(flow, 'ghost', { kind: 'result' })).toThrow('No such node: ghost');
+  });
+});
+
+describe('moveNode', () => {
+  function orderedFlow(): { flow: GuidedFlow; snapshot: GuidedFlow } {
+    const flow = {
+      ...baseFlow({
+        a: { id: 'a', kind: 'result', text: 'A' },
+        b: { id: 'b', kind: 'result', text: 'B' },
+        c: { id: 'c', kind: 'result', text: 'C' },
+      }),
+      nodeOrder: ['a', 'b', 'c'],
+    };
+    return { flow, snapshot: JSON.parse(JSON.stringify(flow)) as GuidedFlow };
+  }
+
+  it('swaps with the previous neighbor inside an explicit nodeOrder (up)', () => {
+    const { flow, snapshot } = orderedFlow();
+
+    const { flow: next, moved } = moveNode(flow, 'b', 'up');
+
+    expect(moved).toBe(true);
+    expect(next.nodeOrder).toEqual(['b', 'a', 'c']);
+    // Only the order changed — nodes are the same references.
+    expect(next.nodes).toBe(flow.nodes);
+    // Purity: the input flow is untouched.
+    expect(flow.nodeOrder).toEqual(['a', 'b', 'c']);
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('swaps with the next neighbor inside an explicit nodeOrder (down)', () => {
+    const { flow } = orderedFlow();
+
+    const { flow: next, moved } = moveNode(flow, 'b', 'down');
+
+    expect(moved).toBe(true);
+    expect(next.nodeOrder).toEqual(['a', 'c', 'b']);
+  });
+
+  it('refuses to move past either bound, returning the original references untouched', () => {
+    const { flow, snapshot } = orderedFlow();
+
+    const upAtFirst = moveNode(flow, 'a', 'up');
+    expect(upAtFirst.moved).toBe(false);
+    expect(upAtFirst.flow).toBe(flow); // documented no-op: same references out
+    expect(upAtFirst.flow.nodeOrder).toEqual(['a', 'b', 'c']);
+
+    const downAtLast = moveNode(flow, 'c', 'down');
+    expect(downAtLast.moved).toBe(false);
+    expect(downAtLast.flow).toBe(flow);
+
+    // Purity
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+  });
+
+  it('materializes nodeOrder from the insertion order on the first move when none exists', () => {
+    const unordered = baseFlow({
+      a: { id: 'a', kind: 'result', text: 'A' },
+      b: { id: 'b', kind: 'result', text: 'B' },
+      c: { id: 'c', kind: 'result', text: 'C' },
+    });
+    const snapshot = JSON.parse(JSON.stringify(unordered)) as GuidedFlow;
+    expect(unordered.nodeOrder).toBeUndefined();
+
+    const { flow: next, moved } = moveNode(unordered, 'c', 'up');
+
+    expect(moved).toBe(true);
+    // Insertion order [a, b, c] with c swapped above b.
+    expect(next.nodeOrder).toEqual(['a', 'c', 'b']);
+    expect(Object.keys(next.nodes)).toEqual(['a', 'b', 'c']); // record keys untouched
+    // Purity: the input still has no nodeOrder.
+    expect(unordered.nodeOrder).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(unordered))).toEqual(snapshot);
+  });
+
+  it('never materializes nodeOrder for an unmovable single node without an order', () => {
+    const solo = baseFlow({ solo: { id: 'solo', kind: 'result', text: 'Só' } });
+
+    const result = moveNode(solo, 'solo', 'up');
+
+    expect(result.moved).toBe(false);
+    expect(result.flow).toBe(solo);
+    expect(result.flow.nodeOrder).toBeUndefined(); // nothing changed → nothing materialized
+  });
+
+  it('treats a node missing from its own explicit order as unmovable (defensive)', () => {
+    const flow = {
+      ...baseFlow({
+        a: { id: 'a', kind: 'result', text: 'A' },
+        stray: { id: 'stray', kind: 'result', text: 'Stray' }, // in nodes, absent from nodeOrder
+      }),
+      nodeOrder: ['a'],
+    };
+
+    const down = moveNode(flow, 'stray', 'down'); // indexOf → -1 would corrupt a naive swap
+    expect(down.moved).toBe(false);
+    expect(down.flow).toBe(flow);
+    expect(down.flow.nodeOrder).toEqual(['a']);
+
+    const up = moveNode(flow, 'stray', 'up');
+    expect(up.moved).toBe(false);
+    expect(up.flow.nodeOrder).toEqual(['a']);
+  });
+
+  it('throws when the target node does not exist', () => {
+    const { flow } = orderedFlow();
+    expect(() => moveNode(flow, 'ghost', 'up')).toThrow('No such node: ghost');
   });
 });

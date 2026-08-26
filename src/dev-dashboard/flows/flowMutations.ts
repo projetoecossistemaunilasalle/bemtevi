@@ -271,15 +271,22 @@ export interface FlowSettingsPatch {
   status?: GuidedFlow['status'];
   /** Replaces the whole list; empty is allowed (validation flags it later). */
   enteringPhrases?: string[];
+  /**
+   * Chat message shown right before the first stage. Empty string is allowed
+   * and means "no transition message" — only `undefined` keeps the current one.
+   */
+  transitionMessage?: string;
 }
 
 /**
  * Applies a partial patch to the flow's presentation settings.
  * Pure: never mutates inputs. Keys left out keep their current value; passing
  * `purpose: undefined` also keeps it — purpose cannot be cleared via patch.
- * `enteringPhrases` replaces the whole list and is copied defensively. A
- * no-op patch returns a structurally NEW but equivalent flow — never the same
- * reference (pinned by test).
+ * `enteringPhrases` replaces the whole list and is copied defensively.
+ * `transitionMessage` rewrites only that entry field, carrying phrases (and
+ * everything else in `entry`) over untouched; both entry keys compose when a
+ * single patch carries them together. A no-op patch returns a structurally
+ * NEW but equivalent flow — never the same reference (pinned by test).
  */
 export function updateFlowSettings(flow: GuidedFlow, patch: FlowSettingsPatch): GuidedFlow {
   const next: GuidedFlow = { ...flow };
@@ -289,5 +296,39 @@ export function updateFlowSettings(flow: GuidedFlow, patch: FlowSettingsPatch): 
   if (patch.enteringPhrases !== undefined) {
     next.entry = { ...flow.entry, enteringPhrases: [...patch.enteringPhrases] };
   }
+  if (patch.transitionMessage !== undefined) {
+    next.entry = { ...next.entry, transitionMessage: patch.transitionMessage };
+  }
   return next;
+}
+
+export type MoveDirection = 'up' | 'down';
+
+/**
+ * Swaps `nodeId` with its neighbor in the flow's EFFECTIVE step order:
+ * `nodeOrder` when present, otherwise the `nodes` record's insertion order.
+ * Moving within an explicit order swaps two entries in place. When no order
+ * exists yet, the FIRST move materializes `nodeOrder` from the current
+ * insertion order with the swap applied (record key order stays irrelevant —
+ * domain consumers read `nodeOrder` once it exists). A node already at the
+ * target bound — or missing from an explicit order (defensive; panel flows
+ * always keep `nodeOrder` in sync) — is unmovable: `moved: false` returns the
+ * ORIGINAL references untouched, so callers emit no patch. Unknown nodes
+ * throw via `requireNode`. Pure: never mutates inputs.
+ */
+export function moveNode(
+  flow: GuidedFlow,
+  nodeId: string,
+  direction: MoveDirection,
+): { flow: GuidedFlow; moved: boolean } {
+  requireNode(flow, nodeId);
+  const effectiveOrder = flow.nodeOrder ?? Object.keys(flow.nodes);
+  const index = effectiveOrder.indexOf(nodeId);
+  if (index === -1) return { flow, moved: false };
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= effectiveOrder.length) return { flow, moved: false };
+
+  const order = [...effectiveOrder];
+  [order[index], order[targetIndex]] = [order[targetIndex], order[index]];
+  return { flow: { ...flow, nodeOrder: order }, moved: true };
 }
