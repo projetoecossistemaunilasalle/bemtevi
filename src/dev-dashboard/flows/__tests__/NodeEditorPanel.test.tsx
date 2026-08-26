@@ -4,6 +4,7 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { NodeEditorPanel } from '../NodeEditorPanel';
 import { TargetSelect } from '../flowTargetSelect';
+import { installScrollStub } from './scrollStubs';
 import type {
   ChoiceFlowNode,
   FlowEffect,
@@ -280,9 +281,7 @@ describe('NodeEditorPanel', () => {
   });
 
   it('re-fires section scrolling when requestId bumps for the same section', () => {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollIntoViewStub = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
     try {
       const base = makePanelProps();
       const view = render(<NodeEditorPanel {...base} focusRequest={{ section: 'texto', requestId: 1 }} />);
@@ -290,7 +289,7 @@ describe('NodeEditorPanel', () => {
 
       expect(scrollIntoViewStub).toHaveBeenCalledTimes(2);
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
     }
   });
 

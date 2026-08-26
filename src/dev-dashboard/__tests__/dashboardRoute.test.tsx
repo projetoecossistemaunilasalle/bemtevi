@@ -10,6 +10,7 @@ import { MAX_IMAGE_SOURCE_BYTES } from '../components/fileUpload';
 import { getShippedDashboardContent } from '../content/shippedContent';
 import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import type { DashboardShippedContent } from '../content/shippedContent';
+import { installScrollStub } from '../flows/__tests__/scrollStubs';
 
 function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
   return {
@@ -418,26 +419,26 @@ describe('DashboardRoute', () => {
   });
 
   it('scrolls to a flow stage only after the stage is clicked', () => {
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    });
-    localStorage.setItem('bemtevi:dev-dashboard:active-tab', 'education');
+    const { stub: scrollIntoView, restore } = installScrollStub();
+    try {
+      localStorage.setItem('bemtevi:dev-dashboard:active-tab', 'education');
 
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
+      render(
+        <MemoryRouter>
+          <DashboardRoute />
+        </MemoryRouter>,
+      );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Fluxos' }));
-    expect(scrollIntoView).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('tab', { name: 'Fluxos' }));
+      expect(scrollIntoView).not.toHaveBeenCalled();
 
-    const flowList = screen.getByRole('heading', { name: 'Fluxos' }).closest('aside');
-    expect(flowList).not.toBeNull();
-    fireEvent.click(within(flowList!).getByRole('button', { name: 'Etapa 2 — Finalizado.' }));
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      const flowList = screen.getByRole('heading', { name: 'Fluxos' }).closest('aside');
+      expect(flowList).not.toBeNull();
+      fireEvent.click(within(flowList!).getByRole('button', { name: 'Etapa 2 — Finalizado.' }));
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
   });
 
   it('persists shipped contact edits by source index and derives the phone href', () => {

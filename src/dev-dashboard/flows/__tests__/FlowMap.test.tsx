@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
 import { FlowMap } from '../FlowMap';
+import { installScrollStub } from './scrollStubs';
 
 const firstFlow: GuidedFlow = {
   id: 'first',
@@ -132,8 +133,7 @@ describe('FlowMap', () => {
 
   it('resets the destination map when switching to a flow that reuses node ids', async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = vi.fn();
+    const { restore } = installScrollStub();
     try {
       const props: React.ComponentProps<typeof FlowMap> = {
         flow: firstFlow,
@@ -156,15 +156,13 @@ describe('FlowMap', () => {
       expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
       expect(screen.getByRole('searchbox', { name: /buscar etapa/i })).toHaveValue('');
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
     }
   });
 
   it('lands a node-level validation focusRequest with settings closed, once', async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollIntoViewStub = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
 
     try {
       const { view, props } = renderFlowMap();
@@ -189,7 +187,7 @@ describe('FlowMap', () => {
       await user.click(screen.getByRole('button', { name: /por destino/i }));
       expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
     }
   });
 });

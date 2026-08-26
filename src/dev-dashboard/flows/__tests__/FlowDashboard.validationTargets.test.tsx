@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
 import type { DashboardValidationIssue } from '../../validation/validationTypes';
 import { FlowDashboard, resolveFlowValidationTarget } from '../FlowDashboard';
+import { installScrollStub } from './scrollStubs';
 
 const flow: GuidedFlow = {
   id: 'check-in',
@@ -115,9 +116,7 @@ describe('resolveFlowValidationTarget', () => {
 describe('FlowDashboard validation deep links', () => {
   it('lands an option issue action on the map tab with the node panel open on its section', async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollIntoViewStub = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
 
     try {
       render(<FlowDashboard flows={[flow]} resources={[]} onFlowChange={vi.fn()} />);
@@ -135,7 +134,7 @@ describe('FlowDashboard validation deep links', () => {
       expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Como você está hoje?');
       expect(scrollIntoViewStub).toHaveBeenCalledWith({ block: 'nearest' });
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
     }
   });
 });

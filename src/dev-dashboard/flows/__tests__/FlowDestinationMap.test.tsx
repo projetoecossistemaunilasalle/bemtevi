@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlowDestinationMap } from '../FlowDestinationMap';
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
+import { installScrollStub } from './scrollStubs';
 
 vi.mock('../flowTopology', () => ({
   // Minimal shape: the map falls back to its local analysis, and the editor
@@ -257,24 +258,24 @@ describe('FlowDestinationMap', () => {
   });
 
   it('selects the requested stage and scrolls its panel section on focusRequest', () => {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollIntoViewStub = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
     try {
-      renderMap({ flow: focusFlow, flows: [focusFlow], focusRequest: { nodeId: 'q2', section: 'opcoes', requestId: 1 } });
+      renderMap({
+        flow: focusFlow,
+        flows: [focusFlow],
+        focusRequest: { nodeId: 'q2', section: 'opcoes', requestId: 1 },
+      });
 
       expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
       expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Quer deixar um recado?');
       expect(scrollIntoViewStub).toHaveBeenCalledWith({ block: 'nearest' });
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
     }
   });
 
   it('re-fires the section scroll when the same stage is requested again', () => {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollIntoViewStub = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewStub;
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
     try {
       const view = renderMap({
         flow: focusFlow,
@@ -284,16 +285,41 @@ describe('FlowDestinationMap', () => {
       expect(scrollIntoViewStub).toHaveBeenCalledTimes(1);
 
       view.rerender(
-        <FlowDestinationMap
-          {...view.props}
-          focusRequest={{ nodeId: 'q2', section: 'texto', requestId: 2 }}
-        />,
+        <FlowDestinationMap {...view.props} focusRequest={{ nodeId: 'q2', section: 'texto', requestId: 2 }} />,
       );
 
       expect(scrollIntoViewStub).toHaveBeenCalledTimes(2);
       expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
     } finally {
-      Element.prototype.scrollIntoView = originalScrollIntoView;
+      restore();
+    }
+  });
+
+  it('clears the held section focus when a stage is clicked manually', () => {
+    // Regression pin: a deep-link parks its section on the map until the panel
+    // mounts (one commit later). A manual canvas click must clear that hold —
+    // otherwise a later panel remount would replay the stale scroll onto an
+    // unrelated stage.
+    const { stub: scrollIntoViewStub, restore } = installScrollStub();
+    try {
+      renderMap({
+        flow: focusFlow,
+        flows: [focusFlow],
+        focusRequest: { nodeId: 'q2', section: 'texto', requestId: 1 },
+      });
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(1);
+
+      // Manual pick of q1 clears the held request; the freshly mounted panel
+      // must NOT scroll to q2's section.
+      fireEvent.click(screen.getByText('Como você está hoje?'));
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(1);
+
+      // Re-picking q2 remounts the panel again — still no stale scroll.
+      fireEvent.click(screen.getByText('Quer deixar um recado?'));
+      expect(scrollIntoViewStub).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('textbox', { name: /texto da etapa/i })).toHaveValue('Quer deixar um recado?');
+    } finally {
+      restore();
     }
   });
 
@@ -313,7 +339,11 @@ describe('FlowDestinationMap', () => {
   });
 
   it('ignores a focusRequest pointing at an unknown stage', () => {
-    renderMap({ flow: focusFlow, flows: [focusFlow], focusRequest: { nodeId: 'fantasma', section: 'texto', requestId: 1 } });
+    renderMap({
+      flow: focusFlow,
+      flows: [focusFlow],
+      focusRequest: { nodeId: 'fantasma', section: 'texto', requestId: 1 },
+    });
 
     expect(screen.queryByTestId('node-editor-panel')).not.toBeInTheDocument();
   });
