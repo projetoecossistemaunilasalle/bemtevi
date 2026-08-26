@@ -1019,7 +1019,7 @@ export function FlowDestinationMap({
         <div className="flow-destination-map__empty">
           <Unplug aria-hidden="true" />
           <h3>Este fluxo ainda não possui etapas.</h3>
-          <p>Adicione a primeira etapa no editor para organizar seus destinos.</p>
+          <p>Use o botão + Etapa acima para organizar seus destinos.</p>
         </div>
       </section>
     );
