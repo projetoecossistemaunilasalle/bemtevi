@@ -9,7 +9,7 @@ import type {
   ScoreBranch,
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
-import { deleteNode, duplicateNode, moveNode, setEntryNode } from './flowMutations';
+import { deleteNode, duplicateNode, moveNode, setEntryNode, switchNodeKind } from './flowMutations';
 import type { MapFocusSection } from './flowDisplay';
 import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import { TargetSelect } from './flowTargetSelect';
@@ -28,6 +28,19 @@ const kindLabels: Record<FlowNode['kind'], string> = {
   result: 'Final',
   score_branch: 'Ramificação',
 };
+
+/**
+ * Chooser options for “Trocar tipo” — same wording as the map's + Etapa
+ * popover, so one stage kind never carries two competing names.
+ */
+const KIND_SWITCH_OPTIONS: Array<{ kind: FlowNode['kind']; label: string }> = [
+  { kind: 'choice', label: 'Pergunta' },
+  { kind: 'result', label: 'Final' },
+  { kind: 'score_branch', label: 'Ramificação' },
+];
+
+/** Pages a faixa may open automatically after the flow ends. */
+const NAVIGATION_OPTIONS = ['/apoio', '/contatos', '/educacao'] as const;
 
 /** First free `${node.id}-option-N`, matching switchNodeKind's naming convention. */
 function uniqueOptionId(node: ChoiceFlowNode): string {
@@ -101,9 +114,7 @@ interface DraftNumberFieldProps {
   value: number;
   /** Never receives NaN: empty or non-numeric drafts are ignored on blur. */
   onCommit: (next: number) => void;
-}
-
-/**
+} /**
  * Number input that never emits NaN — same contract as the effects module's
  * private EffectNumberField, addressed by aria-label for row-scoped fields.
  */
@@ -125,6 +136,52 @@ function DraftNumberField({ ariaLabel, value, onCommit }: DraftNumberFieldProps)
         onCommit(parsed);
       }}
     />
+  );
+}
+
+interface BranchNameFieldProps {
+  ariaLabel: string;
+  committedId: string;
+  /** Ids of the node's OTHER faixas — a rename must not collide with these. */
+  siblingIds: string[];
+  /** Invoked on blur with the TRIMMED draft; never with an invalid value. */
+  onCommit: (nextId: string) => void;
+}
+
+/**
+ * Faixa id field with commit-time guards: blank or duplicate names are not
+ * committed (blur silently reverts to the committed id) and show a tiny muted
+ * hint while the invalid draft is pending. Renaming is cosmetic — ids are
+ * local row identity, so nothing else in the flow references them.
+ */
+function BranchNameField({ ariaLabel, committedId, siblingIds, onCommit }: BranchNameFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const displayed = draft ?? committedId;
+  const trimmed = displayed.trim();
+  const duplicate = siblingIds.includes(trimmed);
+  // Only flag while a draft is pending; the committed id is always valid.
+  const invalid = draft !== null && (trimmed === '' || duplicate);
+  return (
+    <div>
+      <input
+        aria-label={ariaLabel}
+        className={textFieldClassName}
+        value={displayed}
+        aria-invalid={invalid}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          setDraft(null);
+          const nextId = draft?.trim() ?? '';
+          if (draft === null || nextId === '' || siblingIds.includes(nextId) || nextId === committedId) return;
+          onCommit(nextId);
+        }}
+      />
+      {invalid && (
+        <p className="mt-1 font-body-md text-xs text-on-surface-variant" role="status">
+          {duplicate ? 'Nome já usado nesta etapa.' : 'O nome da faixa não pode ficar vazio.'}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -392,6 +449,14 @@ function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionP
           data-testid={`branch-row-${index + 1}`}
           className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
         >
+          <BranchNameField
+            ariaLabel={`Nome da faixa ${index + 1}`}
+            committedId={branch.id}
+            siblingIds={node.branches
+              .filter((_, siblingIndex) => siblingIndex !== index)
+              .map((candidate) => candidate.id)}
+            onCommit={(id) => commitBranch(index, (current) => ({ ...current, id }))}
+          />
           <div className="flex gap-2">
             <DraftNumberField
               ariaLabel={`De ${index + 1}`}
@@ -412,6 +477,37 @@ function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionP
             nodes={targets}
             allowEmpty
           />
+          {/* Selects don't blur reliably; commit the page destination immediately on change. */}
+          <select
+            aria-label={`Destino de página ${index + 1}`}
+            className={selectClassName}
+            value={branch.navigation ?? ''}
+            onChange={(event) => {
+              const { value } = event.target;
+              commitBranch(index, (current) => {
+                if (value === '') {
+                  // Clearing the page destination removes the key entirely.
+                  const { navigation: _dropped, ...branchWithoutNavigation } = current;
+                  return branchWithoutNavigation;
+                }
+                return { ...current, navigation: value as ScoreBranch['navigation'] };
+              });
+            }}
+          >
+            <option value="">Nenhuma</option>
+            {NAVIGATION_OPTIONS.map((destination) => (
+              <option key={destination} value={destination}>
+                {destination}
+              </option>
+            ))}
+            {/*
+              Representable-value convention: an out-of-union stored value stays
+              selectable instead of silently rendering the first option.
+            */}
+            {branch.navigation && !(NAVIGATION_OPTIONS as readonly string[]).includes(branch.navigation) && (
+              <option value={branch.navigation}>{`Destino ausente · ${branch.navigation}`}</option>
+            )}
+          </select>
           <button
             type="button"
             aria-label={`Remover faixa ${index + 1}`}
@@ -605,6 +701,10 @@ export function NodeEditorPanel({
   const node = flow.nodes[nodeId];
   const [localText, setLocalText] = useState(node?.text ?? '');
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Inline “Trocar tipo” chooser; remounts with the panel (keyed per node),
+  // so an open chooser can never leak across stage switches.
+  const [kindChooserOpen, setKindChooserOpen] = useState(false);
+  const kindChooserRef = useRef<HTMLDivElement | null>(null);
   // Topology feeds every target select; recomputed only when flow/flows change.
   const topology = useMemo(() => buildFlowTopology(flow, flows), [flow, flows]);
 
@@ -620,6 +720,11 @@ export function NodeEditorPanel({
     // Keyed on requestId only so repeated identical requests re-fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest?.requestId]);
+
+  // Grab focus when the kind chooser opens so Escape works immediately.
+  useEffect(() => {
+    if (kindChooserOpen) kindChooserRef.current?.focus();
+  }, [kindChooserOpen]);
 
   if (!node) return null;
 
@@ -680,6 +785,23 @@ export function NodeEditorPanel({
   };
 
   /**
+   * Kind switch chosen from the inline chooser: confirmed first (the node's
+   * format is rebuilt — only its text survives), then committed as a narrow
+   * `{nodes}` patch. The panel stays mounted on the same nodeId; the header
+   * badge updates from the new flow. Declining closes the chooser.
+   */
+  const handleKindOptionClick = (kind: FlowNode['kind'], label: string) => {
+    const currentNode = flow.nodes[nodeId];
+    if (!currentNode || currentNode.kind === kind) return;
+    if (!window.confirm(`Trocar para ${label} recria o formato desta etapa; o texto será preservado. Continuar?`)) {
+      setKindChooserOpen(false);
+      return;
+    }
+    onFlowChange({ nodes: switchNodeKind(flow, nodeId, { kind }).flow.nodes });
+    setKindChooserOpen(false);
+  };
+
+  /**
    * Whole-node replacement scoped to this node's record key.
    *
    * One-commit-per-event contract: editing helpers hand this an UPDATER and it
@@ -724,6 +846,48 @@ export function NodeEditorPanel({
           <span className="mt-1 inline-block rounded-full bg-surface-container px-2 py-0.5 font-label-sm text-xs text-on-surface-variant">
             {kindLabels[node.kind]}
           </span>
+          <div className="mt-1">
+            <button
+              type="button"
+              aria-expanded={kindChooserOpen}
+              onClick={() => setKindChooserOpen((open) => !open)}
+              className="rounded-full px-2 py-0.5 font-label-sm text-xs text-primary transition-colors hover:bg-surface-container"
+            >
+              Trocar tipo
+            </button>
+          </div>
+          {kindChooserOpen && (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The focused chooser container itself must catch Escape to dismiss; the rule can't tell this group is interactive chrome, not a static wrapper.
+            <div
+              ref={kindChooserRef}
+              role="group"
+              aria-label="Novo tipo da etapa"
+              tabIndex={-1}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setKindChooserOpen(false);
+              }}
+              className="mt-2 flex flex-col gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2 focus:outline focus:outline-2 focus:outline-primary"
+            >
+              {KIND_SWITCH_OPTIONS.map((option) => {
+                const isCurrent = option.kind === node.kind;
+                return (
+                  <button
+                    key={option.kind}
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={() => handleKindOptionClick(option.kind, option.label)}
+                    className={`rounded-full px-2 py-1 font-label-sm text-xs transition-colors ${
+                      isCurrent
+                        ? 'cursor-not-allowed bg-secondary-container text-on-secondary-container'
+                        : 'text-on-surface hover:bg-surface-container-highest'
+                    }`}
+                  >
+                    {isCurrent ? `✓ ${option.label} (atual)` : option.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <button
           type="button"

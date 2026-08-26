@@ -12,6 +12,7 @@ import type {
   GuidedFlow,
   OrientationVideo,
   ResultFlowNode,
+  ScoreBranch,
   ScoreBranchFlowNode,
 } from '../../../domain/flow-engine/types';
 
@@ -1049,6 +1050,95 @@ describe('NodeEditorPanel ramificação', () => {
     expect(container.querySelector('[data-section="ramificacao"]')).toBeNull();
     expect(screen.queryByLabelText('Pontuação usada')).not.toBeInTheDocument();
   });
+
+  it('renders Nome da faixa and Destino de página controls for every faixa', () => {
+    renderScorePanel();
+
+    expect(screen.getByLabelText('Nome da faixa 1')).toHaveValue('r1-faixa-1');
+    expect(screen.getByLabelText('Nome da faixa 2')).toHaveValue('r1-faixa-2');
+    const pageSelect = screen.getByRole('combobox', { name: 'Destino de página 1' });
+    expect(pageSelect).toHaveValue(''); // Nenhuma
+    const values = within(pageSelect)
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'));
+    expect(values).toEqual(['', '/apoio', '/contatos', '/educacao']);
+  });
+
+  it('commits a trimmed faixa rename on blur keeping sibling ids untouched', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    const input = screen.getByLabelText('Nome da faixa 1');
+    await user.clear(input);
+    await user.type(input, 'baixa ');
+    await user.tab();
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const node = patchedNodeOf(lastPatch(props.onFlowChange), 'r1', isScoreBranchNode);
+    expect(node.branches[0]).toMatchObject({ id: 'baixa', min: 0, max: 5, next: 'fim' });
+    expect(node.branches[1]?.id).toBe('r1-faixa-2');
+  });
+
+  it('blocks blank faixa names with a hint and silently reverts on blur', async () => {
+    const user = userEvent.setup();
+    const props = renderScorePanel();
+    const input = screen.getByLabelText('Nome da faixa 1');
+    await user.clear(input);
+
+    expect(screen.getByText('O nome da faixa não pode ficar vazio.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+
+    await user.tab();
+
+    expect(props.onFlowChange).not.toHaveBeenCalled(); // invalid draft never commits
+    expect(screen.getByLabelText('Nome da faixa 1')).toHaveValue('r1-faixa-1'); // reverted
+    expect(screen.queryByText('O nome da faixa não pode ficar vazio.')).not.toBeInTheDocument();
+  });
+
+  it('blocks duplicate faixa names until the draft resolves to something unique', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulPanel(createScoreBranchFlow(), 'r1');
+    const input = screen.getByLabelText('Nome da faixa 1');
+
+    await user.clear(input);
+    await user.type(input, 'r1-faixa-2'); // sibling's id
+    expect(screen.getByText('Nome já usado nesta etapa.')).toBeInTheDocument();
+    await user.tab();
+    expect(history).toHaveLength(0); // duplicate never commits
+    expect(screen.getByLabelText('Nome da faixa 1')).toHaveValue('r1-faixa-1');
+
+    await user.clear(input);
+    await user.type(input, 'unico');
+    await user.tab();
+
+    expect(history).toHaveLength(1);
+    expect(patchedNodeOf(history[0].patch, 'r1', isScoreBranchNode).branches[0]?.id).toBe('unico');
+  });
+
+  it('writes branch.navigation from Destino de página and drops the key when cleared', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulPanel(createScoreBranchFlow(), 'r1');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Destino de página 2' }), '/contatos');
+    expect(history).toHaveLength(1);
+    expect(patchedNodeOf(history[0].patch, 'r1', isScoreBranchNode).branches[1]?.navigation).toBe('/contatos');
+    // Sibling row untouched.
+    expect(patchedNodeOf(history[0].patch, 'r1', isScoreBranchNode).branches[0]).not.toHaveProperty('navigation');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Destino de página 2' }), '');
+    expect(history).toHaveLength(2);
+    expect(patchedNodeOf(history[1].patch, 'r1', isScoreBranchNode).branches[1]).not.toHaveProperty('navigation');
+  });
+
+  it('keeps an out-of-union stored navigation representable instead of snapping to the first option', () => {
+    const flow = createScoreBranchFlow();
+    const r1 = flow.nodes.r1;
+    if (r1.kind === 'score_branch') r1.branches[0].navigation = '/legado' as ScoreBranch['navigation'];
+    renderScorePanel(flow);
+
+    const pageSelect = screen.getByRole('combobox', { name: 'Destino de página 1' });
+    expect(pageSelect).toHaveValue('/legado');
+    expect(within(pageSelect).getByRole('option', { name: 'Destino ausente · /legado' })).toBeInTheDocument();
+  });
 });
 
 describe('NodeEditorPanel mídia', () => {
@@ -1198,5 +1288,99 @@ describe('NodeEditorPanel mídia', () => {
     expect(patchedNodeOf(lastPatch(props.onFlowChange), 'q1').videos).toEqual([
       { id: 'q1-video-1', title: '', url: '' },
     ]);
+  });
+});
+
+describe('NodeEditorPanel troca de tipo', () => {
+  let confirmSpy: MockInstance<typeof window.confirm>;
+
+  beforeEach(() => {
+    confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const openChooser = async (user: UserEvent) => {
+    await user.click(screen.getByRole('button', { name: 'Trocar tipo' }));
+    return screen.getByRole('group', { name: 'Novo tipo da etapa' });
+  };
+
+  it('opens an inline chooser marking the current kind disabled', async () => {
+    const user = userEvent.setup();
+    renderPanel(createFlow(), 'q1'); // choice node
+
+    const chooser = await openChooser(user);
+    expect(within(chooser).getByRole('button', { name: '✓ Pergunta (atual)' })).toBeDisabled();
+    expect(within(chooser).getByRole('button', { name: 'Final' })).toBeEnabled();
+    expect(within(chooser).getByRole('button', { name: 'Ramificação' })).toBeEnabled();
+  });
+
+  it('confirms and emits a narrow {nodes} patch preserving the text', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel(createFlow(), 'q1');
+    await openChooser(user);
+    await user.click(
+      within(screen.getByRole('group', { name: 'Novo tipo da etapa' })).getByRole('button', { name: 'Final' }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(String(confirmSpy.mock.calls[0][0])).toContain('texto será preservado');
+
+    const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['nodes']); // narrow: nodeOrder/entry untouched
+    const node = patch.nodes?.q1;
+    expect(node?.kind).toBe('result');
+    if (node?.kind === 'result') expect(node.text).toBe('Como você está?');
+    expect(screen.queryByRole('group', { name: 'Novo tipo da etapa' })).not.toBeInTheDocument(); // chooser closed
+  });
+
+  it('stays mounted on the same stage with the badge updated after switching', async () => {
+    const user = userEvent.setup();
+    const history = renderStatefulPanel(createFlow(), 'q1');
+    await openChooser(user);
+    await user.click(
+      within(screen.getByRole('group', { name: 'Novo tipo da etapa' })).getByRole('button', { name: 'Ramificação' }),
+    );
+
+    expect(history).toHaveLength(1);
+    // Same panel instance, same nodeId — only the flow changed underneath.
+    expect(screen.getByTestId('node-editor-panel')).toBeInTheDocument();
+    // The score_branch body replaced the options one…
+    expect(screen.getByRole('heading', { name: 'Ramificação', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Opções', level: 3 })).not.toBeInTheDocument();
+    // …and reopening the chooser marks the NEW kind as current.
+    await user.click(screen.getByRole('button', { name: 'Trocar tipo' }));
+    expect(
+      within(screen.getByRole('group', { name: 'Novo tipo da etapa' })).getByRole('button', {
+        name: '✓ Ramificação (atual)',
+      }),
+    ).toBeDisabled();
+  });
+
+  it('applies nothing and closes the chooser when the confirm is declined', async () => {
+    confirmSpy.mockReturnValue(false);
+    const user = userEvent.setup();
+    const props = renderPanel(createFlow(), 'q1');
+    await openChooser(user);
+    await user.click(
+      within(screen.getByRole('group', { name: 'Novo tipo da etapa' })).getByRole('button', { name: 'Final' }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(props.onFlowChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole('group', { name: 'Novo tipo da etapa' })).not.toBeInTheDocument();
+  });
+
+  it('closes the chooser on Escape without touching the flow', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel(createFlow(), 'q1');
+    await openChooser(user);
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('group', { name: 'Novo tipo da etapa' })).not.toBeInTheDocument();
+    expect(props.onFlowChange).not.toHaveBeenCalled();
   });
 });
