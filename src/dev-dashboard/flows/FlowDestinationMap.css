@@ -9,56 +9,13 @@
   font-family: 'Source Sans 3', sans-serif;
 }
 
-.flow-destination-map__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 28px;
-  padding: 24px 26px 18px;
+.flow-destination-map button:focus-visible,
+.flow-destination-map input:focus-visible,
+.flow-destination-map .react-flow__node:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-.flow-destination-map__kicker {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-primary);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-}
-
-.flow-destination-map__kicker svg {
-  width: 14px;
-  height: 14px;
-}
-
-.flow-destination-map__header h2 {
-  margin-top: 5px;
-  font-family: 'Nunito', sans-serif;
-  font-size: 24px;
-  font-weight: 850;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-}
-
-.flow-destination-map__header p {
-  margin-top: 5px;
-  color: var(--destination-muted);
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.flow-destination-map__mode {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--destination-line);
-  border-radius: 12px;
-  background: var(--color-surface-container-low);
-}
-
-.flow-destination-map__mode button,
 .flow-destination-map__tool-button {
   display: inline-flex;
   min-height: 36px;
@@ -77,28 +34,9 @@
     border-color 150ms ease;
 }
 
-.flow-destination-map__mode button svg,
 .flow-destination-map__tool-button svg {
   width: 15px;
   height: 15px;
-}
-
-.flow-destination-map__mode button[aria-pressed='true'] {
-  background: var(--color-surface-container-lowest);
-  color: var(--color-primary);
-  box-shadow: 0 2px 7px rgb(17 28 44 / 10%);
-}
-
-.flow-destination-map__mode button:disabled {
-  cursor: not-allowed;
-  opacity: 0.47;
-}
-
-.flow-destination-map button:focus-visible,
-.flow-destination-map input:focus-visible,
-.flow-destination-map .react-flow__node:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
 }
 
 .flow-destination-map__stats {
@@ -761,19 +699,6 @@
 }
 
 @media (max-width: 900px) {
-  .flow-destination-map__header {
-    flex-direction: column;
-  }
-
-  .flow-destination-map__mode {
-    width: 100%;
-  }
-
-  .flow-destination-map__mode button {
-    flex: 1;
-    justify-content: center;
-  }
-
   .flow-destination-map__destinations {
     flex-direction: column;
     gap: 7px;
@@ -797,7 +722,6 @@
 }
 
 @media (max-width: 620px) {
-  .flow-destination-map__header,
   .flow-destination-map__stats,
   .flow-destination-map__destinations,
   .flow-destination-map__toolbar {
@@ -842,7 +766,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flow-destination-map__mode button,
   .flow-destination-map__tool-button,
   .flow-destination-chip {
     transition: none;
