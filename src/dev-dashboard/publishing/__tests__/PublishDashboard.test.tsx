@@ -70,6 +70,7 @@ function renderPublish({
   validation = emptyValidation,
   onMergeConflict = vi.fn(),
   onPublished = vi.fn(),
+  onOpenValidationArea = vi.fn(),
 }: {
   publish?: PublishedContentContextValue['publish'];
   snapshot?: PublishedContentSnapshot | null;
@@ -80,6 +81,7 @@ function renderPublish({
   validation?: DashboardValidationResult;
   onMergeConflict?: (snapshot: PublishedContentSnapshot) => void;
   onPublished?: (next: PublishedContentSnapshot) => void;
+  onOpenValidationArea?: (area: import('../../validation/validationTypes').DashboardValidationArea) => void;
 } = {}) {
   const publishedValue: PublishedContentContextValue = {
     content: baseline,
@@ -111,12 +113,13 @@ function renderPublish({
           onMergeConflict={onMergeConflict}
           onPublished={onPublished}
           onResetDrafts={vi.fn()}
+          onOpenValidationArea={onOpenValidationArea}
         />
       </AdminAuthContext.Provider>
     </PublishedContentContext.Provider>
   );
 
-  return { ...render(ui), publish, onPublished };
+  return { ...render(ui), publish, onPublished, onOpenValidationArea };
 }
 
 describe('PublishDashboard', () => {
@@ -128,10 +131,18 @@ describe('PublishDashboard', () => {
     expect(screen.getByText(/Revisão atual: 4/)).toBeInTheDocument();
   });
 
-  it('disables publication for validation errors', () => {
-    renderPublish({ validation: validationWithError });
+  it('disables publication for validation errors and provides a button to review them', async () => {
+    const user = userEvent.setup();
+    const { onOpenValidationArea } = renderPublish({ validation: validationWithError });
 
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
+    expect(screen.getByText('Ainda não é possível publicar')).toBeInTheDocument();
+
+    const reviewButton = screen.getByRole('button', { name: 'Revisar 1 erro em Contatos' });
+    expect(reviewButton).toBeInTheDocument();
+
+    await user.click(reviewButton);
+    expect(onOpenValidationArea).toHaveBeenCalledWith('contacts');
   });
 
   it('disables publication when there are no changes', () => {
@@ -268,7 +279,8 @@ describe('PublishDashboard', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('contacts[contact-one].name');
+    expect(alert).toHaveTextContent('Contato “contact-one”, nome');
+    expect(alert).not.toHaveTextContent('contacts[contact-one].name');
     expect(onMergeConflict).toHaveBeenCalledWith(latestSnapshot);
     expect(onPublished).not.toHaveBeenCalled();
     expect(publish).toHaveBeenCalledTimes(1);

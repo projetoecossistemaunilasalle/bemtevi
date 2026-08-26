@@ -4,19 +4,22 @@ import { parseGuidedFlow } from '../../domain/flow-engine/parseFlow';
 import { neutralFlows } from './neutral';
 import { restRecoveryFlow } from './rest-recovery';
 import { workStressFlow } from './work-stress';
+import who5Json from './who5.json';
+import srq20Json from './srq20.json';
+import jobSatisfactionJson from './job-satisfaction.json';
 
-const jsonFlowModules = import.meta.glob('./*.json', {
-  eager: true,
-  import: 'default',
-});
+const staticJsonFlows = [jobSatisfactionJson, srq20Json, who5Json].map((flow) => parseGuidedFlow(flow));
 
-const jsonFlows = Object.entries(jsonFlowModules)
-  .map(([path, flow]) => ({
-    path,
-    flow: parseGuidedFlow(flow),
-  }))
-  .sort((left, right) => left.path.localeCompare(right.path))
-  .map(({ flow }) => flow);
+const jsonFlows =
+  typeof import.meta.glob === 'function'
+    ? Object.entries(import.meta.glob('./*.json', { eager: true, import: 'default' }))
+        .map(([path, flow]) => ({
+          path,
+          flow: parseGuidedFlow(flow),
+        }))
+        .sort((left, right) => left.path.localeCompare(right.path))
+        .map(({ flow }) => flow)
+    : staticJsonFlows;
 
 export const flowRegistry = {
   id: 'flow-registry',

@@ -277,6 +277,26 @@ input[type='range'] {
   padding: clamp(0.625rem, 2dvh, 1rem);
 }
 
+.dashboard-validation-target {
+  scroll-margin-block: 6rem;
+}
+
+.dashboard-validation-target[data-validation-active='true'],
+[data-validation-active='true'] {
+  border-radius: 0.75rem;
+  outline: 3px solid color-mix(in srgb, var(--color-error) 72%, transparent);
+  outline-offset: 5px;
+  transition: outline-color 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-validation-target[data-validation-active='true'],
+  [data-validation-active='true'] {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
 @media (max-width: 340px) {
   .onboarding-icon.onboarding-logo-frame {
     width: 4.75rem;

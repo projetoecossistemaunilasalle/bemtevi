@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
+import dagre from '@dagrejs/dagre';
 import { AlertTriangle, ExternalLink, Flag, GitBranch, Search, Unplug, Workflow } from 'lucide-react';
 import {
   Background,
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow,
   type Edge,
@@ -29,7 +29,6 @@ type FlowMapNodeData = {
   finals: number;
   incoming: number;
   outgoing: number;
-  connected: boolean;
   selected: boolean;
   searchMatch: boolean;
   onOpenFlow: (flowId: string) => void;
@@ -38,13 +37,18 @@ type FlowMapNodeData = {
 type ExternalMapNodeData = { kind: 'external'; label: string; externalKind: ExternalKind };
 type OverviewNodeData = FlowMapNodeData | ExternalMapNodeData;
 type OverviewNode = Node<OverviewNodeData>;
-type OverviewEdge = Edge<{ optionLabel: string; effectKind: ExternalKind }>;
+type OverviewEdge = Edge<{ optionLabels: string[]; count: number; effectKind: ExternalKind; related: boolean }>;
+
+const FLOW_NODE_WIDTH = 272;
+const FLOW_NODE_HEIGHT = 140;
+const DESTINATION_NODE_WIDTH = 220;
+const DESTINATION_NODE_HEIGHT = 58;
 
 function FlowOverviewNode({ data }: NodeProps<OverviewNode>) {
   if (data.kind !== 'flow') return null;
   return (
     <div
-      className={`flow-overview-node${data.selected ? ' is-selected' : ''}${data.searchMatch ? ' is-search-match' : ''}${!data.connected ? ' is-disconnected' : ''}`}
+      className={`flow-overview-node${data.selected ? ' is-selected' : ''}${data.searchMatch ? ' is-search-match' : ''}`}
       role="button"
       tabIndex={0}
       aria-label={`${data.flow.title}, ${STATUS_LABELS[data.flow.status]}, ${data.steps} etapas, ${data.finals} finais`}
@@ -58,36 +62,21 @@ function FlowOverviewNode({ data }: NodeProps<OverviewNode>) {
     >
       <Handle type="target" position={Position.Left} className="flow-overview-node__handle" />
       <div className="flow-overview-node__header">
-        <Workflow aria-hidden="true" size={18} />
+        <Workflow aria-hidden="true" size={17} />
         <span className={`flow-overview-node__status flow-overview-node__status--${data.flow.status}`}>
           {STATUS_LABELS[data.flow.status]}
         </span>
       </div>
       <strong>{data.flow.title}</strong>
       <code>{data.flow.id}</code>
-      <dl>
-        <div>
-          <dt>Etapas</dt>
-          <dd>{data.steps}</dd>
-        </div>
-        <div>
-          <dt>Finais</dt>
-          <dd>{data.finals}</dd>
-        </div>
-        <div>
-          <dt>Entradas</dt>
-          <dd>{data.incoming}</dd>
-        </div>
-        <div>
-          <dt>Saídas</dt>
-          <dd>{data.outgoing}</dd>
-        </div>
-      </dl>
-      {!data.connected && (
-        <span className="flow-overview-node__disconnected">
-          <Unplug aria-hidden="true" size={13} /> Sem conexões
+      <div className="flow-overview-node__facts">
+        <span>
+          <b>{data.steps}</b> etapas · <b>{data.finals}</b> finais
         </span>
-      )}
+        <span>
+          <b>{data.incoming}</b> entradas · <b>{data.outgoing}</b> saídas
+        </span>
+      </div>
       <Handle type="source" position={Position.Right} className="flow-overview-node__handle" />
     </div>
   );
@@ -112,50 +101,70 @@ function ExternalOverviewNode({ data }: NodeProps<OverviewNode>) {
 
 const nodeTypes = { flowOverview: FlowOverviewNode, externalOverview: ExternalOverviewNode };
 
-// Exported for deterministic layout tests; it does not hold React state.
+function edgeColor(kind: ExternalKind) {
+  if (kind === 'safety_interrupt') return 'var(--color-error)';
+  if (kind === 'deferred_safety') return 'var(--color-warning)';
+  if (kind === 'end_flow') return 'var(--color-outline)';
+  return 'var(--color-secondary)';
+}
+
+function layoutGraph(nodes: OverviewNode[], edges: OverviewEdge[]) {
+  const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({ rankdir: 'LR', ranksep: 150, nodesep: 58, edgesep: 24, marginx: 26, marginy: 34 });
+
+  nodes.forEach((node) => {
+    graph.setNode(node.id, {
+      width: node.data.kind === 'flow' ? FLOW_NODE_WIDTH : DESTINATION_NODE_WIDTH,
+      height: node.data.kind === 'flow' ? FLOW_NODE_HEIGHT : DESTINATION_NODE_HEIGHT,
+    });
+  });
+  edges.forEach((edge) => graph.setEdge(edge.source, edge.target));
+  dagre.layout(graph);
+
+  return nodes.map((node) => {
+    const point = graph.node(node.id);
+    const width = node.data.kind === 'flow' ? FLOW_NODE_WIDTH : DESTINATION_NODE_WIDTH;
+    const height = node.data.kind === 'flow' ? FLOW_NODE_HEIGHT : DESTINATION_NODE_HEIGHT;
+    return { ...node, position: { x: point.x - width / 2, y: point.y - height / 2 } };
+  });
+}
+
+// Exported for deterministic topology tests; it does not hold React state.
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildOverviewGraph(
   flows: GuidedFlow[],
   selectedFlowId: string,
   search: string,
   onOpenFlow: (flowId: string) => void,
-): { nodes: OverviewNode[]; edges: OverviewEdge[] } {
+): { nodes: OverviewNode[]; edges: OverviewEdge[]; disconnectedFlows: GuidedFlow[] } {
   const topology = buildSystemFlowTopology(flows);
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
-  const connectedSet = new Set(topology.connectedFlowIds);
-  const connected = topology.flowNodes.filter((node) => node.connected);
-  const disconnected = topology.flowNodes.filter((node) => !node.connected);
-  const ordered = [...connected, ...disconnected];
+  const connectedFlowNodes = topology.flowNodes.filter((node) => node.connected);
+  const disconnectedFlows = topology.flowNodes.filter((node) => !node.connected).map((node) => node.flow);
 
-  const flowNodes: OverviewNode[] = ordered.map((item, index) => {
-    const disconnectedIndex = index - connected.length;
-    const row = item.connected ? Math.floor(index / 3) : Math.floor(disconnectedIndex / 3);
-    const column = item.connected ? index % 3 : disconnectedIndex % 3;
-    const searchMatch =
-      !normalizedSearch || `${item.title} ${item.flowId}`.toLocaleLowerCase('pt-BR').includes(normalizedSearch);
-    return {
-      id: item.flowId,
-      type: 'flowOverview',
-      position: { x: column * 360, y: (item.connected ? 0 : 360) + row * 250 },
-      data: {
-        kind: 'flow',
-        flow: item.flow,
-        steps: item.stepCount,
-        finals: item.finalCount,
-        incoming: item.incomingCount,
-        outgoing: item.outgoingCount,
-        connected: connectedSet.has(item.flowId),
-        selected: item.flowId === selectedFlowId,
-        searchMatch,
-        onOpenFlow,
-      },
-    };
-  });
+  const flowNodes: OverviewNode[] = connectedFlowNodes.map((item) => ({
+    id: item.flowId,
+    type: 'flowOverview',
+    position: { x: 0, y: 0 },
+    data: {
+      kind: 'flow',
+      flow: item.flow,
+      steps: item.stepCount,
+      finals: item.finalCount,
+      incoming: item.incomingCount,
+      outgoing: item.outgoingCount,
+      selected: item.flowId === selectedFlowId,
+      searchMatch: Boolean(
+        normalizedSearch && `${item.title} ${item.flowId}`.toLocaleLowerCase('pt-BR').includes(normalizedSearch),
+      ),
+      onOpenFlow,
+    },
+  }));
 
-  const externalNodes: OverviewNode[] = topology.externalDestinations.map((destination, index) => ({
+  const externalNodes: OverviewNode[] = topology.externalDestinations.map((destination) => ({
     id: destination.id,
     type: 'externalOverview',
-    position: { x: 1100, y: index * 130 },
+    position: { x: 0, y: 0 },
     data: {
       kind: 'external',
       label: destination.label,
@@ -163,34 +172,56 @@ export function buildOverviewGraph(
     },
   }));
 
-  const edges: OverviewEdge[] = topology.connections.map((connection) => ({
-    id: connection.id,
-    source: connection.sourceFlowId,
-    target: connection.targetFlowId ?? connection.targetDestinationId ?? connection.target,
-    type: 'smoothstep',
-    label: connection.optionLabel ?? connection.label,
-    data: {
-      optionLabel: connection.optionLabel ?? connection.label ?? 'Transição',
-      effectKind: connection.kind,
-    },
-    animated: connection.kind !== 'flow_start',
-    style:
-      connection.kind === 'flow_start'
-        ? { stroke: 'var(--color-secondary)', strokeDasharray: '6 4' }
-        : connection.kind === 'safety_interrupt'
-          ? { stroke: 'var(--color-error)', strokeDasharray: '5 3' }
-          : connection.kind === 'deferred_safety'
-            ? { stroke: 'var(--color-warning)', strokeDasharray: '5 3' }
-            : { stroke: 'var(--color-secondary)' },
-    labelStyle: { fill: 'var(--color-on-surface-variant)', fontSize: 12, fontWeight: 600 },
-    labelBgStyle: { fill: 'var(--color-surface-container-lowest)', fillOpacity: 0.96 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: connection.kind === 'safety_interrupt' ? 'var(--color-error)' : 'var(--color-secondary)',
-    },
-  }));
+  const aggregated = new Map<
+    string,
+    { source: string; target: string; kind: ExternalKind; labels: string[]; count: number }
+  >();
+  topology.connections.forEach((connection) => {
+    const target = connection.targetFlowId ?? connection.targetDestinationId ?? connection.target;
+    const key = `${connection.sourceFlowId}::${target}::${connection.kind}`;
+    const existing = aggregated.get(key);
+    const label = connection.optionLabel ?? connection.label ?? 'Transição';
+    if (existing) {
+      existing.count += 1;
+      if (!existing.labels.includes(label)) existing.labels.push(label);
+      return;
+    }
+    aggregated.set(key, {
+      source: connection.sourceFlowId,
+      target,
+      kind: connection.kind,
+      labels: [label],
+      count: 1,
+    });
+  });
 
-  return { nodes: [...flowNodes, ...externalNodes], edges };
+  const edges: OverviewEdge[] = [...aggregated.entries()].map(([id, connection]) => {
+    const related = connection.source === selectedFlowId || connection.target === selectedFlowId;
+    const color = edgeColor(connection.kind);
+    return {
+      id,
+      source: connection.source,
+      target: connection.target,
+      type: 'smoothstep',
+      data: {
+        optionLabels: connection.labels,
+        count: connection.count,
+        effectKind: connection.kind,
+        related,
+      },
+      ariaLabel: `${connection.count} conexão(ões): ${connection.labels.join(', ')}`,
+      style: {
+        stroke: color,
+        strokeDasharray: connection.kind === 'flow_start' ? '7 5' : undefined,
+        strokeWidth: related ? 2.6 : 1.1,
+        opacity: related ? 1 : 0.14,
+      },
+      markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
+    };
+  });
+
+  const nodes = layoutGraph([...flowNodes, ...externalNodes], edges);
+  return { nodes, edges, disconnectedFlows };
 }
 
 export function FlowOverviewMap({
@@ -208,7 +239,20 @@ export function FlowOverviewMap({
     () => buildOverviewGraph(flows, selectedFlowId, search, onOpenFlow),
     [flows, onOpenFlow, search, selectedFlowId],
   );
-  const disconnectedCount = graph.nodes.filter((node) => node.data.kind === 'flow' && !node.data.connected).length;
+  const compactViewport = typeof window !== 'undefined' && window.innerWidth <= 620;
+  const connectedFlowCount = graph.nodes.filter((node) => node.data.kind === 'flow').length;
+  const handleInit = (flowInstance: ReactFlowInstance<OverviewNode, OverviewEdge>) => {
+    setInstance(flowInstance);
+    if (!compactViewport) return;
+
+    const selectedNode = graph.nodes.find((node) => node.id === selectedFlowId);
+    if (!selectedNode) return;
+    const width = selectedNode.data.kind === 'flow' ? FLOW_NODE_WIDTH : DESTINATION_NODE_WIDTH;
+    const height = selectedNode.data.kind === 'flow' ? FLOW_NODE_HEIGHT : DESTINATION_NODE_HEIGHT;
+    void flowInstance.setCenter(selectedNode.position.x + width / 2, selectedNode.position.y + height / 2, {
+      zoom: 0.78,
+    });
+  };
 
   return (
     <section className="flow-overview" aria-labelledby="flow-overview-title">
@@ -217,14 +261,18 @@ export function FlowOverviewMap({
       </h2>
       <div className="flow-overview__summary" aria-label="Resumo do sistema">
         <span>
-          <strong>{flows.length}</strong> fluxos
+          <strong>{flows.length}</strong> {flows.length === 1 ? 'fluxo' : 'fluxos'}
         </span>
         <span>
-          <strong>{graph.edges.length}</strong> conexões
+          <strong>{connectedFlowCount}</strong> {connectedFlowCount === 1 ? 'conectado' : 'conectados'}
         </span>
-        {disconnectedCount > 0 && (
+        <span>
+          <strong>{graph.edges.length}</strong> {graph.edges.length === 1 ? 'relação' : 'relações'}
+        </span>
+        {graph.disconnectedFlows.length > 0 && (
           <span>
-            <strong>{disconnectedCount}</strong> sem conexões
+            <strong>{graph.disconnectedFlows.length}</strong>{' '}
+            {graph.disconnectedFlows.length === 1 ? 'sem conexão' : 'sem conexões'}
           </span>
         )}
       </div>
@@ -235,42 +283,64 @@ export function FlowOverviewMap({
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por título ou ID"
+            placeholder="Buscar por título ou identificador"
           />
         </label>
         <button
           type="button"
           className="flow-overview__fit"
-          onClick={() => instance?.fitView({ padding: 0.18 })}
+          onClick={() => instance?.fitView({ padding: 0.14, maxZoom: 0.92 })}
           disabled={!instance}
         >
           <GitBranch aria-hidden="true" size={16} /> Ajustar tudo
         </button>
       </div>
+
+      {graph.disconnectedFlows.length > 0 && (
+        <div className="flow-overview__disconnected" aria-label="Fluxos sem conexões">
+          <span>
+            <Unplug aria-hidden="true" size={15} /> Sem conexões
+          </span>
+          <div>
+            {graph.disconnectedFlows.map((flow) => (
+              <button
+                key={flow.id}
+                type="button"
+                className={
+                  search.trim() &&
+                  `${flow.title} ${flow.id}`
+                    .toLocaleLowerCase('pt-BR')
+                    .includes(search.trim().toLocaleLowerCase('pt-BR'))
+                    ? 'is-search-match'
+                    : ''
+                }
+                onClick={() => onOpenFlow(flow.id)}
+              >
+                {flow.title} <small>{flow.id}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flow-overview__canvas" data-testid="flow-overview-canvas" aria-label="Mapa geral dos fluxos">
+        <div className="flow-overview__guide" aria-hidden="true">
+          As linhas destacadas pertencem ao fluxo selecionado · clique em um fluxo para abrir
+        </div>
         <ReactFlow
           nodes={graph.nodes}
           edges={graph.edges}
           nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.18 }}
+          fitView={!compactViewport}
+          fitViewOptions={{ padding: 0.14, maxZoom: 0.92 }}
           minZoom={0.22}
           maxZoom={1.4}
-          onInit={setInstance}
+          onInit={handleInit}
           proOptions={{ hideAttribution: false }}
         >
-          <Background color="var(--color-outline-variant)" gap={24} size={1} />
+          <Background color="var(--color-outline-variant)" gap={28} size={1} />
           <Controls showInteractive={false} />
-          <MiniMap pannable zoomable ariaLabel="Minimapa dos fluxos" />
         </ReactFlow>
-        {disconnectedCount > 0 && (
-          <div className="flow-overview__disconnected-note">
-            <Unplug aria-hidden="true" size={16} />{' '}
-            {disconnectedCount === 1
-              ? '1 fluxo sem conexões com outros fluxos'
-              : `${disconnectedCount} fluxos sem conexões com outros fluxos`}
-          </div>
-        )}
       </div>
     </section>
   );

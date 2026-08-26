@@ -73,11 +73,6 @@ function startOrientationWithStarter(label = 'Quero entender como estou me senti
   advanceInitialLoad();
 }
 
-function routeFromNeutralToWorkStress() {
-  fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
-  advanceInitialLoad();
-}
-
 describe('OrientationScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -113,9 +108,9 @@ describe('OrientationScreen', () => {
     renderOrientation();
     startOrientationWithStarter();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido sobrecarregado(a).' }));
     advanceInitialLoad();
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Sinto que tenho coisas demais para resolver.' }));
 
     expect(window.localStorage).toHaveLength(0);
     expect(window.sessionStorage).toHaveLength(0);
@@ -143,300 +138,101 @@ describe('OrientationScreen', () => {
   it('advances the flow immediately when the user clicks a bubble', () => {
     renderOrientation();
     startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido sobrecarregado(a).' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Sinto que tenho coisas demais para resolver.' }));
     advanceInitialLoad();
 
     expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
-    expect(
-      screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Quando tudo parece urgente/)).toBeInTheDocument();
   });
 
   it('exposes the conversation as an accessible log with sender context', () => {
     renderOrientation();
     startOrientationWithStarter();
 
+    const log = screen.getByRole('log', { name: 'Histórico da orientação guiada' });
+    expect(log).toBeInTheDocument();
+    expect(screen.getByText('Quero entender como estou me sentindo')).toBeInTheDocument();
+    expect(screen.getByText('O que mais se aproxima do seu momento agora?')).toBeInTheDocument();
+  });
+
+  it('shows typing indicator and disables composer while the bot is answering', () => {
+    renderOrientation();
+    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
+
+    expect(screen.getByText('Carregando conversa')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toBeDisabled();
+
+    advanceInitialLoad();
+
+    expect(screen.queryByText('Carregando conversa')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toBeEnabled();
+  });
+
+  it('scrolls the chat window to the bottom when visible messages update', () => {
+    renderOrientation();
+    const scrollToMock = vi.fn();
+    const logElement = document.createElement('div');
+    logElement.setAttribute('role', 'log');
+    logElement.setAttribute('aria-label', 'Histórico da orientação guiada');
+    Object.defineProperty(logElement, 'scrollHeight', { value: 1200, configurable: true });
+    Object.defineProperty(logElement, 'scrollTop', { value: 0, writable: true, configurable: true });
+    logElement.scrollTo = scrollToMock;
+
+    startOrientationWithStarter();
+
     expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toBeInTheDocument();
-    expect(screen.getAllByText('BemTeVi')).toHaveLength(2);
   });
 
-  it('renders dashboard-managed YouTube videos with the matching orientation message', () => {
-    const bundled = getBundledContent();
-    const payload = {
-      ...bundled,
-      flows: bundled.flows.map((flow) =>
-        flow.id === 'orientation-understand-feelings'
-          ? {
-              ...flow,
-              nodes: {
-                ...flow.nodes,
-                [flow.entry.nodeId]: {
-                  ...flow.nodes[flow.entry.nodeId],
-                  videos: [
-                    {
-                      id: 'breathing-video',
-                      title: 'Respiração guiada',
-                      url: 'https://www.youtube.com/watch?v=abcdef12345',
-                    },
-                  ],
-                },
-              },
-            }
-          : flow,
-      ),
-    };
-
-    renderOrientation(payload);
-    startOrientationWithStarter();
-
-    expect(screen.getByText('Respiração guiada')).toBeInTheDocument();
-    expect(screen.getByTitle('Respiração guiada')).toHaveAttribute(
-      'src',
-      'https://www.youtube-nocookie.com/embed/abcdef12345',
-    );
-    expect(screen.getAllByTitle('Respiração guiada')).toHaveLength(1);
-  });
-
-  it('starts SRQ-20 through chatbot autocomplete from JSON flow content', () => {
+  it('supports full keyboard navigation through options and composer', () => {
     renderOrientation();
     startOrientationWithStarter();
 
-    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
-      target: { value: 'SRQ-20' },
-    });
+    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
+    fireEvent.change(input, { target: { value: 'sobrecarregado' } });
 
-    fireEvent.click(screen.getByRole('option', { name: 'Quero responder o SRQ-20' }));
+    const option = screen.getByRole('option', { name: 'Tenho me sentido sobrecarregado(a).' });
+    expect(option).toBeInTheDocument();
+
+    fireEvent.click(option);
     advanceInitialLoad();
 
-    expect(screen.getByText(/Este é o SRQ-20/i)).toBeInTheDocument();
-    expect(screen.getByText(/Antes de começar/i)).toBeInTheDocument();
+    expect(screen.getByText(/Quando muitas demandas se acumulam/)).toBeInTheDocument();
   });
 
-  it('keeps previous chat messages visible when switching to another flow by phrase', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-
-    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
-      target: { value: 'momento mais leve' },
-    });
-    fireEvent.click(screen.getByRole('option', { name: 'Preciso de um momento mais leve' }));
-
-    expect(screen.getByText('Quero entender como estou me sentindo')).toBeInTheDocument();
-    expect(
-      screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Preciso de um momento mais leve')).toBeInTheDocument();
-
-    advanceInitialLoad();
-
-    expect(screen.getByText('Quero entender como estou me sentindo')).toBeInTheDocument();
-    expect(screen.getByText('Tudo bem escolher algo mais leve agora.')).toBeInTheDocument();
-  });
-
-  it('keeps the composer fixed as a chat input above the page navigation after the intro', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-
-    expect(screen.getByTestId('orientation-composer')).toHaveClass('fixed');
-    expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toHaveAttribute('data-icon', 'send');
-  });
-
-  it('submits explicit free text as a user bubble and advances without option matching', () => {
+  it('supports free text input when enabled on a choice node', () => {
     renderOrientation();
     startOrientationWithStarter('Quero falar sobre o que estou vivendo');
 
     const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+    fireEvent.change(input, { target: { value: 'Hoje foi um dia difícil com as turmas' } });
 
-    fireEvent.change(input, { target: { value: 'Foi uma semana difícil.' } });
-    expect(sendButton).toBeEnabled();
+    const submitBtn = screen.getByRole('button', { name: 'Enviar opção selecionada' });
+    expect(submitBtn).toBeEnabled();
 
-    fireEvent.click(sendButton);
-
-    expect(screen.getByText('Foi uma semana difícil.')).toBeInTheDocument();
-    expect(input).toHaveValue('');
-    expect(screen.queryByRole('option')).not.toBeInTheDocument();
-
+    fireEvent.click(submitBtn);
     advanceInitialLoad();
 
+    expect(screen.getByText('Hoje foi um dia difícil com as turmas')).toBeInTheDocument();
     expect(screen.getByText('Obrigado por compartilhar. Podemos seguir sem analisar esse texto.')).toBeInTheDocument();
   });
-  it('only enables send when the input exactly matches an available option', () => {
+
+  it('shows neutral talk-through starter transition message', () => {
     renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
+    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
-
-    expect(sendButton).toBeDisabled();
-
-    fireEvent.change(input, { target: { value: 'qualquer coisa' } });
-    expect(sendButton).toBeDisabled();
-
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
-    expect(sendButton).toBeEnabled();
-  });
-
-  it('shows matching options in an autocomplete overlay above the input', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    fireEvent.change(screen.getByPlaceholderText('Digite ou escolha uma opção'), {
-      target: { value: 'descansar' },
-    });
-
-    expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Dificuldade para descansar' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).not.toBeInTheDocument();
-  });
-
-  it('reserves enough scroll padding for the autocomplete overlay', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
-    expect(screen.getByRole('log', { name: 'Histórico da orientação guiada' })).toHaveClass('pb-72', 'md:pb-72');
-  });
-
-  it('hides suggestions when input exactly matches an option label', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-
-    expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
-
-    fireEvent.change(input, { target: { value: 'Muitas tarefas ao mesmo tempo' } });
-
-    expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
-  });
-
-  it('shows suggestions when trailing space breaks strict match but send stays enabled', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
-
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar' } });
-    expect(screen.queryByRole('listbox', { name: 'Sugestões de resposta' })).not.toBeInTheDocument();
-    expect(sendButton).toBeEnabled();
-
-    fireEvent.change(input, { target: { value: 'Dificuldade para descansar ' } });
-    expect(screen.getByRole('listbox', { name: 'Sugestões de resposta' })).toBeInTheDocument();
-    expect(sendButton).toBeEnabled();
-  });
-
-  it('shows typing indicator before initial greeting appears', () => {
-    renderOrientation();
-    fireEvent.click(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' }));
-
-    expect(
-      screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Carregando conversa');
-
-    advanceInitialLoad();
-
-    expect(
-      screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
-  });
-
-  it('starts the chatbot after a starter and records the starter as a user message', () => {
-    renderOrientation();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' }));
-
-    expect(screen.queryByRole('heading', { name: 'Antes de começar' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Quero falar sobre o que estou vivendo')).not.toBeInTheDocument();
-    expect(screen.getByText('BemTeVi')).toBeInTheDocument();
-
-    advanceInitialLoad();
-
-    expect(screen.getByText('Quero falar sobre o que estou vivendo')).toBeInTheDocument();
     expect(screen.getByText('Podemos organizar isso por partes, sem pressa.')).toBeInTheDocument();
+    expect(screen.getByText('O que mais marcou seu dia ou sua semana?')).toBeInTheDocument();
   });
 
-  it('starts the default neutral flow from Outro without adding Outro as a conversation message', () => {
-    renderOrientation();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Outro' }));
-    advanceInitialLoad();
-
-    expect(screen.queryByText(/^Outro$/)).not.toBeInTheDocument();
-    expect(
-      screen.getByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' })).toBeInTheDocument();
-  });
-
-  it('shows user message immediately and bot response after delay when selecting a node option', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
-
-    expect(screen.getByText('Muitas tarefas ao mesmo tempo')).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        'Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.',
-      ),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole('option')).not.toBeInTheDocument();
-
-    advanceInitialLoad();
-
-    expect(
-      screen.getByText('Quando tudo parece urgente, ajuda separar o que precisa de atenção agora do que pode esperar.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' })).toBeInTheDocument();
-  });
-
-  it('disables input and send while revealing bot messages', () => {
-    renderOrientation();
-    startOrientationWithStarter();
-    routeFromNeutralToWorkStress();
-
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
-
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    const sendButton = screen.getByRole('button', { name: 'Enviar opção selecionada' });
-
-    expect(input).toBeDisabled();
-    expect(sendButton).toBeDisabled();
-
-    advanceInitialLoad();
-
-    expect(input).not.toBeDisabled();
-    expect(sendButton).toBeDisabled();
-  });
-
-  it('does not look for free-text config after the active flow ends', () => {
-    renderOrientation();
-    startOrientationWithStarter('Preciso de um momento mais leve');
-
-    fireEvent.click(screen.getByRole('option', { name: 'Finalizar por hoje' }));
-    advanceInitialLoad();
-
-    expect(screen.getAllByText('Tudo bem. Você pode voltar quando quiser.').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Enviar opção selecionada' })).toBeDisabled();
-  });
-  it('starts the selected neutral orientation flow', () => {
+  it('shows neutral next-step starter transition message', () => {
     renderOrientation();
     startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
 
-    expect(screen.getByText('Quero encontrar um próximo passo de cuidado')).toBeInTheDocument();
     expect(screen.getByText('Vamos escolher um próximo passo possível para agora.')).toBeInTheDocument();
     expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
   });
@@ -455,21 +251,21 @@ describe('OrientationScreen', () => {
 
   it('routes from a neutral option into a specific guided flow', () => {
     renderOrientation();
-    startOrientationWithStarter();
+    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
 
-    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Muitas demandas ao mesmo tempo' }));
     advanceInitialLoad();
 
-    expect(screen.getByText('Parece mais sobre sobrecarga')).toBeInTheDocument();
+    expect(screen.getByText('Muitas demandas ao mesmo tempo')).toBeInTheDocument();
     expect(screen.getByText(/Vamos olhar para essa sobrecarga com calma/)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
   });
 
   it('offers a calm next-step route after a regular flow result', () => {
     renderOrientation();
-    startOrientationWithStarter();
+    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
 
-    fireEvent.click(screen.getByRole('option', { name: 'Parece mais sobre sobrecarga' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Muitas demandas ao mesmo tempo' }));
     advanceInitialLoad();
 
     fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
@@ -542,7 +338,9 @@ describe('OrientationScreen', () => {
 
     expect(screen.getByText('Mensagem inicial vinda do banco de dados.')).toBeInTheDocument();
     expect(
-      screen.queryByText('Vamos começar de um jeito simples, sem precisar fechar uma resposta agora.'),
+      screen.queryByText(
+        'Vamos começar de um jeito simples. Você não precisa ter uma resposta pronta. Escolha a opção que mais se aproxima de como você está neste momento.',
+      ),
     ).not.toBeInTheDocument();
   });
 

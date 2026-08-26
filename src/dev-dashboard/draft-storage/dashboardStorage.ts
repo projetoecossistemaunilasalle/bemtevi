@@ -5,8 +5,10 @@ import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/servic
 import { deriveLocationsFromContacts, normalizeContactLocations } from '../../domain/services/locations';
 import type { DashboardShippedContent } from '../content/shippedContent';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
+import { saveDraftToIndexedDb, loadDraftFromIndexedDb, clearDraftFromIndexedDb } from './draftDb';
 
-const STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
+export const DASHBOARD_STORAGE_KEY = 'bemtevi:dev-dashboard:drafts:v1';
+const STORAGE_KEY = DASHBOARD_STORAGE_KEY;
 export const DASHBOARD_DRAFT_SCHEMA_VERSION = '6.0.0' as const;
 
 export interface DashboardRecordPatch<T extends { id: string }> {
@@ -87,10 +89,9 @@ export function hasDashboardChanges(state: DashboardDraftState) {
 }
 
 export function loadDashboardDrafts(storage: Storage = localStorage): DashboardDraftState {
-  const raw = storage.getItem(STORAGE_KEY);
-  if (!raw) return createEmptyDashboardDraftState();
-
   try {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (!raw) return createEmptyDashboardDraftState();
     const parsed = JSON.parse(raw) as unknown;
     if (typeof parsed !== 'object' || parsed === null) return createEmptyDashboardDraftState();
 
@@ -183,17 +184,98 @@ function isDashboardPayload(value: unknown): value is PublishedContentPayload {
 }
 
 export function saveDashboardDrafts(state: DashboardDraftState, storage: Storage = localStorage) {
-  storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // Always trigger async persistence to IndexedDB for safety against localStorage quotas
+  void saveDraftToIndexedDb(state);
+
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    // If quota exceeded or failed, try saving a lightweight version without basePayload in localStorage
+    if (state.basePayload) {
+      try {
+        const lightweight = { ...state };
+        delete lightweight.basePayload;
+        storage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+        return;
+      } catch {
+        // Fall through to throw so the UI surfaces the storage alert, but IndexedDB still holds the full draft
+      }
+    }
+    throw error;
+  }
+}
+
+export async function restoreDraftFromIndexedDbFallback(
+  currentStorage: Storage = localStorage,
+): Promise<DashboardDraftState | null> {
+  const dbDraft = await loadDraftFromIndexedDb();
+  if (!dbDraft || !hasDashboardChanges(dbDraft)) return null;
+
+  const localDraft = loadDashboardDrafts(currentStorage);
+  const localHasChanges = hasDashboardChanges(localDraft);
+
+  if (localHasChanges && localDraft.updatedAt && dbDraft.updatedAt) {
+    const localTime = new Date(localDraft.updatedAt).getTime();
+    const dbTime = new Date(dbDraft.updatedAt).getTime();
+    if (localTime >= dbTime) {
+      return null;
+    }
+  } else if (localHasChanges) {
+    return null;
+  }
+
+  try {
+    currentStorage.setItem(STORAGE_KEY, JSON.stringify(dbDraft));
+  } catch {
+    // Ignore storage quota failure on sync attempt
+  }
+
+  return dbDraft;
 }
 
 export function resetDashboardDrafts(storage: Storage = localStorage) {
   const empty = createEmptyDashboardDraftState();
   storage.removeItem(STORAGE_KEY);
+  void clearDraftFromIndexedDb();
   return empty;
 }
 
 export function clearDashboardDrafts(storage: Storage = localStorage) {
   resetDashboardDrafts(storage);
+}
+
+export function exportDraftAsJson(draft: DashboardDraftState): string {
+  return JSON.stringify(draft, null, 2);
+}
+
+export function importDraftFromJson(rawJson: string): DashboardDraftState {
+  const parsed = JSON.parse(rawJson) as unknown;
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('Formato de rascunho inválido.');
+  }
+  const record = parsed as Record<string, unknown>;
+  if (
+    !Array.isArray(record.flowPatches) &&
+    !Array.isArray(record.educationMaterialPatches) &&
+    !Array.isArray(record.groupPatches) &&
+    !Array.isArray(record.contactPatches) &&
+    !Array.isArray(record.locationPatches) &&
+    !Array.isArray(record.addedFlows) &&
+    !Array.isArray(record.addedEducationMaterials) &&
+    !Array.isArray(record.addedContacts)
+  ) {
+    throw new Error('O arquivo não contém dados válidos de rascunho do BemTeVi.');
+  }
+
+  const mockStorage = {
+    getItem: () => rawJson,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+    key: () => null,
+    length: 1,
+  };
+  return loadDashboardDrafts(mockStorage);
 }
 
 export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: DashboardDraftState) {
@@ -346,13 +428,11 @@ function mergeRecords<T extends { id: string }>(shipped: T[], patches: Array<Das
       const exactPatch =
         sourcePatch?.sourceIdUnique === false && shippedIdCounts.get(record.id) === 1 ? undefined : sourcePatch;
       const uniqueIdPatch = indexedPatchesById.get(record.id);
-      const fallbackPatch =
-        exactPatch ||
-        shippedIdCounts.get(record.id) !== 1 ||
-        indexedPatchIdCounts.get(record.id) !== 1 ||
-        uniqueIdPatch?.sourceIdUnique !== true
-          ? undefined
-          : uniqueIdPatch;
+      const isUniqueInShipped = shippedIdCounts.get(record.id) === 1;
+      const isUniqueInPatches = indexedPatchIdCounts.get(record.id) === 1;
+      const canFallbackById =
+        !exactPatch && isUniqueInShipped && isUniqueInPatches && uniqueIdPatch?.sourceIdUnique === true;
+      const fallbackPatch = canFallbackById ? uniqueIdPatch : undefined;
       const candidatePatch = exactPatch ?? fallbackPatch;
       const indexedPatch = candidatePatch && !usedIndexedPatches.has(candidatePatch) ? candidatePatch : undefined;
       const legacyPatch =

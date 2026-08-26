@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EducationDashboard } from '../EducationDashboard';
 import type { EducationResource } from '../../../domain/resources/types';
@@ -116,5 +116,37 @@ describe('EducationDashboard - Source Preview & Accordion Layout', () => {
     expect(screen.getByLabelText('Texto do link do bloco 3', { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('URL do link do bloco 3', { exact: false })).toBeInTheDocument();
     expect(screen.getAllByText('Formulário').length).toBeGreaterThan(0);
+  });
+
+  it('takes the user from the validation summary to the exact invalid material field', async () => {
+    const resources = [
+      ...mockResources,
+      {
+        ...mockResources[0],
+        id: 'mat-2',
+        title: '',
+        body: mockResources[0].body.map((block) => ({ ...block, id: `${block.id}-2` })),
+      },
+    ];
+
+    render(
+      <EducationDashboard
+        resources={resources}
+        groups={mockGroups}
+        onResourceChange={vi.fn()}
+        onResourceAdd={vi.fn(() => 'new-id')}
+        onGroupChange={vi.fn()}
+        onGroupAdd={vi.fn()}
+        onGroupRemove={vi.fn()}
+        onGroupMove={vi.fn()}
+      />,
+    );
+
+    const titleIssue = screen.getByText('O título é obrigatório.').closest('li');
+    expect(titleIssue).not.toBeNull();
+    fireEvent.click(within(titleIssue!).getByRole('button', { name: 'Ir ao material' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Título do material')).toHaveFocus());
+    expect(screen.getByLabelText('Título do material')).toHaveValue('');
   });
 });

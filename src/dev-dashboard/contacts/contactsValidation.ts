@@ -8,7 +8,7 @@ import {
 } from '../validation/validationTypes';
 import { normalizePhoneHref } from './contactDrafts';
 
-export const MAX_SERVICE_TYPE_LENGTH = 24;
+export const MAX_SERVICE_TYPE_LENGTH = 40;
 
 export function validateDashboardContacts(
   services: ServiceDirectoryEntry[],
@@ -20,21 +20,25 @@ export function validateDashboardContacts(
   const locationsById = new Map(effectiveLocations.map((location) => [location.id, location]));
 
   findDuplicateIds(services.map((service) => service.id)).forEach((id) => {
+    const duplicateIndex = services.findLastIndex((service) => service.id === id);
     issues.push({
       level: 'error',
       area: 'contacts',
       id: `duplicate-contact-id:${id}`,
-      message: `Existe mais de um contato com o ID "${id}".`,
+      message: `Existe mais de um contato com o identificador "${id}". Remova um dos contatos duplicados e crie-o novamente.`,
+      path: duplicateIndex >= 0 ? `contacts.${duplicateIndex}` : undefined,
     });
   });
 
   if (hasLocationModel) {
     findDuplicateIds(effectiveLocations.map((location) => location.id)).forEach((id) => {
+      const duplicateIndex = effectiveLocations.findLastIndex((location) => location.id === id);
       issues.push({
         level: 'error',
         area: 'contacts',
         id: `duplicate-location-id:${id}`,
-        message: `Existe mais de um local com o ID "${id}".`,
+        message: `Existe mais de um local com o identificador "${id}". Remova um dos locais duplicados e crie-o novamente.`,
+        path: duplicateIndex >= 0 ? `locations.${duplicateIndex}` : undefined,
       });
     });
 
@@ -66,6 +70,7 @@ export function validateDashboardContacts(
           area: 'contacts',
           id: `duplicate-location:${pair}`,
           message: `Existe mais de um local para "${location.city} - ${location.state}".`,
+          path: `locations.${index}.city`,
         });
       }
       seenPairs.add(pair);
@@ -87,7 +92,8 @@ export function validateDashboardContacts(
         level: 'error',
         area: 'contacts',
         id: `missing-contact-id:${index}`,
-        message: 'O ID do contato é obrigatório.',
+        message: 'O identificador interno do contato está ausente. Remova este contato e crie-o novamente.',
+        path: `contacts.${index}`,
       });
     }
 

@@ -5,7 +5,7 @@ import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
  * ('configuracoes') targets never flow through this field — they are encoded
  * by an absent `nodeId`, so this union stays panel-only.
  */
-export type MapFocusSection = 'texto' | 'opcoes' | 'ramificacao' | 'midia';
+export type MapFocusSection = 'texto' | 'opcoes' | 'ramificacao' | 'midia' | 'opcao' | 'faixa' | 'geral';
 
 /**
  * Shared pt-BR labels for the flow status union. Single source for every

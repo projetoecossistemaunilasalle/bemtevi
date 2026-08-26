@@ -77,7 +77,7 @@ export function DashboardShell({
           </span>
         </p>
       )}
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Áreas do dashboard">
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Áreas do painel administrativo">
         {tabs.map((tab, tabIndex) => {
           const errorCount = tabErrorCounts?.[tab.id] ?? 0;
           return (
@@ -101,10 +101,17 @@ export function DashboardShell({
                   : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
               }`}
             >
-              <span className="relative inline-flex items-center">
+              <span className="inline-flex items-center gap-2">
                 {tab.label}
                 {errorCount > 0 && (
-                  <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 h-2 w-2 rounded-full bg-error" />
+                  <span
+                    aria-label={`${errorCount} ${errorCount === 1 ? 'erro' : 'erros'}`}
+                    className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-bold ${
+                      activeTab === tab.id ? 'bg-on-primary text-error' : 'bg-error text-on-error'
+                    }`}
+                  >
+                    {errorCount}
+                  </span>
                 )}
               </span>
             </button>

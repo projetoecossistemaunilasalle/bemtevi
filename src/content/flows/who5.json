@@ -1,0 +1,298 @@
+{
+  "id": "who5",
+  "version": "1.0.0",
+  "locale": "pt-BR",
+  "title": "WHO-5 — Índice de Bem-Estar",
+  "type": "guided_conversation",
+  "status": "draft",
+  "entry": {
+    "nodeId": "intro",
+    "enteringPhrases": [
+      "Quero ter uma visão breve de como está meu bem-estar",
+      "Quero responder o WHO-5",
+      "Avaliar meu bem-estar"
+    ],
+    "transitionMessage": "Este é o Índice de Bem-Estar WHO-5. Ele ajuda a observar como tem estado seu bem-estar recentemente, sem finalidade diagnóstica."
+  },
+  "nodes": {
+    "intro": {
+      "id": "intro",
+      "kind": "choice",
+      "text": "Se quiser, você pode responder a um questionário breve sobre como tem estado seu bem-estar nas últimas duas semanas.\n\nEle não fornece um diagnóstico. A proposta é ajudar você a observar como tem se sentido recentemente.",
+      "options": [
+        { "id": "start", "label": "Iniciar WHO-5", "next": "q1" },
+        { "id": "back", "label": "Agora não", "next": "declined-result" }
+      ]
+    },
+    "q1": {
+      "id": "q1",
+      "kind": "choice",
+      "text": "Nas últimas duas semanas, tenho me sentido alegre e de bom humor.",
+      "options": [
+        {
+          "id": "q1-0",
+          "label": "0 = Nunca",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 0 }]
+        },
+        {
+          "id": "q1-1",
+          "label": "1 = De vez em quando",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 1 }]
+        },
+        {
+          "id": "q1-2",
+          "label": "2 = Menos da metade do tempo",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 2 }]
+        },
+        {
+          "id": "q1-3",
+          "label": "3 = Mais da metade do tempo",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 3 }]
+        },
+        {
+          "id": "q1-4",
+          "label": "4 = Na maior parte do tempo",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 4 }]
+        },
+        {
+          "id": "q1-5",
+          "label": "5 = O tempo todo",
+          "next": "q2",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 5 }]
+        }
+      ]
+    },
+    "q2": {
+      "id": "q2",
+      "kind": "choice",
+      "text": "Nas últimas duas semanas, tenho me sentido calmo(a) e tranquilo(a).",
+      "options": [
+        {
+          "id": "q2-0",
+          "label": "0 = Nunca",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 0 }]
+        },
+        {
+          "id": "q2-1",
+          "label": "1 = De vez em quando",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 1 }]
+        },
+        {
+          "id": "q2-2",
+          "label": "2 = Menos da metade do tempo",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 2 }]
+        },
+        {
+          "id": "q2-3",
+          "label": "3 = Mais da metade do tempo",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 3 }]
+        },
+        {
+          "id": "q2-4",
+          "label": "4 = Na maior parte do tempo",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 4 }]
+        },
+        {
+          "id": "q2-5",
+          "label": "5 = O tempo todo",
+          "next": "q3",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 5 }]
+        }
+      ]
+    },
+    "q3": {
+      "id": "q3",
+      "kind": "choice",
+      "text": "Nas últimas duas semanas, tenho me sentido ativo(a) e com energia.",
+      "options": [
+        {
+          "id": "q3-0",
+          "label": "0 = Nunca",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 0 }]
+        },
+        {
+          "id": "q3-1",
+          "label": "1 = De vez em quando",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 1 }]
+        },
+        {
+          "id": "q3-2",
+          "label": "2 = Menos da metade do tempo",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 2 }]
+        },
+        {
+          "id": "q3-3",
+          "label": "3 = Mais da metade do tempo",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 3 }]
+        },
+        {
+          "id": "q3-4",
+          "label": "4 = Na maior parte do tempo",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 4 }]
+        },
+        {
+          "id": "q3-5",
+          "label": "5 = O tempo todo",
+          "next": "q4",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 5 }]
+        }
+      ]
+    },
+    "q4": {
+      "id": "q4",
+      "kind": "choice",
+      "text": "Nas últimas duas semanas, acordei me sentindo descansado(a) e revigorado(a).",
+      "options": [
+        {
+          "id": "q4-0",
+          "label": "0 = Nunca",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 0 }]
+        },
+        {
+          "id": "q4-1",
+          "label": "1 = De vez em quando",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 1 }]
+        },
+        {
+          "id": "q4-2",
+          "label": "2 = Menos da metade do tempo",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 2 }]
+        },
+        {
+          "id": "q4-3",
+          "label": "3 = Mais da metade do tempo",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 3 }]
+        },
+        {
+          "id": "q4-4",
+          "label": "4 = Na maior parte do tempo",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 4 }]
+        },
+        {
+          "id": "q4-5",
+          "label": "5 = O tempo todo",
+          "next": "q5",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 5 }]
+        }
+      ]
+    },
+    "q5": {
+      "id": "q5",
+      "kind": "choice",
+      "text": "Nas últimas duas semanas, minha vida diária tem sido cheia de coisas que me interessam.",
+      "options": [
+        {
+          "id": "q5-0",
+          "label": "0 = Nunca",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 0 }]
+        },
+        {
+          "id": "q5-1",
+          "label": "1 = De vez em quando",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 1 }]
+        },
+        {
+          "id": "q5-2",
+          "label": "2 = Menos da metade do tempo",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 2 }]
+        },
+        {
+          "id": "q5-3",
+          "label": "3 = Mais da metade do tempo",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 3 }]
+        },
+        {
+          "id": "q5-4",
+          "label": "4 = Na maior parte do tempo",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 4 }]
+        },
+        {
+          "id": "q5-5",
+          "label": "5 = O tempo todo",
+          "next": "who5-score",
+          "effects": [{ "kind": "score", "scoreKey": "who5", "value": 5 }]
+        }
+      ]
+    },
+    "who5-score": {
+      "id": "who5-score",
+      "kind": "score_branch",
+      "text": "Vou organizar suas respostas sobre o bem-estar.",
+      "scoreKey": "who5",
+      "branches": [
+        { "id": "who5-baixo", "min": 0, "max": 12, "next": "who5-baixo-result" },
+        { "id": "who5-moderado", "min": 13, "max": 17, "next": "who5-moderado-result" },
+        { "id": "who5-saudavel", "min": 18, "max": 25, "next": "who5-saudavel-result" }
+      ]
+    },
+    "who5-baixo-result": {
+      "id": "who5-baixo-result",
+      "kind": "choice",
+      "text": "Seus resultados indicam que as últimas semanas foram emocionalmente pesadas. Priorize seu descanso e, caso esse mal-estar continue, avalie buscar apoio na rede de saúde mental.",
+      "options": [
+        {
+          "id": "view-contacts",
+          "label": "Ver contatos de apoio e rede de cuidado",
+          "next": "contacts-handoff",
+          "effects": [{ "kind": "navigate", "destination": "/contatos" }]
+        },
+        {
+          "id": "view-support",
+          "label": "Qual serviço de saúde posso acessar?",
+          "next": "support-handoff",
+          "effects": [{ "kind": "navigate", "destination": "/apoio" }]
+        }
+      ]
+    },
+    "who5-moderado-result": {
+      "id": "who5-moderado-result",
+      "kind": "result",
+      "text": "Sua pontuação sugere oscilações no bem-estar, comuns em fases exigentes. Observe seus momentos de descanso e experimente as práticas do aplicativo."
+    },
+    "who5-saudavel-result": {
+      "id": "who5-saudavel-result",
+      "kind": "result",
+      "text": "Seus registros indicam um bom nível de bem-estar emocional nas últimas duas semanas. Continue mantendo suas rotinas de autocuidado e pausas diárias."
+    },
+    "declined-result": {
+      "id": "declined-result",
+      "kind": "result",
+      "text": "Tudo bem. Você pode responder ao WHO-5 em outro momento."
+    },
+    "contacts-handoff": {
+      "id": "contacts-handoff",
+      "kind": "result",
+      "text": "Abrindo os contatos de apoio e rede de cuidado."
+    },
+    "support-handoff": {
+      "id": "support-handoff",
+      "kind": "result",
+      "text": "Abrindo o direcionamento de apoio."
+    }
+  }
+}

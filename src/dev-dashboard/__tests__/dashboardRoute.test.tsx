@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { DashboardRoute } from '../DashboardRoute';
-import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorage';
+import { createEmptyDashboardDraftState, DASHBOARD_STORAGE_KEY } from '../draft-storage/dashboardStorage';
+import * as draftDbModule from '../draft-storage/draftDb';
 import { EducationDashboard } from '../education/EducationDashboard';
 import { MAX_IMAGE_SOURCE_BYTES } from '../components/fileUpload';
 import { getShippedDashboardContent } from '../content/shippedContent';
@@ -301,7 +302,7 @@ describe('DashboardRoute', () => {
 
     fireEvent.click(screen.getByText('Configurações Iniciais e Entrada do Fluxo'));
 
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Painel administrativo' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Fluxos' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Testar conversa' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ir para outro fluxo' }));
@@ -365,7 +366,7 @@ describe('DashboardRoute', () => {
       screen.getByText('Gerencie o conteúdo publicado e consulte estatísticas agregadas de acesso.'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
 
     expect(screen.getByRole('tab', { name: 'Contatos' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { level: 2, name: 'Contatos' })).toBeInTheDocument();
@@ -448,7 +449,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
       target: { value: 'CAPS II Centro' },
     });
@@ -587,7 +588,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
       target: { value: 'Primeiro contato editado' },
     });
@@ -643,7 +644,7 @@ describe('DashboardRoute', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
       target: { value: 'Contato publicado editado' },
     });
@@ -822,6 +823,34 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeDisabled();
   });
 
+  it('navigates and scrolls to the validation error summary when clicking Revisar erros from the export tab', () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    // Create an error in materials
+    fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
+    fireEvent.change(screen.getByLabelText('Título do material'), { target: { value: '' } });
+
+    // Go to Exportar / Publicar tab
+    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
+    expect(screen.getByText('Ainda não é possível exportar')).toBeInTheDocument();
+
+    const reviewButton = screen.getByRole('button', { name: 'Revisar 1 erro em Materiais' });
+    expect(reviewButton).toBeInTheDocument();
+
+    // Click "Revisar 1 erro em Materiais"
+    fireEvent.click(reviewButton);
+
+    // Tab switches to Materiais
+    expect(screen.getByRole('tab', { name: /Materiais/ })).toHaveAttribute('aria-selected', 'true');
+    // Validation summary is present in the document
+    expect(screen.getByText('1 erro impeditivo')).toBeInTheDocument();
+    expect(screen.getAllByText('O título é obrigatório.').length).toBeGreaterThan(0);
+  });
+
   it('keeps the contacts validation summary scoped to contacts', () => {
     render(
       <MemoryRouter>
@@ -833,7 +862,7 @@ describe('DashboardRoute', () => {
     fireEvent.change(screen.getByLabelText('Título do material'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
 
-    expect(screen.getByText('Nenhum problema encontrado neste rascunho.')).toBeInTheDocument();
+    expect(screen.getByText('Tudo certo. Nenhum problema encontrado neste rascunho.')).toBeInTheDocument();
     expect(screen.queryByText('O título é obrigatório.')).not.toBeInTheDocument();
   });
 
@@ -1007,10 +1036,10 @@ describe('DashboardRoute', () => {
 
     await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
     await user.click(screen.getByRole('button', { name: 'Editor' }));
-    await user.click(screen.getAllByRole('button', { name: /Etapa 19 — Tem tido ideia de acabar com a vida/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Tem tido ideia de acabar com a vida/i })[0]);
 
     // Open drawer
-    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Ações e pontuação/i })[0]);
 
     expect(screen.getAllByText('Encaminhamento de segurança').length).toBeGreaterThan(0);
     expect(screen.getByDisplayValue('self_harm_ideation')).toBeInTheDocument();
@@ -1042,7 +1071,7 @@ describe('DashboardRoute', () => {
     expect(screen.queryByLabelText(/Flag key/i)).not.toBeInTheDocument();
 
     // Click settings button to open the slide-over drawer
-    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Ações e pontuação da opção 1/i }));
 
     // Now drawer fields are visible
     expect(screen.getByLabelText(/Flag key/i)).toBeInTheDocument();
@@ -1105,10 +1134,10 @@ describe('DashboardRoute', () => {
       await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
     }
     await user.click(screen.getByRole('button', { name: 'Editor' }));
-    await user.click(screen.getAllByRole('button', { name: /Etapa 4 — Tem falta de apetite/i })[0]); // select q2
+    await user.click(screen.getAllByRole('button', { name: /Tem falta de apetite/i })[0]); // select q2
 
     // Open drawer
-    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Ações e pontuação da opção 1/i }));
 
     // Quick select tag for 'srq20' exists (since q1 uses it)
     const tag = screen.getByRole('button', { name: 'srq20' });
@@ -1407,7 +1436,7 @@ describe('DashboardRoute', () => {
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
-    const tagInput = screen.getByLabelText('Tags do material');
+    const tagInput = screen.getByLabelText('Marcadores do material');
     fireEvent.change(tagInput, { target: { value: 'acolhimento' } });
     fireEvent.keyDown(tagInput, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: 'Remover teste' }));
@@ -1427,11 +1456,11 @@ describe('DashboardRoute', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
 
-    const tagInput = screen.getByLabelText('Tags do material');
+    const tagInput = screen.getByLabelText('Marcadores do material');
     await user.click(tagInput);
     await user.keyboard('s');
 
-    expect(screen.getByLabelText('Tags do material')).toHaveFocus();
+    expect(screen.getByLabelText('Marcadores do material')).toHaveFocus();
   });
 
   it('edits the featured image with catalog and external URL modes', () => {
@@ -1968,8 +1997,8 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Editor' }));
     await user.click(screen.getByRole('button', { name: 'Etapa 4 — Tem falta de apetite?' })); // Q2 stage in the outline list
 
-    // Click option 1 actions to open drawer (Ações/Score button)
-    await user.click(screen.getAllByRole('button', { name: /Ações\/Score/i })[0]);
+    // Click option 1 actions to open the details drawer.
+    await user.click(screen.getAllByRole('button', { name: /Ações e pontuação/i })[0]);
 
     // Verify helper hint explaining what "Chave da pontuação" means
     expect(screen.getByText(/A chave agrupa pontos do questionário/i)).toBeInTheDocument();
@@ -2100,7 +2129,7 @@ describe('DashboardRoute', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    expect(await screen.findByText('Não foi possível publicar agora. Tente novamente.')).toBeInTheDocument();
+    expect(await screen.findByText(/Não foi possível publicar agora\. Tente novamente\./)).toBeInTheDocument();
     expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).not.toBeNull();
   });
 
@@ -2225,5 +2254,181 @@ describe('DashboardRoute', () => {
     // Verify drafts local storage was cleared
     expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).toBeNull();
     expect(screen.getByRole('button', { name: 'Limpar TODAS as alterações' })).toBeDisabled();
+  });
+
+  it('displays concurrent publication notice when background revision advances and preserves unsaved draft work', async () => {
+    dashboardMocks.publishMode = 'database';
+    dashboardMocks.snapshot = {
+      schemaVersion: '1.0.0',
+      revision: 8,
+      payload: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [createDefaultShippedContact()],
+        locations: [{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }],
+        defaultGroupOrder: 0,
+      },
+      publishedAt: '2026-08-26T12:00:00.000Z',
+      publishedBy: 'other-admin',
+    };
+
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify({
+        schemaVersion: '6.0.0',
+        baseRevision: 7,
+        flowPatches: [],
+        educationMaterialPatches: [],
+        groupPatches: [],
+        addedFlows: [],
+        addedEducationMaterials: [],
+        addedGroups: [],
+        contactPatches: [
+          {
+            id: createDefaultShippedContact().id,
+            sourceIndex: 0,
+            sourceIdUnique: true,
+            patch: { name: 'Meu Rascunho Seguro' },
+          },
+        ],
+        removedContactIds: [],
+        updatedAt: '2026-08-26T12:05:00.000Z',
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Nova publicação detectada no banco \(Revisão 8\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Meu Rascunho Seguro');
+  });
+
+  it('renders backup and restore buttons on publish tab', async () => {
+    const user = userEvent.setup();
+    dashboardMocks.publishMode = 'database';
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Publicar' }));
+    expect(screen.getByRole('button', { name: /Baixar cópia de segurança/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Restaurar rascunho de arquivo/i })).toBeInTheDocument();
+  });
+
+  it('restores draft from IndexedDB fallback on mount when localStorage is empty', async () => {
+    const dbDraft = createEmptyDashboardDraftState();
+    dbDraft.contactPatches = [
+      {
+        id: createDefaultShippedContact().id,
+        sourceIndex: 0,
+        sourceIdUnique: true,
+        patch: { name: 'Restaurado do IndexedDB' },
+      },
+    ];
+    dbDraft.updatedAt = '2026-08-26T12:00:00.000Z';
+
+    const spy = vi.spyOn(draftDbModule, 'loadDraftFromIndexedDb').mockResolvedValueOnce(dbDraft);
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 alteração pendente/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Restaurado do IndexedDB');
+
+    spy.mockRestore();
+  });
+
+  it('syncs draft state when another tab writes to localStorage via storage event', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Contatos/ }));
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
+
+    const updatedDraft = createEmptyDashboardDraftState();
+    updatedDraft.contactPatches = [
+      {
+        id: createDefaultShippedContact().id,
+        sourceIndex: 0,
+        sourceIdUnique: true,
+        patch: { name: 'Editado na Aba 2' },
+      },
+    ];
+    updatedDraft.updatedAt = '2026-08-26T14:30:00.000Z';
+
+    fireEvent(
+      window,
+      new StorageEvent('storage', {
+        key: DASHBOARD_STORAGE_KEY,
+        newValue: JSON.stringify(updatedDraft),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Editado na Aba 2');
+    });
+  });
+
+  it('shows payload size limit warning and disables publish when draft exceeds 5 MiB', async () => {
+    const user = userEvent.setup();
+    dashboardMocks.publishMode = 'database';
+
+    const baseShipped = asPayload(getShippedDashboardContent());
+    dashboardMocks.content = {
+      ...baseShipped,
+      educationMaterials: [
+        {
+          ...baseShipped.educationMaterials[0],
+          body: [
+            {
+              id: 'heavy-text',
+              kind: 'paragraph',
+              text: 'X'.repeat(5.2 * 1024 * 1024),
+            },
+          ],
+        },
+      ],
+    };
+
+    const draft = createEmptyDashboardDraftState();
+    draft.contactPatches = [
+      {
+        id: createDefaultShippedContact().id,
+        sourceIndex: 0,
+        sourceIdUnique: true,
+        patch: { name: 'Contato modificado' },
+      },
+    ];
+    draft.updatedAt = '2026-08-26T14:00:00.000Z';
+    localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(draft));
+
+    render(
+      <MemoryRouter>
+        <DashboardRoute />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Publicar' }));
+    expect(screen.getByText(/Limite de tamanho do conteúdo excedido/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Publicar alterações/i })).toBeDisabled();
   });
 });

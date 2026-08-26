@@ -7,21 +7,44 @@ const pendingReview = {
   notes: '',
 } as const;
 
+export const healthcareServiceGuidance = [
+  {
+    id: 'guidance-ubs',
+    title: 'UBS — Unidade Básica de Saúde',
+    badge: 'Acompanhamento',
+    description:
+      'Para acompanhamento de rotina e situações de sofrimento psíquico leve ou moderado, como ansiedade, tristeza persistente, insônia ou dificuldades que estejam afetando seu dia a dia.',
+  },
+  {
+    id: 'guidance-caps',
+    title: 'CAPS — Centro de Atenção Psicossocial',
+    badge: 'Especializado',
+    description:
+      'Para situações de sofrimento psíquico intenso e persistente ou transtornos mentais graves. O acesso pode ocorrer por demanda espontânea ou encaminhamento, conforme a organização da rede local.',
+  },
+  {
+    id: 'guidance-upa',
+    title: 'Pronto-socorro / UPA',
+    badge: 'Urgência 24h',
+    description: 'Para situações de urgência ou crise que necessitem de atendimento imediato.',
+  },
+];
+
 export const supportContacts = {
   id: 'support-contacts',
   version: '0.1.0',
   status: 'draft',
   locale: 'pt-BR',
-  title: 'Você não está sozinho(a).',
-  description: 'Se você estiver em sofrimento agora, estas pessoas podem te ajudar.',
+  title: 'Você pode buscar apoio',
+  description:
+    'Se você está passando por um momento difícil, existem diferentes formas de buscar ajuda. Escolha a opção que mais faz sentido para você.',
   contacts: [
     {
       id: 'support-cvv',
-      name: 'CVV',
+      name: 'CVV (Centro de Valorização da Vida)',
       phoneDisplay: '188',
       phoneHref: 'tel:188',
-      description:
-        'Centro de Valorização da Vida. Atendimento 24h, gratuito e sigiloso para apoio emocional e prevenção ao suicídio.',
+      description: 'Atendimento gratuito, 24 horas e sigiloso para apoio emocional e prevenção do suicídio.',
       review: pendingReview,
     },
     {
@@ -29,8 +52,7 @@ export const supportContacts = {
       name: 'SAMU',
       phoneDisplay: '192',
       phoneHref: 'tel:192',
-      description:
-        'Serviço de Atendimento Móvel de Urgência. Para emergências médicas que necessitem de intervenção imediata.',
+      description: 'Para emergências que necessitem de atendimento médico imediato.',
       review: pendingReview,
     },
     {
@@ -38,7 +60,7 @@ export const supportContacts = {
       name: 'Disque Saúde',
       phoneDisplay: '136',
       phoneHref: 'tel:136',
-      description: 'Canal do Ministério da Saúde para informações e orientações sobre serviços e cuidados de saúde.',
+      description: 'Para informações e orientações sobre serviços e cuidados de saúde.',
       review: pendingReview,
     },
   ],

@@ -84,8 +84,8 @@ describe('Router', () => {
   it.each([
     ['/', /que bom ter você aqui/i],
     ['/orientacao', /antes de começar/i],
-    ['/apoio', /você não está sozinho/i],
-    ['/contatos', /rede de apoio em canoas/i],
+    ['/apoio', /você pode buscar apoio/i],
+    ['/contatos', /^rede de apoio/i],
     ['/educacao', /biblioteca de educação/i],
   ])('renders the public route %s', (route, heading) => {
     renderRoute(route);
@@ -122,7 +122,9 @@ describe('Router', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(authService.login).toHaveBeenCalledWith('admin@bemtevi.test', 'correct-password');
-    expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Painel administrativo' }, { timeout: 3000 }),
+    ).toBeInTheDocument();
   });
 
   it('shows a safe error when credentials are rejected', async () => {
@@ -139,21 +141,25 @@ describe('Router', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('E-mail ou senha inválidos.');
-    expect(screen.queryByRole('heading', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Painel administrativo' })).not.toBeInTheDocument();
   });
 
   it('redirects a restored admin from login to the dashboard', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
     renderRoute('/login', createAuthService(admin));
 
-    expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Painel administrativo' }, { timeout: 3000 }),
+    ).toBeInTheDocument();
   });
 
   it('renders the dashboard for a restored authorized admin', async () => {
     vi.stubEnv('VITE_ENABLE_DEV_DASHBOARD', 'true');
     const authService = renderRoute('/dashboard', createAuthService(admin));
 
-    expect(await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Painel administrativo' }, { timeout: 3000 }),
+    ).toBeInTheDocument();
     expect(authService.restore).toHaveBeenCalledOnce();
   });
 
@@ -162,10 +168,10 @@ describe('Router', () => {
     const authService = createAuthService(admin);
     renderRoute('/dashboard', authService);
 
-    const dashboard = await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 });
+    const dashboard = await screen.findByRole('heading', { name: 'Painel administrativo' }, { timeout: 3000 });
     window.dispatchEvent(new Event('focus'));
 
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBe(dashboard);
+    expect(screen.getByRole('heading', { name: 'Painel administrativo' })).toBe(dashboard);
     expect(authService.restore).toHaveBeenCalledOnce();
   });
 
@@ -174,12 +180,12 @@ describe('Router', () => {
     const authService = createAuthService(admin);
     renderRoute('/dashboard', authService);
 
-    await screen.findByRole('heading', { name: 'Dashboard' }, { timeout: 3000 });
+    await screen.findByRole('heading', { name: 'Painel administrativo' }, { timeout: 3000 });
     act(() => authService.emit(null));
 
     expect(
       await screen.findByRole('heading', { name: /que bom ter você aqui/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Painel administrativo' })).not.toBeInTheDocument();
   });
 });

@@ -7,11 +7,14 @@ import { ServiceCard } from '../../design-system/components/ServiceCard';
 import { getServiceCoordinates, haversineKm, type GeoCoordinates } from '../../lib/geo/geo';
 import { CityFilter, type CityFilterValue } from './CityFilter';
 import { ContactsMap } from './ContactsMap';
+import { ServiceTypeFilter } from './ServiceTypeFilter';
+import { matchesServiceTypeFilter, type ServiceTypeFilterKey } from './serviceTypeFilterTypes';
 
 export function ContactsScreen() {
   const { content } = usePublishedContent();
   const services = content.contacts;
   const [selectedCity, setSelectedCity] = useState<CityFilterValue>(null);
+  const [selectedType, setSelectedType] = useState<ServiceTypeFilterKey>('all');
   const [userCoordinates, setUserCoordinates] = useState<GeoCoordinates | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
@@ -35,10 +38,12 @@ export function ContactsScreen() {
   }, [services, userCoordinates]);
 
   const visibleServices = useMemo(() => {
-    const list =
-      selectedCity === null
-        ? [...services]
-        : services.filter((service) => !service.city || `${service.city} - ${service.state}` === selectedCity);
+    const list = services.filter((service) => {
+      const matchesCity =
+        selectedCity === null || !service.city || `${service.city} - ${service.state}` === selectedCity;
+      const matchesType = matchesServiceTypeFilter(service.type, selectedType);
+      return matchesCity && matchesType;
+    });
 
     if (!userCoordinates) return list;
 
@@ -50,7 +55,7 @@ export function ContactsScreen() {
       if (distB !== undefined) return 1;
       return 0;
     });
-  }, [services, selectedCity, userCoordinates, distancesById]);
+  }, [services, selectedCity, selectedType, userCoordinates, distancesById]);
 
   const directoryTitle =
     cityOptions.length === 1 ? `Rede de apoio em ${cityOptions[0]?.replace(/\s+-\s+[A-Z]{2}$/, '')}` : 'Rede de apoio';
@@ -67,55 +72,60 @@ export function ContactsScreen() {
         <p className="font-body-md text-on-surface-variant">{canoasServices.description}</p>
       </section>
 
-      <div className="mb-stack-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <CityFilter
-          cities={cityOptions}
-          value={selectedCity}
-          onChange={setSelectedCity}
-          onUserCoordinatesChange={setUserCoordinates}
-        />
+      <div className="mb-stack-md flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-start gap-2 flex-1">
+            <CityFilter
+              cities={cityOptions}
+              value={selectedCity}
+              onChange={setSelectedCity}
+              onUserCoordinatesChange={setUserCoordinates}
+            />
+            <ServiceTypeFilter value={selectedType} onChange={setSelectedType} />
+          </div>
 
-        <div
-          role="radiogroup"
-          aria-label="Modo de visualização"
-          className="flex items-center gap-1 self-start sm:self-auto rounded-xl bg-surface-container p-1 border border-outline-variant/50 shrink-0"
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={viewMode === 'list'}
-            aria-label="Ver contatos em lista"
-            onClick={() => setViewMode('list')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-label-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
-              viewMode === 'list'
-                ? 'bg-surface-container-lowest text-on-surface shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
+          <div
+            role="radiogroup"
+            aria-label="Modo de visualização"
+            className="flex items-center gap-1 self-start md:self-auto rounded-xl bg-surface-container p-1 border border-outline-variant/50 shrink-0"
           >
-            <List size={16} aria-hidden="true" />
-            Lista
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={viewMode === 'map'}
-            aria-label="Ver contatos no mapa"
-            onClick={() => setViewMode('map')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-label-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
-              viewMode === 'map'
-                ? 'bg-surface-container-lowest text-on-surface shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            <MapIcon size={16} aria-hidden="true" />
-            Mapa
-          </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'list'}
+              aria-label="Ver contatos em lista"
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-label-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                viewMode === 'list'
+                  ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <List size={16} aria-hidden="true" />
+              Lista
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'map'}
+              aria-label="Ver contatos no mapa"
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-label-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                viewMode === 'map'
+                  ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <MapIcon size={16} aria-hidden="true" />
+              Mapa
+            </button>
+          </div>
         </div>
       </div>
 
       {visibleServices.length === 0 ? (
         <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-6 text-center font-body-md text-on-surface-variant">
-          Nenhum contato encontrado para {selectedCity}. Tente outra cidade.
+          Nenhum contato encontrado para os filtros selecionados. Tente outra cidade ou tipo de serviço.
         </p>
       ) : viewMode === 'map' ? (
         <ContactsMap services={visibleServices} userCoordinates={userCoordinates} distancesById={distancesById} />

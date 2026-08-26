@@ -2,7 +2,7 @@ import type { HomeCopy } from '../../domain/copy/types';
 
 export const homeCopy = {
   id: 'home-copy',
-  version: '0.1.0',
+  version: '1.0.0',
   status: 'draft',
   locale: 'pt-BR',
   greeting: 'Que bom ter você aqui!',
@@ -19,13 +19,13 @@ export const homeCopy = {
     },
     {
       id: 'guided-orientation',
-      label: 'Quero entender como estou',
+      label: 'Quero entender como estou me sentindo',
       description: 'Responda a algumas perguntas e receba uma orientação inicial.',
     },
     {
       id: 'professional-support',
       label: 'Buscar um serviço de saúde',
-      description: 'Veja contatos para buscar atendimento profissional e comunitário.',
+      description: 'Encontre serviços de saúde e apoio próximos a você.',
     },
   ],
 } satisfies HomeCopy;

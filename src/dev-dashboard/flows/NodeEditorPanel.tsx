@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import type {
   ChoiceFlowNode,
   FlowEffect,
@@ -145,14 +146,12 @@ interface BranchNameFieldProps {
   /** Ids of the node's OTHER faixas — a rename must not collide with these. */
   siblingIds: string[];
   /** Invoked on blur with the TRIMMED draft; never with an invalid value. */
-  onCommit: (nextId: string) => void;
+  onCommit: (committed: string) => void;
 }
 
 /**
- * Faixa id field with commit-time guards: blank or duplicate names are not
- * committed (blur silently reverts to the committed id) and show a tiny muted
- * hint while the invalid draft is pending. Renaming is cosmetic — ids are
- * local row identity, so nothing else in the flow references them.
+ * Branch name field with draft state, duplicate detection, and empty-string
+ * rejection. Shows an error hint while the draft matches a sibling branch's id.
  */
 function BranchNameField({ ariaLabel, committedId, siblingIds, onCommit }: BranchNameFieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -161,13 +160,14 @@ function BranchNameField({ ariaLabel, committedId, siblingIds, onCommit }: Branc
   const duplicate = siblingIds.includes(trimmed);
   // Only flag while a draft is pending; the committed id is always valid.
   const invalid = draft !== null && (trimmed === '' || duplicate);
+
   return (
     <div>
       <input
         aria-label={ariaLabel}
+        aria-invalid={invalid}
         className={textFieldClassName}
         value={displayed}
-        aria-invalid={invalid}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           setDraft(null);
@@ -198,6 +198,8 @@ interface OptionRowProps {
    */
   onOptionUpdate: (update: (current: FlowOption) => FlowOption) => void;
   onRemove: () => void;
+  initialFocus?: boolean;
+  highlighted?: boolean;
 }
 
 /**
@@ -208,118 +210,158 @@ interface OptionRowProps {
  * shared document.activeElement guard, so editing a label can't clobber
  * sibling rows or the texto textarea.
  */
-function OptionRow({ option, index, targets, flows, onOptionUpdate, onRemove }: OptionRowProps) {
+function OptionRow({
+  option,
+  index,
+  targets,
+  flows,
+  onOptionUpdate,
+  onRemove,
+  initialFocus = false,
+  highlighted = false,
+}: OptionRowProps) {
   const [draftLabel, setDraftLabel] = useState<string | null>(null);
   const displayedLabel = draftLabel ?? option.label;
   const effects = option.effects ?? [];
   const presentKinds = new Set(effects.map((effect) => effect.kind));
+  const inputId = `option-label-input-${option.id}`;
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (initialFocus) {
+      inputRef.current?.focus();
+    }
+  }, [initialFocus]);
 
   return (
     <div
       data-testid={`option-row-${index + 1}`}
-      className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
+      className={`flex flex-col gap-2.5 rounded-lg border p-2.5 transition-all ${
+        highlighted
+          ? 'border-primary/60 bg-primary/5 ring-2 ring-primary/30'
+          : 'border-outline-variant/40 bg-surface-container-low'
+      }`}
     >
-      <input
-        aria-label={`Rótulo da opção ${index + 1}`}
-        className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
-        value={displayedLabel}
-        onChange={(event) => setDraftLabel(event.target.value)}
-        onBlur={() => {
-          setDraftLabel(null);
-          if (draftLabel !== null && draftLabel !== option.label) {
-            onOptionUpdate((current) => ({ ...current, label: draftLabel }));
-          }
-        }}
-      />
-      {/* Selects don't blur reliably; commit the target immediately on change. */}
-      <TargetSelect
-        ariaLabel={`Destino da opção ${index + 1}`}
-        value={option.next}
-        onChange={(next) => onOptionUpdate((current) => ({ ...current, next }))}
-        nodes={targets}
-        allowEmpty
-      />
-      {effects.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {effects.map((effect, effectIndex) => (
-            <span
-              key={effectIndex}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${effectColors[effect.kind]}`}
-            >
-              {
-                // One cast mirrors patchEffect's narrowing limit: writers are
-                // keyed exhaustively by kind, so the runtime kind guarantees
-                // the matching writer's parameter.
-                (effectSummaries[effect.kind] as (effect: FlowEffect) => string)(effect)
-              }
-              <button
-                type="button"
-                aria-label={`Remover efeito ${effectIndex + 1} (${effect.kind}) da opção ${index + 1}`}
-                onClick={() =>
-                  onOptionUpdate((current) => {
-                    const remaining =
-                      current.effects?.filter((_, candidateIndex) => candidateIndex !== effectIndex) ?? [];
-                    if (remaining.length === 0) {
-                      // Dropping the last chip removes the key entirely.
-                      const { effects: _dropped, ...optionWithoutEffects } = current;
-                      return optionWithoutEffects;
-                    }
-                    return { ...current, effects: remaining };
-                  })
-                }
-                className="ml-0.5 rounded-full hover:opacity-70"
+      <div className="flex flex-col gap-1">
+        <label htmlFor={inputId} className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+          Texto da opção
+        </label>
+        <input
+          id={inputId}
+          ref={inputRef}
+          aria-label={`Rótulo da opção ${index + 1}`}
+          placeholder="Ex: Sim, Não, Quero saber mais..."
+          className="rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
+          value={displayedLabel}
+          onChange={(event) => setDraftLabel(event.target.value)}
+          onBlur={() => {
+            setDraftLabel(null);
+            if (draftLabel !== null && draftLabel !== option.label) {
+              onOptionUpdate((current) => ({ ...current, label: draftLabel }));
+            }
+          }}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5">
+          <ArrowRight aria-hidden="true" size={12} className="text-primary shrink-0" />
+          <span>Leva para a etapa:</span>
+        </span>
+        {/* Selects don't blur reliably; commit the target immediately on change. */}
+        <TargetSelect
+          ariaLabel={`Destino da opção ${index + 1}`}
+          value={option.next}
+          onChange={(next) => onOptionUpdate((current) => ({ ...current, next }))}
+          nodes={targets}
+          allowEmpty
+        />
+      </div>
+
+      <div className="flex flex-col gap-1 pt-0.5">
+        {effects.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1">
+            {effects.map((effect, effectIndex) => (
+              <span
+                key={effectIndex}
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${effectColors[effect.kind]}`}
               >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      {/* Controlled "menu" select: always resets to the placeholder after appending. */}
-      <select
-        aria-label={`Adicionar efeito à opção ${index + 1}`}
-        className={selectClassName}
-        value=""
-        onChange={(event) => {
-          const { value } = event.target;
-          if (value === '') return;
-          const kind = value as FlowEffect['kind'];
-          onOptionUpdate((current) => ({
-            ...current,
-            effects: [...(current.effects ?? []), buildDefaultEffect(kind, flows)],
-          }));
-        }}
-      >
-        <option value="">Adicionar efeito…</option>
-        {EFFECT_KIND_OPTIONS.filter((candidate) => candidate.kind === 'score' || !presentKinds.has(candidate.kind)).map(
-          (candidate) => (
+                {
+                  // One cast mirrors patchEffect's narrowing limit: writers are
+                  // keyed exhaustively by kind, so the runtime kind guarantees
+                  // the matching writer's parameter.
+                  (effectSummaries[effect.kind] as (effect: FlowEffect) => string)(effect)
+                }
+                <button
+                  type="button"
+                  aria-label={`Remover efeito ${effectIndex + 1} (${effectKindLabel(effect.kind)}) da opção ${index + 1}`}
+                  onClick={() =>
+                    onOptionUpdate((current) => {
+                      const remaining =
+                        current.effects?.filter((_, candidateIndex) => candidateIndex !== effectIndex) ?? [];
+                      if (remaining.length === 0) {
+                        // Dropping the last chip removes the key entirely.
+                        const { effects: _dropped, ...optionWithoutEffects } = current;
+                        return optionWithoutEffects;
+                      }
+                      return { ...current, effects: remaining };
+                    })
+                  }
+                  className="ml-0.5 rounded-full hover:opacity-70"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Controlled "menu" select: always resets to the placeholder after appending. */}
+        <select
+          aria-label={`Adicionar efeito à opção ${index + 1}`}
+          className={selectClassName}
+          value=""
+          onChange={(event) => {
+            const { value } = event.target;
+            if (value === '') return;
+            const kind = value as FlowEffect['kind'];
+            onOptionUpdate((current) => ({
+              ...current,
+              effects: [...(current.effects ?? []), buildDefaultEffect(kind, flows)],
+            }));
+          }}
+        >
+          <option value="">+ Adicionar ação especial (apoio, encerrar, pontuar)…</option>
+          {EFFECT_KIND_OPTIONS.filter(
+            (candidate) => candidate.kind === 'score' || !presentKinds.has(candidate.kind),
+          ).map((candidate) => (
             <option key={candidate.kind} value={candidate.kind}>
               {candidate.label}
             </option>
-          ),
-        )}
-      </select>
-      {effects.map((effect, effectIndex) => (
-        <div
-          key={`${effect.kind}-${effectIndex}`}
-          className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-2"
-        >
-          <EffectFields
-            effect={effect}
-            effectIndex={effectIndex}
-            optionId={option.id}
-            flows={flows}
-            onEffectUpdate={(update) =>
-              onOptionUpdate((current) => ({
-                ...current,
-                effects: (current.effects ?? []).map((candidate, candidateIndex) =>
-                  candidateIndex === effectIndex ? update(candidate) : candidate,
-                ),
-              }))
-            }
-          />
-        </div>
-      ))}
+          ))}
+        </select>
+        {effects.map((effect, effectIndex) => (
+          <div
+            key={`${effect.kind}-${effectIndex}`}
+            className="mt-1 flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-2"
+          >
+            <EffectFields
+              effect={effect}
+              effectIndex={effectIndex}
+              optionId={option.id}
+              flows={flows}
+              onEffectUpdate={(update) =>
+                onOptionUpdate((current) => ({
+                  ...current,
+                  effects: (current.effects ?? []).map((candidate, candidateIndex) =>
+                    candidateIndex === effectIndex ? update(candidate) : candidate,
+                  ),
+                }))
+              }
+            />
+          </div>
+        ))}
+      </div>
+
       <button
         type="button"
         aria-label={`Remover opção ${index + 1}`}
@@ -338,12 +380,18 @@ function ChoiceOptionsSection({
   targets,
   flows,
   onNodeChange,
+  focusedOptionId,
+  viewMode = 'all',
+  onShowAll,
 }: {
   node: ChoiceFlowNode;
   targets: FlowTopologyNode[];
   flows: GuidedFlow[];
   /** Same one-commit-per-event contract as the panel-level handler below. */
   onNodeChange: (update: (current: ChoiceFlowNode) => ChoiceFlowNode) => void;
+  focusedOptionId?: string;
+  viewMode?: 'focused' | 'all';
+  onShowAll?: () => void;
 }) {
   /**
    * Routes one option-scoped edit through the node-level updater. The mapping
@@ -355,6 +403,53 @@ function ChoiceOptionsSection({
       ...current,
       options: current.options.map((candidate) => (candidate.id === optionId ? update(candidate) : candidate)),
     }));
+
+  if (viewMode === 'focused' && focusedOptionId) {
+    const focusedOption = node.options.find((o) => o.id === focusedOptionId) ?? node.options[0];
+    const index = node.options.findIndex((o) => o.id === (focusedOption?.id ?? focusedOptionId));
+
+    if (focusedOption && index !== -1) {
+      return (
+        <div className="flex flex-col gap-2">
+          <OptionRow
+            option={focusedOption}
+            index={index}
+            targets={targets}
+            flows={flows}
+            onOptionUpdate={(update) => commitOption(focusedOption.id, update)}
+            onRemove={() =>
+              onNodeChange((current) => ({
+                ...current,
+                options: current.options.filter((candidate) => candidate.id !== focusedOption.id),
+              }))
+            }
+            initialFocus={true}
+            highlighted={true}
+          />
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const newId = uniqueOptionId(node);
+                onNodeChange((current) => ({
+                  ...current,
+                  options: [...current.options, { id: newId, label: '', next: '' }],
+                }));
+              }}
+            >
+              + Adicionar outra opção
+            </Button>
+            {onShowAll && (
+              <button type="button" onClick={onShowAll} className="font-label-sm text-xs text-primary hover:underline">
+                Ver todas ({node.options.length}) ▾
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+  }
 
   return (
     <>
@@ -372,6 +467,7 @@ function ChoiceOptionsSection({
               options: current.options.filter((candidate) => candidate.id !== option.id),
             }))
           }
+          highlighted={option.id === focusedOptionId}
         />
       ))}
       <Button
@@ -401,13 +497,19 @@ function ChoiceOptionsSection({
         Aceitar resposta livre
       </label>
       {node.freeText && (
-        <TargetSelect
-          ariaLabel="Destino da resposta livre"
-          value={node.freeText.next}
-          onChange={(next) => onNodeChange((current) => ({ ...current, freeText: { next } }))}
-          nodes={targets}
-          allowEmpty
-        />
+        <div className="flex flex-col gap-1 pl-6">
+          <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5">
+            <ArrowRight aria-hidden="true" size={12} className="text-primary shrink-0" />
+            <span>Leva para a etapa:</span>
+          </span>
+          <TargetSelect
+            ariaLabel="Destino da resposta livre"
+            value={node.freeText.next}
+            onChange={(next) => onNodeChange((current) => ({ ...current, freeText: { next } }))}
+            nodes={targets}
+            allowEmpty
+          />
+        </div>
       )}
     </>
   );
@@ -418,10 +520,20 @@ interface ScoreBranchSectionProps {
   targets: FlowTopologyNode[];
   /** Same one-commit-per-event contract as the panel-level handler below. */
   onNodeChange: (update: (current: ScoreBranchFlowNode) => ScoreBranchFlowNode) => void;
+  focusedBranchId?: string;
+  viewMode?: 'focused' | 'all';
+  onShowAll?: () => void;
 }
 
 /** Ramificação body: the score key plus one editable range row per branch. */
-function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionProps) {
+function ScoreBranchSection({
+  node,
+  targets,
+  onNodeChange,
+  focusedBranchId,
+  viewMode = 'all',
+  onShowAll,
+}: ScoreBranchSectionProps) {
   /**
    * Routes one branch-scoped edit through the node-level updater. The mapping
    * runs against the LATEST branches at event time — never against this
@@ -436,6 +548,116 @@ function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionP
       ),
     }));
 
+  if (viewMode === 'focused' && focusedBranchId) {
+    const branchIndex = node.branches.findIndex((b) => b.id === focusedBranchId);
+    const branch = node.branches[branchIndex] ?? node.branches[0];
+    const index = branchIndex !== -1 ? branchIndex : 0;
+
+    if (branch) {
+      return (
+        <div className="flex flex-col gap-2">
+          <div
+            data-testid={`branch-row-${index + 1}`}
+            className="flex flex-col gap-2.5 rounded-lg border border-primary/60 bg-primary/5 p-2.5 ring-2 ring-primary/30"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">Nome da faixa</span>
+              <BranchNameField
+                ariaLabel={`Nome da faixa ${index + 1}`}
+                committedId={branch.id}
+                siblingIds={node.branches
+                  .filter((_, siblingIndex) => siblingIndex !== index)
+                  .map((candidate) => candidate.id)}
+                onCommit={(id) => commitBranch(index, (current) => ({ ...current, id }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+                Intervalo de pontuação (De / Até)
+              </span>
+              <div className="flex gap-2">
+                <DraftNumberField
+                  ariaLabel={`De ${index + 1}`}
+                  value={branch.min}
+                  onCommit={(min) => commitBranch(index, (current) => ({ ...current, min }))}
+                />
+                <DraftNumberField
+                  ariaLabel={`Até ${index + 1}`}
+                  value={branch.max}
+                  onCommit={(max) => commitBranch(index, (current) => ({ ...current, max }))}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5">
+                <ArrowRight aria-hidden="true" size={12} className="text-primary shrink-0" />
+                <span>Leva para a etapa:</span>
+              </span>
+              <TargetSelect
+                ariaLabel={`Destino da faixa ${index + 1}`}
+                value={branch.next}
+                onChange={(next) => commitBranch(index, (current) => ({ ...current, next }))}
+                nodes={targets}
+                allowEmpty
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+                Ou direcionar para tela do BemTeVi:
+              </span>
+              <select
+                aria-label={`Destino de página ${index + 1}`}
+                className={selectClassName}
+                value={branch.navigation ?? ''}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  commitBranch(index, (current) => {
+                    if (value === '') {
+                      const { navigation: _dropped, ...branchWithoutNav } = current;
+                      return branchWithoutNav;
+                    }
+                    return { ...current, navigation: value as (typeof NAVIGATION_OPTIONS)[number] };
+                  });
+                }}
+              >
+                <option value="">Nenhuma</option>
+                {NAVIGATION_OPTIONS.map((path) => (
+                  <option key={path} value={path}>
+                    {path}
+                  </option>
+                ))}
+                {branch.navigation && !(NAVIGATION_OPTIONS as readonly string[]).includes(branch.navigation) && (
+                  <option value={branch.navigation}>{`Destino ausente · ${branch.navigation}`}</option>
+                )}
+              </select>
+            </div>
+            <button
+              type="button"
+              aria-label={`Remover faixa ${index + 1}`}
+              disabled={node.branches.length === 1}
+              onClick={() =>
+                onNodeChange((current) => ({
+                  ...current,
+                  branches: current.branches.filter((_, candidateIndex) => candidateIndex !== index),
+                }))
+              }
+              className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container disabled:opacity-40"
+            >
+              Remover faixa
+            </button>
+          </div>
+          {onShowAll && (
+            <div className="flex justify-end pt-1">
+              <button type="button" onClick={onShowAll} className="font-label-sm text-xs text-primary hover:underline">
+                Ver todas ({node.branches.length}) ▾
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+  }
+
   return (
     <>
       <DraftTextField
@@ -447,77 +669,97 @@ function ScoreBranchSection({ node, targets, onNodeChange }: ScoreBranchSectionP
         <div
           key={branch.id}
           data-testid={`branch-row-${index + 1}`}
-          className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2"
+          className={`flex flex-col gap-2.5 rounded-lg border p-2.5 transition-all ${
+            branch.id === focusedBranchId
+              ? 'border-primary/60 bg-primary/5 ring-2 ring-primary/30'
+              : 'border-outline-variant/40 bg-surface-container-low'
+          }`}
         >
-          <BranchNameField
-            ariaLabel={`Nome da faixa ${index + 1}`}
-            committedId={branch.id}
-            siblingIds={node.branches
-              .filter((_, siblingIndex) => siblingIndex !== index)
-              .map((candidate) => candidate.id)}
-            onCommit={(id) => commitBranch(index, (current) => ({ ...current, id }))}
-          />
-          <div className="flex gap-2">
-            <DraftNumberField
-              ariaLabel={`De ${index + 1}`}
-              value={branch.min}
-              onCommit={(min) => commitBranch(index, (current) => ({ ...current, min }))}
-            />
-            <DraftNumberField
-              ariaLabel={`Até ${index + 1}`}
-              value={branch.max}
-              onCommit={(max) => commitBranch(index, (current) => ({ ...current, max }))}
+          <div className="flex flex-col gap-1">
+            <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">Nome da faixa</span>
+            <BranchNameField
+              ariaLabel={`Nome da faixa ${index + 1}`}
+              committedId={branch.id}
+              siblingIds={node.branches
+                .filter((_, siblingIndex) => siblingIndex !== index)
+                .map((candidate) => candidate.id)}
+              onCommit={(id) => commitBranch(index, (current) => ({ ...current, id }))}
             />
           </div>
-          {/* Selects don't blur reliably; commit the target immediately on change. */}
-          <TargetSelect
-            ariaLabel={`Destino da faixa ${index + 1}`}
-            value={branch.next}
-            onChange={(next) => commitBranch(index, (current) => ({ ...current, next }))}
-            nodes={targets}
-            allowEmpty
-          />
-          {/* Selects don't blur reliably; commit the page destination immediately on change. */}
-          <select
-            aria-label={`Destino de página ${index + 1}`}
-            className={selectClassName}
-            value={branch.navigation ?? ''}
-            onChange={(event) => {
-              const { value } = event.target;
-              commitBranch(index, (current) => {
-                if (value === '') {
-                  // Clearing the page destination removes the key entirely.
-                  const { navigation: _dropped, ...branchWithoutNavigation } = current;
-                  return branchWithoutNavigation;
-                }
-                return { ...current, navigation: value as ScoreBranch['navigation'] };
-              });
-            }}
-          >
-            <option value="">Nenhuma</option>
-            {NAVIGATION_OPTIONS.map((destination) => (
-              <option key={destination} value={destination}>
-                {destination}
-              </option>
-            ))}
-            {/*
-              Representable-value convention: an out-of-union stored value stays
-              selectable instead of silently rendering the first option.
-            */}
-            {branch.navigation && !(NAVIGATION_OPTIONS as readonly string[]).includes(branch.navigation) && (
-              <option value={branch.navigation}>{`Destino ausente · ${branch.navigation}`}</option>
-            )}
-          </select>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+              Intervalo de pontuação (De / Até)
+            </span>
+            <div className="flex gap-2">
+              <DraftNumberField
+                ariaLabel={`De ${index + 1}`}
+                value={branch.min}
+                onCommit={(min) => commitBranch(index, (current) => ({ ...current, min }))}
+              />
+              <DraftNumberField
+                ariaLabel={`Até ${index + 1}`}
+                value={branch.max}
+                onCommit={(max) => commitBranch(index, (current) => ({ ...current, max }))}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant flex items-center gap-1.5">
+              <ArrowRight aria-hidden="true" size={12} className="text-primary shrink-0" />
+              <span>Leva para a etapa:</span>
+            </span>
+            {/* Selects don't blur reliably; commit the target immediately on change. */}
+            <TargetSelect
+              ariaLabel={`Destino da faixa ${index + 1}`}
+              value={branch.next}
+              onChange={(next) => commitBranch(index, (current) => ({ ...current, next }))}
+              nodes={targets}
+              allowEmpty
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+              Ou direcionar para tela do BemTeVi:
+            </span>
+            {/* Selects don't blur reliably; commit the page destination immediately on change. */}
+            <select
+              aria-label={`Destino de página ${index + 1}`}
+              className={selectClassName}
+              value={branch.navigation ?? ''}
+              onChange={(event) => {
+                const { value } = event.target;
+                commitBranch(index, (current) => {
+                  if (value === '') {
+                    // Clearing the page destination removes the key entirely.
+                    const { navigation: _dropped, ...branchWithoutNavigation } = current;
+                    return branchWithoutNavigation;
+                  }
+                  return { ...current, navigation: value as (typeof NAVIGATION_OPTIONS)[number] };
+                });
+              }}
+            >
+              <option value="">Nenhuma</option>
+              {NAVIGATION_OPTIONS.map((path) => (
+                <option key={path} value={path}>
+                  {path}
+                </option>
+              ))}
+              {branch.navigation && !(NAVIGATION_OPTIONS as readonly string[]).includes(branch.navigation) && (
+                <option value={branch.navigation}>{`Destino ausente · ${branch.navigation}`}</option>
+              )}
+            </select>
+          </div>
           <button
             type="button"
             aria-label={`Remover faixa ${index + 1}`}
+            disabled={node.branches.length === 1}
             onClick={() =>
               onNodeChange((current) => ({
                 ...current,
                 branches: current.branches.filter((_, candidateIndex) => candidateIndex !== index),
               }))
             }
-            className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
+            className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container disabled:opacity-40"
           >
             Remover faixa
           </button>
@@ -686,7 +928,7 @@ export interface NodeEditorPanelProps {
   /** Opens the legacy full editor for this node. */
   onEditLegacy: () => void;
   /** Scroll/focus request for a named panel section; bump requestId to re-fire. */
-  focusRequest?: { section?: MapFocusSection; requestId: number } | null;
+  focusRequest?: { section?: MapFocusSection; targetId?: string; requestId: number } | null;
 }
 
 export function NodeEditorPanel({
@@ -701,10 +943,28 @@ export function NodeEditorPanel({
   const node = flow.nodes[nodeId];
   const [localText, setLocalText] = useState(node?.text ?? '');
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [viewMode, setViewMode] = useState<'focused' | 'all'>(() => {
+    if (focusRequest?.section && ['opcao', 'faixa', 'texto', 'midia'].includes(focusRequest.section)) {
+      return 'focused';
+    }
+    return 'all';
+  });
+  const [prevRequestId, setPrevRequestId] = useState(focusRequest?.requestId);
+  if (focusRequest?.requestId !== prevRequestId) {
+    setPrevRequestId(focusRequest?.requestId);
+    if (focusRequest?.section && ['opcao', 'faixa', 'texto', 'midia'].includes(focusRequest.section)) {
+      setViewMode('focused');
+    } else {
+      setViewMode('all');
+    }
+  }
+
   // Inline “Trocar tipo” chooser; remounts with the panel (keyed per node),
   // so an open chooser can never leak across stage switches.
   const [kindChooserOpen, setKindChooserOpen] = useState(false);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const kindChooserRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   // Topology feeds every target select; recomputed only when flow/flows change.
   const topology = useMemo(() => buildFlowTopology(flow, flows), [flow, flows]);
 
@@ -716,7 +976,7 @@ export function NodeEditorPanel({
   useEffect(() => {
     if (!focusRequest?.section) return;
     const section = containerRef.current?.querySelector<HTMLElement>(`[data-section="${focusRequest.section}"]`);
-    section?.scrollIntoView({ block: 'nearest' });
+    section?.scrollIntoView?.({ block: 'nearest' });
     // Keyed on requestId only so repeated identical requests re-fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest?.requestId]);
@@ -725,6 +985,13 @@ export function NodeEditorPanel({
   useEffect(() => {
     if (kindChooserOpen) kindChooserRef.current?.focus();
   }, [kindChooserOpen]);
+
+  // Focus textarea when focused section is text
+  useEffect(() => {
+    if (viewMode === 'focused' && focusRequest?.section === 'texto') {
+      textareaRef.current?.focus();
+    }
+  }, [viewMode, focusRequest?.section, focusRequest?.requestId]);
 
   if (!node) return null;
 
@@ -740,6 +1007,23 @@ export function NodeEditorPanel({
   const effectiveIndex = effectiveOrder.indexOf(nodeId);
   const isFirstStep = effectiveIndex <= 0;
   const isLastStep = effectiveIndex === -1 || effectiveIndex >= effectiveOrder.length - 1;
+  const isOnlyStep = effectiveOrder.length === 1;
+
+  const focusedSection = focusRequest?.section;
+  const focusedTargetId = focusRequest?.targetId;
+
+  let focusedSectionLabel = '';
+  if (focusedSection === 'opcao' && node.kind === 'choice') {
+    const idx = node.options.findIndex((o) => o.id === focusedTargetId);
+    focusedSectionLabel = idx !== -1 ? `Opção ${idx + 1}` : 'Opção';
+  } else if (focusedSection === 'faixa' && node.kind === 'score_branch') {
+    const idx = node.branches.findIndex((b) => b.id === focusedTargetId);
+    focusedSectionLabel = idx !== -1 ? `Faixa ${idx + 1}` : 'Faixa';
+  } else if (focusedSection === 'texto') {
+    focusedSectionLabel = 'Texto da etapa';
+  } else if (focusedSection === 'midia') {
+    focusedSectionLabel = 'Mídia';
+  }
 
   /** Structural patches stay narrow: only the keys the mutation actually touched. */
   const toNodesPatch = (next: GuidedFlow): Partial<GuidedFlow> => ({
@@ -769,7 +1053,7 @@ export function NodeEditorPanel({
   const handleDeleteClick = () => {
     const result = deleteNode(flow, nodeId);
     if (result.error === 'last-node') {
-      window.alert('O fluxo precisa ter pelo menos uma etapa.');
+      setOperationError('Esta é a única etapa do fluxo. Crie outra etapa antes de excluir esta.');
       return;
     }
     const brokenCount = result.broken.length;
@@ -780,6 +1064,7 @@ export function NodeEditorPanel({
           ? '1 conexão ficará sem destino'
           : `${brokenCount} conexões ficarão sem destino`;
     if (window.confirm(`Excluir esta etapa? ${consequence}`)) {
+      setOperationError(null);
       onFlowChange(toNodesPatch(result.flow));
     }
   };
@@ -913,22 +1198,38 @@ export function NodeEditorPanel({
         </button>
       </header>
 
-      <section data-section="texto" className="flex flex-col gap-1">
-        <h3 className="font-label-sm text-xs text-on-surface-variant">Texto</h3>
-        <textarea
-          aria-label="Texto da etapa"
-          className="min-h-[80px] rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
-          value={localText}
-          onChange={(e) => setLocalText(e.target.value)}
-          onBlur={() => {
-            if (localText !== node.text) {
-              onFlowChange({ nodes: { ...flow.nodes, [nodeId]: { ...node, text: localText } } });
-            }
-          }}
-        />
-      </section>
+      {viewMode === 'focused' && focusedSectionLabel ? (
+        <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs">
+          <span className="font-semibold text-primary">Editando {focusedSectionLabel}</span>
+          <button
+            type="button"
+            onClick={() => setViewMode('all')}
+            className="rounded px-1.5 py-0.5 font-medium text-primary hover:bg-primary/10 transition-colors"
+          >
+            Ver etapa inteira ▾
+          </button>
+        </div>
+      ) : null}
 
-      {node.kind === 'choice' && (
+      {(viewMode === 'all' || focusedSection === 'texto') && (
+        <section data-section="texto" className="flex flex-col gap-1">
+          <h3 className="font-label-sm text-xs text-on-surface-variant">Texto</h3>
+          <textarea
+            ref={textareaRef}
+            aria-label="Texto da etapa"
+            className="min-h-[80px] rounded-lg border border-outline-variant/60 bg-surface-container-low p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary"
+            value={localText}
+            onChange={(e) => setLocalText(e.target.value)}
+            onBlur={() => {
+              if (localText !== node.text) {
+                onFlowChange({ nodes: { ...flow.nodes, [nodeId]: { ...node, text: localText } } });
+              }
+            }}
+          />
+        </section>
+      )}
+
+      {node.kind === 'choice' && (viewMode === 'all' || focusedSection === 'opcao' || focusedSection === 'opcoes') && (
         <section data-section="opcoes" className="flex flex-col gap-2">
           <h3 className="font-label-sm text-xs text-on-surface-variant">Opções</h3>
           <ChoiceOptionsSection
@@ -936,57 +1237,100 @@ export function NodeEditorPanel({
             targets={topology.nodes}
             flows={flows}
             onNodeChange={handleChoiceNodeChange}
+            focusedOptionId={focusedSection === 'opcao' ? focusedTargetId : undefined}
+            viewMode={viewMode}
+            onShowAll={() => setViewMode('all')}
           />
         </section>
       )}
-      {node.kind === 'score_branch' && (
-        <section data-section="ramificacao" className="flex flex-col gap-2">
-          <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
-          <ScoreBranchSection node={node} targets={topology.nodes} onNodeChange={handleScoreBranchNodeChange} />
+      {node.kind === 'score_branch' &&
+        (viewMode === 'all' || focusedSection === 'faixa' || focusedSection === 'ramificacao') && (
+          <section data-section="ramificacao" className="flex flex-col gap-2">
+            <h3 className="font-label-sm text-xs text-on-surface-variant">Ramificação</h3>
+            <ScoreBranchSection
+              node={node}
+              targets={topology.nodes}
+              onNodeChange={handleScoreBranchNodeChange}
+              focusedBranchId={focusedSection === 'faixa' ? focusedTargetId : undefined}
+              viewMode={viewMode}
+              onShowAll={() => setViewMode('all')}
+            />
+          </section>
+        )}
+      {/* Mídia stays renderable for every kind: the add-video affordance is always available. */}
+      {(viewMode === 'all' || focusedSection === 'midia') && (
+        <section data-section="midia" className="flex flex-col gap-2">
+          <h3 className="font-label-sm text-xs text-on-surface-variant">Mídia</h3>
+          <MediaSection node={node} onNodeChange={handleNodeMediaChange} />
         </section>
       )}
-      {/* Mídia stays renderable for every kind: the add-video affordance is always available. */}
-      <section data-section="midia" className="flex flex-col gap-2">
-        <h3 className="font-label-sm text-xs text-on-surface-variant">Mídia</h3>
-        <MediaSection node={node} onNodeChange={handleNodeMediaChange} />
-      </section>
 
-      <div className="mt-auto flex flex-col gap-2 pt-2">
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="flex-1"
-            disabled={isFirstStep}
-            aria-label="Mover etapa para cima"
-            onClick={() => handleMoveClick('up')}
-          >
-            Mover etapa para cima
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="flex-1"
-            disabled={isLastStep}
-            aria-label="Mover etapa para baixo"
-            onClick={() => handleMoveClick('down')}
-          >
-            Mover etapa para baixo
+      {viewMode === 'focused' ? (
+        <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-outline-variant/30">
+          <Button variant="ghost" size="sm" className="w-full text-primary" onClick={() => setViewMode('all')}>
+            Ver todas as seções da etapa ▾
           </Button>
         </div>
-        <Button variant="secondary" size="sm" className="w-full" disabled={isEntry} onClick={handleSetEntryClick}>
-          Definir como entrada
-        </Button>
-        <Button variant="secondary" size="sm" className="w-full" onClick={handleDuplicateClick}>
-          Duplicar etapa
-        </Button>
-        <Button variant="danger" size="sm" className="w-full" onClick={handleDeleteClick}>
-          Excluir etapa
-        </Button>
-        <Button variant="ghost" size="sm" className="w-full" onClick={onEditLegacy}>
-          Abrir no editor legado
-        </Button>
-      </div>
+      ) : (
+        <div className="mt-auto flex flex-col gap-2 pt-2">
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              disabled={isFirstStep}
+              aria-label="Mover etapa para cima"
+              onClick={() => handleMoveClick('up')}
+            >
+              Mover etapa para cima
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              disabled={isLastStep}
+              aria-label="Mover etapa para baixo"
+              onClick={() => handleMoveClick('down')}
+            >
+              Mover etapa para baixo
+            </Button>
+          </div>
+          <Button variant="secondary" size="sm" className="w-full" disabled={isEntry} onClick={handleSetEntryClick}>
+            Definir como entrada
+          </Button>
+          <Button variant="secondary" size="sm" className="w-full" onClick={handleDuplicateClick}>
+            Duplicar etapa
+          </Button>
+          {operationError ? (
+            <div role="alert" className="rounded-lg bg-error-container p-3 text-on-error-container">
+              <p className="font-label-sm">Não foi possível excluir a etapa</p>
+              <p className="mt-1 font-body-sm">{operationError}</p>
+            </div>
+          ) : null}
+          <Button
+            variant="danger"
+            size="sm"
+            className="w-full"
+            disabled={isOnlyStep}
+            aria-describedby={isOnlyStep ? `${nodeId}-delete-hint` : undefined}
+            onClick={handleDeleteClick}
+          >
+            Excluir etapa
+          </Button>
+          {isOnlyStep ? (
+            <p id={`${nodeId}-delete-hint`} className="font-label-sm text-on-surface-variant">
+              Crie outra etapa antes de excluir a única etapa do fluxo.
+            </p>
+          ) : null}
+          <Button variant="ghost" size="sm" className="w-full" onClick={onEditLegacy}>
+            Abrir no editor legado
+          </Button>
+        </div>
+      )}
     </div>
   );
+}
+
+function effectKindLabel(kind: FlowEffect['kind']) {
+  return EFFECT_KIND_OPTIONS.find((option) => option.kind === kind)?.label.toLocaleLowerCase('pt-BR') ?? 'ação';
 }

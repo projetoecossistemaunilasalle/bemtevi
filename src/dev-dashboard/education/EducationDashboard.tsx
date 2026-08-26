@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
 import type {
@@ -22,10 +22,12 @@ import {
   textareaClass,
   textareaClassTall,
 } from '../components/fieldStyles';
-import { ValidationSummary } from '../components/ValidationSummary';
+import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
 import { readFileAsDataUrl, acceptImageTypes } from '../components/fileUpload';
 import { issuesForPath } from '../validation/fieldIssues';
 import type { FieldIssues } from '../validation/fieldIssues';
+import { scheduleValidationFocus } from '../validation/validationNavigation';
+import type { DashboardValidationIssue } from '../validation/validationTypes';
 import { validateDashboardEducation } from './educationValidation';
 
 const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
@@ -39,6 +41,8 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
 };
 
 type ManagedEducationGroup = EducationResourceGroup & { isDefault?: boolean };
+type ResourceSelection = { index: number; id: string };
+type ImageError = { message: string; path: string };
 
 function isUploadedImageValue(value: string | undefined) {
   return value?.trimStart().startsWith('data:') ?? false;
@@ -74,11 +78,11 @@ function SourceCardPreview({ sourceText }: { sourceText?: string }) {
 
       {citations.length === 0 ? (
         <p className="font-body-sm text-on-surface-variant/70 italic">
-          Nenhuma fonte inserida. As citações e badges do cartão aparecerão aqui.
+          Nenhuma fonte inserida. As citações e os selos do cartão aparecerão aqui.
         </p>
       ) : (
         <div className="flex flex-col gap-2.5">
-          <div className="flex flex-wrap items-center gap-2" aria-label="Pré-visualização das badges no cartão">
+          <div className="flex flex-wrap items-center gap-2" aria-label="Pré-visualização dos selos no cartão">
             <span className="font-label-sm text-on-surface-variant">Selo no cartão:</span>
             {citations.map((citation) => (
               <span key={citation.id} title={citation.rawText}>
@@ -170,25 +174,33 @@ export function EducationDashboard({
   onGroupRemove: (groupIndex: number, groupId: string) => void;
   onGroupMove: (groupIndex: number, direction: -1 | 1) => void;
 }) {
-  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(() => resources[0]?.id ?? null);
-  const [groupsExpanded, setGroupsExpanded] = useState(false);
-  const selectedIndex = useMemo(
-    () => resources.findIndex((resource) => resource.id === selectedResourceId),
-    [resources, selectedResourceId],
+  const [selection, setSelection] = useState<ResourceSelection | null>(() =>
+    resources[0] ? { index: 0, id: resources[0].id } : null,
   );
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
+  const resourceAtSelectedIndex = selection ? resources[selection.index] : undefined;
+  const selectedIndex =
+    selection && resourceAtSelectedIndex?.id === selection.id
+      ? selection.index
+      : selection
+        ? resources.findIndex((resource) => resource.id === selection.id)
+        : -1;
   const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
-  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<ImageError | null>(null);
 
   /** Reads an image file as a data URL, surfacing size/format errors to one shared alert. */
-  async function readImageSafely(file: File): Promise<string | null> {
+  async function readImageSafely(file: File, path: string): Promise<string | null> {
     setImageError(null);
     try {
       const dataUrl = await readFileAsDataUrl(file);
       setImageError(null);
       return dataUrl;
     } catch (error) {
-      setImageError(error instanceof Error ? error.message : 'Falha ao enviar imagem.');
+      setImageError({
+        message: error instanceof Error ? error.message : 'Não foi possível enviar a imagem. Escolha outro arquivo.',
+        path,
+      });
       return null;
     }
   }
@@ -206,14 +218,15 @@ export function EducationDashboard({
 
   function addResource() {
     const newId = onResourceAdd();
-    setSelectedResourceId(newId);
+    setSelection({ index: resources.length, id: newId });
   }
 
   function removeResource() {
     if (!selectedResource) return;
 
     const neighbor = resources[effectiveIndex + 1] ?? resources[effectiveIndex - 1];
-    setSelectedResourceId(neighbor?.id ?? null);
+    const neighborIndex = resources[effectiveIndex + 1] ? effectiveIndex + 1 : effectiveIndex - 1;
+    setSelection(neighbor && neighborIndex >= 0 ? { index: neighborIndex, id: neighbor.id } : null);
     onResourceRemove(effectiveIndex, selectedResource.id);
   }
 
@@ -307,6 +320,55 @@ export function EducationDashboard({
   // Path prefix used to scope inline validation issues to the selected resource.
   const resourcePath = selectedResource?.id ?? '';
 
+  function getIssueAction(issue: DashboardValidationIssue): ValidationIssueAction | null {
+    const groupMatch = /^groups\.(\d+)(?:\.|$)/.exec(issue.path ?? '');
+    if (groupMatch) {
+      const groupIndex = Number(groupMatch[1]);
+      if (!groups[groupIndex]) return null;
+
+      return {
+        label: 'Ir ao grupo',
+        description: issue.path?.endsWith('.title')
+          ? 'preencha o título destacado no cadastro do grupo.'
+          : 'revise o grupo destacado; se o identificador estiver inválido, remova-o e crie outro.',
+        onClick: () => {
+          setGroupsExpanded(true);
+          scheduleValidationFocus(issue.path!);
+        },
+      };
+    }
+
+    const duplicateMaterialMatch = /^materials\.(\d+)$/.exec(issue.path ?? '');
+    const resourceIndex = duplicateMaterialMatch
+      ? Number(duplicateMaterialMatch[1])
+      : resources.findIndex((resource) => issue.path === resource.id || issue.path?.startsWith(`${resource.id}.`));
+    const resource = resources[resourceIndex];
+    if (!resource) return null;
+
+    const blockMatch = new RegExp(`^${escapeRegExp(resource.id)}\\.body\\.([^.]*)`).exec(issue.path ?? '');
+    const targetPath = normalizeEducationValidationPath(issue.path ?? resource.id);
+
+    return {
+      label: 'Ir ao material',
+      description: duplicateMaterialMatch
+        ? 'revise o material destacado; se o identificador estiver duplicado, remova-o e crie outro.'
+        : blockMatch
+          ? 'corrija o campo destacado dentro do bloco de conteúdo indicado.'
+          : 'corrija o campo destacado nos dados deste material.',
+      onClick: () => {
+        setSelection({ index: resourceIndex, id: resource.id });
+        if (blockMatch?.[1]) {
+          setCollapsedBlockIds((current) => {
+            const next = new Set(current);
+            next.delete(blockMatch[1]);
+            return next;
+          });
+        }
+        scheduleValidationFocus(targetPath);
+      },
+    };
+  }
+
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
       <GroupManagementSection
@@ -317,6 +379,7 @@ export function EducationDashboard({
         onGroupRemove={onGroupRemove}
         onGroupMove={onGroupMove}
         groupsExpanded={groupsExpanded}
+        validation={validation}
         onToggleExpanded={() => setGroupsExpanded((current) => !current)}
       />
 
@@ -339,26 +402,47 @@ export function EducationDashboard({
                 <button
                   key={`${resource.id}-${resourceIndex}`}
                   type="button"
-                  onClick={() => setSelectedResourceId(resource.id)}
+                  onClick={() => setSelection({ index: resourceIndex, id: resource.id })}
                   className={`rounded-lg px-3 py-2 text-left font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                    resource.id === selectedResource.id
+                    resourceIndex === effectiveIndex
                       ? 'bg-primary text-on-primary'
                       : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                   }`}
                 >
                   {resource.title}
+                  {validation.errors.some(
+                    (issue) => issue.path === `materials.${resourceIndex}` || issue.path?.startsWith(`${resource.id}.`),
+                  ) ? (
+                    <span
+                      className={`mt-1 flex items-center gap-1 font-label-sm ${resourceIndex === effectiveIndex ? 'text-on-primary' : 'text-error'}`}
+                    >
+                      <AlertCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                      Precisa de correção
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
           </aside>
 
-          <div className="flex flex-col gap-stack-md">
+          <div
+            data-validation-path={`materials.${effectiveIndex}`}
+            className="dashboard-validation-target flex flex-col gap-stack-md"
+          >
             {imageError ? (
               <div
                 role="alert"
                 className="rounded-lg border border-error bg-error-container px-4 py-3 font-label-md text-on-error-container"
               >
-                {imageError}
+                <p className="font-label-md">Falha no campo de imagem</p>
+                <p className="mt-1 font-body-md">{imageError.message}</p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-full border border-current/35 px-3 py-1.5 font-label-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  onClick={() => scheduleValidationFocus(imageError.path)}
+                >
+                  Voltar ao campo da imagem
+                </button>
               </div>
             ) : null}
             <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
@@ -371,7 +455,11 @@ export function EducationDashboard({
                   aria-label={`Remover material ${selectedResource.title || 'sem título'}`}
                 />
               </div>
-              <Field label="Título do material" issues={issuesForPath(validation, `${resourcePath}.title`)}>
+              <Field
+                label="Título do material"
+                issues={issuesForPath(validation, `${resourcePath}.title`)}
+                validationPath={`${resourcePath}.title`}
+              >
                 <input
                   aria-label="Título do material"
                   className={fieldClass(issuesForPath(validation, `${resourcePath}.title`))}
@@ -383,6 +471,7 @@ export function EducationDashboard({
                 label="Descrição do material"
                 hint="Resumo curto que aparece na lista de materiais."
                 issues={issuesForPath(validation, `${resourcePath}.description`)}
+                validationPath={`${resourcePath}.description`}
               >
                 <textarea
                   aria-label="Descrição do material"
@@ -395,6 +484,7 @@ export function EducationDashboard({
                 label="Fonte do material"
                 hint="Fontes e referências bibliográficas no padrão ABNT. Separe múltiplas fontes com barra (/) ou quebra de linha. Links inseridos no texto serão detectados automaticamente."
                 issues={issuesForPath(validation, `${resourcePath}.source`)}
+                validationPath={`${resourcePath}.source`}
               >
                 <textarea
                   aria-label="Fonte do material"
@@ -406,7 +496,12 @@ export function EducationDashboard({
                 <SourceCardPreview sourceText={selectedResource.source} />
               </Field>
 
-              <Field label="Miniatura da biblioteca" hint="Imagem pequena usada no cartão da biblioteca de materiais.">
+              <Field
+                label="Miniatura da biblioteca"
+                hint="Imagem pequena usada no cartão da biblioteca de materiais."
+                issues={issuesForPath(validation, `${resourcePath}.imageUrl`)}
+                validationPath={`${resourcePath}.imageUrl`}
+              >
                 <div className="flex gap-2">
                   <input
                     aria-label="URL da miniatura da biblioteca"
@@ -441,7 +536,7 @@ export function EducationDashboard({
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
                           if (!file) return;
-                          const dataUrl = await readImageSafely(file);
+                          const dataUrl = await readImageSafely(file, `${resourcePath}.imageUrl`);
                           if (dataUrl) changeField({ imageUrl: dataUrl, imageFileName: file.name });
                           event.target.value = '';
                         }}
@@ -467,6 +562,7 @@ export function EducationDashboard({
               </Field>
 
               <fieldset
+                data-validation-path={`${resourcePath}.featuredImage`}
                 aria-label="Imagem principal do material"
                 className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 p-4"
               >
@@ -541,7 +637,7 @@ export function EducationDashboard({
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
                             if (!file) return;
-                            const dataUrl = await readImageSafely(file);
+                            const dataUrl = await readImageSafely(file, `${resourcePath}.featuredImage`);
                             if (dataUrl) updateFeaturedImage({ kind: 'uploaded', dataUrl, fileName: file.name });
                             event.target.value = '';
                           }}
@@ -593,6 +689,7 @@ export function EducationDashboard({
                   <Field
                     label="URL da imagem principal"
                     issues={issuesForPath(validation, `${resourcePath}.featuredImage`)}
+                    validationPath={`${resourcePath}.featuredImage`}
                   >
                     <input
                       aria-label="URL da imagem principal"
@@ -612,7 +709,12 @@ export function EducationDashboard({
                   </Field>
                 )}
               </fieldset>
-              <Field label="Grupo do material" hint="Categoria que agrupa este material junto com outros relacionados.">
+              <Field
+                label="Grupo do material"
+                hint="Categoria que agrupa este material junto com outros relacionados."
+                issues={issuesForPath(validation, `${resourcePath}.group`)}
+                validationPath={`${resourcePath}.group`}
+              >
                 <select
                   aria-label="Grupo do material"
                   className={inputClass}
@@ -628,12 +730,15 @@ export function EducationDashboard({
                 </select>
               </Field>
 
-              <div className="flex flex-col gap-2">
-                <span className="font-label-md text-on-surface">Tags</span>
+              <div
+                data-validation-path={`${resourcePath}.tags`}
+                className="dashboard-validation-target flex flex-col gap-2"
+              >
+                <span className="font-label-md text-on-surface">Marcadores</span>
                 <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
                 <ChipInput
-                  aria-label="Tags do material"
-                  placeholder="Digite uma tag e pressione Enter"
+                  aria-label="Marcadores do material"
+                  placeholder="Digite um marcador e pressione Enter"
                   values={selectedResource.tags}
                   onChange={(tags) => changeField({ tags })}
                 />
@@ -671,6 +776,7 @@ export function EducationDashboard({
                   return (
                     <div
                       key={block.id}
+                      data-validation-path={`${resourcePath}.body.${block.id}`}
                       className={`flex flex-col rounded-lg border transition-all ${
                         isExpanded
                           ? 'border-primary/40 bg-surface-container-lowest shadow-sm'
@@ -768,6 +874,7 @@ export function EducationDashboard({
                             invalid={blockIssues.errors.length > 0}
                             onChange={(patch) => updateBlock(block.id, patch)}
                             readImageFile={readImageSafely}
+                            validationPath={`${resourcePath}.body.${block.id}`}
                           />
                         </div>
                       )}
@@ -797,7 +904,7 @@ export function EducationDashboard({
               </div>
             </section>
 
-            <ValidationSummary result={validation} />
+            <ValidationSummary result={validation} getIssueAction={getIssueAction} />
           </div>
         </>
       )}
@@ -822,6 +929,7 @@ function GroupManagementSection({
   groups,
   defaultGroupOrder,
   groupsExpanded,
+  validation,
   onGroupChange,
   onGroupAdd,
   onGroupRemove,
@@ -831,6 +939,7 @@ function GroupManagementSection({
   groups: EducationResourceGroup[];
   defaultGroupOrder: number;
   groupsExpanded: boolean;
+  validation: ReturnType<typeof validateDashboardEducation>;
   onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
   onGroupAdd: () => void;
   onGroupRemove: (groupIndex: number, groupId: string) => void;
@@ -850,7 +959,7 @@ function GroupManagementSection({
         <span>Grupos de materiais</span>
         <span className="font-label-md">{groupsExpanded ? 'Ocultar' : 'Mostrar'}</span>
       </button>
-      <FieldHint>Gerencie os grupos usados para organizar os materiais no Dashboard.</FieldHint>
+      <FieldHint>Gerencie os grupos usados para organizar os materiais no painel administrativo.</FieldHint>
 
       {groupsExpanded && (
         <div id="education-group-management-content" className="mt-3 flex flex-col gap-3">
@@ -862,12 +971,16 @@ function GroupManagementSection({
 
               return (
                 <div
-                  key={group.id}
+                  key={`${group.id}-${groupIndex}`}
+                  data-validation-path={isDefault ? undefined : `groups.${groupIndex}`}
                   className="grid gap-3 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto]"
                 >
                   <div className="flex flex-col gap-2">
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-sm text-on-surface-variant">Título</span>
+                    <Field
+                      label="Título"
+                      issues={isDefault ? undefined : issuesForPath(validation, `groups.${groupIndex}.title`)}
+                      validationPath={isDefault ? undefined : `groups.${groupIndex}.title`}
+                    >
                       <input
                         aria-label={`Título do grupo ${group.title}`}
                         className={inputClassSm}
@@ -875,7 +988,7 @@ function GroupManagementSection({
                         disabled={isDefault}
                         onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
                       />
-                    </label>
+                    </Field>
                     {isDefault ? (
                       <FieldHint>
                         Geral é o grupo padrão para materiais sem categoria específica. Ele não pode ser removido porque
@@ -956,12 +1069,14 @@ function BlockFields({
   invalid = false,
   onChange,
   readImageFile,
+  validationPath,
 }: {
   block: EducationResourceBlock;
   blockNumber: number;
   invalid?: boolean;
   onChange: (patch: Partial<EducationResourceBlock>) => void;
-  readImageFile: (file: File) => Promise<string | null>;
+  readImageFile: (file: File, path: string) => Promise<string | null>;
+  validationPath: string;
 }) {
   const baseInput = invalid ? `${inputClass} ${inputInvalidClass}` : inputClass;
   const baseTextarea = invalid ? `${textareaClassTall} ${inputInvalidClass}` : textareaClassTall;
@@ -982,6 +1097,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">Texto do bloco {blockNumber}</span>
           <textarea
+            data-validation-path={validationPath}
             aria-label={`Texto do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseTextarea}
@@ -999,6 +1115,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
           <input
+            data-validation-path={validationPath}
             aria-label={`Título do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1025,6 +1142,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">URL do vídeo do bloco {blockNumber}</span>
           <input
+            data-validation-path={`${validationPath}.url`}
             aria-label={`URL do vídeo do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1042,6 +1160,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">URL da imagem do bloco {blockNumber}</span>
           <input
+            data-validation-path={`${validationPath}.imageUrl`}
             aria-label={`URL da imagem do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1073,7 +1192,7 @@ function BlockFields({
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                const dataUrl = await readImageFile(file);
+                const dataUrl = await readImageFile(file, `${validationPath}.imageUrl`);
                 if (dataUrl) onChange({ imageUrl: dataUrl, imageFileName: file.name });
                 event.target.value = '';
               }}
@@ -1108,6 +1227,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">Itens da lista do bloco {blockNumber}</span>
           <textarea
+            data-validation-path={validationPath}
             aria-label={`Itens da lista do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseTextarea}
@@ -1121,7 +1241,7 @@ function BlockFields({
 
   if (block.kind === 'sourceLink') {
     return (
-      <div className="flex flex-col gap-3">
+      <div data-validation-path={validationPath} className="dashboard-validation-target flex flex-col gap-3">
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">Texto da fonte / Citação ABNT do bloco {blockNumber}</span>
           <textarea
@@ -1134,6 +1254,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">URL direta da fonte (opcional se houver citação ABNT)</span>
           <input
+            data-validation-path={`${validationPath}.url`}
             aria-label={`URL da fonte do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1151,6 +1272,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber} (ex: Formulário)</span>
           <input
+            data-validation-path={`${validationPath}.label`}
             aria-label={`Texto do link do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1161,6 +1283,7 @@ function BlockFields({
         <label className="flex flex-col gap-2">
           <span className="font-label-md text-on-surface">URL do link do bloco {blockNumber}</span>
           <input
+            data-validation-path={`${validationPath}.url`}
             aria-label={`URL do link do bloco ${blockNumber}`}
             aria-invalid={invalid || undefined}
             className={baseInput}
@@ -1182,4 +1305,14 @@ function BlockFields({
   }
 
   return null;
+}
+
+function normalizeEducationValidationPath(path: string) {
+  if (/^materials\.\d+$/.test(path)) return path;
+  if (path.includes('.featuredImage.')) return path.slice(0, path.indexOf('.featuredImage.') + '.featuredImage'.length);
+  return path;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

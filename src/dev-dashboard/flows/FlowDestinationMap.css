@@ -233,6 +233,10 @@
     color-mix(in srgb, var(--color-surface-container-low) 72%, white);
 }
 
+.flow-destination-map__canvas--with-panel .react-flow {
+  width: calc(100% - 20rem) !important;
+}
+
 .flow-destination-map__canvas .react-flow__pane {
   cursor: grab;
 }
@@ -252,26 +256,25 @@
     0 8px 22px rgb(17 28 44 / 12%);
 }
 
-.flow-destination-map__depth-labels {
+.flow-destination-map__canvas-guide {
   position: absolute;
   z-index: 2;
   top: 12px;
   left: 22px;
-  display: flex;
-  gap: 188px;
-  color: color-mix(in srgb, var(--destination-muted) 78%, transparent);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 88%, transparent);
+  color: color-mix(in srgb, var(--destination-muted) 86%, transparent);
+  font-size: 11px;
+  font-weight: 700;
   pointer-events: none;
-  text-transform: uppercase;
 }
 
 .flow-destination-card,
 .flow-destination-node,
 .flow-destination-sequence {
   position: relative;
-  width: 286px;
+  width: 284px;
   overflow: visible;
   border: 1px solid var(--destination-line);
   border-radius: 12px;
@@ -344,22 +347,44 @@
   letter-spacing: 0;
   text-overflow: ellipsis;
   text-transform: none;
-  white-space: nowrap;
 }
 
+.flow-destination-card__content {
+  display: flex;
+  flex-direction: column;
+  margin: 0 4px 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.flow-destination-card__content:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.flow-destination-card__content.is-focused {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--color-primary);
+}
+
+.flow-destination-card__content > strong,
 .flow-destination-card > strong {
   display: block;
-  padding: 0 12px;
+  padding: 0 4px;
   color: var(--destination-ink);
   font-family: 'Nunito', sans-serif;
   font-size: 13px;
   font-weight: 850;
 }
 
+.flow-destination-card__content > p,
 .flow-destination-card > p {
   display: -webkit-box;
   overflow: hidden;
-  margin: 4px 12px 11px;
+  margin: 4px 4px 4px;
   color: var(--destination-muted);
   font-size: 13px;
   line-height: 1.3;
@@ -374,12 +399,25 @@
 .flow-destination-card__option {
   position: relative;
   display: flex;
-  min-height: 30px;
+  min-height: 40px;
   align-items: center;
-  padding: 5px 13px;
+  padding: 6px 15px 6px 13px;
   color: var(--destination-ink);
   font-size: 11px;
   font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.flow-destination-card__option:hover {
+  background: var(--color-surface-container-high);
+}
+
+.flow-destination-card__option.is-focused {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .flow-destination-card__option + .flow-destination-card__option {
@@ -387,8 +425,149 @@
 }
 
 .flow-destination-card__option span {
-  max-width: 245px;
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+.flow-destination-card__option-empty {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--destination-muted);
+}
+
+.flow-destination-card__option-no-target {
+  font-style: italic;
+  color: var(--color-on-surface-variant);
+  opacity: 0.65;
+}
+
+.flow-destination-card__add-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border-top: 1px dashed var(--destination-line);
+  background: transparent;
+  color: var(--destination-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.flow-destination-card__add-option-btn:hover {
+  background: var(--color-surface-container-high);
+  color: var(--color-primary);
+}
+
+.flow-destination-card__add-btn {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--destination-line);
+  border-radius: 999px;
+  background: var(--color-surface-container-low);
+  color: var(--destination-muted);
+  transition: all 120ms ease;
+  margin-right: 6px;
+}
+
+.flow-destination-card__add-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+  transform: scale(1.1);
+}
+
+.flow-destination-quick-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-width: 280px;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 80%, transparent);
+  border-radius: 10px;
+  padding: 6px;
+  background: var(--color-surface-container-lowest);
+  box-shadow: 0 10px 28px rgb(17 28 44 / 22%);
+}
+
+.flow-destination-quick-menu__header {
+  padding: 4px 8px 2px;
+  color: var(--destination-muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.flow-destination-quick-menu__divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--destination-line);
+}
+
+.flow-destination-quick-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--destination-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 100ms ease;
+}
+
+.flow-destination-quick-menu__item:hover {
+  background: var(--color-surface-container-high);
+}
+
+.flow-destination-quick-menu__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--color-surface-container-low);
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.flow-destination-card.is-disconnected {
+  border-top-color: var(--color-warning);
+  border-style: dashed;
+}
+
+.flow-destination-card__option strong {
   overflow: hidden;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-destination-card__option small {
+  overflow: hidden;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -469,6 +648,29 @@
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.flow-destination-node__open {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.flow-destination-node__open:hover {
+  background: color-mix(in srgb, var(--color-secondary-container) 72%, var(--color-secondary));
+}
+
+.flow-destination-node__open svg {
+  width: 14px;
+  height: 14px;
 }
 
 .flow-destination-sequence {
@@ -560,29 +762,77 @@
   right: -5px;
 }
 
-.flow-destination-map__unreachable {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
-  z-index: 5;
+.flow-destination-map__canvas .flow-destination-map__edge .react-flow__edge-path {
+  transition:
+    stroke-width 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+.flow-destination-map__canvas .flow-destination-map__edge:hover .react-flow__edge-path,
+.flow-destination-map__canvas .flow-destination-map__edge:focus-visible .react-flow__edge-path {
+  stroke-width: 3px !important;
+  opacity: 1 !important;
+}
+
+.flow-destination-map__unreachable-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 26px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--destination-line));
+  background: color-mix(in srgb, var(--color-warning-container) 44%, var(--color-surface-container-lowest));
+}
+
+.flow-destination-map__unreachable-strip > span {
   display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 7px;
-  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--destination-line));
-  border-radius: 9px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--color-warning-container) 92%, white);
+  gap: 6px;
   color: var(--color-on-warning-container);
   font-size: 11px;
+  font-weight: 850;
 }
 
-.flow-destination-map__unreachable svg {
-  width: 15px;
-  height: 15px;
+.flow-destination-map__unreachable-strip > span svg {
+  width: 14px;
+  height: 14px;
 }
 
-.flow-destination-map__unreachable span {
-  color: color-mix(in srgb, var(--color-on-warning-container) 80%, transparent);
+.flow-destination-map__unreachable-strip > div {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flow-destination-map__unreachable-strip button {
+  display: inline-flex;
+  min-height: 30px;
+  max-width: 260px;
+  align-items: center;
+  gap: 5px;
+  border: 1px dashed color-mix(in srgb, var(--color-warning) 55%, var(--destination-line));
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: var(--color-surface-container-lowest);
+  color: var(--destination-ink);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.flow-destination-map__unreachable-strip button:hover {
+  border-style: solid;
+  border-color: var(--color-primary);
+}
+
+.flow-destination-map__unreachable-strip button small {
+  overflow: hidden;
+  color: var(--destination-muted);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flow-destination-map__selection {
@@ -716,15 +966,18 @@
     flex: 0 0 auto;
   }
 
-  .flow-destination-map__depth-labels {
-    gap: 126px;
+  .flow-destination-map__canvas--with-panel .react-flow {
+    width: 100% !important;
+    opacity: 0.26;
+    pointer-events: none;
   }
 }
 
 @media (max-width: 620px) {
   .flow-destination-map__stats,
   .flow-destination-map__destinations,
-  .flow-destination-map__toolbar {
+  .flow-destination-map__toolbar,
+  .flow-destination-map__unreachable-strip {
     padding-right: 16px;
     padding-left: 16px;
   }
@@ -756,6 +1009,11 @@
 
   .flow-destination-map__canvas {
     height: 600px;
+  }
+
+  .flow-destination-map__unreachable-strip {
+    flex-direction: column;
+    gap: 5px;
   }
 
   .flow-destination-map__selection {

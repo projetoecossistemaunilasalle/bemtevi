@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -198,7 +198,7 @@ describe('ContactsDashboard', () => {
     const type = screen.getByRole('combobox', { name: 'Categoria curta' });
 
     expect(type).toHaveAttribute('list', 'contact-service-type-suggestions');
-    expect(type).toHaveAttribute('maxlength', '24');
+    expect(type).toHaveAttribute('maxlength', '40');
     await user.clear(type);
     await user.type(type, 'UBS');
 
@@ -362,7 +362,7 @@ describe('ContactsDashboard', () => {
     expect(screen.getByText('Nenhum contato cadastrado ainda.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Novo contato' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: 'Nome' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: 'Validação' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Verificação do conteúdo' })).toBeInTheDocument();
   });
 
   it('wires a required-field issue to the visible input and invalid styling', () => {
@@ -375,6 +375,16 @@ describe('ContactsDashboard', () => {
     expect(name).toHaveClass('border-error');
     expect(describedBy).toBeTruthy();
     expect(name).toHaveAccessibleDescription(/O nome do contato é obrigatório./);
+  });
+
+  it('takes the user from the validation summary to the exact invalid contact field', async () => {
+    const { user } = renderDashboard([capsService, { ...ubsService, name: '' }]);
+
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS Centro');
+    await user.click(screen.getByRole('button', { name: 'Ir ao contato' }));
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveFocus());
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('');
   });
 
   it('surfaces a hidden phoneHref mismatch on the visible phone field', () => {

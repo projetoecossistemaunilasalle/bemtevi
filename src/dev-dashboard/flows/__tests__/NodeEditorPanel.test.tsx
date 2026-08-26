@@ -249,17 +249,16 @@ describe('NodeEditorPanel', () => {
     expect(props.onFlowChange).not.toHaveBeenCalled();
   });
 
-  it('alerts instead of deleting the last remaining node', async () => {
-    const user = userEvent.setup();
+  it('explains why the last remaining node cannot be deleted', () => {
     const single = createFlow({
       entry: { nodeId: 'unico', enteringPhrases: [], transitionMessage: '' },
       nodes: { unico: { id: 'unico', kind: 'result', text: 'Único.' } },
       nodeOrder: ['unico'],
     });
     const props = renderPanel(single, 'unico');
-    await user.click(screen.getByRole('button', { name: 'Excluir etapa' }));
-
-    expect(alertSpy).toHaveBeenCalledWith('O fluxo precisa ter pelo menos uma etapa.');
+    expect(screen.getByRole('button', { name: 'Excluir etapa' })).toBeDisabled();
+    expect(screen.getByText('Crie outra etapa antes de excluir a única etapa do fluxo.')).toBeInTheDocument();
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(props.onFlowChange).not.toHaveBeenCalled();
   });
 
@@ -761,10 +760,12 @@ describe('NodeEditorPanel opções', () => {
       // effect's position + kind + row so identical kinds stay distinguishable.
       expect(within(optionRow(1)).getByText('+1 em pontuacao')).toBeInTheDocument();
       expect(within(optionRow(2)).getByText('→ /apoio')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Remover efeito 1 (score) da opção 1' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Remover efeito 1 (navigate) da opção 2' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remover efeito 1 (pontuar) da opção 1' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Remover efeito 1 (navegar para área) da opção 2' }),
+      ).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (navigate) da opção 2' }));
+      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (navegar para área) da opção 2' }));
 
       expect(history).toHaveLength(3);
       const node = patchedNodeOf(history[2].patch, 'q1', isChoiceNode);
@@ -785,7 +786,7 @@ describe('NodeEditorPanel opções', () => {
 
       // Chip 1 is the seeded 'foco' effect; removing it must not shift the
       // filter onto the wrong survivor.
-      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (score) da opção 1' }));
+      await user.click(screen.getByRole('button', { name: 'Remover efeito 1 (pontuar) da opção 1' }));
 
       expect(history).toHaveLength(2);
       const node = patchedNodeOf(history[1].patch, 'q1', isChoiceNode);

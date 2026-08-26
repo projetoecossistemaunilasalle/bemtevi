@@ -102,6 +102,9 @@ switch (command) {
   case 'validate:flows':
     runBin('tsx', ['scripts/validate-flows.ts']);
     break;
+  case 'sync:neon':
+    runBin('tsx', ['scripts/sync-neon.ts']);
+    break;
   case 'check':
     ['typecheck', 'lint', 'format:check', 'validate:flows', 'test', 'build'].forEach(runStep);
     break;

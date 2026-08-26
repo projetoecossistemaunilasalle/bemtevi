@@ -1,12 +1,210 @@
-import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import type { FlowEffect, FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
 
 const DEFAULT_SCORE_KEY = 'pontuacao';
 const DEFAULT_BRANCH_RANGE = { min: 0, max: 10 };
 
+export type ConnectionSource =
+  | { kind: 'option'; nodeId: string; optionId: string }
+  | { kind: 'free_text'; nodeId: string }
+  | { kind: 'branch'; nodeId: string; branchId: string };
+
+export type AddNodeConnectFrom = ConnectionSource | { nodeId: string; optionId?: string };
+
 export interface AddNodeInput {
   kind: FlowNode['kind'];
-  /** When provided WITH optionId, that option is repointed to the created node. */
-  connectFrom?: { nodeId: string; optionId?: string };
+  /** When provided, the origin option/branch/freeText is repointed to the created node. */
+  connectFrom?: AddNodeConnectFrom;
+}
+
+export type TerminalDestination =
+  | { kind: 'navigate'; destination: '/apoio' | '/contatos' | '/educacao' }
+  | { kind: 'flow_start'; flowId: string }
+  | { kind: 'end_flow'; message: string };
+
+/**
+ * Connects an origin source (option, free_text, or branch) to a local target node.
+ * Pure: never mutates inputs. Removes conflicting terminal effects / navigation.
+ */
+export function connectSource(
+  flow: GuidedFlow,
+  source: ConnectionSource,
+  targetNodeId: string,
+): { flow: GuidedFlow; connected: boolean } {
+  const origin = flow.nodes[source.nodeId];
+  if (!origin) return { flow, connected: false };
+
+  if (source.kind === 'option') {
+    if (origin.kind !== 'choice') return { flow, connected: false };
+    const optionIndex = origin.options.findIndex((opt) => opt.id === source.optionId);
+    if (optionIndex === -1) return { flow, connected: false };
+
+    const currentOpt = origin.options[optionIndex];
+    const filteredEffects = currentOpt.effects?.filter(
+      (eff) =>
+        eff.kind !== 'navigate' &&
+        eff.kind !== 'safety_interrupt' &&
+        eff.kind !== 'end_flow' &&
+        eff.kind !== 'flow_start',
+    );
+
+    const updatedOptions = origin.options.map((opt, idx) =>
+      idx === optionIndex
+        ? {
+            ...opt,
+            next: targetNodeId,
+            ...(filteredEffects && filteredEffects.length > 0 ? { effects: filteredEffects } : { effects: undefined }),
+          }
+        : opt,
+    );
+
+    return {
+      flow: {
+        ...flow,
+        nodes: {
+          ...flow.nodes,
+          [origin.id]: {
+            ...origin,
+            options: updatedOptions,
+          },
+        },
+      },
+      connected: true,
+    };
+  }
+
+  if (source.kind === 'free_text') {
+    if (origin.kind !== 'choice') return { flow, connected: false };
+    return {
+      flow: {
+        ...flow,
+        nodes: {
+          ...flow.nodes,
+          [origin.id]: {
+            ...origin,
+            freeText: { ...origin.freeText, next: targetNodeId },
+          },
+        },
+      },
+      connected: true,
+    };
+  }
+
+  if (source.kind === 'branch') {
+    if (origin.kind !== 'score_branch') return { flow, connected: false };
+    const branchIndex = origin.branches.findIndex((b) => b.id === source.branchId);
+    if (branchIndex === -1) return { flow, connected: false };
+
+    const updatedBranches = origin.branches.map((b, idx) => {
+      if (idx !== branchIndex) return b;
+      const { navigation: _dropped, ...branchWithoutNav } = b;
+      return { ...branchWithoutNav, next: targetNodeId };
+    });
+
+    return {
+      flow: {
+        ...flow,
+        nodes: {
+          ...flow.nodes,
+          [origin.id]: {
+            ...origin,
+            branches: updatedBranches,
+          },
+        },
+      },
+      connected: true,
+    };
+  }
+
+  return { flow, connected: false };
+}
+
+/**
+ * Applies a terminal effect or navigation to a connection source.
+ * Pure: never mutates inputs. Branches support 'navigate'; options support all terminal kinds.
+ */
+export function applyTerminalEffect(
+  flow: GuidedFlow,
+  source: ConnectionSource,
+  destination: TerminalDestination,
+): { flow: GuidedFlow; applied: boolean } {
+  const origin = flow.nodes[source.nodeId];
+  if (!origin) return { flow, applied: false };
+
+  if (source.kind === 'option') {
+    if (origin.kind !== 'choice') return { flow, applied: false };
+    const optionIndex = origin.options.findIndex((opt) => opt.id === source.optionId);
+    if (optionIndex === -1) return { flow, applied: false };
+
+    const currentOpt = origin.options[optionIndex];
+    const retainedEffects =
+      currentOpt.effects?.filter(
+        (eff) =>
+          eff.kind !== 'navigate' &&
+          eff.kind !== 'safety_interrupt' &&
+          eff.kind !== 'end_flow' &&
+          eff.kind !== 'flow_start',
+      ) ?? [];
+
+    let newEffect: FlowEffect;
+    if (destination.kind === 'navigate') {
+      newEffect = { kind: 'navigate', destination: destination.destination };
+    } else if (destination.kind === 'flow_start') {
+      newEffect = { kind: 'flow_start', flowId: destination.flowId };
+    } else {
+      newEffect = { kind: 'end_flow', message: destination.message };
+    }
+
+    const updatedOptions = origin.options.map((opt, idx) =>
+      idx === optionIndex
+        ? {
+            ...opt,
+            effects: [...retainedEffects, newEffect],
+          }
+        : opt,
+    );
+
+    return {
+      flow: {
+        ...flow,
+        nodes: {
+          ...flow.nodes,
+          [origin.id]: {
+            ...origin,
+            options: updatedOptions,
+          },
+        },
+      },
+      applied: true,
+    };
+  }
+
+  if (source.kind === 'branch') {
+    if (origin.kind !== 'score_branch') return { flow, applied: false };
+    if (destination.kind !== 'navigate') return { flow, applied: false };
+
+    const branchIndex = origin.branches.findIndex((b) => b.id === source.branchId);
+    if (branchIndex === -1) return { flow, applied: false };
+
+    const updatedBranches = origin.branches.map((b, idx) =>
+      idx === branchIndex ? { ...b, navigation: destination.destination } : b,
+    );
+
+    return {
+      flow: {
+        ...flow,
+        nodes: {
+          ...flow.nodes,
+          [origin.id]: {
+            ...origin,
+            branches: updatedBranches,
+          },
+        },
+      },
+      applied: true,
+    };
+  }
+
+  return { flow, applied: false };
 }
 
 /** First free id following the `step-N` convention, counting up from the node total. */
@@ -35,9 +233,117 @@ function requireNode(flow: GuidedFlow, nodeId: string): FlowNode {
   return node;
 }
 
+/** First free `${node.id}-option-N`, matching switchNodeKind's naming convention. */
+export function uniqueOptionId(node: { id: string; options: Array<{ id: string }> }): string {
+  let index = node.options.length + 1;
+  let candidate = `${node.id}-option-${index}`;
+  while (node.options.some((option) => option.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-option-${index}`;
+  }
+  return candidate;
+}
+
+/** First free `${node.id}-faixa-N` within the branch list, same convention as switchNodeKind. */
+export function uniqueBranchId(node: { id: string; branches: Array<{ id: string }> }): string {
+  let index = node.branches.length + 1;
+  let candidate = `${node.id}-faixa-${index}`;
+  while (node.branches.some((branch) => branch.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-faixa-${index}`;
+  }
+  return candidate;
+}
+
+/**
+ * Appends an option to a choice node.
+ * Pure: never mutates inputs.
+ */
+export function addOption(
+  flow: GuidedFlow,
+  nodeId: string,
+  initial?: Partial<{ id: string; label: string; next: string; effects?: FlowEffect[] }>,
+): { flow: GuidedFlow; optionId: string } {
+  const node = flow.nodes[nodeId];
+  if (!node || node.kind !== 'choice') return { flow, optionId: '' };
+
+  const optionId = initial?.id || uniqueOptionId(node);
+  const label = initial?.label !== undefined ? initial.label : '';
+  const newOption: { id: string; label: string; next: string; effects?: FlowEffect[] } = {
+    id: optionId,
+    label,
+    next: initial?.next ?? '',
+    ...(initial?.effects ? { effects: initial.effects } : {}),
+  };
+
+  return {
+    flow: {
+      ...flow,
+      nodes: {
+        ...flow.nodes,
+        [nodeId]: {
+          ...node,
+          options: [...node.options, newOption],
+        },
+      },
+    },
+    optionId,
+  };
+}
+
+/**
+ * Appends a score range branch to a score_branch node.
+ * Pure: never mutates inputs.
+ */
+export function addBranch(
+  flow: GuidedFlow,
+  nodeId: string,
+  initial?: Partial<{
+    id: string;
+    min: number;
+    max: number;
+    next: string;
+    navigation?: '/apoio' | '/contatos' | '/educacao';
+  }>,
+): { flow: GuidedFlow; branchId: string } {
+  const node = flow.nodes[nodeId];
+  if (!node || node.kind !== 'score_branch') return { flow, branchId: '' };
+
+  const branchId = initial?.id || uniqueBranchId(node);
+  const lastBranch = node.branches[node.branches.length - 1];
+  const min = initial?.min ?? (lastBranch ? lastBranch.max + 1 : 0);
+  const max = initial?.max ?? min + 5;
+  const newBranch = {
+    id: branchId,
+    min,
+    max,
+    next: initial?.next ?? '',
+    ...(initial?.navigation ? { navigation: initial.navigation } : {}),
+  };
+
+  return {
+    flow: {
+      ...flow,
+      nodes: {
+        ...flow.nodes,
+        [nodeId]: {
+          ...node,
+          branches: [...node.branches, newBranch],
+        },
+      },
+    },
+    branchId,
+  };
+}
+
 function createDefaultNode(id: string, kind: FlowNode['kind']): FlowNode {
   if (kind === 'choice') {
-    return { id, kind: 'choice', text: '', options: [] };
+    return {
+      id,
+      kind: 'choice',
+      text: '',
+      options: [{ id: `${id}-option-1`, label: '', next: '' }],
+    };
   }
   if (kind === 'score_branch') {
     return {
@@ -53,34 +359,36 @@ function createDefaultNode(id: string, kind: FlowNode['kind']): FlowNode {
 
 /**
  * Returns a new flow plus the generated node id.
- * Pure: never mutates inputs. An origin option is repointed only when
- * `connectFrom.optionId` is explicitly provided and found (`linked` reports it).
+ * Pure: never mutates inputs. When `connectFrom` is provided, the origin option/branch/freeText
+ * is linked to the newly created node.
  */
 export function addNode(flow: GuidedFlow, input: AddNodeInput): { flow: GuidedFlow; nodeId: string; linked: boolean } {
   const nodeId = uniqueNodeId(flow);
-  let nodes: Record<string, FlowNode> = { ...flow.nodes, [nodeId]: createDefaultNode(nodeId, input.kind) };
+  let nextFlow: GuidedFlow = {
+    ...flow,
+    nodes: { ...flow.nodes, [nodeId]: createDefaultNode(nodeId, input.kind) },
+    ...(flow.nodeOrder ? { nodeOrder: [...flow.nodeOrder, nodeId] } : {}),
+  };
   let linked = false;
 
-  if (input.connectFrom?.optionId) {
-    const { nodeId: originId, optionId } = input.connectFrom;
-    const origin = nodes[originId];
-    // Only choice nodes own options; unknown origins are left untouched.
-    if (origin && origin.kind === 'choice') {
-      const index = origin.options.findIndex((option) => option.id === optionId);
-      if (index >= 0) {
-        const linkedOrigin: FlowNode = {
-          ...origin,
-          options: origin.options.map((option, i) => (i === index ? { ...option, next: nodeId } : option)),
-        };
-        nodes = { ...nodes, [origin.id]: linkedOrigin };
-        linked = true;
-      }
+  if (input.connectFrom) {
+    if ('kind' in input.connectFrom) {
+      const res = connectSource(nextFlow, input.connectFrom, nodeId);
+      nextFlow = res.flow;
+      linked = res.connected;
+    } else if (input.connectFrom.optionId) {
+      const res = connectSource(
+        nextFlow,
+        { kind: 'option', nodeId: input.connectFrom.nodeId, optionId: input.connectFrom.optionId },
+        nodeId,
+      );
+      nextFlow = res.flow;
+      linked = res.connected;
     }
   }
 
-  const next: GuidedFlow = { ...flow, nodes };
   return {
-    flow: next.nodeOrder ? { ...next, nodeOrder: [...next.nodeOrder, nodeId] } : next,
+    flow: nextFlow,
     nodeId,
     linked,
   };

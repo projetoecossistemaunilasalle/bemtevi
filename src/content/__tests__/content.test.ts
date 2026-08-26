@@ -64,11 +64,11 @@ describe('Canoas services', () => {
     expect(canoasServices.services.length).toBeGreaterThan(0);
   });
 
-  it('every service has address and phone', () => {
+  it('every service has address, phone, city and state', () => {
     canoasServices.services.forEach((service) => {
       expect(service.address).toBeTruthy();
       expect(service.phoneHref).toMatch(/^tel:/);
-      expect(service.city).toBe('Canoas');
+      expect(service.city).toBeTruthy();
       expect(service.state).toBe('RS');
     });
   });

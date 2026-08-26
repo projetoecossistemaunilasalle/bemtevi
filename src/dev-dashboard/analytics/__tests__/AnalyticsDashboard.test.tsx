@@ -60,7 +60,7 @@ describe('AnalyticsDashboard', () => {
 
     expect(screen.getByText('Somente dados agregados')).toBeInTheDocument();
     expect(
-      screen.getByText(/não registram identidade, cookies de rastreamento, IDs de usuário ou sessão/i),
+      screen.getByText(/não registram identidade, cookies de rastreamento, identificadores de usuário ou sessão/i),
     ).toBeInTheDocument();
   });
 

@@ -37,7 +37,9 @@ export type FlowValidationTarget = {
  * flows through MapFocusRequest.section — flow-level targets are encoded by an
  * absent nodeId, and this guard keeps the section field honest at the boundary.
  */
-function isNodePanelSection(section: FlowValidationSection | undefined): section is MapFocusSection {
+function isNodePanelSection(
+  section: FlowValidationSection | undefined,
+): section is Extract<MapFocusSection, FlowValidationSection> {
   return section !== undefined && section !== 'configuracoes';
 }
 
@@ -402,7 +404,7 @@ export function FlowDashboard({
           </div>
         )}
       </aside>
-      <div className="flex flex-col gap-stack-md">
+      <div className="min-w-0 flex flex-col gap-stack-md">
         <div
           aria-label="Detalhes do fluxo"
           className="flex flex-wrap gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-2"

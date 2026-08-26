@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   Expand,
   ExternalLink,
@@ -18,11 +19,13 @@ import {
   Background,
   Controls,
   Handle,
+  MarkerType,
   MiniMap,
   Position,
   ReactFlow,
   useEdgesState,
   useNodesState,
+  type Connection,
   type Edge,
   type Node,
   type NodeMouseHandler,
@@ -32,7 +35,15 @@ import './FlowDestinationMap.css';
 
 import type { FlowEffect, FlowNode, FlowOption, GuidedFlow } from '../../domain/flow-engine/types';
 import type { MapFocusSection } from './flowDisplay';
-import { addNode } from './flowMutations';
+import {
+  addBranch,
+  addNode,
+  addOption,
+  applyTerminalEffect,
+  connectSource,
+  type ConnectionSource,
+  type TerminalDestination,
+} from './flowMutations';
 import { NodeEditorPanel } from './NodeEditorPanel';
 import { buildFlowTopology } from './flowTopology';
 
@@ -51,6 +62,8 @@ type Destination = {
   label: string;
   detail?: string;
   nodeId?: string;
+  flowId?: string;
+  reachable: boolean;
   sources: Set<string>;
 };
 
@@ -106,15 +119,29 @@ type DestinationNodeData = {
   highlighted?: boolean;
   expanded?: boolean;
   cycle?: boolean;
+  isDisconnected?: boolean;
+  optionTargets?: Record<string, string>;
+  targetHandles?: Array<{ id: string; top: number }>;
+  flows?: GuidedFlow[];
+  onOpenFlow?: (flowId: string) => void;
   onToggleSequence?: () => void;
+  onAddConnectedStage?: (source: ConnectionSource, kind: FlowNode['kind']) => void;
+  onApplyTerminalEffect?: (source: ConnectionSource, destination: TerminalDestination) => void;
+  onAddOption?: (nodeId: string) => void;
+  onAddBranch?: (nodeId: string) => void;
+  activeFocusSection?: MapFocusSection;
+  activeFocusTargetId?: string;
+  onFocusSection?: (nodeId: string, section: MapFocusSection, targetId?: string) => void;
 };
 
 type DestinationRFNode = Node<DestinationNodeData>;
-type DestinationRFEdge = Edge<{ kind: Transition['kind']; optionLabel: string; badge?: string }>;
+type DestinationRFEdge = Edge<{ kind: Transition['kind']; optionLabel: string; badge?: string }, 'smoothstep'> & {
+  pathOptions?: { borderRadius?: number; offset?: number; stepPosition?: number };
+};
 
-const NODE_WIDTH = 286;
-const COLUMN_GAP = 188;
-const ROW_GAP = 42;
+const NODE_WIDTH = 284;
+const COLUMN_GAP = 190;
+const ROW_GAP = 64;
 
 function textPreview(value: string, max = 76) {
   const compact = value.trim().replace(/\s+/g, ' ');
@@ -155,7 +182,7 @@ function buildLocalAnalysis(flow: GuidedFlow, flows: GuidedFlow[]): Analysis {
   const addDestination = (id: string, kind: DestinationKind, label: string, detail?: string) => {
     const existing = destinations.get(id);
     if (existing) return existing;
-    const created: Destination = { id, kind, label, detail, sources: new Set() };
+    const created: Destination = { id, kind, label, detail, reachable: false, sources: new Set() };
     destinations.set(id, created);
     return created;
   };
@@ -220,6 +247,8 @@ function buildLocalAnalysis(flow: GuidedFlow, flows: GuidedFlow[]): Analysis {
             targetFlow ? `Fluxo · ${targetFlow.title}` : `Fluxo ausente · ${effect.flowId}`,
             targetFlow ? `Entrada: ${targetFlow.entry.nodeId}` : effect.flowId,
           ).sources.add(node.id);
+          const destination = destinations.get(id);
+          if (destination && targetFlow) destination.flowId = targetFlow.id;
           addTransition(node.id, option.id, id, option.label, targetFlow ? 'flow_start' : 'missing', badge);
         } else {
           const target = byId.get(option.next);
@@ -349,6 +378,7 @@ function buildLocalAnalysis(flow: GuidedFlow, flows: GuidedFlow[]): Analysis {
         if (transition.target === current) pending.push(transition.source);
       }
     }
+    destination.reachable = [...destination.sources].some((sourceId) => depth.has(sourceId));
   }
 
   const sequences: SequenceGroup[] = [];
@@ -442,6 +472,8 @@ function normalizeTopology(value: unknown): Analysis | undefined {
       label: stringValue(item.label) ?? 'Destino ausente',
       detail: stringValue(item.value) ?? stringValue(item.target),
       nodeId: stringValue(item.nodeId) ?? stringValue(item.targetNodeId),
+      flowId: stringValue(item.flowId),
+      reachable: item.reachableFromEntry !== false,
       sources: new Set(
         Array.isArray(item.sourceNodeIds)
           ? item.sourceNodeIds.filter((id): id is string => typeof id === 'string')
@@ -580,25 +612,269 @@ function destinationTypeLabel(kind: DestinationKind) {
   return 'Destino ausente';
 }
 
+function TargetHandles({ handles }: { handles?: DestinationNodeData['targetHandles'] }) {
+  const visibleHandles = handles?.length ? handles : [{ id: 'target-default', top: 50 }];
+  return visibleHandles.map((handle) => (
+    <Handle
+      key={handle.id}
+      id={handle.id}
+      type="target"
+      position={Position.Left}
+      className="flow-destination-map__target"
+      style={{ top: `${handle.top}%` }}
+    />
+  ));
+}
+
+function QuickActionMenu({
+  source,
+  flows,
+  onAddStage,
+  onApplyEffect,
+  onClose,
+}: {
+  source: ConnectionSource;
+  flows?: GuidedFlow[];
+  onAddStage?: (kind: FlowNode['kind']) => void;
+  onApplyEffect?: (destination: TerminalDestination) => void;
+  onClose: () => void;
+}) {
+  const [selectingFlow, setSelectingFlow] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const otherFlows = (flows ?? []).filter((f) => f.id !== source.nodeId);
+
+  return (
+    <div
+      ref={containerRef}
+      role="menu"
+      tabIndex={-1}
+      aria-label="Ações de continuação"
+      className="flow-destination-quick-menu nodrag nopan"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <div className="flow-destination-quick-menu__header">Continuar com</div>
+      <button type="button" className="flow-destination-quick-menu__item" onClick={() => onAddStage?.('choice')}>
+        💬 Pergunta
+      </button>
+      <button type="button" className="flow-destination-quick-menu__item" onClick={() => onAddStage?.('result')}>
+        🏁 Resultado final
+      </button>
+      <button type="button" className="flow-destination-quick-menu__item" onClick={() => onAddStage?.('score_branch')}>
+        🔀 Ramificação por pontuação
+      </button>
+
+      {(source.kind === 'option' || source.kind === 'branch') && (
+        <>
+          <div className="flow-destination-quick-menu__divider" />
+          <div className="flow-destination-quick-menu__header">
+            {source.kind === 'branch' ? 'Direcionar para área' : 'Direcionar ou encerrar'}
+          </div>
+          <button
+            type="button"
+            className="flow-destination-quick-menu__item"
+            onClick={() => onApplyEffect?.({ kind: 'navigate', destination: '/apoio' })}
+          >
+            🏥 Abrir /apoio
+          </button>
+          <button
+            type="button"
+            className="flow-destination-quick-menu__item"
+            onClick={() => onApplyEffect?.({ kind: 'navigate', destination: '/contatos' })}
+          >
+            🏥 Abrir /contatos
+          </button>
+          <button
+            type="button"
+            className="flow-destination-quick-menu__item"
+            onClick={() => onApplyEffect?.({ kind: 'navigate', destination: '/educacao' })}
+          >
+            🏥 Abrir /educacao
+          </button>
+
+          {source.kind === 'option' && (
+            <>
+              {otherFlows.length > 0 && !selectingFlow && (
+                <button
+                  type="button"
+                  className="flow-destination-quick-menu__item"
+                  onClick={() => setSelectingFlow(true)}
+                >
+                  🔄 Iniciar outro fluxo…
+                </button>
+              )}
+              {selectingFlow && (
+                <div className="flow-destination-quick-menu__sub">
+                  <div className="text-[10px] text-on-surface-variant font-bold px-2 py-1">Escolha o fluxo:</div>
+                  {otherFlows.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="flow-destination-quick-menu__item text-left truncate"
+                      onClick={() => onApplyEffect?.({ kind: 'flow_start', flowId: f.id })}
+                    >
+                      {f.title || f.id}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="flow-destination-quick-menu__item text-xs text-primary"
+                    onClick={() => setSelectingFlow(false)}
+                  >
+                    ← Voltar
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className="flow-destination-quick-menu__item"
+                onClick={() => onApplyEffect?.({ kind: 'end_flow', message: '' })}
+              >
+                ⏹️ Encerrar conversa
+              </button>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function OptionOutputRow({
+  id,
+  label,
+  index,
+  targetLabel,
+  source,
+  data,
+}: {
+  id: string;
+  label: string;
+  index: number;
+  targetLabel?: string;
+  source: ConnectionSource;
+  data: DestinationNodeData;
+}) {
+  const [open, setOpen] = useState(false);
+  const displayLabel = label.trim() || (source.kind === 'branch' ? label : `Opção ${index + 1}`);
+  const isPlaceholder = !label.trim();
+  const isRowFocused =
+    data.activeFocusSection === (source.kind === 'branch' ? 'faixa' : 'opcao') && data.activeFocusTargetId === id;
+
+  return (
+    <div
+      className={`flow-destination-card__option nodrag nopan ${isRowFocused ? 'is-focused' : ''}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (source.kind === 'branch') {
+          data.onFocusSection?.(source.nodeId, 'faixa', source.branchId);
+        } else if (source.kind === 'free_text') {
+          data.onFocusSection?.(source.nodeId, 'opcoes');
+        } else {
+          data.onFocusSection?.(source.nodeId, 'opcao', source.optionId);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (source.kind === 'branch') {
+            data.onFocusSection?.(source.nodeId, 'faixa', source.branchId);
+          } else if (source.kind === 'free_text') {
+            data.onFocusSection?.(source.nodeId, 'opcoes');
+          } else {
+            data.onFocusSection?.(source.nodeId, 'opcao', source.optionId);
+          }
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      title={`Clique para editar ${displayLabel}`}
+      aria-label={`Editar ${displayLabel}`}
+    >
+      <span>
+        <strong className={isPlaceholder ? 'flow-destination-card__option-empty' : ''}>{displayLabel}</strong>
+        {targetLabel ? (
+          <small>{targetLabel}</small>
+        ) : (
+          <small className="flow-destination-card__option-no-target">Sem destino</small>
+        )}
+      </span>
+      <div className="flex items-center gap-1 shrink-0 ml-1">
+        <button
+          type="button"
+          className="flow-destination-card__add-btn nodrag nopan"
+          aria-label={`Continuar a partir de ${displayLabel}`}
+          title={targetLabel ? `Conectar ou alterar: ${displayLabel}` : `Conectar a partir de ${displayLabel}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((curr) => !curr);
+          }}
+        >
+          <Plus aria-hidden="true" size={12} />
+        </button>
+        <Handle type="source" position={Position.Right} id={id} className="flow-destination-map__source" />
+      </div>
+      {open && (
+        <QuickActionMenu
+          source={source}
+          flows={data.flows}
+          onAddStage={(kind) => {
+            data.onAddConnectedStage?.(source, kind);
+            setOpen(false);
+          }}
+          onApplyEffect={(dest) => {
+            data.onApplyTerminalEffect?.(source, dest);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 function NodeCard({ data }: { data: DestinationNodeData }) {
   if (data.kind === 'destination' || data.kind === 'missing') {
     const destination = data.destination;
     return (
       <div className={`flow-destination-node flow-destination-node--${destination?.kind ?? 'missing'}`}>
-        <Handle type="target" position={Position.Left} className="flow-destination-map__target" />
+        <TargetHandles handles={data.targetHandles} />
         <div className="flow-destination-node__eyebrow">
           {destination?.kind === 'missing' ? <AlertTriangle aria-hidden="true" /> : <Flag aria-hidden="true" />}
           {destination ? destinationTypeLabel(destination.kind) : kindLabel(data.kind)}
         </div>
         <strong>{destination?.label}</strong>
         {destination?.detail && <small>{destination.detail}</small>}
+        {destination?.kind === 'flow_start' && destination.flowId && data.onOpenFlow && (
+          <button
+            type="button"
+            className="flow-destination-node__open nodrag nopan"
+            aria-label={`Abrir ${destination.label}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              data.onOpenFlow?.(destination.flowId!);
+            }}
+          >
+            Abrir fluxo <ArrowRight aria-hidden="true" />
+          </button>
+        )}
       </div>
     );
   }
   if (data.kind === 'sequence') {
     return (
       <div className="flow-destination-sequence">
-        <Handle type="target" position={Position.Left} className="flow-destination-map__target" />
+        <TargetHandles handles={data.targetHandles} />
         <div className="flow-destination-sequence__header">
           <span>
             <ListTree aria-hidden="true" /> Sequência linear
@@ -636,10 +912,27 @@ function NodeCard({ data }: { data: DestinationNodeData }) {
     );
   return (
     <div
-      className={`flow-destination-card flow-destination-card--${node.kind} ${data.highlighted ? 'is-highlighted' : ''} ${data.matched ? 'is-match' : ''}`}
+      className={`flow-destination-card flow-destination-card--${node.kind} ${data.highlighted ? 'is-highlighted' : ''} ${data.matched ? 'is-match' : ''} ${data.isDisconnected ? 'is-disconnected' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="flow-destination-map__target" />
-      <div className="flow-destination-card__meta">
+      <TargetHandles handles={data.targetHandles} />
+      <div
+        className="flow-destination-card__meta"
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation();
+          data.onFocusSection?.(node.id, 'geral');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            data.onFocusSection?.(node.id, 'geral');
+          }
+        }}
+        title={`Clique para editar detalhes de ${data.stepLabel ?? node.id}`}
+        aria-label={`Editar detalhes de ${data.stepLabel ?? node.id}`}
+      >
         <span>
           {node.kind === 'choice' ? (
             'Pergunta'
@@ -653,20 +946,89 @@ function NodeCard({ data }: { data: DestinationNodeData }) {
             </>
           )}
         </span>
+        {data.isDisconnected && (
+          <span className="text-warning text-[9px] font-bold" title="Esta etapa não está conectada ao início do fluxo">
+            Não conectada
+          </span>
+        )}
         {data.cycle && <em className="flow-destination-card__cycle">Ciclo</em>}
         <code>{node.id}</code>
       </div>
-      <strong>{data.stepLabel ?? 'Etapa ?'}</strong>
-      <p title={node.text}>{textPreview(node.text)}</p>
+      <div
+        className={`flow-destination-card__content nodrag nopan ${
+          data.activeFocusSection === 'texto' ? 'is-focused' : ''
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          data.onFocusSection?.(node.id, 'texto');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            data.onFocusSection?.(node.id, 'texto');
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        title="Clique para editar o texto da etapa"
+        aria-label={`Editar texto de ${data.stepLabel ?? node.id}`}
+      >
+        <strong>{data.stepLabel ?? 'Etapa ?'}</strong>
+        <p title={node.text}>{textPreview(node.text) || <span className="italic opacity-60">Sem texto</span>}</p>
+      </div>
       {options.length > 0 && (
         <div className="flow-destination-card__options" aria-label="Saídas da etapa">
-          {options.map((option) => (
-            <div key={option.id} className="flow-destination-card__option">
-              <span>{option.label}</span>
-              <Handle type="source" position={Position.Right} id={option.id} className="flow-destination-map__source" />
-            </div>
-          ))}
+          {options.map((option, index) => {
+            let source: ConnectionSource;
+            if (node.kind === 'score_branch') {
+              source = { kind: 'branch', nodeId: node.id, branchId: option.id };
+            } else if (option.id === 'free-text') {
+              source = { kind: 'free_text', nodeId: node.id };
+            } else {
+              source = { kind: 'option', nodeId: node.id, optionId: option.id };
+            }
+            return (
+              <OptionOutputRow
+                key={option.id}
+                id={option.id}
+                label={option.label}
+                index={index}
+                targetLabel={data.optionTargets?.[option.id]}
+                source={source}
+                data={data}
+              />
+            );
+          })}
         </div>
+      )}
+      {node.kind === 'choice' && (
+        <button
+          type="button"
+          className="flow-destination-card__add-option-btn nodrag nopan"
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onAddOption?.(node.id);
+          }}
+          aria-label={`Adicionar opção à ${data.stepLabel ?? node.id}`}
+        >
+          <Plus aria-hidden="true" size={13} />
+          <span>Adicionar opção</span>
+        </button>
+      )}
+      {node.kind === 'score_branch' && (
+        <button
+          type="button"
+          className="flow-destination-card__add-option-btn nodrag nopan"
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onAddBranch?.(node.id);
+          }}
+          aria-label={`Adicionar faixa à ${data.stepLabel ?? node.id}`}
+        >
+          <Plus aria-hidden="true" size={13} />
+          <span>Adicionar faixa</span>
+        </button>
       )}
       {hasSafety && (
         <div className="flow-destination-card__signal">
@@ -677,13 +1039,15 @@ function NodeCard({ data }: { data: DestinationNodeData }) {
   );
 }
 
+const MemoizedNodeCard = memo(NodeCard);
+
 const nodeTypes = {
-  choice: NodeCard,
-  score_branch: NodeCard,
-  result: NodeCard,
-  destination: NodeCard,
-  sequence: NodeCard,
-  missing: NodeCard,
+  choice: MemoizedNodeCard,
+  score_branch: MemoizedNodeCard,
+  result: MemoizedNodeCard,
+  destination: MemoizedNodeCard,
+  sequence: MemoizedNodeCard,
+  missing: MemoizedNodeCard,
 };
 
 function edgeStyle(kind: Transition['kind']) {
@@ -699,11 +1063,20 @@ function edgeStyle(kind: Transition['kind']) {
 function createPresentation(
   analysis: Analysis,
   flow: GuidedFlow,
+  flows: GuidedFlow[],
   expandedSequences: Set<string>,
   search: string,
   selectedDestination: string | null,
   showLabels: boolean,
   toggleSequence: (id: string) => void,
+  onOpenFlow: (flowId: string) => void,
+  onAddConnectedStage?: (source: ConnectionSource, kind: FlowNode['kind']) => void,
+  onApplyTerminalEffect?: (source: ConnectionSource, destination: TerminalDestination) => void,
+  onAddOption?: (nodeId: string) => void,
+  onAddBranch?: (nodeId: string) => void,
+  selectedNodeId?: string | null,
+  panelFocusRequest?: MapFocusRequest | null,
+  onFocusSection?: (nodeId: string, section: MapFocusSection, targetId?: string) => void,
 ) {
   const nodeById = new Map(analysis.nodes.map((node) => [node.id, node]));
   const sequenceByNode = new Map<string, SequenceGroup>();
@@ -722,7 +1095,9 @@ function createPresentation(
   const displayDepth = (depth: number) =>
     depth -
     collapsedSequences.reduce((shift, sequence) => shift + (sequence.start < depth ? sequence.length - 1 : 0), 0);
-  const visibleNodeIds = new Set(analysis.nodes.filter((node) => !sequenceByNode.has(node.id)).map((node) => node.id));
+  const visibleReachableNodeIds = new Set(
+    analysis.nodes.filter((node) => node.reachable && !sequenceByNode.has(node.id)).map((node) => node.id),
+  );
   const query = search.trim().toLocaleLowerCase('pt-BR');
   const matches = (node: AnalysisNode) =>
     !query ||
@@ -731,21 +1106,35 @@ function createPresentation(
     String(node.order + 1).includes(query);
   const resultDepth = Math.max(displayDepth(analysis.maxDepth) + 1, 1);
   const nodes: DestinationRFNode[] = [];
-  const occupied = new Map<number, number>();
+  const layout = new Map<string, { depth: number; order: number; height: number; isUnreachable?: boolean }>();
+  const estimatedHeight = (kind: DestinationNodeData['kind'], data: DestinationNodeData) => {
+    if (kind === 'destination' || kind === 'missing') return data.destination?.kind === 'flow_start' ? 130 : 96;
+    if (kind === 'sequence') return 140;
+    if (!data.node || data.node.kind === 'result') return 110;
+    const outputs =
+      data.node.kind === 'choice' ? data.node.options.length + (data.node.freeText ? 1 : 0) : data.node.branches.length;
+    const safety =
+      data.node.kind === 'choice' &&
+      data.node.options.some((option) =>
+        option.effects?.some((effect) => effect.kind === 'safety_interrupt' || effect.kind === 'deferred_safety'),
+      );
+    const addBtnHeight = data.node.kind === 'choice' || data.node.kind === 'score_branch' ? 38 : 0;
+    const textLines = data.node.text ? Math.min(3, Math.ceil(data.node.text.length / 32)) : 1;
+    const textHeight = 22 + textLines * 17;
+    return 56 + textHeight + outputs * 52 + addBtnHeight + (safety ? 36 : 0);
+  };
   const addNode = (
     id: string,
     kind: DestinationNodeData['kind'],
     data: DestinationNodeData,
     depth: number,
     order: number,
-    unreachable = false,
+    isUnreachable = false,
   ) => {
-    const row = occupied.get(depth) ?? 0;
-    occupied.set(depth, row + 1);
     nodes.push({
       id,
       type: kind,
-      position: { x: depth * (NODE_WIDTH + COLUMN_GAP), y: (unreachable ? 900 : 0) + row * (172 + ROW_GAP) },
+      position: { x: depth * (NODE_WIDTH + COLUMN_GAP), y: 0 },
       data,
       draggable: false,
       selectable: kind !== 'destination' && kind !== 'missing',
@@ -754,6 +1143,7 @@ function createPresentation(
           ? data.destination?.label
           : `${kindLabel(kind)} ${data.node?.id ?? id}`,
     } as DestinationRFNode);
+    layout.set(id, { depth, order, height: estimatedHeight(kind, data), isUnreachable });
   };
   for (const sequence of analysis.sequences) {
     if (expandedSequences.has(sequence.id)) continue;
@@ -770,6 +1160,8 @@ function createPresentation(
         highlighted: Boolean(
           selectedDestination && sequence.nodeIds.some((id) => nodeById.get(id)?.destinations.has(selectedDestination)),
         ),
+        flows,
+        onOpenFlow,
         onToggleSequence: () => toggleSequence(sequence.id),
       },
       displayDepth(first.depth ?? 0),
@@ -777,8 +1169,29 @@ function createPresentation(
     );
   }
   for (const node of analysis.nodes) {
-    if (!visibleNodeIds.has(node.id) || !node.node || node.node.kind === 'result') continue;
+    if (!visibleReachableNodeIds.has(node.id) || !node.node || node.node.kind === 'result') continue;
     const highlighted = Boolean(selectedDestination && node.destinations.has(selectedDestination));
+    const optionTargets: Record<string, string> = {};
+    if (showLabels) {
+      for (const transition of analysis.transitions) {
+        if (transition.source !== node.id || transition.kind === 'deferred_safety') continue;
+        const targetNode = nodeById.get(transition.target);
+        const targetDestination = analysis.destinations.find((destination) => destination.id === transition.target);
+        const targetSequence = sequenceByNode.get(transition.target);
+        optionTargets[transition.sourceHandle.replace(/(:deferred|__deferred-safety)$/, '')] = targetSequence
+          ? `Vai para etapas ${targetSequence.nodeIds
+              .map((id) => (nodeById.get(id)?.order ?? 0) + 1)
+              .filter((step, index, steps) => index === 0 || index === steps.length - 1)
+              .join('–')}`
+          : targetNode
+            ? `Vai para etapa ${targetNode.order + 1}`
+            : targetDestination
+              ? targetDestination.kind === 'flow_start'
+                ? `Abre ${targetDestination.label.replace(/^Fluxo · /, '')}`
+                : `Vai para ${targetDestination.label}`
+              : 'Destino não encontrado';
+      }
+    }
     addNode(
       node.id,
       node.node.kind,
@@ -789,12 +1202,25 @@ function createPresentation(
         matched: matches(node),
         highlighted,
         cycle: node.cycle,
+        optionTargets,
+        flows,
+        onOpenFlow,
+        onAddConnectedStage,
+        onApplyTerminalEffect,
+        onAddOption,
+        onAddBranch,
+        activeFocusSection: selectedNodeId === node.id ? panelFocusRequest?.section : undefined,
+        activeFocusTargetId: selectedNodeId === node.id ? panelFocusRequest?.targetId : undefined,
+        onFocusSection,
       },
       node.reachable ? displayDepth(node.depth ?? 0) : 0,
       node.order,
-      !node.reachable,
     );
   }
+  const transitionOrderByTarget = new Map<string, number>();
+  analysis.transitions.forEach((transition, index) => {
+    if (!transitionOrderByTarget.has(transition.target)) transitionOrderByTarget.set(transition.target, index);
+  });
   for (const destination of analysis.destinations) {
     const isTerminal =
       destination.kind === 'result' ||
@@ -804,42 +1230,236 @@ function createPresentation(
       destination.kind === 'flow_start' ||
       destination.kind === 'end_flow' ||
       destination.kind === 'missing';
-    if (!isTerminal) continue;
-    const destinationNode: DestinationRFNode = {
-      id: destination.id,
-      type: destination.kind === 'missing' ? 'missing' : 'destination',
-      position: { x: resultDepth * (NODE_WIDTH + COLUMN_GAP), y: (occupied.get(resultDepth) ?? 0) * (172 + ROW_GAP) },
-      data: {
+    if (!isTerminal || !destination.reachable) continue;
+    addNode(
+      destination.id,
+      destination.kind === 'missing' ? 'missing' : 'destination',
+      {
         kind: destination.kind === 'missing' ? 'missing' : 'destination',
         destination,
         highlighted: selectedDestination === destination.id,
+        onOpenFlow,
       },
-      draggable: false,
-      selectable: false,
-    };
-    occupied.set(resultDepth, (occupied.get(resultDepth) ?? 0) + 1);
-    nodes.push(destinationNode);
+      resultDepth,
+      transitionOrderByTarget.get(destination.id) ?? Number.MAX_SAFE_INTEGER,
+    );
   }
+
+  // Disconnected / Unreachable nodes layout in canvas
+  const unreachableNodes = analysis.nodes.filter((node) => !node.reachable && node.node);
+  if (unreachableNodes.length > 0) {
+    const unreachableSet = new Set(unreachableNodes.map((n) => n.id));
+    const unreachableAdjacency = new Map<string, string[]>();
+    const unreachableInDegree = new Map<string, number>();
+
+    unreachableNodes.forEach((n) => {
+      unreachableAdjacency.set(n.id, []);
+      unreachableInDegree.set(n.id, 0);
+    });
+
+    analysis.transitions.forEach((t) => {
+      if (unreachableSet.has(t.source) && unreachableSet.has(t.target)) {
+        unreachableAdjacency.get(t.source)?.push(t.target);
+        unreachableInDegree.set(t.target, (unreachableInDegree.get(t.target) ?? 0) + 1);
+      }
+    });
+
+    const unreachableDepth = new Map<string, number>();
+    const queue: string[] = [];
+    unreachableNodes.forEach((n) => {
+      if ((unreachableInDegree.get(n.id) ?? 0) === 0) {
+        unreachableDepth.set(n.id, 0);
+        queue.push(n.id);
+      }
+    });
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const curDepth = unreachableDepth.get(current) ?? 0;
+      for (const next of unreachableAdjacency.get(current) ?? []) {
+        if (!unreachableDepth.has(next)) {
+          unreachableDepth.set(next, curDepth + 1);
+          queue.push(next);
+        }
+      }
+    }
+
+    unreachableNodes.forEach((n) => {
+      if (!unreachableDepth.has(n.id)) unreachableDepth.set(n.id, 0);
+    });
+
+    for (const node of unreachableNodes) {
+      if (!node.node) continue;
+      const depth = unreachableDepth.get(node.id) ?? 0;
+      const optionTargets: Record<string, string> = {};
+      if (showLabels) {
+        for (const transition of analysis.transitions) {
+          if (transition.source !== node.id || transition.kind === 'deferred_safety') continue;
+          const targetNode = nodeById.get(transition.target);
+          const targetDestination = analysis.destinations.find((destination) => destination.id === transition.target);
+          optionTargets[transition.sourceHandle.replace(/(:deferred|__deferred-safety)$/, '')] = targetNode
+            ? `Vai para etapa ${targetNode.order + 1}`
+            : targetDestination
+              ? `Vai para ${targetDestination.label}`
+              : 'Destino não encontrado';
+        }
+      }
+
+      addNode(
+        node.id,
+        node.node.kind,
+        {
+          kind: node.node.kind,
+          node: node.node,
+          stepLabel: `Etapa ${node.order + 1}`,
+          matched: matches(node),
+          highlighted: false,
+          cycle: node.cycle,
+          isDisconnected: true,
+          optionTargets,
+          flows,
+          onOpenFlow,
+          onAddConnectedStage,
+          onApplyTerminalEffect,
+          onAddOption,
+          onAddBranch,
+          activeFocusSection: selectedNodeId === node.id ? panelFocusRequest?.section : undefined,
+          activeFocusTargetId: selectedNodeId === node.id ? panelFocusRequest?.targetId : undefined,
+          onFocusSection,
+        },
+        depth,
+        node.order,
+        true,
+      );
+    }
+  }
+
+  const reachableRFNodes = nodes.filter((n) => !layout.get(n.id)?.isUnreachable);
+  const unreachableRFNodes = nodes.filter((n) => layout.get(n.id)?.isUnreachable);
+
+  const reachableColumns = new Map<number, DestinationRFNode[]>();
+  for (const node of reachableRFNodes) {
+    const depth = layout.get(node.id)?.depth ?? 0;
+    const column = reachableColumns.get(depth) ?? [];
+    column.push(node);
+    reachableColumns.set(depth, column);
+  }
+  const reachableColumnHeights = [...reachableColumns.values()].map((column) =>
+    column.reduce((height, node, index) => height + (layout.get(node.id)?.height ?? 100) + (index ? ROW_GAP : 0), 0),
+  );
+  const tallestReachableColumn = Math.max(0, ...reachableColumnHeights);
+
+  for (const [depth, column] of reachableColumns) {
+    column.sort((left, right) => (layout.get(left.id)?.order ?? 0) - (layout.get(right.id)?.order ?? 0));
+    const columnHeight = column.reduce(
+      (height, node, index) => height + (layout.get(node.id)?.height ?? 100) + (index ? ROW_GAP : 0),
+      0,
+    );
+    let y = Math.max(0, (tallestReachableColumn - columnHeight) / 2);
+    column.forEach((node) => {
+      node.position = { x: depth * (NODE_WIDTH + COLUMN_GAP), y };
+      y += (layout.get(node.id)?.height ?? 100) + ROW_GAP;
+    });
+  }
+
+  if (unreachableRFNodes.length > 0) {
+    const unreachableColumns = new Map<number, DestinationRFNode[]>();
+    for (const node of unreachableRFNodes) {
+      const depth = layout.get(node.id)?.depth ?? 0;
+      const column = unreachableColumns.get(depth) ?? [];
+      column.push(node);
+      unreachableColumns.set(depth, column);
+    }
+    const unreachableStartY = Math.max(tallestReachableColumn + 120, 260);
+
+    for (const [depth, column] of unreachableColumns) {
+      column.sort((left, right) => (layout.get(left.id)?.order ?? 0) - (layout.get(right.id)?.order ?? 0));
+      let y = unreachableStartY;
+      column.forEach((node) => {
+        node.position = { x: depth * (NODE_WIDTH + COLUMN_GAP), y };
+        y += (layout.get(node.id)?.height ?? 100) + ROW_GAP;
+      });
+    }
+  }
+
   const resultDestinationByNodeId = new Map(
     analysis.destinations
       .filter((destination) => destination.kind === 'result' && destination.nodeId)
       .map((destination) => [destination.nodeId!, destination.id]),
   );
   const groupedTarget = (id: string) => {
-    if (nodeById.get(id)?.node?.kind === 'result')
-      return resultDestinationByNodeId.get(id) ?? destinationId('result', id);
+    if (nodeById.get(id)?.node?.kind === 'result') {
+      const isReachable = nodeById.get(id)?.reachable;
+      if (isReachable) {
+        return resultDestinationByNodeId.get(id) ?? destinationId('result', id);
+      }
+      return id;
+    }
     return sequenceByNode.get(id)?.id ?? id;
   };
-  const edges: DestinationRFEdge[] = [];
-  for (const transition of analysis.transitions) {
+  const visibleTransitions = analysis.transitions.flatMap((transition, transitionIndex) => {
     const source = groupedTarget(transition.source);
     const target = groupedTarget(transition.target);
-    if (source === target) continue;
-    if (!nodes.some((node) => node.id === source) || !nodes.some((node) => node.id === target)) continue;
+    if (source === target) return [];
+    const sourceNode = nodes.find((node) => node.id === source);
+    const targetNode = nodes.find((node) => node.id === target);
+    if (!sourceNode || !targetNode) return [];
+    return [{ transition, transitionIndex, source, target, sourceNode, targetNode }];
+  });
+  const routingGroups = new Map<string, typeof visibleTransitions>();
+  visibleTransitions.forEach((item) => {
+    const key = `${item.sourceNode.position.x}:${item.targetNode.position.x}`;
+    const group = routingGroups.get(key) ?? [];
+    group.push(item);
+    routingGroups.set(key, group);
+  });
+  routingGroups.forEach((group) => {
+    group.sort((left, right) => {
+      const leftMidpoint = left.sourceNode.position.y + left.targetNode.position.y;
+      const rightMidpoint = right.sourceNode.position.y + right.targetNode.position.y;
+      return leftMidpoint - rightMidpoint || left.transition.id.localeCompare(right.transition.id);
+    });
+  });
+  const incomingByTarget = new Map<string, typeof visibleTransitions>();
+  visibleTransitions.forEach((item) => {
+    const incoming = incomingByTarget.get(item.target) ?? [];
+    incoming.push(item);
+    incomingByTarget.set(item.target, incoming);
+  });
+  incomingByTarget.forEach((incoming) => {
+    incoming.sort(
+      (left, right) =>
+        left.sourceNode.position.y - right.sourceNode.position.y || left.transitionIndex - right.transitionIndex,
+    );
+  });
+  const routedNodes = nodes.map((node) => {
+    const incoming = incomingByTarget.get(node.id);
+    if (!incoming?.length) return node;
+    const span = Math.min(72, Math.max(0, incoming.length - 1) * 22);
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        targetHandles: incoming.map((item, index) => ({
+          id: `target:${item.transition.id}`,
+          top: incoming.length === 1 ? 50 : 50 - span / 2 + (span * index) / (incoming.length - 1),
+        })),
+      },
+    };
+  });
+
+  const edges: DestinationRFEdge[] = [];
+  for (const item of visibleTransitions) {
+    const { transition, source, target, sourceNode, targetNode } = item;
     const highlighted = Boolean(
       selectedDestination && nodeById.get(transition.source)?.destinations.has(selectedDestination),
     );
     const style = edgeStyle(transition.kind);
+    const routingGroup = routingGroups.get(`${sourceNode.position.x}:${targetNode.position.x}`) ?? [item];
+    const routeIndex = routingGroup.indexOf(item);
+    const routeSpan = Math.min(0.68, Math.max(0, routingGroup.length - 1) * 0.11);
+    const stepPosition =
+      routingGroup.length === 1 ? 0.5 : 0.5 - routeSpan / 2 + (routeSpan * routeIndex) / (routingGroup.length - 1);
     edges.push({
       id: transition.id,
       source,
@@ -847,17 +1467,24 @@ function createPresentation(
       sourceHandle: sequenceByNode.has(transition.source)
         ? 'sequence-out'
         : transition.sourceHandle.replace(/(:deferred|__deferred-safety)$/, ''),
+      targetHandle: `target:${transition.id}`,
       type: 'smoothstep',
-      label: showLabels ? transition.label : undefined,
+      pathOptions: { borderRadius: 10, offset: 22, stepPosition },
       data: { kind: transition.kind, optionLabel: transition.label, badge: transition.badge },
       style: { ...style, opacity: selectedDestination && !highlighted ? 0.2 : 1, strokeWidth: highlighted ? 3 : 1.6 },
-      animated: transition.kind === 'flow_start' || transition.kind === 'safety_interrupt',
-      labelStyle: { fill: 'var(--color-on-surface)', fontSize: 11, fontWeight: 700 },
-      labelBgStyle: { fill: 'var(--color-surface-container-lowest)', fillOpacity: 0.96 },
-      labelBgPadding: [6, 3],
+      className: 'flow-destination-map__edge',
+      focusable: true,
+      interactionWidth: 24,
+      ariaLabel: `${transition.label}: ${source} para ${target}`,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: style.stroke,
+        width: 16,
+        height: 16,
+      },
     });
   }
-  return { nodes, edges, hasMatches: analysis.nodes.some(matches), maxDisplayDepth: Math.max(0, resultDepth - 1) };
+  return { nodes: routedNodes, edges, hasMatches: analysis.nodes.some(matches) };
 }
 
 /**
@@ -870,6 +1497,8 @@ export type MapFocusRequest = {
   nodeId?: string;
   /** Node panel section to reveal ('configuracoes' targets carry no nodeId and no section). */
   section?: MapFocusSection;
+  /** Specific sub-item to focus within the section (e.g. optionId, branchId). */
+  targetId?: string;
   requestId: number;
 };
 
@@ -888,6 +1517,7 @@ export function FlowDestinationMap({
   flows,
   onFlowChange,
   onEditNode,
+  onOpenFlow,
   focusRequest,
   onRequestSettingsOpen,
   onFocusRequestApplied,
@@ -896,6 +1526,7 @@ export function FlowDestinationMap({
   flows: GuidedFlow[];
   onFlowChange: (patch: Partial<GuidedFlow>) => void;
   onEditNode: (flowId: string, nodeId: string) => void;
+  onOpenFlow: (flowId: string) => void;
   focusRequest?: MapFocusRequest | null;
   /** Wired by FlowMap to its settings toggle; safe to call repeatedly. */
   onRequestSettingsOpen?: () => void;
@@ -914,14 +1545,15 @@ export function FlowDestinationMap({
    * deep-link selection lands — one commit BEFORE the panel mounts, so the
    * panel would never see it. Manual selections below clear it.
    */
-  const [panelFocusRequest, setPanelFocusRequest] = useState<{ section?: MapFocusSection; requestId: number } | null>(
-    null,
-  );
+  const [panelFocusRequest, setPanelFocusRequest] = useState<{
+    section?: MapFocusSection;
+    targetId?: string;
+    requestId: number;
+  } | null>(null);
   const [addStageOpen, setAddStageOpen] = useState(false);
-  const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const addStageTriggerRef = useRef<HTMLButtonElement>(null);
+  const compactViewport = typeof window !== 'undefined' && window.innerWidth <= 620;
 
   const toggleSequence = useCallback((id: string) => {
     setExpandedSequences((current) => {
@@ -932,11 +1564,153 @@ export function FlowDestinationMap({
     });
   }, []);
 
+  const handleAddConnectedStage = useCallback(
+    (source: ConnectionSource, kind: FlowNode['kind']) => {
+      const { flow: nextFlow, nodeId: newNodeId } = addNode(flow, { kind, connectFrom: source });
+      onFlowChange({ nodes: nextFlow.nodes, ...(nextFlow.nodeOrder ? { nodeOrder: nextFlow.nodeOrder } : {}) });
+      setSelectedNodeId(newNodeId);
+      setPanelFocusRequest(null);
+    },
+    [flow, onFlowChange],
+  );
+
+  const handleApplyTerminalEffect = useCallback(
+    (source: ConnectionSource, destination: TerminalDestination) => {
+      const { flow: nextFlow, applied } = applyTerminalEffect(flow, source, destination);
+      if (applied) {
+        onFlowChange({ nodes: nextFlow.nodes });
+      }
+    },
+    [flow, onFlowChange],
+  );
+
+  const handleFocusSection = useCallback((nodeId: string, section: MapFocusSection, targetId?: string) => {
+    setSelectedNodeId(nodeId);
+    setPanelFocusRequest({ section, targetId, requestId: Date.now() });
+  }, []);
+
+  const handleAddOption = useCallback(
+    (nodeId: string) => {
+      const { flow: nextFlow, optionId } = addOption(flow, nodeId);
+      onFlowChange({ nodes: nextFlow.nodes });
+      setSelectedNodeId(nodeId);
+      setPanelFocusRequest({ section: 'opcao', targetId: optionId, requestId: Date.now() });
+    },
+    [flow, onFlowChange],
+  );
+
+  const handleAddBranch = useCallback(
+    (nodeId: string) => {
+      const { flow: nextFlow, branchId } = addBranch(flow, nodeId);
+      onFlowChange({ nodes: nextFlow.nodes });
+      setSelectedNodeId(nodeId);
+      setPanelFocusRequest({ section: 'faixa', targetId: branchId, requestId: Date.now() });
+    },
+    [flow, onFlowChange],
+  );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+      const sourceNode = flow.nodes[connection.source];
+      if (!sourceNode) return;
+
+      let source: ConnectionSource | undefined;
+      if (sourceNode.kind === 'choice') {
+        if (connection.sourceHandle === 'free-text') {
+          source = { kind: 'free_text', nodeId: sourceNode.id };
+        } else if (connection.sourceHandle) {
+          source = { kind: 'option', nodeId: sourceNode.id, optionId: connection.sourceHandle };
+        }
+      } else if (sourceNode.kind === 'score_branch') {
+        if (connection.sourceHandle) {
+          source = { kind: 'branch', nodeId: sourceNode.id, branchId: connection.sourceHandle };
+        }
+      }
+
+      if (!source) return;
+
+      if (connection.target.startsWith('destination:navigate:')) {
+        const dest = connection.target.replace('destination:navigate:', '') as '/apoio' | '/contatos' | '/educacao';
+        const { flow: nextFlow, applied } = applyTerminalEffect(flow, source, { kind: 'navigate', destination: dest });
+        if (applied) onFlowChange({ nodes: nextFlow.nodes });
+        return;
+      }
+
+      if (connection.target.startsWith('destination:flow_start:')) {
+        const targetFlowId = connection.target.replace('destination:flow_start:', '');
+        const { flow: nextFlow, applied } = applyTerminalEffect(flow, source, {
+          kind: 'flow_start',
+          flowId: targetFlowId,
+        });
+        if (applied) onFlowChange({ nodes: nextFlow.nodes });
+        return;
+      }
+
+      if (connection.target.startsWith('destination:end_flow:')) {
+        const { flow: nextFlow, applied } = applyTerminalEffect(flow, source, { kind: 'end_flow', message: '' });
+        if (applied) onFlowChange({ nodes: nextFlow.nodes });
+        return;
+      }
+
+      if (connection.target.startsWith('destination:result:')) {
+        const targetNodeId = connection.target.replace('destination:result:', '');
+        const { flow: nextFlow, connected } = connectSource(flow, source, targetNodeId);
+        if (connected) onFlowChange({ nodes: nextFlow.nodes });
+        return;
+      }
+
+      if (flow.nodes[connection.target]) {
+        const { flow: nextFlow, connected } = connectSource(flow, source, connection.target);
+        if (connected) {
+          onFlowChange({ nodes: nextFlow.nodes, ...(nextFlow.nodeOrder ? { nodeOrder: nextFlow.nodeOrder } : {}) });
+        }
+      }
+    },
+    [flow, onFlowChange],
+  );
+
   const presentation = useMemo(
     () =>
-      createPresentation(analysis, flow, expandedSequences, search, selectedDestination, showLabels, toggleSequence),
-    [analysis, expandedSequences, flow, search, selectedDestination, showLabels, toggleSequence],
+      createPresentation(
+        analysis,
+        flow,
+        flows,
+        expandedSequences,
+        search,
+        selectedDestination,
+        showLabels,
+        toggleSequence,
+        onOpenFlow,
+        handleAddConnectedStage,
+        handleApplyTerminalEffect,
+        handleAddOption,
+        handleAddBranch,
+        selectedNodeId,
+        panelFocusRequest,
+        handleFocusSection,
+      ),
+    [
+      analysis,
+      expandedSequences,
+      flow,
+      flows,
+      handleAddBranch,
+      handleAddConnectedStage,
+      handleAddOption,
+      handleApplyTerminalEffect,
+      handleFocusSection,
+      onOpenFlow,
+      panelFocusRequest,
+      search,
+      selectedDestination,
+      selectedNodeId,
+      showLabels,
+      toggleSequence,
+    ],
   );
+  const [nodes, setNodes, onNodesChange] = useNodesState<DestinationRFNode>(presentation.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<DestinationRFEdge>(presentation.edges);
   useEffect(() => {
     setNodes(presentation.nodes);
     setEdges(presentation.edges);
@@ -944,8 +1718,13 @@ export function FlowDestinationMap({
 
   const selectedNode = selectedNodeId ? (flow.nodes[selectedNodeId] ?? null) : null;
   const selectedDestinationData = analysis.destinations.find((destination) => destination.id === selectedDestination);
+  const unreachableNodes = analysis.nodes.filter((node) => !node.reachable && node.node);
   const handleNodeClick: NodeMouseHandler<DestinationRFNode> = useCallback(
-    (_event, node) => {
+    (event, node) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button, [role="menu"], .flow-destination-quick-menu, .nodrag, .nopan')) {
+        return;
+      }
       if (flow.nodes[node.id]) {
         setSelectedNodeId(node.id);
         setPanelFocusRequest(null);
@@ -1019,7 +1798,7 @@ export function FlowDestinationMap({
         <div className="flow-destination-map__empty">
           <Unplug aria-hidden="true" />
           <h3>Este fluxo ainda não possui etapas.</h3>
-          <p>Use o botão + Etapa acima para organizar seus destinos.</p>
+          <p>Use o botão + Criar sem conectar acima para organizar seus destinos.</p>
         </div>
       </section>
     );
@@ -1049,31 +1828,40 @@ export function FlowDestinationMap({
       <div className="flow-destination-map__destinations" aria-label="Índice de destinos">
         <div className="flow-destination-map__destinations-heading">
           <span>Destinos</span>
-          <small>{analysis.destinations.length} encontrados</small>
+          <small>{analysis.destinations.filter((destination) => destination.reachable).length} alcançáveis</small>
         </div>
         <div className="flow-destination-map__destination-list">
-          {analysis.destinations.map((destination) => (
-            <button
-              key={destination.id}
-              type="button"
-              className={`flow-destination-chip flow-destination-chip--${destination.kind} ${selectedDestination === destination.id ? 'is-selected' : ''}`}
-              onClick={() => setSelectedDestination(selectedDestination === destination.id ? null : destination.id)}
-              aria-pressed={selectedDestination === destination.id}
-            >
-              {destination.kind === 'safety_interrupt' || destination.kind === 'deferred_safety' ? (
-                <ShieldAlert aria-hidden="true" />
-              ) : destination.kind === 'navigate' || destination.kind === 'flow_start' ? (
-                <ExternalLink aria-hidden="true" />
-              ) : destination.kind === 'missing' ? (
-                <AlertTriangle aria-hidden="true" />
-              ) : (
-                <Flag aria-hidden="true" />
-              )}
-              {destination.label}
-              {selectedDestination === destination.id && <Check aria-hidden="true" />}
-            </button>
-          ))}
-          {analysis.destinations.length === 0 && (
+          {analysis.destinations
+            .filter((destination) => destination.reachable)
+            .map((destination) => (
+              <button
+                key={destination.id}
+                type="button"
+                className={`flow-destination-chip flow-destination-chip--${destination.kind} ${selectedDestination === destination.id ? 'is-selected' : ''}`}
+                aria-label={destination.kind === 'flow_start' ? `Abrir ${destination.label}` : undefined}
+                onClick={() => {
+                  if (destination.kind === 'flow_start' && destination.flowId) {
+                    onOpenFlow(destination.flowId);
+                    return;
+                  }
+                  setSelectedDestination(selectedDestination === destination.id ? null : destination.id);
+                }}
+                aria-pressed={destination.kind === 'flow_start' ? undefined : selectedDestination === destination.id}
+              >
+                {destination.kind === 'safety_interrupt' || destination.kind === 'deferred_safety' ? (
+                  <ShieldAlert aria-hidden="true" />
+                ) : destination.kind === 'navigate' || destination.kind === 'flow_start' ? (
+                  <ExternalLink aria-hidden="true" />
+                ) : destination.kind === 'missing' ? (
+                  <AlertTriangle aria-hidden="true" />
+                ) : (
+                  <Flag aria-hidden="true" />
+                )}
+                {destination.label}
+                {selectedDestination === destination.id && <Check aria-hidden="true" />}
+              </button>
+            ))}
+          {analysis.destinations.filter((destination) => destination.reachable).length === 0 && (
             <span className="flow-destination-map__no-destinations">Nenhum destino terminal foi calculado.</span>
           )}
         </div>
@@ -1086,7 +1874,7 @@ export function FlowDestinationMap({
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar etapa, ID ou texto"
+            placeholder="Buscar etapa, identificador ou texto"
             aria-label="Buscar etapa"
           />
         </label>
@@ -1097,7 +1885,7 @@ export function FlowDestinationMap({
           onClick={() => setShowLabels((current) => !current)}
         >
           <span className="flow-destination-map__toggle-mark">{showLabels && <Check aria-hidden="true" />}</span>{' '}
-          Mostrar rótulos das opções
+          Mostrar destinos nas opções
         </button>
         <button
           type="button"
@@ -1130,7 +1918,7 @@ export function FlowDestinationMap({
             onKeyDown={handleAddStageKeyDown}
             onClick={() => setAddStageOpen((current) => !current)}
           >
-            <Plus aria-hidden="true" /> Etapa
+            <Plus aria-hidden="true" /> Criar sem conectar
           </button>
           {addStageOpen && (
             <div className="absolute right-0 top-full z-20 mt-1 flex w-40 flex-col gap-1 rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 shadow-lg">
@@ -1168,17 +1956,36 @@ export function FlowDestinationMap({
         </p>
       )}
 
+      {unreachableNodes.length > 0 && (
+        <div className="flow-destination-map__unreachable-strip" aria-label="Etapas fora do caminho de entrada">
+          <span>
+            <AlertTriangle aria-hidden="true" /> Fora da entrada
+          </span>
+          <div>
+            {unreachableNodes.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="nodrag nopan"
+                onClick={() => {
+                  setSelectedNodeId(item.id);
+                  setPanelFocusRequest(null);
+                }}
+              >
+                Etapa {item.order + 1} <small>{textPreview(item.node?.text ?? item.id, 34)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div
         ref={canvasRef}
         className={`flow-destination-map__canvas ${selectedNode ? 'flow-destination-map__canvas--with-panel' : ''}`}
         aria-label={`Mapa por destino do fluxo ${flow.title}`}
       >
-        <div className="flow-destination-map__depth-labels" aria-hidden="true">
-          <span>Entrada</span>
-          {Array.from({ length: presentation.maxDisplayDepth }, (_, index) => (
-            <span key={index}>Prof. {index + 1}</span>
-          ))}
-          <span>Finais e saídas</span>
+        <div className="flow-destination-map__canvas-guide" aria-hidden="true">
+          Arraste para navegar · clique em uma etapa para editar
         </div>
         <ReactFlow
           nodes={nodes}
@@ -1187,23 +1994,18 @@ export function FlowDestinationMap({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
-          fitView
-          fitViewOptions={{ padding: 0.18, maxZoom: 0.84 }}
+          onConnect={onConnect}
+          fitView={!compactViewport}
+          defaultViewport={compactViewport ? { x: 20, y: 24, zoom: 0.72 } : undefined}
+          fitViewOptions={{ padding: 0.14, maxZoom: 1.08 }}
           minZoom={0.18}
           maxZoom={1.5}
           proOptions={{ hideAttribution: false }}
         >
           <Background color="var(--color-outline-variant)" gap={28} size={1} />
           <Controls showInteractive={false} />
-          <MiniMap pannable zoomable ariaLabel="Minimapa do fluxo" />
+          {nodes.length > 10 && <MiniMap pannable zoomable ariaLabel="Minimapa do fluxo" />}
         </ReactFlow>
-        {analysis.nodes.some((node) => !node.reachable) && (
-          <div className="flow-destination-map__unreachable">
-            <AlertTriangle aria-hidden="true" />
-            <strong>Fora do caminho de entrada</strong>
-            <span>{analysis.nodes.filter((node) => !node.reachable).length} etapas inalcançáveis</span>
-          </div>
-        )}
       </div>
 
       {selectedDestinationData && (

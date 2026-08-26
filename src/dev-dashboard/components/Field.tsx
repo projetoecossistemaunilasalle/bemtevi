@@ -17,6 +17,7 @@ export function Field({
   htmlFor,
   hint,
   issues,
+  validationPath,
   children,
   className = '',
 }: {
@@ -25,6 +26,8 @@ export function Field({
   htmlFor?: string;
   hint?: ReactNode;
   issues?: FieldIssues;
+  /** Dotted validation path used by summary actions to find this field. */
+  validationPath?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -36,7 +39,10 @@ export function Field({
   const describedBy = [hint ? hintId : null, hasError ? errorId : null].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
+    <div
+      data-validation-path={validationPath}
+      className={`dashboard-validation-target flex flex-col gap-2 ${className}`}
+    >
       {label ? (
         <label htmlFor={htmlFor} className="font-label-md text-on-surface">
           {label}

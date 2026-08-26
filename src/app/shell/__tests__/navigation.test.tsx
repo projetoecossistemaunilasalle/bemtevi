@@ -50,7 +50,7 @@ describe('app navigation', () => {
     renderNavigation(<TopBar />);
 
     expect(await screen.findByRole('navigation', { name: /navegação principal/i })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /painel/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/admin@bemtevi.test/i)).not.toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe('app navigation', () => {
     renderNavigation(<TopBar />, admin);
 
     const desktopNav = await screen.findByRole('navigation', { name: /navegação principal/i });
-    expect(within(desktopNav).getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/dashboard');
+    expect(within(desktopNav).getByRole('link', { name: /painel/i })).toHaveAttribute('href', '/dashboard');
     expect(await screen.findByText('admin@bemtevi.test')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /ver site/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe('app navigation', () => {
     renderNavigation(<BottomNav />, admin);
 
     expect(await screen.findByRole('navigation', { name: /navegação principal/i })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /painel/i })).not.toBeInTheDocument();
   });
 
   it('logs out and removes admin navigation immediately', async () => {
@@ -85,7 +85,7 @@ describe('app navigation', () => {
 
     expect(service.logout).toHaveBeenCalledOnce();
     expect(screen.queryByText('admin@bemtevi.test')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /painel/i })).not.toBeInTheDocument();
 
     rejectLogout?.(new Error('network unavailable'));
     await Promise.resolve();

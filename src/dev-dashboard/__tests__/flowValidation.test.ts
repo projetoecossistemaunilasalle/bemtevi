@@ -37,7 +37,8 @@ describe('validateDashboardFlows', () => {
     expect(result.errors).toContainEqual(
       expect.objectContaining({
         id: 'duplicate-flow-id:base-flow',
-        message: 'Existe mais de um fluxo com o ID "base-flow".',
+        message:
+          'Existe mais de um fluxo com o identificador "base-flow". Remova um dos fluxos duplicados e crie-o novamente.',
       }),
     );
   });

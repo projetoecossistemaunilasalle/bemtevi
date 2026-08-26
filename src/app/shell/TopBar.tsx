@@ -11,7 +11,7 @@ function getNavItems(showDashboard: boolean) {
     { to: routes.education, label: 'Materiais', Icon: GraduationCap },
     { to: routes.contacts, label: 'Contatos', Icon: Users },
     { to: routes.support, label: 'Apoio', Icon: HeartHandshake },
-    ...(showDashboard ? [{ to: routes.dashboard, label: 'Dashboard', Icon: Gauge }] : []),
+    ...(showDashboard ? [{ to: routes.dashboard, label: 'Painel', Icon: Gauge }] : []),
   ];
 }
 
@@ -66,7 +66,7 @@ export function TopBar() {
                 to={routes.dashboard}
                 className="md:hidden min-h-9 rounded-full px-2 py-2 font-label-md text-primary hover:bg-surface"
               >
-                Dashboard
+                Painel
               </Link>
               <button
                 type="button"

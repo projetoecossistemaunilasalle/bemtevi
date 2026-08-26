@@ -766,9 +766,9 @@ export function FlowEditor({
                                   type="button"
                                   variant="secondary"
                                   onClick={() => handleOpenOptionEdit(node, option.id)}
-                                  aria-label={`Ações/Score da opção ${optionIndex + 1} da ${stepLabel}`}
+                                  aria-label={`Ações e pontuação da opção ${optionIndex + 1} da ${stepLabel}`}
                                 >
-                                  Ações/Score
+                                  Ações e pontuação
                                   <Settings size={16} aria-hidden="true" />
                                 </Button>
                               </div>
@@ -781,7 +781,7 @@ export function FlowEditor({
                                 )}
                                 {option.effects?.some((effect) => effect.kind === 'score') && (
                                   <span className="rounded bg-secondary-container px-2 py-0.5 text-xs font-label-sm text-on-secondary-container">
-                                    {`[+${option.effects.find((e) => e.kind === 'score')?.value ?? 1} score]`}
+                                    {`[+${option.effects.find((e) => e.kind === 'score')?.value ?? 1} ponto(s)]`}
                                   </span>
                                 )}
                               </div>
@@ -789,7 +789,7 @@ export function FlowEditor({
                               <div className="flex flex-wrap items-center gap-2 rounded bg-primary px-3 py-2 text-on-primary font-label-sm">
                                 <span className="flex items-center gap-1.5">
                                   <ArrowRight size={14} aria-hidden="true" />
-                                  Destino Principal:
+                                  Destino principal:
                                 </span>
                                 <select
                                   aria-label={
@@ -1076,7 +1076,7 @@ export function FlowEditor({
 
                   {/* Score / Pontuação effect configuration */}
                   <div className="flex flex-col gap-2 border-t border-outline-variant/40 pt-4">
-                    <p className="font-label-md text-on-surface font-semibold">Pontuação (Score)</p>
+                    <p className="font-label-md text-on-surface font-semibold">Pontuação</p>
                     {scoreEffect ? (
                       <div className="grid gap-2 grid-cols-2">
                         <label className="flex flex-col gap-1">

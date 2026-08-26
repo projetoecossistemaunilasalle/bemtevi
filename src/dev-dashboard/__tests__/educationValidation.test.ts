@@ -34,7 +34,8 @@ describe('validateDashboardEducation', () => {
     expect(result.errors).toContainEqual(
       expect.objectContaining({
         id: 'duplicate-material-id:resource-one',
-        message: 'Existe mais de um material com o ID "resource-one".',
+        message:
+          'Existe mais de um material com o identificador "resource-one". Remova um dos materiais duplicados e crie-o novamente.',
       }),
     );
   });
@@ -45,7 +46,7 @@ describe('validateDashboardEducation', () => {
     expect(result.warnings).toContainEqual(
       expect.objectContaining({
         id: 'empty-tags:resource-one',
-        message: 'Este material ainda não tem tags.',
+        message: 'Este material ainda não tem marcadores.',
       }),
     );
   });

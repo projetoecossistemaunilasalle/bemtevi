@@ -130,6 +130,7 @@ export function FlowMap({
           flows={flows}
           onFlowChange={onFlowChange}
           onEditNode={onEditNode}
+          onOpenFlow={onSelectFlow}
           focusRequest={pendingFocusRequest}
           onRequestSettingsOpen={() => setSettingsOpen(true)}
           onFocusRequestApplied={() => setPendingFocusRequest(null)}

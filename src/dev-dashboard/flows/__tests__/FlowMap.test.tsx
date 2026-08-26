@@ -64,7 +64,8 @@ describe('FlowMap', () => {
 
     expect(screen.getByRole('button', { name: /visão geral/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('flow-overview-canvas')).toBeInTheDocument();
-    expect(screen.getByText('2', { selector: '.flow-overview__summary strong' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Resumo do sistema')).toHaveTextContent('2 fluxos');
+    expect(screen.getByLabelText('Resumo do sistema')).toHaveTextContent('1 relação');
   });
 
   function renderFlowMap(focusRequest?: Parameters<typeof FlowMap>[0]['focusRequest']) {

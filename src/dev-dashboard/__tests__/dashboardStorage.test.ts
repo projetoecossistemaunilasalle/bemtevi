@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
@@ -12,8 +12,12 @@ import {
   loadDashboardDrafts,
   mergeDashboardDrafts,
   resetDashboardDrafts,
+  restoreDraftFromIndexedDbFallback,
   saveDashboardDrafts,
+  exportDraftAsJson,
+  importDraftFromJson,
 } from '../draft-storage/dashboardStorage';
+import * as draftDbModule from '../draft-storage/draftDb';
 import { getShippedDashboardContent } from '../content/shippedContent';
 import { buildExportBundle } from '../export/exportBundle';
 
@@ -483,7 +487,8 @@ describe('dashboardStorage', () => {
 
   it('includes Canoas services in shipped contacts', () => {
     expect(getShippedDashboardContent().contacts).toMatchObject(canoasServices.services);
-    expect(getShippedDashboardContent().locations).toEqual([{ id: 'loc-canoas-rs', city: 'Canoas', state: 'RS' }]);
+    expect(getShippedDashboardContent().locations.some((l) => l.city === 'Canoas')).toBe(true);
+    expect(getShippedDashboardContent().locations.length).toBeGreaterThan(0);
   });
 
   it('includes group and contact draft collections in draft state', () => {
@@ -641,5 +646,129 @@ describe('dashboardStorage', () => {
     expect(loaded.addedContacts).toEqual([]);
     expect(loaded.removedContactIds).toEqual([]);
     expect(loaded.updatedAt).toBeNull();
+  });
+
+  it('starts with an empty draft when browser storage is unavailable', () => {
+    const unavailableStorage = {
+      getItem() {
+        throw new DOMException('Storage unavailable');
+      },
+    } as unknown as Storage;
+
+    expect(loadDashboardDrafts(unavailableStorage)).toEqual(createEmptyDashboardDraftState());
+  });
+
+  it('exports and imports draft JSON faithfully', () => {
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      flowPatches: [{ id: 'flow-one', sourceIndex: 0, sourceIdUnique: true, patch: { title: 'Flow Backup' } }],
+      contactPatches: [{ id: 'contact-one', sourceIndex: 0, sourceIdUnique: true, patch: { name: 'Contact Backup' } }],
+      addedEducationMaterials: [{ id: 'material-local-1', title: 'Local Mat' } as EducationResource],
+      updatedAt: '2026-08-26T12:00:00.000Z',
+    };
+
+    const json = exportDraftAsJson(draft);
+    expect(typeof json).toBe('string');
+    const imported = importDraftFromJson(json);
+    expect(imported.flowPatches).toEqual(draft.flowPatches);
+    expect(imported.contactPatches).toEqual(draft.contactPatches);
+    expect(imported.addedEducationMaterials).toEqual(draft.addedEducationMaterials);
+  });
+
+  it('keeps unique education material and flow patches after shipped order shifts', () => {
+    const originalMaterial = { id: 'mat-orig', title: 'Original Material' } as EducationResource;
+    const insertedMaterial = { id: 'mat-inserted', title: 'Inserted Material' } as EducationResource;
+    const originalFlow = { id: 'flow-orig', title: 'Original Flow' } as GuidedFlow;
+    const insertedFlow = { id: 'flow-inserted', title: 'Inserted Flow' } as GuidedFlow;
+
+    const draft: DashboardDraftState = {
+      ...emptyDraft,
+      educationMaterialPatches: [
+        { id: 'mat-orig', sourceIndex: 0, sourceIdUnique: true, patch: { title: 'Edited Mat' } },
+      ],
+      flowPatches: [{ id: 'flow-orig', sourceIndex: 0, sourceIdUnique: true, patch: { title: 'Edited Flow' } }],
+    };
+
+    const shipped = {
+      flows: [insertedFlow, originalFlow],
+      educationMaterials: [insertedMaterial, originalMaterial],
+      educationGroups: [],
+      contacts: [],
+    };
+
+    const merged = mergeDashboardDrafts(shipped, draft);
+    expect(merged.educationMaterials[1]).toEqual({ ...originalMaterial, title: 'Edited Mat' });
+    expect(merged.flows[1]).toEqual({ ...originalFlow, title: 'Edited Flow' });
+  });
+
+  it('saves lightweight draft without basePayload if full draft exceeds storage quota', () => {
+    let callCount = 0;
+    const mockStorage = {
+      getItem: vi.fn(),
+      setItem: vi.fn((_key: string, _val: string) => {
+        callCount++;
+        if (callCount === 1) {
+          throw new DOMException('QuotaExceededError');
+        }
+      }),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(),
+      length: 0,
+    } as unknown as Storage;
+
+    const heavyDraft: DashboardDraftState = {
+      ...emptyDraft,
+      basePayload: {
+        flows: [],
+        educationMaterials: [],
+        educationGroups: [],
+        contacts: [],
+        locations: [],
+        defaultGroupOrder: 0,
+      },
+      flowPatches: [{ id: 'flow-1', patch: { title: 'Patched' } }],
+    };
+
+    saveDashboardDrafts(heavyDraft, mockStorage);
+    expect(mockStorage.setItem).toHaveBeenCalledTimes(2);
+    const saved = JSON.parse((mockStorage.setItem as ReturnType<typeof vi.fn>).mock.calls[1][1] as string);
+    expect(saved.basePayload).toBeUndefined();
+    expect(saved.flowPatches).toEqual(heavyDraft.flowPatches);
+  });
+
+  it('restores draft from IndexedDB fallback when localStorage is empty', async () => {
+    const dbDraft: DashboardDraftState = {
+      ...emptyDraft,
+      flowPatches: [{ id: 'flow-1', patch: { title: 'Restored from DB' } }],
+      updatedAt: '2026-08-26T12:00:00.000Z',
+    };
+    const spy = vi.spyOn(draftDbModule, 'loadDraftFromIndexedDb').mockResolvedValueOnce(dbDraft);
+
+    const restored = await restoreDraftFromIndexedDbFallback();
+    expect(restored).toEqual(dbDraft);
+    expect(loadDashboardDrafts().flowPatches).toEqual(dbDraft.flowPatches);
+    spy.mockRestore();
+  });
+
+  it('does not overwrite newer localStorage draft with older IndexedDB draft', async () => {
+    const localDraft: DashboardDraftState = {
+      ...emptyDraft,
+      flowPatches: [{ id: 'flow-1', patch: { title: 'Newer local draft' } }],
+      updatedAt: '2026-08-26T14:00:00.000Z',
+    };
+    saveDashboardDrafts(localDraft);
+
+    const olderDbDraft: DashboardDraftState = {
+      ...emptyDraft,
+      flowPatches: [{ id: 'flow-1', patch: { title: 'Older DB draft' } }],
+      updatedAt: '2026-08-26T12:00:00.000Z',
+    };
+    const spy = vi.spyOn(draftDbModule, 'loadDraftFromIndexedDb').mockResolvedValueOnce(olderDbDraft);
+
+    const restored = await restoreDraftFromIndexedDbFallback();
+    expect(restored).toBeNull();
+    expect(loadDashboardDrafts().flowPatches[0].patch.title).toBe('Newer local draft');
+    spy.mockRestore();
   });
 });

@@ -14,3 +14,4 @@ coverage/
 !.env.example
 .neon
 .codex-remote-attachments/
+.impeccable/

@@ -12,11 +12,13 @@ export function validateDashboardEducation(resources: EducationResource[], group
   const issues: DashboardValidationIssue[] = [];
 
   findDuplicateIds(resources.map((resource) => resource.id)).forEach((id) => {
+    const duplicateIndex = resources.findLastIndex((resource) => resource.id === id);
     issues.push({
       level: 'error',
       area: 'education',
       id: `duplicate-material-id:${id}`,
-      message: `Existe mais de um material com o ID "${id}".`,
+      message: `Existe mais de um material com o identificador "${id}". Remova um dos materiais duplicados e crie-o novamente.`,
+      path: duplicateIndex >= 0 ? `materials.${duplicateIndex}` : undefined,
     });
   });
 
@@ -40,7 +42,7 @@ export function validateDashboardEducation(resources: EducationResource[], group
         level: 'warning',
         area: 'education',
         id: `empty-tags:${resource.id}`,
-        message: 'Este material ainda não tem tags.',
+        message: 'Este material ainda não tem marcadores.',
         path: `${resource.id}.tags`,
       });
     }
@@ -99,11 +101,13 @@ export function validateDashboardEducation(resources: EducationResource[], group
 
   const groupIds = groups.map((g) => g.id);
   findDuplicateIds(groupIds).forEach((id) => {
+    const duplicateIndex = groups.findLastIndex((group) => group.id === id);
     issues.push({
       level: 'error',
       area: 'education',
       id: `duplicate-group-id:${id}`,
-      message: `Existe mais de um grupo com o ID "${id}".`,
+      message: `Existe mais de um grupo com o identificador "${id}". Remova um dos grupos duplicados e crie-o novamente.`,
+      path: duplicateIndex >= 0 ? `groups.${duplicateIndex}` : undefined,
     });
   });
 
@@ -113,7 +117,8 @@ export function validateDashboardEducation(resources: EducationResource[], group
         level: 'error',
         area: 'education',
         id: `reserved-group-id:${DEFAULT_EDUCATION_GROUP_ID}`,
-        message: `O ID "${DEFAULT_EDUCATION_GROUP_ID}" é reservado e não pode ser usado.`,
+        message: `O identificador "${DEFAULT_EDUCATION_GROUP_ID}" é reservado e não pode ser usado.`,
+        path: `groups.${groups.findIndex((candidate) => candidate === group)}`,
       });
     }
 
@@ -123,6 +128,7 @@ export function validateDashboardEducation(resources: EducationResource[], group
         area: 'education',
         id: `empty-group-title:${group.id}`,
         message: `O grupo "${group.id}" não tem título.`,
+        path: `groups.${groups.findIndex((candidate) => candidate === group)}.title`,
       });
     }
   });
@@ -139,6 +145,7 @@ export function validateDashboardEducation(resources: EducationResource[], group
         area: 'education',
         id: `dangling-group:${resource.id}`,
         message: `O material "${resource.id}" referencia o grupo "${resource.group}", que não existe.`,
+        path: `${resource.id}.group`,
       });
     }
   });

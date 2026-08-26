@@ -170,8 +170,8 @@ export function AnalyticsDashboard({ repository = defaultPageViewRepository }: {
           <h3 className="font-headline-sm text-on-surface">Somente dados agregados</h3>
           <p className="font-body-md text-on-surface-variant">
             Estas estatísticas guardam apenas contagens por página e dia. Não registram identidade, cookies de
-            rastreamento, IDs de usuário ou sessão, respostas, conversas, escola, localização ou histórico individual de
-            navegação.
+            rastreamento, identificadores de usuário ou sessão, respostas, conversas, escola, localização ou histórico
+            individual de navegação.
           </p>
         </div>
       </aside>
@@ -215,6 +215,9 @@ export function AnalyticsDashboard({ repository = defaultPageViewRepository }: {
         <Card className="border-error/30 bg-error-container/20 p-5" role="alert">
           <h3 className="font-headline-sm text-on-error-container">Estatísticas indisponíveis</h3>
           <p className="mt-1 font-body-md text-on-error-container">{state.message}</p>
+          <Button className="mt-3" variant="secondary" size="sm" onClick={refresh}>
+            Tentar carregar novamente
+          </Button>
         </Card>
       ) : null}
 

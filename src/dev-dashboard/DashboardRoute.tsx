@@ -1,16 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { Page } from '../design-system/components/Page';
 import { PageHeader } from '../design-system/components/PageHeader';
 import { DashboardShell, type DashboardTab } from './components/DashboardShell';
 import {
+  createEmptyDashboardDraftState,
   type DashboardRecordPatch,
   type DashboardDraftState,
+  DASHBOARD_STORAGE_KEY,
+  exportDraftAsJson,
   hasDashboardChanges,
+  importDraftFromJson,
   loadDashboardDrafts,
   mergeDashboardDrafts,
   resetDashboardDrafts,
+  restoreDraftFromIndexedDbFallback,
   saveDashboardDrafts,
 } from './draft-storage/dashboardStorage';
+import { Button } from '../design-system/components/Button';
+import { AlertCircle, Download, Info, Upload } from 'lucide-react';
 import { EducationDashboard } from './education/EducationDashboard';
 import { validateDashboardEducation } from './education/educationValidation';
 import { ExportDashboard } from './export/ExportDashboard';
@@ -32,6 +40,7 @@ import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
 import { normalizeContactLocations } from '../domain/services/locations';
 import type { PublishedContentSnapshot } from '../app/content/publishedContent';
 import type { DashboardShippedContent } from './content/shippedContent';
+import { scheduleValidationSummaryScroll } from './validation/validationNavigation';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -44,9 +53,8 @@ function upsertPatchById<T extends { id: string }>(
   const sameIdIndexes = records.flatMap((record, index) => (record.id === id ? [index] : []));
   const rebaseIndex =
     existingIndex === -1 &&
-    sourceIdUnique === true &&
     sameIdIndexes.length === 1 &&
-    records[sameIdIndexes[0]]?.sourceIdUnique === true
+    (sourceIdUnique === true || (sourceIdUnique === undefined && records[sameIdIndexes[0]]?.sourceIdUnique !== false))
       ? sameIdIndexes[0]
       : -1;
   const targetIndex = existingIndex === -1 ? rebaseIndex : existingIndex;
@@ -167,6 +175,7 @@ function resolveEducationResourceOrigin(
   addedResources: Array<{ id: string }>,
   removedResourceIds: readonly string[],
   mergedIndex: number,
+  id?: string,
 ): EducationResourceOrigin | undefined {
   const removedIds = new Set(removedResourceIds);
   const origins: EducationResourceOrigin[] = [];
@@ -178,6 +187,15 @@ function resolveEducationResourceOrigin(
     if (!removedIds.has(resource.id)) origins.push({ kind: 'added', addedIndex, id: resource.id });
   });
 
+  if (origins[mergedIndex] && (!id || origins[mergedIndex]?.id === id)) {
+    return origins[mergedIndex];
+  }
+  if (id) {
+    const addedIndex = addedResources.findIndex((r) => r.id === id);
+    if (addedIndex >= 0) return { kind: 'added', addedIndex, id };
+    const sourceIndex = shippedResources.findIndex((r) => r.id === id);
+    if (sourceIndex >= 0) return { kind: 'shipped', sourceIndex, id };
+  }
   return origins[mergedIndex];
 }
 
@@ -186,6 +204,7 @@ function resolveContactOrigin(
   addedContacts: Array<{ id: string }>,
   removedContactIds: readonly string[],
   mergedIndex: number,
+  id?: string,
 ): ContactOrigin | undefined {
   const removedIds = new Set(removedContactIds);
   const origins: ContactOrigin[] = [];
@@ -197,6 +216,15 @@ function resolveContactOrigin(
     if (!removedIds.has(contact.id)) origins.push({ kind: 'added', addedIndex, id: contact.id });
   });
 
+  if (origins[mergedIndex] && (!id || origins[mergedIndex]?.id === id)) {
+    return origins[mergedIndex];
+  }
+  if (id) {
+    const addedIndex = addedContacts.findIndex((c) => c.id === id);
+    if (addedIndex >= 0) return { kind: 'added', addedIndex, id };
+    const sourceIndex = shippedContacts.findIndex((c) => c.id === id);
+    if (sourceIndex >= 0) return { kind: 'shipped', sourceIndex, id };
+  }
   return origins[mergedIndex];
 }
 
@@ -205,6 +233,7 @@ function resolveLocationOrigin(
   addedLocations: Array<{ id: string }>,
   removedLocationIds: readonly string[],
   mergedIndex: number,
+  id?: string,
 ): LocationOrigin | undefined {
   const removedIds = new Set(removedLocationIds);
   const origins: LocationOrigin[] = [];
@@ -216,11 +245,21 @@ function resolveLocationOrigin(
     if (!removedIds.has(location.id)) origins.push({ kind: 'added', addedIndex, id: location.id });
   });
 
+  if (origins[mergedIndex] && (!id || origins[mergedIndex]?.id === id)) {
+    return origins[mergedIndex];
+  }
+  if (id) {
+    const addedIndex = addedLocations.findIndex((l) => l.id === id);
+    if (addedIndex >= 0) return { kind: 'added', addedIndex, id };
+    const sourceIndex = shippedLocations.findIndex((l) => l.id === id);
+    if (sourceIndex >= 0) return { kind: 'shipped', sourceIndex, id };
+  }
   return origins[mergedIndex];
 }
 
 export function DashboardRoute() {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { content: baseline, snapshot } = usePublishedContent();
   const publishMode = getDashboardPublishMode();
   const shipped = useMemo(() => {
@@ -236,7 +275,63 @@ export function DashboardRoute() {
     };
   }, [baseline]);
   const [draftState, setDraftState] = useState(() => loadDashboardDrafts());
+  const [storageError, setStorageError] = useState<string | null>(null);
   const mergedDrafts = useMemo(() => mergeDashboardDrafts(shipped, draftState), [draftState, shipped]);
+
+  useEffect(() => {
+    let active = true;
+    void restoreDraftFromIndexedDbFallback().then((restored) => {
+      if (!active || !restored) return;
+      setDraftState((current) => {
+        if (hasDashboardChanges(current)) return current;
+        return restored;
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleStorageChange(event: StorageEvent) {
+      if (event.key !== DASHBOARD_STORAGE_KEY) return;
+      if (event.newValue === null) {
+        setDraftState(createEmptyDashboardDraftState());
+        return;
+      }
+      try {
+        const nextDraft = loadDashboardDrafts({
+          getItem: () => event.newValue,
+          setItem: () => {},
+          removeItem: () => {},
+          clear: () => {},
+          key: () => null,
+          length: 1,
+        });
+        setDraftState((current) => {
+          if (nextDraft.updatedAt && current.updatedAt) {
+            const nextTime = new Date(nextDraft.updatedAt).getTime();
+            const currentTime = new Date(current.updatedAt).getTime();
+            if (nextTime <= currentTime) return current;
+          }
+          return nextDraft;
+        });
+      } catch {
+        // Ignore malformed storage payload from external tab
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const hasBackgroundRevision =
+    snapshot !== null &&
+    typeof draftState.baseRevision === 'number' &&
+    snapshot.revision > draftState.baseRevision &&
+    hasDashboardChanges(draftState);
 
   function setActiveTab(tab: DashboardTab) {
     setActiveTabState(tab);
@@ -256,7 +351,16 @@ export function DashboardRoute() {
         updatedAt: new Date().toISOString(),
       };
 
-      saveDashboardDrafts(next);
+      try {
+        saveDashboardDrafts(next);
+        queueMicrotask(() => setStorageError(null));
+      } catch {
+        queueMicrotask(() =>
+          setStorageError(
+            'Não foi possível salvar o rascunho no localStorage deste navegador. Uma cópia de segurança está no banco de dados local (IndexedDB) e na memória desta página.',
+          ),
+        );
+      }
       return next;
     });
   }
@@ -318,7 +422,16 @@ export function DashboardRoute() {
         basePayload: nextSnapshot.payload,
         updatedAt: new Date().toISOString(),
       };
-      saveDashboardDrafts(next);
+      try {
+        saveDashboardDrafts(next);
+        queueMicrotask(() => setStorageError(null));
+      } catch {
+        queueMicrotask(() =>
+          setStorageError(
+            'O conteúdo publicado foi atualizado, mas não foi possível salvar a nova base do rascunho no localStorage.',
+          ),
+        );
+      }
       return next;
     });
   }
@@ -329,10 +442,74 @@ export function DashboardRoute() {
     contacts: contactValidation.errors.length,
   };
 
+  function retryDraftSave() {
+    try {
+      saveDashboardDrafts(draftState);
+      setStorageError(null);
+    } catch {
+      setStorageError(
+        'O navegador ainda não permite salvar o rascunho no localStorage. Verifique o espaço disponível ou baixe uma cópia de segurança em arquivo.',
+      );
+    }
+  }
+
+  function handleDownloadBackup() {
+    const json = exportDraftAsJson(draftState);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `bemtevi-rascunho-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleRestoreBackupFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result ?? '');
+        const imported = importDraftFromJson(text);
+        setDraftState(imported);
+        saveDashboardDrafts(imported);
+        setStorageError(null);
+      } catch (err) {
+        setStorageError(err instanceof Error ? err.message : 'Falha ao restaurar rascunho do arquivo.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function resetLocalDrafts() {
+    try {
+      setDraftState(resetDashboardDrafts());
+      setStorageError(null);
+    } catch {
+      setStorageError(
+        'Não foi possível apagar o rascunho deste navegador. Nada foi descartado; verifique a permissão de armazenamento e tente novamente.',
+      );
+    }
+  }
+
+  function clearDraftsAfterPublication() {
+    try {
+      setDraftState(resetDashboardDrafts());
+      setStorageError(null);
+    } catch {
+      setDraftState(createEmptyDashboardDraftState());
+      setStorageError(
+        'A publicação foi concluída, mas o navegador não conseguiu apagar a cópia local antiga. Evite recarregar a página até liberar o armazenamento.',
+      );
+    }
+  }
+
   return (
     <Page>
       <PageHeader
-        title="Dashboard"
+        title="Painel administrativo"
         description="Gerencie o conteúdo publicado e consulte estatísticas agregadas de acesso."
       />
       <DashboardShell
@@ -343,6 +520,44 @@ export function DashboardRoute() {
         draftUpdatedAt={draftState.updatedAt}
         tabErrorCounts={tabErrorCounts}
       >
+        {hasBackgroundRevision && (
+          <aside
+            role="status"
+            className="rounded-lg border border-primary/35 bg-primary-container/20 p-4 text-on-surface"
+          >
+            <p className="flex items-center gap-2 font-label-md font-semibold text-primary">
+              <Info aria-hidden="true" className="h-5 w-5 shrink-0" />
+              Nova publicação detectada no banco (Revisão {snapshot?.revision})
+            </p>
+            <p className="mt-1 max-w-[75ch] font-body-md text-on-surface-variant">
+              Outro administrador publicou alterações no banco de dados. Suas alterações locais continuam ativas e
+              seguras. Ao publicar suas alterações na aba “Publicar”, as modificações serão mescladas automaticamente.
+            </p>
+          </aside>
+        )}
+        {storageError ? (
+          <aside
+            role="alert"
+            className="rounded-lg border border-error/35 bg-error-container/55 p-4 text-on-error-container"
+          >
+            <p className="flex items-center gap-2 font-label-md">
+              <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+              Aviso sobre o salvamento local do rascunho
+            </p>
+            <p className="mt-1 max-w-[70ch] font-body-md">{storageError}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={retryDraftSave}>
+                Tentar salvar novamente
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleDownloadBackup}>
+                <Download className="mr-1 h-4 w-4" /> Baixar cópia de segurança (.json)
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="mr-1 h-4 w-4" /> Restaurar de arquivo (.json)
+              </Button>
+            </div>
+          </aside>
+        ) : null}
         {activeTab === 'flows' && (
           <FlowDashboard
             flows={mergedDrafts.flows}
@@ -386,6 +601,7 @@ export function DashboardRoute() {
                   current.addedEducationMaterials,
                   current.removedEducationMaterialIds ?? [],
                   resourceIndex,
+                  resourceId,
                 );
                 if (!origin || origin.id !== resourceId) return current;
 
@@ -428,6 +644,7 @@ export function DashboardRoute() {
                   current.addedEducationMaterials,
                   current.removedEducationMaterialIds ?? [],
                   resourceIndex,
+                  resourceId,
                 );
                 if (!origin || origin.id !== resourceId) return current;
 
@@ -654,6 +871,7 @@ export function DashboardRoute() {
                   current.addedContacts,
                   current.removedContactIds ?? [],
                   serviceIndex,
+                  serviceId,
                 );
                 if (!origin || origin.id !== serviceId) return current;
 
@@ -694,6 +912,7 @@ export function DashboardRoute() {
                   current.addedContacts,
                   current.removedContactIds ?? [],
                   serviceIndex,
+                  serviceId,
                 );
                 if (!origin || origin.id !== serviceId) return current;
 
@@ -719,6 +938,7 @@ export function DashboardRoute() {
                   current.addedLocations,
                   current.removedLocationIds ?? [],
                   locationIndex,
+                  locationId,
                 );
                 if (!origin || origin.id !== locationId) return current;
 
@@ -761,6 +981,7 @@ export function DashboardRoute() {
                   current.addedLocations,
                   current.removedLocationIds ?? [],
                   locationIndex,
+                  locationId,
                 );
                 if (!origin || origin.id !== locationId) return current;
                 if (mergedDrafts.contacts.some((contact) => contact.locationId === origin.id)) return current;
@@ -793,8 +1014,14 @@ export function DashboardRoute() {
               expectedRevision={draftState.baseRevision ?? null}
               basePayload={draftState.basePayload}
               onMergeConflict={rebaseDraftAfterMergeConflict}
-              onPublished={() => setDraftState(resetDashboardDrafts())}
-              onResetDrafts={() => setDraftState(resetDashboardDrafts())}
+              onPublished={clearDraftsAfterPublication}
+              onResetDrafts={resetLocalDrafts}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreBackup={() => fileInputRef.current?.click()}
+              onOpenValidationArea={(area) => {
+                setActiveTab(area === 'export' ? 'export' : area);
+                scheduleValidationSummaryScroll();
+              }}
             />
           ) : (
             <ExportDashboard
@@ -802,10 +1029,24 @@ export function DashboardRoute() {
               drafts={drafts}
               validation={validation}
               draftUpdatedAt={draftState.updatedAt}
-              onResetDrafts={() => setDraftState(resetDashboardDrafts())}
+              onResetDrafts={resetLocalDrafts}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreBackup={() => fileInputRef.current?.click()}
+              onOpenValidationArea={(area) => {
+                setActiveTab(area === 'export' ? 'export' : area);
+                scheduleValidationSummaryScroll();
+              }}
             />
           ))}
       </DashboardShell>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        aria-hidden="true"
+        onChange={handleRestoreBackupFile}
+      />
     </Page>
   );
 }

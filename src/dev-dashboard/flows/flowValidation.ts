@@ -29,7 +29,7 @@ export function validateDashboardFlows(flows: GuidedFlow[], resourceIds: string[
       level: 'error',
       area: 'flows',
       id: `duplicate-flow-id:${id}`,
-      message: `Existe mais de um fluxo com o ID "${id}".`,
+      message: `Existe mais de um fluxo com o identificador "${id}". Remova um dos fluxos duplicados e crie-o novamente.`,
     });
   });
 
@@ -42,7 +42,7 @@ export function validateDashboardFlows(flows: GuidedFlow[], resourceIds: string[
           level: 'error',
           area: 'flows',
           id: `unsupported-node-kind:${flow.id}:${node.id}`,
-          message: `Esta etapa usa um tipo que o dashboard não entende: ${node.kind}.`,
+          message: 'Esta etapa usa um tipo incompatível com o painel. Troque o tipo da etapa antes de publicar.',
           path: `${flow.id}.nodes.${node.id}.kind`,
         });
       }
@@ -111,7 +111,7 @@ function toStructuralIssue(
 
   if (rawMessage === 'O ID do fluxo é obrigatório.') {
     return {
-      message: 'O ID do fluxo é obrigatório. Informe um identificador para este fluxo.',
+      message: 'O identificador do fluxo é obrigatório. Informe um identificador único para este fluxo.',
       path: `${context.pathRoot}.id`,
     };
   }
@@ -133,7 +133,7 @@ function toStructuralIssue(
   const purposeMatch = /^O propósito do fluxo (.+?) deve ser um destes: (.+)\.$/.exec(rawMessage);
   if (purposeMatch) {
     return {
-      message: `O propósito do fluxo "${flowLabel}" não é válido. Use uma destas opções: ${purposeMatch[2]}.`,
+      message: `O uso do fluxo "${flowLabel}" não é válido. Escolha uma das opções disponíveis nas configurações.`,
       path: `${context.pathRoot}.purpose`,
     };
   }
@@ -168,7 +168,7 @@ function toStructuralIssue(
     const missingIdPath = node ? `${context.pathRoot}.nodes.${node.key}.id` : `${context.pathRoot}.nodes`;
     const nodeLabel = node?.key ?? 'sem identificação';
     return {
-      message: `A etapa "${nodeLabel}" do fluxo "${flowLabel}" não tem ID. Informe um ID único para que os destinos possam encontrá-la.`,
+      message: `A etapa "${nodeLabel}" do fluxo "${flowLabel}" não tem identificador. Informe um valor único para que os destinos possam encontrá-la.`,
       path: missingIdPath,
     };
   }
@@ -178,7 +178,7 @@ function toStructuralIssue(
     const nodeKey = nodeKeyMatch[1];
     const nodeId = nodeKeyMatch[3];
     return {
-      message: `A chave da etapa "${nodeKey}" precisa ser igual ao ID "${nodeId}". Renomeie a chave ou o ID para que os destinos funcionem.`,
+      message: `A chave da etapa "${nodeKey}" precisa ser igual ao identificador "${nodeId}". Renomeie um dos valores para que os destinos funcionem.`,
       path: `${context.pathRoot}.nodes.${nodeKey}.id`,
     };
   }
@@ -221,7 +221,7 @@ function toStructuralIssue(
     const node = findNode(context, videoIdRequiredMatch[2], occurrence);
     const videoIndex = videoIdRequiredMatch[1];
     return {
-      message: `O vídeo na posição ${Number(videoIndex) + 1} da etapa "${node ? nodeId(node) : videoIdRequiredMatch[2]}" precisa de um ID. Informe um identificador único para esse vídeo.`,
+      message: `O vídeo na posição ${Number(videoIndex) + 1} da etapa "${node ? nodeId(node) : videoIdRequiredMatch[2]}" precisa de um identificador único.`,
       path: `${nodePath(context, node, videoIdRequiredMatch[2])}.videos.${videoIndex}.id`,
     };
   }
@@ -231,7 +231,7 @@ function toStructuralIssue(
     const node = findNode(context, duplicateVideoMatch[1], occurrence);
     const video = findVideo(context, node, duplicateVideoMatch[3], occurrence);
     return {
-      message: `A etapa "${node ? nodeId(node) : duplicateVideoMatch[1]}" tem mais de um vídeo com o ID "${duplicateVideoMatch[3]}". Use um ID diferente em cada vídeo.`,
+      message: `A etapa "${node ? nodeId(node) : duplicateVideoMatch[1]}" tem mais de um vídeo com o identificador "${duplicateVideoMatch[3]}". Use um valor diferente em cada vídeo.`,
       path: `${nodePath(context, node, duplicateVideoMatch[1])}.videos.${video?.index ?? duplicateVideoMatch[3]}.id`,
     };
   }
@@ -284,7 +284,7 @@ function toStructuralIssue(
     const node = findNode(context, optionIdMatch[1], occurrence);
     const option = findOptionByIndex(node, occurrence);
     return {
-      message: `A opção na posição ${(option?.index ?? occurrence) + 1} da etapa "${node ? nodeId(node) : optionIdMatch[1]}" não tem ID. Informe um identificador único para essa opção.`,
+      message: `A opção na posição ${(option?.index ?? occurrence) + 1} da etapa "${node ? nodeId(node) : optionIdMatch[1]}" não tem identificador. Informe um valor único para essa opção.`,
       path: `${nodePath(context, node, optionIdMatch[1])}.options.${option?.index ?? occurrence}.id`,
     };
   }
@@ -339,7 +339,7 @@ function toStructuralIssue(
     const node = findNode(context, invalidBranchMatch[1], occurrence);
     const branch = findBranchByIndex(node, occurrence);
     return {
-      message: `Uma faixa da ramificação "${node ? nodeId(node) : invalidBranchMatch[1]}" está incompleta ou inválida. Informe ID, limite mínimo e limite máximo numéricos.`,
+      message: `Uma faixa da ramificação "${node ? nodeId(node) : invalidBranchMatch[1]}" está incompleta ou inválida. Informe um identificador, o limite mínimo e o limite máximo.`,
       path: `${nodePath(context, node, invalidBranchMatch[1])}.branches.${branch?.id ?? branch?.index ?? occurrence}`,
     };
   }
@@ -442,7 +442,7 @@ function toStructuralIssue(
   if (unsupportedEffectMatch) {
     const option = findOption(context, unsupportedEffectMatch[1], occurrence);
     return {
-      message: `A opção "${unsupportedEffectMatch[1]}" usa uma ação "${unsupportedEffectMatch[3]}" que o dashboard não reconhece. Remova essa ação ou escolha um tipo compatível.`,
+      message: `A opção "${unsupportedEffectMatch[1]}" usa uma ação que o painel não reconhece. Remova essa ação ou escolha um tipo compatível.`,
       path: effectPath(context, option, unsupportedEffectMatch[3], occurrence),
     };
   }

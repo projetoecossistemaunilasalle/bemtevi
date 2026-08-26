@@ -87,7 +87,7 @@ describe('EducationLibraryScreen', () => {
 
     expect(screen.getByText(resource.title)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /ver material/i }));
+    await user.click(screen.getAllByRole('button', { name: /ver material/i })[0]);
 
     expect(screen.getByRole('heading', { name: resource.title })).toBeInTheDocument();
     expect(screen.getByText('Sobre este material')).toBeInTheDocument();
@@ -376,11 +376,12 @@ describe('EducationLibraryScreen', () => {
     );
 
     // geral has no h2 heading; check resource card titles (h3) instead
-    // Filter out the shipped resource that also renders in geral
+    // Filter out the shipped resources that also render in geral
+    const baseTitles = new Set(resourcesContent.resources.map((r) => r.title));
     const resourceTitles = screen
       .getAllByRole('heading', { level: 3 })
       .map((h) => h.textContent)
-      .filter((t) => t !== resource.title);
+      .filter((t): t is string => t !== null && !baseTitles.has(t));
     expect(resourceTitles).toEqual(['Primeiro', 'Segundo', 'Terceiro', 'Sem order']);
   });
 

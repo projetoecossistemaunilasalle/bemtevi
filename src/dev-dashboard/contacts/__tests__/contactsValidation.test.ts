@@ -83,7 +83,7 @@ describe('validateDashboardContacts', () => {
       expect.objectContaining({
         id: 'long-type:service-one:0',
         path: 'contacts.0.type',
-        message: expect.stringMatching(/no máximo 24 caracteres/i),
+        message: expect.stringMatching(/no máximo 40 caracteres/i),
       }),
     ]);
   });
@@ -177,7 +177,8 @@ describe('validateDashboardContacts', () => {
         level: 'error',
         area: 'contacts',
         id: 'missing-contact-id:0',
-        message: 'O ID do contato é obrigatório.',
+        message: 'O identificador interno do contato está ausente. Remova este contato e crie-o novamente.',
+        path: 'contacts.0',
       },
     ]);
   });
@@ -190,7 +191,9 @@ describe('validateDashboardContacts', () => {
         level: 'error',
         area: 'contacts',
         id: 'duplicate-contact-id:service-one',
-        message: 'Existe mais de um contato com o ID "service-one".',
+        message:
+          'Existe mais de um contato com o identificador "service-one". Remova um dos contatos duplicados e crie-o novamente.',
+        path: 'contacts.2',
       },
     ]);
   });

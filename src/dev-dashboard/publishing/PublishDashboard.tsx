@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Download, Upload } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { useAdminAuth } from '../../app/auth/AdminAuthContext';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
-import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
+import {
+  getPublishedPayloadSize,
+  MAX_PUBLISHED_PAYLOAD_BYTES,
+  type PublishedContentPayload,
+  type PublishedContentSnapshot,
+} from '../../app/content/publishedContent';
 import { PublishedContentRepositoryError } from '../../app/content/publishedContentRepository';
-import type { DashboardValidationResult } from '../validation/validationTypes';
+import type { DashboardValidationArea, DashboardValidationResult } from '../validation/validationTypes';
 import { computeChangeSummary, type RecordChangeCount } from './changeSummary';
 import { mergePublishedContent, type PublishedContentMergeConflict } from './mergePublishedContent';
 
 import { ConfirmButton } from '../components/ConfirmButton';
+import { BlockingValidationNotice } from '../components/BlockingValidationNotice';
 
 interface PublishDashboardProps {
   baseline: PublishedContentPayload;
@@ -21,6 +27,9 @@ interface PublishDashboardProps {
   onMergeConflict?(snapshot: PublishedContentSnapshot): void;
   onPublished(snapshot: PublishedContentSnapshot): void;
   onResetDrafts(): void;
+  onDownloadBackup?(): void;
+  onRestoreBackup?(): void;
+  onOpenValidationArea?(area: DashboardValidationArea): void;
 }
 
 type PublishState =
@@ -76,6 +85,9 @@ export function PublishDashboard({
   onMergeConflict,
   onPublished,
   onResetDrafts,
+  onDownloadBackup,
+  onRestoreBackup,
+  onOpenValidationArea,
 }: PublishDashboardProps) {
   const { snapshot, publish, refresh, refreshLatest } = usePublishedContent();
   const { account } = useAdminAuth();
@@ -83,9 +95,20 @@ export function PublishDashboard({
 
   const summary = useMemo(() => computeChangeSummary(baseline, draft), [baseline, draft]);
   const currentRevision = snapshot?.revision ?? 0;
+  const payloadBytes = useMemo(() => {
+    try {
+      return getPublishedPayloadSize(draft);
+    } catch {
+      return 0;
+    }
+  }, [draft]);
+  const isPayloadExceeded = payloadBytes > MAX_PUBLISHED_PAYLOAD_BYTES;
+  const isPayloadNearLimit = payloadBytes > MAX_PUBLISHED_PAYLOAD_BYTES * 0.8 && !isPayloadExceeded;
+  const payloadMegabytes = (payloadBytes / (1024 * 1024)).toFixed(2);
+
   const hasErrors = validation.errors.length > 0;
   const hasChanges = summary.total > 0;
-  const publishDisabled = hasErrors || !hasChanges;
+  const publishDisabled = hasErrors || !hasChanges || isPayloadExceeded;
   const isPending = state.kind === 'pending';
 
   async function confirmPublication() {
@@ -154,6 +177,39 @@ export function PublishDashboard({
           <p className="font-body-md text-on-surface-variant">Revisão atual: {currentRevision}</p>
         </div>
 
+        <BlockingValidationNotice validation={validation} actionLabel="publicar" onOpenArea={onOpenValidationArea} />
+
+        {isPayloadExceeded && (
+          <aside
+            role="alert"
+            className="rounded-lg border border-error/35 bg-error-container/55 p-4 text-on-error-container"
+          >
+            <p className="flex items-center gap-2 font-label-md font-semibold text-error">
+              <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+              Limite de tamanho do conteúdo excedido ({payloadMegabytes} MiB / 5.00 MiB)
+            </p>
+            <p className="mt-1 font-body-md">
+              O conteúdo total excede o limite máximo permitido de 5 MiB para publicação. Para conseguir publicar,
+              reduza o tamanho ou a quantidade de imagens enviadas nos materiais.
+            </p>
+          </aside>
+        )}
+
+        {isPayloadNearLimit && (
+          <aside
+            role="status"
+            className="rounded-lg border border-primary/35 bg-primary-container/20 p-4 text-on-surface"
+          >
+            <p className="font-label-md font-semibold text-primary">
+              Tamanho do conteúdo próximo do limite ({payloadMegabytes} MiB / 5.00 MiB)
+            </p>
+            <p className="mt-1 font-body-md text-on-surface-variant">
+              O total publicado está próximo de 5 MiB. Recomendamos otimizar ou comprimir imagens antes de cadastrar
+              novos materiais.
+            </p>
+          </aside>
+        )}
+
         {!hasChanges ? (
           <div className="rounded-lg bg-surface-container-low p-4">
             <p className="font-body-md text-on-surface-variant">
@@ -176,17 +232,35 @@ export function PublishDashboard({
         )}
 
         {state.kind === 'error' ? (
-          <div role="alert" className="font-body-md text-error">
-            <p>{state.message}</p>
+          <div
+            role="alert"
+            className="rounded-lg border border-error/35 bg-error-container/55 p-4 text-on-error-container"
+          >
+            <p className="flex items-center gap-2 font-label-md">
+              <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />A publicação não foi concluída
+            </p>
+            <p className="mt-1 font-body-md">{state.message} Seu rascunho foi mantido.</p>
             {state.conflicts && state.conflicts.length > 0 ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5 font-label-sm">
+              <ul className="mt-3 flex flex-col gap-2 font-label-sm">
                 {state.conflicts.slice(0, 8).map((conflict) => (
-                  <li key={conflict.path}>
-                    <code>{conflict.path}</code>
+                  <li key={conflict.path} className="flex flex-wrap items-center gap-2">
+                    <span>{formatConflictLocation(conflict.path)}</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenValidationArea?.(areaForConflict(conflict.path))}
+                      className="inline-flex min-h-9 items-center gap-1 rounded-full border border-current/35 px-3 py-1 font-label-sm transition-colors hover:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                      Abrir área
+                      <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
                   </li>
                 ))}
               </ul>
-            ) : null}
+            ) : (
+              <Button className="mt-3" variant="secondary" size="sm" onClick={confirmPublication}>
+                Tentar publicar novamente
+              </Button>
+            )}
           </div>
         ) : null}
 
@@ -218,6 +292,28 @@ export function PublishDashboard({
         </div>
       </section>
 
+      <section className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+        <div>
+          <h3 className="font-headline-sm text-on-surface">Cópia de segurança do rascunho</h3>
+          <p className="mt-1 font-body-md text-on-surface-variant">
+            Salve um arquivo com suas alterações locais em formato JSON para restaurar depois ou transferir para outro
+            navegador.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {onDownloadBackup && (
+            <Button variant="secondary" size="sm" onClick={onDownloadBackup}>
+              <Download className="mr-1.5 h-4 w-4" /> Baixar cópia de segurança (.json)
+            </Button>
+          )}
+          {onRestoreBackup && (
+            <Button variant="secondary" size="sm" onClick={onRestoreBackup}>
+              <Upload className="mr-1.5 h-4 w-4" /> Restaurar rascunho de arquivo (.json)
+            </Button>
+          )}
+        </div>
+      </section>
+
       <section className="flex flex-col gap-3 rounded-lg border border-error/30 bg-error-container/10 p-5">
         <div>
           <h3 className="font-headline-sm text-error">Descartar rascunho local</h3>
@@ -239,6 +335,53 @@ export function PublishDashboard({
       </section>
     </div>
   );
+}
+
+const conflictFieldLabels: Record<string, string> = {
+  title: 'título',
+  text: 'texto',
+  description: 'descrição',
+  source: 'fonte',
+  name: 'nome',
+  type: 'categoria',
+  address: 'endereço',
+  phoneDisplay: 'telefone',
+  city: 'cidade',
+  state: 'estado',
+  __order: 'ordem dos itens',
+  defaultGroupOrder: 'ordem padrão dos grupos',
+};
+
+function formatConflictLocation(path: string) {
+  const recordMatch = /^(flows|educationMaterials|educationGroups|contacts|locations)\[([^\]]+)](?:\.(.*))?$/.exec(
+    path,
+  );
+  if (!recordMatch) {
+    return `Configuração geral: ${conflictFieldLabels[path] ?? 'alteração simultânea'}`;
+  }
+
+  const [, collection, recordId, remainder = ''] = recordMatch;
+  const collectionLabel: Record<string, string> = {
+    flows: 'Fluxo',
+    educationMaterials: 'Material',
+    educationGroups: 'Grupo',
+    contacts: 'Contato',
+    locations: 'Local',
+  };
+  const nodeMatch = /^nodes\[([^\]]+)](?:\.(.*))?$/.exec(remainder);
+  if (nodeMatch) {
+    const field = nodeMatch[2]?.split('.').at(-1) ?? '';
+    return `${collectionLabel[collection]} “${recordId}”, etapa “${nodeMatch[1]}”, ${conflictFieldLabels[field] ?? 'conteúdo da etapa'}`;
+  }
+
+  const field = remainder.split('.').at(-1) ?? '';
+  return `${collectionLabel[collection]} “${recordId}”, ${conflictFieldLabels[field] ?? 'conteúdo do registro'}`;
+}
+
+function areaForConflict(path: string): DashboardValidationArea {
+  if (path.startsWith('flows')) return 'flows';
+  if (path.startsWith('contacts') || path.startsWith('locations')) return 'contacts';
+  return 'education';
 }
 
 function ChangeStat({ label, counts }: { label: string; counts: RecordChangeCount }) {

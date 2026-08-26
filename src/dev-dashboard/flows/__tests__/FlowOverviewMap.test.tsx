@@ -50,14 +50,15 @@ const disconnected = makeFlow({
 });
 
 describe('FlowOverviewMap', () => {
-  it('shows one flow node per flow and keeps external typed destinations explicit', () => {
+  it('keeps disconnected flows outside the graph and external destinations explicit', () => {
     const graph = buildOverviewGraph([makeFlow(), apoio, disconnected], 'entrada', '', vi.fn());
     const flowNodes = graph.nodes.filter((node) => node.data.kind === 'flow');
     const externalNodes = graph.nodes.filter((node) => node.data.kind === 'external');
 
-    expect(flowNodes).toHaveLength(3);
-    expect(flowNodes.map((node) => node.id)).toEqual(['entrada', 'apoio', 'isolado']);
-    expect(graph.edges.map((edge) => edge.label)).toEqual(['Preciso de apoio', 'Estou em risco']);
+    expect(flowNodes).toHaveLength(2);
+    expect(flowNodes.map((node) => node.id)).toEqual(['entrada', 'apoio']);
+    expect(graph.disconnectedFlows.map((flow) => flow.id)).toEqual(['isolado']);
+    expect(graph.edges.map((edge) => edge.data?.optionLabels)).toEqual([['Preciso de apoio'], ['Estou em risco']]);
     expect(externalNodes.map((node) => node.data.kind === 'external' && node.data.label)).toContain(
       'Segurança imediata · /apoio',
     );
@@ -88,5 +89,23 @@ describe('FlowOverviewMap', () => {
     expect(apoioNode?.data.kind === 'flow' && apoioNode.data.searchMatch).toBe(true);
     expect(entradaNode?.data.kind === 'flow' && entradaNode.data.searchMatch).toBe(false);
     expect(graph.nodes.filter((node) => node.data.kind === 'flow')).toHaveLength(2);
+  });
+
+  it('combines repeated transitions between the same flows into one relation', () => {
+    const source = makeFlow();
+    const question = source.nodes.question;
+    if (question.kind !== 'choice') throw new Error('Expected a choice node');
+    question.options.push({
+      id: 'support-again',
+      label: 'Quero apoio especializado',
+      next: 'result',
+      effects: [{ kind: 'flow_start', flowId: 'apoio' }],
+    });
+
+    const graph = buildOverviewGraph([source, apoio], 'entrada', '', vi.fn());
+    const flowRelation = graph.edges.find((edge) => edge.source === 'entrada' && edge.target === 'apoio');
+
+    expect(flowRelation?.data?.count).toBe(2);
+    expect(flowRelation?.data?.optionLabels).toEqual(['Preciso de apoio', 'Quero apoio especializado']);
   });
 });

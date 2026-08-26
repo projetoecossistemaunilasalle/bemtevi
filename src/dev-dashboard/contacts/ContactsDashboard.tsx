@@ -1,14 +1,15 @@
 import { useId, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { AlertCircle, Plus } from 'lucide-react';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import { Button } from '../../design-system/components/Button';
 import { ServiceCard } from '../../design-system/components/ServiceCard';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { Field } from '../components/Field';
 import { inputClass, inputInvalidClass, textareaClass } from '../components/fieldStyles';
-import { ValidationSummary } from '../components/ValidationSummary';
+import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
 import { fieldHasError, issuesForPath, type FieldIssues } from '../validation/fieldIssues';
-import type { DashboardValidationResult } from '../validation/validationTypes';
+import type { DashboardValidationIssue, DashboardValidationResult } from '../validation/validationTypes';
+import { scheduleValidationFocus } from '../validation/validationNavigation';
 import {
   applyLocationSelection,
   badgeToneForServiceType,
@@ -92,6 +93,55 @@ export function ContactsDashboard({
     });
   }
 
+  function getIssueAction(issue: DashboardValidationIssue): ValidationIssueAction | null {
+    const locationMatch = /^locations\.(\d+)(?:\.|$)/.exec(issue.path ?? '');
+    if (locationMatch) {
+      const locationIndex = Number(locationMatch[1]);
+      if (!locations[locationIndex]) return null;
+
+      return {
+        label: 'Ir ao local',
+        description: 'revise o campo destacado no cadastro deste local.',
+        onClick: () => {
+          setLocationManagementOpen(true);
+          scheduleValidationFocus(normalizeContactValidationPath(issue.path!));
+        },
+      };
+    }
+
+    const contactMatch = /^contacts\.(\d+)(?:\.|$)/.exec(issue.path ?? '');
+    if (contactMatch) {
+      const contactIndex = Number(contactMatch[1]);
+      const contact = services[contactIndex];
+      if (!contact) return null;
+
+      return {
+        label: 'Ir ao contato',
+        description:
+          issue.path === `contacts.${contactIndex}`
+            ? 'revise o contato destacado; se o identificador interno estiver inválido, remova-o e crie outro.'
+            : 'corrija o campo destacado no editor deste contato.',
+        onClick: () => {
+          setSelection({ index: contactIndex, id: contact.id });
+          scheduleValidationFocus(normalizeContactValidationPath(issue.path!));
+        },
+      };
+    }
+
+    if (issue.id === 'no-locations') {
+      return {
+        label: 'Cadastrar local',
+        description: 'abra a lista de locais e use “Novo local” para cadastrar uma cidade.',
+        onClick: () => {
+          setLocationManagementOpen(true);
+          scheduleValidationFocus('locations');
+        },
+      };
+    }
+
+    return null;
+  }
+
   return (
     <section className="flex flex-col gap-stack-md">
       <header className="flex flex-col gap-1">
@@ -119,7 +169,11 @@ export function ContactsDashboard({
         </div>
 
         {locationManagementOpen ? (
-          <div id="contacts-location-management-content" className="mt-4 flex flex-col gap-3">
+          <div
+            id="contacts-location-management-content"
+            data-validation-path="locations"
+            className="dashboard-validation-target mt-4 flex flex-col gap-3"
+          >
             {locations.map((location, locationIndex) => {
               const contactCount = services.filter((service) => service.locationId === location.id).length;
               const cityIssues = issuesForPath(validation, `locations.${locationIndex}.city`);
@@ -131,7 +185,12 @@ export function ContactsDashboard({
                   key={`${location.id}-${locationIndex}`}
                   className="grid items-end gap-3 rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 md:grid-cols-[minmax(0,1fr)_96px_auto_auto]"
                 >
-                  <Field label="Cidade" htmlFor={`${locationId}-city`} issues={cityIssues}>
+                  <Field
+                    label="Cidade"
+                    htmlFor={`${locationId}-city`}
+                    issues={cityIssues}
+                    validationPath={`locations.${locationIndex}.city`}
+                  >
                     <input
                       id={`${locationId}-city`}
                       className={fieldClass(cityIssues)}
@@ -139,7 +198,12 @@ export function ContactsDashboard({
                       onChange={(event) => onLocationChange(locationIndex, location.id, { city: event.target.value })}
                     />
                   </Field>
-                  <Field label="Estado" htmlFor={`${locationId}-state`} issues={stateIssues}>
+                  <Field
+                    label="Estado"
+                    htmlFor={`${locationId}-state`}
+                    issues={stateIssues}
+                    validationPath={`locations.${locationIndex}.state`}
+                  >
                     <input
                       id={`${locationId}-state`}
                       maxLength={2}
@@ -241,6 +305,14 @@ export function ContactsDashboard({
                               >
                                 {service.type || 'Sem tipo'} · {service.city || 'Sem cidade'}
                               </span>
+                              {validation.errors.some((issue) => issue.path?.startsWith(`contacts.${serviceIndex}`)) ? (
+                                <span
+                                  className={`mt-1 inline-flex items-center gap-1 font-label-sm ${isSelected ? 'text-on-primary' : 'text-error'}`}
+                                >
+                                  <AlertCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                                  Precisa de correção
+                                </span>
+                              ) : null}
                             </span>
                           </button>
                         </li>
@@ -254,7 +326,10 @@ export function ContactsDashboard({
         </aside>
 
         {selectedService ? (
-          <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+          <section
+            data-validation-path={`contacts.${effectiveIndex}`}
+            className="dashboard-validation-target flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-headline-sm text-on-surface">Editar {selectedService.name || 'contato sem nome'}</h3>
               <ConfirmButton
@@ -294,7 +369,7 @@ export function ContactsDashboard({
         ) : null}
       </div>
 
-      <ValidationSummary result={validation} />
+      <ValidationSummary result={validation} getIssueAction={getIssueAction} />
     </section>
   );
 }
@@ -317,7 +392,11 @@ function ContactFields({
   const path = `contacts.${serviceIndex}`;
   const nameIssues = issuesForPath(validation, `${path}.name`);
   const typeIssues = issuesForPath(validation, `${path}.type`);
-  const locationIssues = issuesForPath(validation, `${path}.locationId`);
+  const locationIssues = mergeFieldIssues(
+    issuesForPath(validation, `${path}.locationId`),
+    issuesForPath(validation, `${path}.city`),
+    issuesForPath(validation, `${path}.state`),
+  );
   const addressIssues = issuesForPath(validation, `${path}.address`);
   const phoneIssues = mergeFieldIssues(
     issuesForPath(validation, `${path}.phoneDisplay`),
@@ -330,7 +409,13 @@ function ContactFields({
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Nome" htmlFor={`${fieldId}-name`} hint="Nome exibido na rede de apoio." issues={nameIssues}>
+      <Field
+        label="Nome"
+        htmlFor={`${fieldId}-name`}
+        hint="Nome exibido na rede de apoio."
+        issues={nameIssues}
+        validationPath={`${path}.name`}
+      >
         <input
           id={`${fieldId}-name`}
           className={fieldClass(nameIssues)}
@@ -344,6 +429,7 @@ function ContactFields({
         htmlFor={`${fieldId}-type`}
         hint={`Use apenas uma etiqueta curta, com até ${MAX_SERVICE_TYPE_LENGTH} caracteres. Ex.: CAPS, UBS ou Clínica-escola.`}
         issues={typeIssues}
+        validationPath={`${path}.type`}
       >
         <input
           id={`${fieldId}-type`}
@@ -368,6 +454,7 @@ function ContactFields({
         htmlFor={`${fieldId}-location`}
         hint="Cidade onde o atendimento é oferecido. Gerencie as cidades em “Gerenciar locais”."
         issues={locationIssues}
+        validationPath={`${path}.locationId`}
       >
         <select
           id={`${fieldId}-location`}
@@ -389,6 +476,7 @@ function ContactFields({
         htmlFor={`${fieldId}-address`}
         hint="Local exibido para quem busca atendimento."
         issues={addressIssues}
+        validationPath={`${path}.address`}
       >
         <input
           id={`${fieldId}-address`}
@@ -399,7 +487,13 @@ function ContactFields({
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Latitude (opcional)" htmlFor={`${fieldId}-lat`} hint="Ex.: -29.9145" issues={latIssues}>
+        <Field
+          label="Latitude (opcional)"
+          htmlFor={`${fieldId}-lat`}
+          hint="Ex.: -29.9145"
+          issues={latIssues}
+          validationPath={`${path}.lat`}
+        >
           <input
             id={`${fieldId}-lat`}
             type="number"
@@ -413,7 +507,13 @@ function ContactFields({
           />
         </Field>
 
-        <Field label="Longitude (opcional)" htmlFor={`${fieldId}-lng`} hint="Ex.: -51.1812" issues={lngIssues}>
+        <Field
+          label="Longitude (opcional)"
+          htmlFor={`${fieldId}-lng`}
+          hint="Ex.: -51.1812"
+          issues={lngIssues}
+          validationPath={`${path}.lng`}
+        >
           <input
             id={`${fieldId}-lng`}
             type="number"
@@ -433,6 +533,7 @@ function ContactFields({
         htmlFor={`${fieldId}-phone`}
         hint="A formatação digitada será mantida."
         issues={phoneIssues}
+        validationPath={`${path}.phoneDisplay`}
       >
         <input
           id={`${fieldId}-phone`}
@@ -446,7 +547,12 @@ function ContactFields({
         />
       </Field>
 
-      <Field label="Horário de atendimento (opcional)" htmlFor={`${fieldId}-hours`} issues={hoursIssues}>
+      <Field
+        label="Horário de atendimento (opcional)"
+        htmlFor={`${fieldId}-hours`}
+        issues={hoursIssues}
+        validationPath={`${path}.hours`}
+      >
         <input
           id={`${fieldId}-hours`}
           className={fieldClass(hoursIssues)}
@@ -460,6 +566,7 @@ function ContactFields({
         htmlFor={`${fieldId}-notes`}
         hint="Escreva aqui a descrição do serviço, público atendido e orientações de acesso."
         issues={notesIssues}
+        validationPath={`${path}.notes`}
       >
         <textarea
           id={`${fieldId}-notes`}
@@ -481,4 +588,10 @@ function mergeFieldIssues(...issueGroups: FieldIssues[]): FieldIssues {
     errors: issueGroups.flatMap(({ errors }) => errors),
     warnings: issueGroups.flatMap(({ warnings }) => warnings),
   };
+}
+
+function normalizeContactValidationPath(path: string) {
+  if (path.endsWith('.phoneHref')) return path.replace(/\.phoneHref$/, '.phoneDisplay');
+  if (/^contacts\.\d+\.(?:city|state)$/.test(path)) return path.replace(/\.(?:city|state)$/, '.locationId');
+  return path;
 }
