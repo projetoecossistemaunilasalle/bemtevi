@@ -4,6 +4,12 @@
 
 Design detalhado para confirmação. Este documento não autoriza implementação.
 
+> **Atualização (2026-08-25):** a fase de paridade descrita em
+> `docs/plans/2026-08-25-map-first-flow-editing-design.md` foi implementada — a edição
+> agora vive no mapa: o painel lateral (`NodeEditorPanel`) edita etapas, opções, efeitos,
+> ramificações e mídia, e o cabeçalho do mapa ganhou o painel de configurações do fluxo.
+> O editor de formulários permanece como fallback até a remoção planejada na fase 3.
+
 ## Contexto
 
 O dashboard hoje oferece um mapa mental por fluxo. Ele ajuda a inspecionar relações locais entre etapas, mas não responde com clareza às perguntas principais de quem revisa o conteúdo:
