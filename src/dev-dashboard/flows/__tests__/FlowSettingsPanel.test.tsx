@@ -86,7 +86,7 @@ describe('FlowSettingsPanel', () => {
 
     expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Configurações do fluxo', level: 2 })).toBeInTheDocument();
-    for (const section of ['Título do fluxo', 'Uso do fluxo', 'Status', 'Etapa de entrada', 'Frases de entrada']) {
+    for (const section of ['Título do fluxo', 'Uso do fluxo', 'Status', 'Etapa de entrada', 'Frases de entrada', 'Mensagem antes do fluxo']) {
       expect(screen.getByRole('heading', { name: section, level: 3 })).toBeInTheDocument();
     }
     expect(screen.getByRole('button', { name: 'Fechar configurações' })).toBeInTheDocument();
@@ -294,6 +294,43 @@ describe('FlowSettingsPanel', () => {
     const freshRow = screen.getByRole('textbox', { name: 'Frase de entrada 2' });
     expect(freshRow).toHaveFocus();
     expect(freshRow).toHaveValue('');
+  });
+
+  it('commits an edited transition message as a narrow {entry} patch carrying phrases over', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel();
+
+    const message = screen.getByRole('textbox', { name: 'Mensagem antes do fluxo' });
+    expect(message).toHaveValue('Vamos começar.');
+    await user.clear(message);
+    await user.type(message, 'Vamos começar agora.');
+    await user.tab();
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const patch = lastPatch(props.onFlowChange);
+    expect(Object.keys(patch)).toEqual(['entry']);
+    expect(patch.entry?.transitionMessage).toBe('Vamos começar agora.');
+    expect(patch.entry?.enteringPhrases).toEqual(['oi']); // carried over untouched
+    expect(patch.entry?.nodeId).toBe('q1');
+  });
+
+  it('clears the transition message with an empty draft and skips unchanged blurs', async () => {
+    const user = userEvent.setup();
+    const patches = renderStatefulPanel(createFlow());
+
+    // Unchanged blur commits nothing.
+    await user.click(screen.getByRole('textbox', { name: 'Mensagem antes do fluxo' }));
+    await user.tab();
+    expect(patches).toHaveLength(0);
+
+    // Emptying the field is a real change and commits as '' (no message).
+    await user.clear(screen.getByRole('textbox', { name: 'Mensagem antes do fluxo' }));
+    await user.tab();
+
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0] ?? {})).toEqual(['entry']);
+    expect(patches[0]?.entry?.transitionMessage).toBe('');
+    expect(patches[0]?.entry?.enteringPhrases).toEqual(['oi']);
   });
 });
 

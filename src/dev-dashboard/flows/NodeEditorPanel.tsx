@@ -9,7 +9,7 @@ import type {
   ScoreBranch,
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
-import { deleteNode, duplicateNode, setEntryNode } from './flowMutations';
+import { deleteNode, duplicateNode, moveNode, setEntryNode } from './flowMutations';
 import type { MapFocusSection } from './flowDisplay';
 import { buildFlowTopology, type FlowTopologyNode } from './flowTopology';
 import { TargetSelect } from './flowTargetSelect';
@@ -628,11 +628,30 @@ export function NodeEditorPanel({
   // node missing from its own topology (defensive, not reachable today).
   const stepNumber = topology.nodeById[nodeId]?.stepNumber ?? 0;
 
+  // Effective step order behind moveNode: explicit nodeOrder when present,
+  // otherwise the nodes record's insertion order. Drives the footer buttons'
+  // disabled states (first/last of that order cannot move further).
+  const effectiveOrder = flow.nodeOrder ?? Object.keys(flow.nodes);
+  const effectiveIndex = effectiveOrder.indexOf(nodeId);
+  const isFirstStep = effectiveIndex <= 0;
+  const isLastStep = effectiveIndex === -1 || effectiveIndex >= effectiveOrder.length - 1;
+
   /** Structural patches stay narrow: only the keys the mutation actually touched. */
   const toNodesPatch = (next: GuidedFlow): Partial<GuidedFlow> => ({
     nodes: next.nodes,
     ...(next.nodeOrder ? { nodeOrder: next.nodeOrder } : {}),
   });
+
+  /**
+   * Reordering only ever changes `nodeOrder` — moveNode swaps within an
+   * existing order or materializes it from insertion order, so the patch is
+   * exactly `{nodeOrder}` either way (nodes content is untouched).
+   */
+  const handleMoveClick = (direction: 'up' | 'down') => {
+    const result = moveNode(flow, nodeId, direction);
+    if (!result.moved) return;
+    onFlowChange({ nodeOrder: result.flow.nodeOrder });
+  };
 
   const handleSetEntryClick = () => {
     onFlowChange({ entry: setEntryNode(flow, nodeId).entry });
@@ -769,6 +788,28 @@ export function NodeEditorPanel({
       </section>
 
       <div className="mt-auto flex flex-col gap-2 pt-2">
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            disabled={isFirstStep}
+            aria-label="Mover etapa para cima"
+            onClick={() => handleMoveClick('up')}
+          >
+            Mover etapa para cima
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            disabled={isLastStep}
+            aria-label="Mover etapa para baixo"
+            onClick={() => handleMoveClick('down')}
+          >
+            Mover etapa para baixo
+          </Button>
+        </div>
         <Button variant="secondary" size="sm" className="w-full" disabled={isEntry} onClick={handleSetEntryClick}>
           Definir como entrada
         </Button>

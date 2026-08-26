@@ -43,6 +43,23 @@ function DraftTextField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
   );
 }
 
+/** Multiline twin of DraftTextField: same per-field draft sentinel, commits onBlur. */
+function DraftTextAreaField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <textarea
+      aria-label={ariaLabel}
+      className={`min-h-[64px] ${textFieldClassName}`}
+      value={draft ?? value}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setDraft(null);
+        if (draft !== null && draft !== value) onCommit(draft);
+      }}
+    />
+  );
+}
+
 interface EnteringPhrasesSectionProps {
   flow: GuidedFlow;
   /** Receives the mutated `entry` record for one narrow `{entry}` patch per commit. */
@@ -297,6 +314,15 @@ export function FlowSettingsPanel({ flow, onFlowChange, onClose }: FlowSettingsP
       <section className="flex flex-col gap-2">
         <h3 className={sectionHeadingClassName}>Frases de entrada</h3>
         <EnteringPhrasesSection flow={flow} onEntryChange={(entry) => onFlowChange({ entry })} />
+      </section>
+
+      <section className="flex flex-col gap-1">
+        <h3 className={sectionHeadingClassName}>Mensagem antes do fluxo</h3>
+        <DraftTextAreaField
+          ariaLabel="Mensagem antes do fluxo"
+          value={flow.entry.transitionMessage}
+          onCommit={(transitionMessage) => onFlowChange({ entry: updateFlowSettings(flow, { transitionMessage }).entry })}
+        />
       </section>
     </div>
   );
