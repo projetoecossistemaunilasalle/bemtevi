@@ -65,4 +65,16 @@ export default defineConfig({
       '@': path.resolve(dirname, 'src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Semantic chunk names (e.g. DashboardRoute-*.js) match generic
+        // ad-blocker filter keywords and get blocked with ERR_BLOCKED_BY_CLIENT.
+        // Hash-only names keep every served URL filter-neutral.
+        entryFileNames: 'assets/entry-[hash].js',
+        chunkFileNames: 'assets/chunk-[hash].js',
+        assetFileNames: 'assets/file-[hash][extname]',
+      },
+    },
+  },
 });
