@@ -33,6 +33,7 @@
 ### Task 1: `flowMutations.addNode`
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/flowMutations.ts`
 - Test: `src/dev-dashboard/flows/__tests__/flowMutations.test.ts`
 
@@ -45,7 +46,11 @@ import { addNode } from '../flowMutations';
 
 function baseFlow(nodes: GuidedFlow['nodes']): GuidedFlow {
   return {
-    id: 'f', version: '1.0', locale: 'pt-BR', title: 'F', type: 'guided_conversation',
+    id: 'f',
+    version: '1.0',
+    locale: 'pt-BR',
+    title: 'F',
+    type: 'guided_conversation',
     status: 'draft',
     entry: { nodeId: Object.keys(nodes)[0], enteringPhrases: ['oi'], transitionMessage: '' },
     nodes,
@@ -119,6 +124,7 @@ function uniqueNodeId(flow: GuidedFlow): string {
 ```
 
 Plus private `createNode(id, kind, flow)` producing sensible defaults:
+
 - `choice`: `{id, kind:'choice', text:'', options:[]}`
 - `result`: `{id, kind:'result', text:''}`
 - `score_branch`: `{id, kind:'score_branch', text:'', scoreKey:'pontuacao', branches:[{id:`${id}-faixa-1`, min:0, max:10, next:''}]}`
@@ -135,15 +141,21 @@ And `linkOption(flow, nodeId, optionId | undefined, target)` that returns flow w
 Same files as Task 1.
 
 **Tests to add (write first):**
+
 - `duplicateNode(flow, 'q1')` → new id `q1-copy-N`; deep-copies text/options/effects with fresh **option ids** suffixed `-copy-N`; incoming edges are not duplicated (nothing else points to it); `nodeOrder` gains the copy right after the original when present.
 - `deleteNode(flow, 'done')` → returns `{ flow, broken: [] }`, node removed from record **and** from `nodeOrder`.
 - `deleteNode` where two options point at the target → `broken` lists `{sourceNodeId, optionId}` for each, those options keep `next` unchanged?? NO — they keep pointing to a now-missing id (that is the honest behavior the map renders as `Destino ausente`). Assert exactly that.
 
 **Implementation notes:**
+
 ```ts
 export function duplicateNode(flow: GuidedFlow, nodeId: string): { flow: GuidedFlow; newNodeId: string };
-export function deleteNode(flow: GuidedFlow, nodeId: string): { flow: GuidedFlow; broken: Array<{ sourceNodeId: string; optionId?: string }> };
+export function deleteNode(
+  flow: GuidedFlow,
+  nodeId: string,
+): { flow: GuidedFlow; broken: Array<{ sourceNodeId: string; optionId?: string }> };
 ```
+
 - Refuse to delete the last remaining node (return `{flow, broken:[], error:'last-node'}`) and refuse deleting while it is the entry **only if** it is the sole node; otherwise entry stays (validation will flag) — keep behavior explicit and simple; document via test.
 - Option-id regeneration: `${option.id}-copy-N`, deduplicated the same way as node ids.
 
@@ -166,6 +178,7 @@ Commit: `feat(flows): entry, settings and kind-switch mutations`
 ### Task 4: `NodeEditorPanel` shell — identity, text, actions footer
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/NodeEditorPanel.tsx`
 - Test: `src/dev-dashboard/flows/__tests__/NodeEditorPanel.test.tsx`
 
@@ -185,6 +198,7 @@ export interface NodeEditorPanelProps {
 ```
 
 Render (Tailwind classes copied from current `FlowMapInspector.tsx` so visual style matches the dashboard):
+
 - Header: kind badge (Escolha/Final/Ramificação), step number computed as index in `Object.values(flow.nodes)` order used by `stableNodes`, close button `aria-label="Fechar painel de edição"`.
 - Section **Texto**: `<textarea aria-label="Texto da etapa">` local-state + commit onBlur → `onFlowChange({nodes:{...}})` (copy pattern from `FlowMapInspector` lines 49–53, 93–107 — including the `document.activeElement` guard).
 - Footer buttons calling the pure mutations then `onFlowChange(resultingFlow)`:
@@ -205,6 +219,7 @@ Commit: `feat(dashboard): NodeEditorPanel shell with identity, text and node act
 Extend `NodeEditorPanel` for `kind==='choice'`.
 
 Per option render:
+
 - `<input aria-label="Rótulo da opção N">` → updates `option.label`.
 - Target `<select aria-label="Destino da opção N">`: one `<option value="">— sem destino —</option>`, then all nodes grouped: reachable-by-depth labels `Etapa N · <excerpt 40>` (compute cheaply: reuse `buildFlowTopology(flow, flows)` once via `useMemo`; it exposes `nodes[].stepNumber`, `depth`, `node.text`) plus current value if missing (label `Destino ausente · id`). Changing fires a patch setting `option.next`.
 - Buttons: `Remover opção` (filters array), `Adicionar opção` (append `{id: uniqueOptionId(node), label:'', next:''}`; uniqueness: `${prefix}-${n}` loop like Task 1).
@@ -245,11 +260,13 @@ Commit: `feat(dashboard): score branch ranges, videos and recommendations editin
 ### Task 8: Wire the panel into the map; retire `FlowMapInspector`
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowDestinationMap.tsx`
 - Delete: `src/dev-dashboard/flows/FlowMapInspector.tsx`, `src/dev-dashboard/flows/__tests__/FlowMapInspector.test.tsx`
 - Modify: `src/dev-dashboard/flows/__tests__/FlowDestinationMap.test.tsx`
 
 Steps:
+
 1. Replace the `<FlowMapInspector …>` block with `<NodeEditorPanel flow flows nodeId={selectedNodeId} onFlowChange onClose onEditLegacy={() => onEditNode(flow.id, selectedNodeId)} />`. Keep `handleTextChange`/`handleRemoveEffect` removals (the panel patches whole nodes itself now — delete those callbacks).
 2. Toolbar: add `+ Etapa` button opening a tiny inline popover with three buttons (Pergunta/Final/Ramificação) → `addNode(flow,{kind})` then select the new node so the panel opens on it. Position via existing toolbar flex layout; `aria-haspopup="true"`.
 3. Update `FlowDestinationMap.test.tsx`: inspector assertions now target `node-editor-panel`; add: clicking `+ Etapa` → Pergunta adds node and opens panel; delete flow through panel removes node from stats count.
@@ -262,6 +279,7 @@ Run full folder suite + typecheck. Commit: `feat(dashboard): map owns node editi
 ### Task 9: `FlowSettingsPanel` from header
 
 **Files:**
+
 - Create: `src/dev-dashboard/flows/FlowSettingsPanel.tsx` (+ test file)
 
 Props `{flow, onFlowChange, onClose}`. Fields: `Título do fluxo` text; `Uso do fluxo` select over allowed purposes — read them from `validateFlow`'s `allowedFlowPurposes` export if exported, otherwise literal `['checkin','apoio','educacao']` matching `src/content` usage (verify in Step 1 by grepping `purpose` under `src/content/flows`); `Status` select (draft/pending_review/approved/archived with current PT labels from `STATUS_LABELS` in `FlowOverviewMap.tsx`); `Etapa de entrada` target-select reusing Task 5 component; `Frases de entrada` list editor (one input per phrase `aria-label="Frase de entrada N"`, add/remove, blank phrases stripped onBlur).
@@ -276,10 +294,12 @@ Commit: `feat(dashboard): flow settings panel in the map header`
 ### Task 10: Validation deep-links retarget
 
 **Files:**
+
 - Modify: `src/dev-dashboard/flows/FlowDashboard.tsx`, `src/dev-dashboard/flows/FlowMap.tsx`, `src/dev-dashboard/flows/FlowDestinationMap.tsx`, `ValidationSummary.tsx` only if props change
 - Test: extend `FlowDestinationMap.test.tsx` + a small unit addition where `resolveFlowValidationTarget` lives (it's private in `FlowDashboard.tsx` — export it for tests as named export)
 
 Steps:
+
 1. Change `FlowValidationTarget` to carry `section?: 'texto'|'opcoes'|'ramificacao'|'midia'|'configuracoes'|'entrada'` derived from the same path-prefix mapping that exists today (`options→opcoes`, `branches→ramificacao`, `videos→midia`, `entry→configuracoes`, default `texto`).
 2. Plumb `focusRequest: {nodeId?:string; section?:string; requestId:number} | null` down `FlowMap → FlowDestinationMap`. In the map: on change, set `selectedNodeId` (or open settings panel when absent) and pass `focusSection` to the panel; panel scrolls the section into view and focuses its first input (`useEffect` on `requestId`).
 3. Keep the editor fallback behavior intact: `onEditNode` still switches tabs for people who choose the legacy route from the panel.

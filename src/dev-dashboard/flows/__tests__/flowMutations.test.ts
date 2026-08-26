@@ -17,7 +17,11 @@ import {
 
 function baseFlow(nodes: GuidedFlow['nodes']): GuidedFlow {
   return {
-    id: 'f', version: '1.0', locale: 'pt-BR', title: 'F', type: 'guided_conversation',
+    id: 'f',
+    version: '1.0',
+    locale: 'pt-BR',
+    title: 'F',
+    type: 'guided_conversation',
     status: 'draft',
     entry: { nodeId: Object.keys(nodes)[0], enteringPhrases: ['oi'], transitionMessage: '' },
     nodes,
@@ -31,7 +35,9 @@ describe('addNode', () => {
       done: { id: 'done', kind: 'result', text: 'Fim' },
     });
     const {
-      flow: updated, nodeId, linked,
+      flow: updated,
+      nodeId,
+      linked,
     } = addNode(flow, { kind: 'result', connectFrom: { nodeId: 'q1', optionId: 'yes' } });
     expect(linked).toBe(true);
     expect(nodeId).toBe('step-3');

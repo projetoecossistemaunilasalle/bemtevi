@@ -258,7 +258,9 @@ function toStructuralIssue(
     };
   }
 
-  const emptyOptionsMatch = /^O nó de escolhas (.+?) do fluxo (.+) precisa ter pelo menos uma opção\.$/.exec(rawMessage);
+  const emptyOptionsMatch = /^O nó de escolhas (.+?) do fluxo (.+) precisa ter pelo menos uma opção\.$/.exec(
+    rawMessage,
+  );
   if (emptyOptionsMatch) {
     const node = findNode(context, emptyOptionsMatch[1], occurrence);
     return {
@@ -267,9 +269,8 @@ function toStructuralIssue(
     };
   }
 
-  const freeTextTargetMatch = /^A opção de texto livre do nó (.+?), no fluxo (.+), aponta para um nó inexistente: (.+)\.$/.exec(
-    rawMessage,
-  );
+  const freeTextTargetMatch =
+    /^A opção de texto livre do nó (.+?), no fluxo (.+), aponta para um nó inexistente: (.+)\.$/.exec(rawMessage);
   if (freeTextTargetMatch) {
     const node = findNode(context, freeTextTargetMatch[1], occurrence);
     return {
@@ -309,9 +310,10 @@ function toStructuralIssue(
     };
   }
 
-  const scoreBranchScoreKeyMatch = /^O nó de ramificação de pontuação (.+?) do fluxo (.+) precisa informar uma chave de pontuação \(scoreKey\)\.$/.exec(
-    rawMessage,
-  );
+  const scoreBranchScoreKeyMatch =
+    /^O nó de ramificação de pontuação (.+?) do fluxo (.+) precisa informar uma chave de pontuação \(scoreKey\)\.$/.exec(
+      rawMessage,
+    );
   if (scoreBranchScoreKeyMatch) {
     const node = findNode(context, scoreBranchScoreKeyMatch[1], occurrence);
     return {
@@ -320,9 +322,8 @@ function toStructuralIssue(
     };
   }
 
-  const scoreBranchListMatch = /^O nó de ramificação de pontuação (.+?) do fluxo (.+) precisa ter pelo menos uma faixa\.$/.exec(
-    rawMessage,
-  );
+  const scoreBranchListMatch =
+    /^O nó de ramificação de pontuação (.+?) do fluxo (.+) precisa ter pelo menos uma faixa\.$/.exec(rawMessage);
   if (scoreBranchListMatch) {
     const node = findNode(context, scoreBranchListMatch[1], occurrence);
     return {
@@ -331,7 +332,9 @@ function toStructuralIssue(
     };
   }
 
-  const invalidBranchMatch = /^O nó de ramificação de pontuação (.+?) do fluxo (.+) tem uma faixa inválida\.$/.exec(rawMessage);
+  const invalidBranchMatch = /^O nó de ramificação de pontuação (.+?) do fluxo (.+) tem uma faixa inválida\.$/.exec(
+    rawMessage,
+  );
   if (invalidBranchMatch) {
     const node = findNode(context, invalidBranchMatch[1], occurrence);
     const branch = findBranchByIndex(node, occurrence);
@@ -341,9 +344,8 @@ function toStructuralIssue(
     };
   }
 
-  const branchTargetMatch = /^A faixa (.+?) do nó de ramificação (.+?), no fluxo (.+), aponta para um nó inexistente: (.+)\.$/.exec(
-    rawMessage,
-  );
+  const branchTargetMatch =
+    /^A faixa (.+?) do nó de ramificação (.+?), no fluxo (.+), aponta para um nó inexistente: (.+)\.$/.exec(rawMessage);
   if (branchTargetMatch) {
     const node = findNode(context, branchTargetMatch[2], occurrence);
     const branch = findBranch(node, branchTargetMatch[1], occurrence);
@@ -353,9 +355,10 @@ function toStructuralIssue(
     };
   }
 
-  const branchNavigationMatch = /^A faixa (.+?) do nó de ramificação (.+?), no fluxo (.+), usa um destino de navegação não permitido\.$/.exec(
-    rawMessage,
-  );
+  const branchNavigationMatch =
+    /^A faixa (.+?) do nó de ramificação (.+?), no fluxo (.+), usa um destino de navegação não permitido\.$/.exec(
+      rawMessage,
+    );
   if (branchNavigationMatch) {
     const node = findNode(context, branchNavigationMatch[2], occurrence);
     const branch = findBranch(node, branchNavigationMatch[1], occurrence);
@@ -365,9 +368,10 @@ function toStructuralIssue(
     };
   }
 
-  const scoreEffectMatch = /^O efeito de pontuação da opção (.+?) do fluxo (.+) precisa informar uma chave de pontuação \(scoreKey\) e um valor numérico\.$/.exec(
-    rawMessage,
-  );
+  const scoreEffectMatch =
+    /^O efeito de pontuação da opção (.+?) do fluxo (.+) precisa informar uma chave de pontuação \(scoreKey\) e um valor numérico\.$/.exec(
+      rawMessage,
+    );
   if (scoreEffectMatch) {
     const option = findOption(context, scoreEffectMatch[1], occurrence);
     return {
@@ -376,9 +380,10 @@ function toStructuralIssue(
     };
   }
 
-  const safetyEffectMatch = /^O efeito de interrupção de segurança da opção (.+?) do fluxo (.+) precisa informar mensagem, destino e se deve bloquear o retorno \(blockResume\)\.$/.exec(
-    rawMessage,
-  );
+  const safetyEffectMatch =
+    /^O efeito de interrupção de segurança da opção (.+?) do fluxo (.+) precisa informar mensagem, destino e se deve bloquear o retorno \(blockResume\)\.$/.exec(
+      rawMessage,
+    );
   if (safetyEffectMatch) {
     const option = findOption(context, safetyEffectMatch[1], occurrence);
     return {
@@ -387,9 +392,10 @@ function toStructuralIssue(
     };
   }
 
-  const deferredSafetyEffectMatch = /^O efeito de segurança adiada da opção (.+?) do fluxo (.+) precisa informar a chave de sinalização \(flagKey\), mensagem e destino permitido\.$/.exec(
-    rawMessage,
-  );
+  const deferredSafetyEffectMatch =
+    /^O efeito de segurança adiada da opção (.+?) do fluxo (.+) precisa informar a chave de sinalização \(flagKey\), mensagem e destino permitido\.$/.exec(
+      rawMessage,
+    );
   if (deferredSafetyEffectMatch) {
     const option = findOption(context, deferredSafetyEffectMatch[1], occurrence);
     return {
@@ -398,9 +404,10 @@ function toStructuralIssue(
     };
   }
 
-  const flowStartEffectMatch = /^O efeito de início de fluxo da opção (.+?) do fluxo (.+) precisa informar o ID do fluxo de destino \(flowId\)\.$/.exec(
-    rawMessage,
-  );
+  const flowStartEffectMatch =
+    /^O efeito de início de fluxo da opção (.+?) do fluxo (.+) precisa informar o ID do fluxo de destino \(flowId\)\.$/.exec(
+      rawMessage,
+    );
   if (flowStartEffectMatch) {
     const option = findOption(context, flowStartEffectMatch[1], occurrence);
     return {
@@ -409,9 +416,8 @@ function toStructuralIssue(
     };
   }
 
-  const navigateEffectMatch = /^O efeito de navegação da opção (.+?) do fluxo (.+) precisa usar um destino permitido\.$/.exec(
-    rawMessage,
-  );
+  const navigateEffectMatch =
+    /^O efeito de navegação da opção (.+?) do fluxo (.+) precisa usar um destino permitido\.$/.exec(rawMessage);
   if (navigateEffectMatch) {
     const option = findOption(context, navigateEffectMatch[1], occurrence);
     return {
@@ -420,9 +426,8 @@ function toStructuralIssue(
     };
   }
 
-  const endFlowEffectMatch = /^O efeito de encerramento da opção (.+?) do fluxo (.+) precisa informar uma mensagem\.$/.exec(
-    rawMessage,
-  );
+  const endFlowEffectMatch =
+    /^O efeito de encerramento da opção (.+?) do fluxo (.+) precisa informar uma mensagem\.$/.exec(rawMessage);
   if (endFlowEffectMatch) {
     const option = findOption(context, endFlowEffectMatch[1], occurrence);
     return {
@@ -500,9 +505,7 @@ function nodeId(node: NodeMatch) {
 }
 
 function findNode(context: FlowValidationContext, label: string, occurrence: number): NodeMatch | undefined {
-  const candidates = context.nodes.filter(
-    (node) => stringify(node.value.id) === label || node.key === label,
-  );
+  const candidates = context.nodes.filter((node) => stringify(node.value.id) === label || node.key === label);
   return candidates[Math.min(occurrence, Math.max(candidates.length - 1, 0))];
 }
 
@@ -550,12 +553,7 @@ function optionPath(context: FlowValidationContext, option: OptionMatch | undefi
   return `${context.pathRoot}.nodes.${nodeSegment}.options.${optionSegment}`;
 }
 
-function effectPath(
-  context: FlowValidationContext,
-  option: OptionMatch | undefined,
-  kind: string,
-  occurrence: number,
-) {
+function effectPath(context: FlowValidationContext, option: OptionMatch | undefined, kind: string, occurrence: number) {
   const effectValues = option?.option.effects;
   const effects = Array.isArray(effectValues) ? effectValues : [];
   const candidates = effects
@@ -593,10 +591,12 @@ function findBranch(node: NodeMatch | undefined, label: string, occurrence: numb
     .map((value, index) => ({ value, index }))
     .filter((item) => isRecord(item.value) && stringify(item.value.id) === label);
   const selected = candidates[Math.min(occurrence, Math.max(candidates.length - 1, 0))];
-  return selected && {
-    index: selected.index,
-    id: hasTextValue(selected.value.id) ? String(selected.value.id) : undefined,
-  };
+  return (
+    selected && {
+      index: selected.index,
+      id: hasTextValue(selected.value.id) ? String(selected.value.id) : undefined,
+    }
+  );
 }
 
 function findBranchByIndex(node: NodeMatch | undefined, index: number) {

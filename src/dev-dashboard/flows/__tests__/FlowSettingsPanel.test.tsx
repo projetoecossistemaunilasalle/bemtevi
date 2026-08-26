@@ -86,7 +86,14 @@ describe('FlowSettingsPanel', () => {
 
     expect(screen.getByTestId('flow-settings-panel')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Configurações do fluxo', level: 2 })).toBeInTheDocument();
-    for (const section of ['Título do fluxo', 'Uso do fluxo', 'Status', 'Etapa de entrada', 'Frases de entrada', 'Mensagem antes do fluxo']) {
+    for (const section of [
+      'Título do fluxo',
+      'Uso do fluxo',
+      'Status',
+      'Etapa de entrada',
+      'Frases de entrada',
+      'Mensagem antes do fluxo',
+    ]) {
       expect(screen.getByRole('heading', { name: section, level: 3 })).toBeInTheDocument();
     }
     expect(screen.getByRole('button', { name: 'Fechar configurações' })).toBeInTheDocument();

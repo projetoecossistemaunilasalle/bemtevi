@@ -17,14 +17,14 @@ superfície de edição também.
 
 ## Decisões
 
-| Pergunta                                        | Decisão                                                        |
-| ----------------------------------------------- | -------------------------------------------------------------- |
-| Problema central do editor atual                | Estrutura invisível durante a edição                           |
-| Modelo de edição                                | Painel estruturado lateral; canvas somente leitura e sempre vivo |
-| Destino do editor atual                         | Mantido como fallback até a paridade ser validada em uso real   |
-| Configurações do fluxo (título, uso, entrada…)  | Painel aberto a partir do cabeçalho do mapa                     |
-| Novos campos de conteúdo                        | Nenhum                                                          |
-| Posicionamento manual salvo / arraste persistente | Continua fora de escopo                                       |
+| Pergunta                                          | Decisão                                                          |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| Problema central do editor atual                  | Estrutura invisível durante a edição                             |
+| Modelo de edição                                  | Painel estruturado lateral; canvas somente leitura e sempre vivo |
+| Destino do editor atual                           | Mantido como fallback até a paridade ser validada em uso real    |
+| Configurações do fluxo (título, uso, entrada…)    | Painel aberto a partir do cabeçalho do mapa                      |
+| Novos campos de conteúdo                          | Nenhum                                                           |
+| Posicionamento manual salvo / arraste persistente | Continua fora de escopo                                          |
 
 ## Princípios
 

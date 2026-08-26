@@ -321,7 +321,9 @@ export function FlowSettingsPanel({ flow, onFlowChange, onClose }: FlowSettingsP
         <DraftTextAreaField
           ariaLabel="Mensagem antes do fluxo"
           value={flow.entry.transitionMessage}
-          onCommit={(transitionMessage) => onFlowChange({ entry: updateFlowSettings(flow, { transitionMessage }).entry })}
+          onCommit={(transitionMessage) =>
+            onFlowChange({ entry: updateFlowSettings(flow, { transitionMessage }).entry })
+          }
         />
       </section>
     </div>

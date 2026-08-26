@@ -98,7 +98,10 @@ function validateFlowStartTargets(flow: GuidedFlow, flowIds: Set<string>) {
       (option.effects ?? [])
         .filter((effect): effect is FlowStartFlowEffect => effect.kind === 'flow_start')
         .filter((effect) => !flowIds.has(effect.flowId))
-        .map((effect) => `A opção ${option.id} do fluxo ${flow.id} tenta iniciar um fluxo que não existe: ${effect.flowId}.`),
+        .map(
+          (effect) =>
+            `A opção ${option.id} do fluxo ${flow.id} tenta iniciar um fluxo que não existe: ${effect.flowId}.`,
+        ),
     );
   });
 }

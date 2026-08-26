@@ -56,10 +56,7 @@ function createDefaultNode(id: string, kind: FlowNode['kind']): FlowNode {
  * Pure: never mutates inputs. An origin option is repointed only when
  * `connectFrom.optionId` is explicitly provided and found (`linked` reports it).
  */
-export function addNode(
-  flow: GuidedFlow,
-  input: AddNodeInput,
-): { flow: GuidedFlow; nodeId: string; linked: boolean } {
+export function addNode(flow: GuidedFlow, input: AddNodeInput): { flow: GuidedFlow; nodeId: string; linked: boolean } {
   const nodeId = uniqueNodeId(flow);
   let nodes: Record<string, FlowNode> = { ...flow.nodes, [nodeId]: createDefaultNode(nodeId, input.kind) };
   let linked = false;
