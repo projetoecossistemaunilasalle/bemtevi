@@ -204,6 +204,23 @@ TAREFA DO USUÁRIO (o administrador dirá o que quer alterar em seguida, mas se 
   return wrapJsonPromptWithImages(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
 }
 
+export function buildDirectAgentPrompt(payload: PublishedContentPayload, instruction: string): string {
+  const header = `Você é um assistente editorial conectado diretamente ao painel administrativo do BemTeVi, uma plataforma de apoio a professores que enfrentam violência escolar no Brasil.`;
+  const instrucoesUsuario = `
+TAREFA SOLICITADA PELO ADMINISTRADOR:
+${instruction}
+
+REGRAS DE EXECUÇÃO:
+- Faça somente as alterações pedidas acima.
+- Trabalhe apenas sobre o JSON fornecido. Não leia nem altere arquivos do computador.
+- Nunca remova conteúdo que não foi solicitado para remoção.
+- Preserve todos os IDs, exceto quando a tarefa pedir explicitamente a criação de um item novo.
+- Para imagens, mantenha rigorosamente os caminhos ./images/... e nunca gere base64.
+- Devolva o payload completo, incluindo coleções que não foram alteradas.
+`;
+  return wrapJsonPromptWithImages(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
+}
+
 export function buildFlowPrompt(flow: GuidedFlow): string {
   const header = `Você é um assistente do BemTeVi especializado em fluxos de conversa guiada para acolhimento de professores.`;
   const instrucoesUsuario = `

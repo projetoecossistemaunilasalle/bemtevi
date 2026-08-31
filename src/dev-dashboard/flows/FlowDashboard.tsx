@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import type { EducationResource } from '../../domain/resources/types';
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
@@ -52,12 +52,14 @@ const flowDetailTabs: Array<{ id: FlowDetailTab; label: string }> = [
 export function FlowDashboard({
   flows,
   resources,
+  externalFocus,
   onFlowChange,
   onFlowAdd,
   onFlowRemove,
 }: {
   flows: GuidedFlow[];
   resources: EducationResource[];
+  externalFocus?: { id: string; requestId: number } | null;
   onFlowChange: (flowIndex: number, flowId: string, patch: Partial<GuidedFlow>) => void;
   onFlowAdd?: () => void;
   onFlowRemove?: (flowId: string) => void;
@@ -74,6 +76,21 @@ export function FlowDashboard({
   // Deep-link from the validation summary onto the map surface. Consumed by
   // FlowMap/FlowDestinationMap; cleared when the user navigates manually.
   const [validationFocusRequest, setValidationFocusRequest] = useState<MapFocusRequest | null>(null);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!externalFocus?.id) return;
+    const exists = flows.some((flow) => flow.id === externalFocus.id);
+    if (exists) {
+      setSelectedFlowId(externalFocus.id);
+      setSelectedNodeId(null);
+      setNodeScrollRequest(null);
+      setConfirmDeleteFlowId(null);
+      setValidationFocusRequest(null);
+      setActiveDetailTab('editor');
+    }
+  }, [externalFocus?.requestId, externalFocus?.id, flows]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const selectedIndex = useMemo(() => flows.findIndex((flow) => flow.id === selectedFlowId), [flows, selectedFlowId]);
   const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;

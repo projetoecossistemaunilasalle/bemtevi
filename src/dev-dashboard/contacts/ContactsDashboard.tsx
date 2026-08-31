@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AlertCircle, Plus } from 'lucide-react';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import { Button } from '../../design-system/components/Button';
@@ -30,6 +30,7 @@ export function ContactsDashboard({
   services,
   locations = [],
   validation,
+  externalFocus,
   onServiceChange,
   onServiceAdd,
   onServiceRemove,
@@ -40,6 +41,7 @@ export function ContactsDashboard({
   services: ServiceDirectoryEntry[];
   locations?: ServiceLocation[];
   validation: DashboardValidationResult;
+  externalFocus?: { id: string; requestId: number; path?: string } | null;
   onServiceChange: (index: number, id: string, patch: Partial<ServiceDirectoryEntry>) => void;
   onServiceAdd: () => string;
   onServiceRemove: (index: number, id: string) => void;
@@ -54,6 +56,25 @@ export function ContactsDashboard({
   const [selection, setSelection] = useState<ServiceSelection | null>(() =>
     services[0] ? { index: 0, id: services[0].id } : null,
   );
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!externalFocus?.id) return;
+    const contactIndex = services.findIndex((service) => service.id === externalFocus.id);
+    if (contactIndex >= 0) {
+      setSelection({ index: contactIndex, id: externalFocus.id });
+      const path = externalFocus.path ?? `contacts.${contactIndex}.name`;
+      window.setTimeout(() => scheduleValidationFocus(path), 120);
+      return;
+    }
+    const locationIndex = locations.findIndex((location) => location.id === externalFocus.id);
+    if (locationIndex >= 0) {
+      setLocationManagementOpen(true);
+      const path = externalFocus.path ?? `locations.${locationIndex}.city`;
+      window.setTimeout(() => scheduleValidationFocus(path), 150);
+    }
+  }, [externalFocus?.requestId, externalFocus?.id, externalFocus?.path, locations, services]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const serviceAtSelectedIndex = selection ? services[selection.index] : undefined;
   const selectedIndex =
     selection && serviceAtSelectedIndex?.id === selection.id

@@ -41,7 +41,7 @@ import { normalizeContactLocations } from '../domain/services/locations';
 import type { PublishedContentSnapshot } from '../app/content/publishedContent';
 import { parsePayload, validatePublicationPayload } from '../app/content/publishedContent';
 import type { DashboardShippedContent } from './content/shippedContent';
-import { scheduleValidationSummaryScroll } from './validation/validationNavigation';
+import { scheduleValidationFocus, scheduleValidationSummaryScroll } from './validation/validationNavigation';
 import { AiArchiveSection } from './ai/AiArchiveSection';
 import { createDraftFromAiPayload } from './ai/aiDraft';
 
@@ -263,6 +263,17 @@ function resolveLocationOrigin(
 export function DashboardRoute() {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => loadActiveTab());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [flowFocusRequest, setFlowFocusRequest] = useState<{ id: string; requestId: number } | null>(null);
+  const [educationFocusRequest, setEducationFocusRequest] = useState<{
+    id: string;
+    requestId: number;
+    path?: string;
+  } | null>(null);
+  const [contactsFocusRequest, setContactsFocusRequest] = useState<{
+    id: string;
+    requestId: number;
+    path?: string;
+  } | null>(null);
   const { content: baseline, snapshot } = usePublishedContent();
   const publishMode = getDashboardPublishMode();
   const shipped = useMemo(() => {
@@ -339,6 +350,26 @@ export function DashboardRoute() {
   function setActiveTab(tab: DashboardTab) {
     setActiveTabState(tab);
     saveActiveTab(tab);
+  }
+
+  function handleNavigate(tab: DashboardTab, id?: string, path?: string) {
+    setActiveTab(tab);
+    if (!id) {
+      scheduleValidationSummaryScroll();
+      return;
+    }
+    const requestId = Date.now();
+    if (tab === 'flows') {
+      setFlowFocusRequest({ id, requestId });
+    } else if (tab === 'education') {
+      setEducationFocusRequest({ id, requestId, path });
+    } else if (tab === 'contacts') {
+      setContactsFocusRequest({ id, requestId, path });
+    }
+    if (path) {
+      // Também tenta foco direto para campos que usam data-validation-path
+      window.setTimeout(() => scheduleValidationFocus(path), 180);
+    }
   }
 
   function updateDraftState(updater: (current: DashboardDraftState) => DashboardDraftState) {
@@ -511,7 +542,7 @@ export function DashboardRoute() {
 
   function handleAiApply(nextPayload: PublishedContentPayload) {
     if (!shipped) {
-      setStorageError('Aguarde o carregamento do conteúdo publicado antes de aplicar o arquivo da IA.');
+      setStorageError('Aguarde o carregamento do conteúdo publicado antes de aplicar a resposta da IA.');
       return;
     }
     try {
@@ -527,7 +558,7 @@ export function DashboardRoute() {
       scheduleValidationSummaryScroll();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Conteúdo da IA inválido.';
-      setStorageError(`Arquivo da IA não pôde ser aplicado: ${message}`);
+      setStorageError(`A resposta da IA não pôde ser aplicada: ${message}`);
       // Mantém rascunho atual intacto
     }
   }
@@ -588,6 +619,7 @@ export function DashboardRoute() {
           <FlowDashboard
             flows={mergedDrafts.flows}
             resources={mergedDrafts.educationMaterials}
+            externalFocus={flowFocusRequest}
             onFlowChange={(flowIndex, flowId, patch) =>
               updateDraftState((current) => ({
                 ...current,
@@ -620,6 +652,7 @@ export function DashboardRoute() {
             resources={mergedDrafts.educationMaterials}
             groups={mergedDrafts.educationGroups}
             defaultGroupOrder={mergedDrafts.defaultGroupOrder}
+            externalFocus={educationFocusRequest}
             onResourceChange={(resourceIndex, resourceId, patch) =>
               updateDraftState((current) => {
                 const origin = resolveEducationResourceOrigin(
@@ -890,6 +923,7 @@ export function DashboardRoute() {
             services={mergedDrafts.contacts}
             locations={mergedDrafts.locations}
             validation={contactValidation}
+            externalFocus={contactsFocusRequest}
             onServiceChange={(serviceIndex, serviceId, patch) =>
               updateDraftState((current) => {
                 const origin = resolveContactOrigin(
@@ -1049,6 +1083,7 @@ export function DashboardRoute() {
                 setActiveTab(area === 'export' ? 'export' : area);
                 scheduleValidationSummaryScroll();
               }}
+              onNavigate={handleNavigate}
             />
           ) : (
             <ExportDashboard

@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.14.0",
   "scripts": {
     "dev": "node scripts/run-project-command.mjs dev",
+    "agent:bridge": "node scripts/agent-bridge/server.mjs",
     "dev:wsl": "node.exe scripts/run-project-command.mjs dev",
     "install:win": "pnpm install --modules-dir=node_modules.win",
     "install:wsl": "pnpm install --modules-dir=node_modules.wsl",

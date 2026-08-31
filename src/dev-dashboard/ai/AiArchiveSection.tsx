@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Download, Upload, FileArchive, Sparkles } fr
 import { Button } from '../../design-system/components/Button';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { createAiArchive, parseAiArchiveFile, downloadBlob } from './aiArchive';
+import { DirectAgentSection } from './DirectAgentSection';
 
 interface AiArchiveSectionProps {
   draft: PublishedContentPayload;
@@ -15,7 +16,16 @@ type Status =
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string };
 
-export function AiArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
+export function AiArchiveSection(props: AiArchiveSectionProps) {
+  return (
+    <div className="flex flex-col gap-stack-lg">
+      <DirectAgentSection {...props} />
+      <AiFileArchiveSection {...props} />
+    </div>
+  );
+}
+
+function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);

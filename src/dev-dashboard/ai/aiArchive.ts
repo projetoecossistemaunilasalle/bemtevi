@@ -40,6 +40,12 @@ export function buildInstrucoesParaIa(payload: PublishedContentPayload): string 
   return buildFullPayloadPromptForArchive(payload);
 }
 
+export function preparePayloadForAi(payload: PublishedContentPayload): AiArchiveContent {
+  const draftContent = payloadToDraftContent(payload);
+  const { json, images } = extractImagesFromDrafts(draftContent);
+  return { payload: draftContentToPayload(json), images };
+}
+
 export function buildLeiaMeImagens(): string {
   return `LEIA-ME: IMAGENS NO ARQUIVO DO BEMTEVI
 ========================================
@@ -81,10 +87,7 @@ DÚVIDAS? Volte ao painel e use o botão "Restaurar rascunho" se algo der errado
 export async function createAiArchive(
   payload: PublishedContentPayload,
 ): Promise<{ zipData: Uint8Array; fileName: string; imageCount: number }> {
-  // Converte payload para draftContent para reutilizar extractImagesFromDrafts
-  const draftContent = payloadToDraftContent(payload);
-  const { json: jsonComPaths, images } = extractImagesFromDrafts(draftContent);
-  const payloadParaPrompt = draftContentToPayload(jsonComPaths);
+  const { payload: payloadParaPrompt, images } = preparePayloadForAi(payload);
 
   const instrucoes = buildInstrucoesParaIa(payloadParaPrompt);
   const leiaMe = buildLeiaMeImagens();
@@ -174,6 +177,11 @@ export async function parseAiArchiveFile(file: File): Promise<PublishedContentPa
   const jsonStr = extractJsonFromAiResponse(text);
   const parsed = JSON.parse(jsonStr) as unknown;
   return validateAndNormalizePayload(parsed);
+}
+
+export function parseAiResponseText(text: string): PublishedContentPayload {
+  const json = extractJsonFromAiResponse(text);
+  return validateAndNormalizePayload(JSON.parse(json) as unknown);
 }
 
 function validateAndNormalizePayload(parsed: unknown): PublishedContentPayload {

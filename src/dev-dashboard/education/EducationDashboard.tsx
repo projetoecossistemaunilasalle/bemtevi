@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
@@ -155,6 +155,7 @@ export function EducationDashboard({
   resources,
   groups,
   defaultGroupOrder = 0,
+  externalFocus,
   onResourceChange,
   onResourceAdd,
   onResourceRemove = () => {},
@@ -166,6 +167,7 @@ export function EducationDashboard({
   resources: EducationResource[];
   groups: EducationResourceGroup[];
   defaultGroupOrder?: number;
+  externalFocus?: { id: string; requestId: number; path?: string } | null;
   onResourceChange: (resourceIndex: number, resourceId: string, patch: Partial<EducationResource>) => void;
   onResourceAdd: () => string;
   onResourceRemove?: (resourceIndex: number, resourceId: string) => void;
@@ -178,6 +180,36 @@ export function EducationDashboard({
     resources[0] ? { index: 0, id: resources[0].id } : null,
   );
   const [groupsExpanded, setGroupsExpanded] = useState(false);
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(() => new Set());
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!externalFocus?.id) return;
+    const materialIndex = resources.findIndex((resource) => resource.id === externalFocus.id);
+    if (materialIndex >= 0) {
+      setSelection({ index: materialIndex, id: externalFocus.id });
+      const path = externalFocus.path ?? `${externalFocus.id}.title`;
+      // Se o caminho for de um bloco, expande o bloco
+      const blockMatch = /body\.([^.]+)/.exec(path);
+      if (blockMatch?.[1]) {
+        const blockId = blockMatch[1];
+        setCollapsedBlockIds((current) => {
+          const next = new Set(current);
+          next.delete(blockId);
+          return next;
+        });
+      }
+      window.setTimeout(() => scheduleValidationFocus(path), 120);
+      return;
+    }
+    const groupIndex = groups.findIndex((group) => group.id === externalFocus.id);
+    if (groupIndex >= 0) {
+      setGroupsExpanded(true);
+      const path = externalFocus.path ?? `groups.${groupIndex}.title`;
+      window.setTimeout(() => scheduleValidationFocus(path), 150);
+    }
+  }, [externalFocus?.requestId, externalFocus?.id, externalFocus?.path, groups, resources]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const resourceAtSelectedIndex = selection ? resources[selection.index] : undefined;
   const selectedIndex =
     selection && resourceAtSelectedIndex?.id === selection.id
@@ -268,8 +300,6 @@ export function EducationDashboard({
       changeField({ group: groupId });
     }
   }
-
-  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(() => new Set());
 
   function toggleBlockExpanded(blockId: string) {
     setCollapsedBlockIds((prev) => {

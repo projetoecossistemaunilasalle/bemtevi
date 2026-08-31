@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["flows", "educationMaterials", "educationGroups", "contacts", "locations", "defaultGroupOrder"],
+  "properties": {
+    "flows": { "type": "array" },
+    "educationMaterials": { "type": "array" },
+    "educationGroups": { "type": "array" },
+    "contacts": { "type": "array" },
+    "locations": { "type": "array" },
+    "defaultGroupOrder": { "type": "number" }
+  },
+  "additionalProperties": false
+}

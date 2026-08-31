@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertCircle, ArrowRight, CheckCircle2, Download, Upload } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Download, Eye, Upload } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
 import { useAdminAuth } from '../../app/auth/AdminAuthContext';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
@@ -11,7 +11,14 @@ import {
 } from '../../app/content/publishedContent';
 import { PublishedContentRepositoryError } from '../../app/content/publishedContentRepository';
 import type { DashboardValidationArea, DashboardValidationResult } from '../validation/validationTypes';
-import { computeChangeSummary, type RecordChangeCount } from './changeSummary';
+import type { DashboardTab } from '../components/DashboardShell';
+import {
+  computeChangeSummary,
+  computeDetailedChangeSummary,
+  type DetailedRecordChanges,
+  type RecordChangeCount,
+  type RecordChangeDetail,
+} from './changeSummary';
 import { mergePublishedContent, type PublishedContentMergeConflict } from './mergePublishedContent';
 
 import { ConfirmButton } from '../components/ConfirmButton';
@@ -30,6 +37,7 @@ interface PublishDashboardProps {
   onDownloadBackup?(): void;
   onRestoreBackup?(): void;
   onOpenValidationArea?(area: DashboardValidationArea): void;
+  onNavigate?(tab: DashboardTab, id?: string, path?: string): void;
 }
 
 type PublishState =
@@ -88,12 +96,14 @@ export function PublishDashboard({
   onDownloadBackup,
   onRestoreBackup,
   onOpenValidationArea,
+  onNavigate,
 }: PublishDashboardProps) {
   const { snapshot, publish, refresh, refreshLatest } = usePublishedContent();
   const { account } = useAdminAuth();
   const [state, setState] = useState<PublishState>({ kind: 'idle' });
 
   const summary = useMemo(() => computeChangeSummary(baseline, draft), [baseline, draft]);
+  const detailed = useMemo(() => computeDetailedChangeSummary(baseline, draft), [baseline, draft]);
   const currentRevision = snapshot?.revision ?? 0;
   const payloadBytes = useMemo(() => {
     try {
@@ -217,7 +227,7 @@ export function PublishDashboard({
             </p>
           </div>
         ) : (
-          <div className="rounded-lg bg-surface-container-low p-4">
+          <div className="flex flex-col gap-4 rounded-lg bg-surface-container-low p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <ChangeStat label="Fluxos" counts={summary.flows} />
               <ChangeStat label="Materiais" counts={summary.materials} />
@@ -226,8 +236,66 @@ export function PublishDashboard({
               <ChangeStat label="Locais" counts={summary.locations} />
             </div>
             {summary.defaultGroupOrderChanged ? (
-              <p className="mt-3 font-label-sm text-on-surface-variant">A ordem padrão dos grupos foi alterada.</p>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-3">
+                <p className="font-label-sm text-on-surface-variant">A ordem padrão dos grupos foi alterada.</p>
+                {onNavigate && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('education')}
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full bg-primary px-3 py-1 font-label-sm text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+                    Ver em Materiais
+                  </button>
+                )}
+              </div>
             ) : null}
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <h3 className="font-label-md font-semibold text-on-surface">Detalhes por item</h3>
+                <span className="font-body-sm text-on-surface-variant">
+                  — clique em “Abrir” para revisar onde foi alterado
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <ChangeDetailSection
+                  title="Fluxos"
+                  tab="flows"
+                  areaLabel="Fluxos"
+                  details={detailed.details.flows}
+                  onNavigate={onNavigate}
+                />
+                <ChangeDetailSection
+                  title="Materiais"
+                  tab="education"
+                  areaLabel="Materiais"
+                  details={detailed.details.materials}
+                  onNavigate={onNavigate}
+                />
+                <ChangeDetailSection
+                  title="Grupos"
+                  tab="education"
+                  areaLabel="Materiais"
+                  details={detailed.details.groups}
+                  onNavigate={onNavigate}
+                />
+                <ChangeDetailSection
+                  title="Contatos"
+                  tab="contacts"
+                  areaLabel="Contatos"
+                  details={detailed.details.contacts}
+                  onNavigate={onNavigate}
+                />
+                <ChangeDetailSection
+                  title="Locais"
+                  tab="contacts"
+                  areaLabel="Contatos"
+                  details={detailed.details.locations}
+                  onNavigate={onNavigate}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -397,6 +465,179 @@ function ChangeStat({ label, counts }: { label: string; counts: RecordChangeCoun
     <div>
       <p className="font-label-sm text-on-surface-variant">{label}</p>
       <p className="font-label-md text-on-surface">{parts.join(', ')}</p>
+    </div>
+  );
+}
+
+const detailFieldLabels: Record<string, string> = {
+  title: 'título',
+  text: 'texto',
+  description: 'descrição',
+  source: 'fonte',
+  tags: 'marcadores',
+  audience: 'público',
+  group: 'grupo',
+  body: 'conteúdo',
+  imageUrl: 'imagem',
+  imageFileName: 'arquivo de imagem',
+  featuredImage: 'imagem principal',
+  order: 'ordem',
+  name: 'nome',
+  type: 'categoria',
+  badgeTone: 'selo',
+  city: 'cidade',
+  state: 'estado',
+  address: 'endereço',
+  phoneDisplay: 'telefone',
+  phoneHref: 'link do telefone',
+  hours: 'horário',
+  notes: 'observações',
+  locationId: 'local',
+  lat: 'latitude',
+  lng: 'longitude',
+  status: 'estado',
+  version: 'versão',
+  locale: 'idioma',
+  entry: 'entrada',
+  nodes: 'etapas',
+  nodeOrder: 'ordem das etapas',
+  purpose: 'finalidade',
+  review: 'revisão',
+};
+
+function humanizeField(key: string): string {
+  return detailFieldLabels[key] ?? key;
+}
+
+function ChangeDetailSection({
+  title,
+  tab,
+  areaLabel,
+  details,
+  onNavigate,
+}: {
+  title: string;
+  tab: DashboardTab;
+  areaLabel: string;
+  details: DetailedRecordChanges;
+  onNavigate?: (tab: DashboardTab, id?: string, path?: string) => void;
+}) {
+  const total = details.counts.added + details.counts.edited + details.counts.removed;
+  if (total === 0) return null;
+  const hasNavigate = typeof onNavigate === 'function';
+
+  return (
+    <section className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="font-label-md font-semibold text-on-surface">
+          {title}{' '}
+          <span className="font-body-sm font-normal text-on-surface-variant">
+            ({total} {total === 1 ? 'alteração' : 'alterações'})
+          </span>
+        </h4>
+        {hasNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate(tab)}
+            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1 font-label-sm text-on-surface transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Abrir {areaLabel}
+            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-col gap-3">
+        {details.added.length > 0 && (
+          <DetailList label="Adicionados" tone="added" items={details.added} tab={tab} onNavigate={onNavigate} />
+        )}
+        {details.edited.length > 0 && (
+          <DetailList label="Editados" tone="edited" items={details.edited} tab={tab} onNavigate={onNavigate} />
+        )}
+        {details.removed.length > 0 && (
+          <DetailList label="Removidos" tone="removed" items={details.removed} tab={tab} onNavigate={undefined} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DetailList({
+  label,
+  tone,
+  items,
+  tab,
+  onNavigate,
+}: {
+  label: string;
+  tone: 'added' | 'edited' | 'removed';
+  items: RecordChangeDetail[];
+  tab: DashboardTab;
+  onNavigate?: (tab: DashboardTab, id?: string, path?: string) => void;
+}) {
+  const toneClasses: Record<typeof tone, string> = {
+    added: 'bg-primary-container text-on-primary-container',
+    edited: 'bg-secondary-container text-on-secondary-container',
+    removed: 'bg-error-container text-on-error-container',
+  };
+  const toneLabel: Record<typeof tone, string> = {
+    added: 'novo',
+    edited: 'alterado',
+    removed: 'removido',
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-label-sm font-semibold text-on-surface-variant">
+        {label} ({items.length})
+      </p>
+      <ul className="flex flex-col gap-2">
+        {items.slice(0, 12).map((item, index) => {
+          const fieldSummary =
+            item.changedFields && item.changedFields.length > 0
+              ? ` — campos: ${item.changedFields.map(humanizeField).join(', ')}`
+              : '';
+          const canNavigate = tone !== 'removed' && typeof onNavigate === 'function';
+          // Build a focus path for precise scrolling: for education use id.field, for contacts use contacts.index.field
+          const focusPath =
+            item.changedFields && item.changedFields[0]
+              ? tab === 'contacts' && typeof item.draftIndex === 'number'
+                ? `contacts.${item.draftIndex}.${item.changedFields[0]}`
+                : `${item.id}.${item.changedFields[0]}`
+              : undefined;
+
+          return (
+            <li
+              key={`${tone}-${item.id}-${item.draftIndex ?? item.baselineIndex ?? index}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2"
+            >
+              <span className="min-w-0 flex-1 font-body-sm text-on-surface">
+                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${toneClasses[tone]}`}>
+                  {toneLabel[tone]}
+                </span>
+                <span className="font-label-sm font-semibold">{item.label}</span>
+                <span className="ml-1 font-body-sm text-on-surface-variant">({item.id})</span>
+                {fieldSummary && <span className="font-body-sm text-on-surface-variant">{fieldSummary}</span>}
+              </span>
+              {canNavigate ? (
+                <button
+                  type="button"
+                  onClick={() => onNavigate(tab, item.id, focusPath)}
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3 py-1 font-label-sm text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  aria-label={`Abrir ${item.label} em ${tab === 'flows' ? 'Fluxos' : tab === 'education' ? 'Materiais' : 'Contatos'}`}
+                >
+                  <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+                  Abrir
+                  <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              ) : tone === 'removed' ? (
+                <span className="font-label-sm text-on-surface-variant">removido do rascunho</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {items.length > 12 && <p className="font-body-sm text-on-surface-variant">+ {items.length - 12} outros</p>}
     </div>
   );
 }

@@ -126,7 +126,7 @@ describe('PublishDashboard', () => {
   it('shows the complete change summary and current revision', () => {
     renderPublish();
 
-    expect(screen.getByText('Contatos')).toBeInTheDocument();
+    expect(screen.getAllByText('Contatos').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('1 adicionado')).toBeInTheDocument();
     expect(screen.getByText(/Revisão atual: 4/)).toBeInTheDocument();
   });

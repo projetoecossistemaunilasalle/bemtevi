@@ -48,8 +48,13 @@ export default tseslint.config(
     files: ['scripts/**/*.mjs'],
     languageOptions: {
       globals: {
+        AbortController: 'readonly',
+        Buffer: 'readonly',
         console: 'readonly',
+        clearTimeout: 'readonly',
         process: 'readonly',
+        setTimeout: 'readonly',
+        URL: 'readonly',
       },
     },
   },
