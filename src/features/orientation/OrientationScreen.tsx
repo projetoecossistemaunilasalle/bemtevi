@@ -18,9 +18,9 @@ const INTRO_STARTERS = [
     recordAsMessage: true,
   },
   {
-    id: 'talk-through-experience',
-    label: 'Quero falar sobre o que estou vivendo',
-    flowId: 'orientation-talk-through-experience',
+    id: 'organize-experience',
+    label: 'Quero organizar o que estou vivendo',
+    flowId: 'orientation-organize-experience',
     recordAsMessage: true,
   },
   {
@@ -382,11 +382,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.sender === 'user';
   const label = isUser ? 'Você' : 'BemTeVi';
   const videos = isUser ? [] : (message.videos ?? []);
+  const visuals = isUser ? [] : (message.visuals ?? []);
+  const hasMedia = videos.length > 0 || visuals.length > 0;
 
   return (
     <article className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`flex flex-col gap-1 ${videos.length > 0 ? 'w-full max-w-[94%] md:max-w-[88%]' : 'max-w-[84%]'} ${
+        className={`flex flex-col gap-1 ${hasMedia ? 'w-full max-w-[94%] md:max-w-[88%]' : 'max-w-[84%]'} ${
           isUser ? 'items-end' : 'items-start'
         }`}
       >
@@ -402,13 +404,26 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           {label}
         </span>
         <div
-          className={`rounded-2xl px-4 py-3 shadow-sm ${videos.length > 0 ? 'w-full' : ''} ${
+          className={`rounded-2xl px-4 py-3 shadow-sm ${hasMedia ? 'w-full' : ''} ${
             isUser
               ? 'rounded-br-sm bg-primary text-on-primary'
               : 'ml-10 rounded-bl-sm border border-outline-variant/40 bg-[#EEF8F3] text-on-surface'
           }`}
         >
           <p className="whitespace-pre-line font-body-md">{message.text}</p>
+          {visuals.length > 0 && (
+            <div className="mt-3 grid w-full gap-3">
+              {visuals.map((visual) => (
+                <img
+                  key={visual.id}
+                  src={visual.src}
+                  alt={visual.alt}
+                  className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest"
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          )}
           {videos.length > 0 && (
             <div className="mt-3 grid w-full gap-3">
               {videos.map((video) => (

@@ -1,9 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { neutralFlows } from '../src/content/flows/neutral';
-import { restRecoveryFlow } from '../src/content/flows/rest-recovery';
-import { workStressFlow } from '../src/content/flows/work-stress';
+import { documentFlows } from '../src/content/flows/documentFlows';
 import { resourcesContent } from '../src/content/resources/resources';
 import { parseGuidedFlow } from '../src/domain/flow-engine/parseFlow';
 import { validateFlow } from '../src/domain/flow-engine/validateFlow';
@@ -31,7 +29,7 @@ function loadJsonFlows(rootDir: string): GuidedFlow[] {
 export function loadRegisteredFlows(rootDir?: string): GuidedFlow[] {
   const resolvedRoot = rootDir ?? getRepoRoot();
   const jsonFlows = loadJsonFlows(resolvedRoot);
-  return [...neutralFlows, workStressFlow, restRecoveryFlow, ...jsonFlows];
+  return [...documentFlows, ...jsonFlows];
 }
 
 export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {

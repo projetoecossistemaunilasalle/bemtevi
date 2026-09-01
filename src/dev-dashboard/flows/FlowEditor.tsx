@@ -6,6 +6,7 @@ import type {
   GlobalActionTarget,
   GuidedFlow,
   OrientationVideo,
+  OrientationVisual,
   ScoreBranchFlowNode,
 } from '../../domain/flow-engine/types';
 import {
@@ -16,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Image as ImageIcon,
   Settings,
   Trash2,
   Youtube,
@@ -29,6 +31,7 @@ import { FieldHint } from '../components/FieldHint';
 import { inputClass, inputClassSm, textareaClass } from '../components/fieldStyles';
 import { getFlowNodeLabel } from './flowDisplay';
 import { flowPurposeLabels } from './flowLabels';
+import { acceptImageTypes, readFileAsDataUrl } from '../components/fileUpload';
 
 export function FlowEditor({
   flow,
@@ -52,6 +55,7 @@ export function FlowEditor({
   const [activeOptionEdit, setActiveOptionEdit] = useState<{ nodeId: string; optionId: string } | null>(null);
   const [confirmDeleteNodeId, setConfirmDeleteNodeId] = useState<string | null>(null);
   const [initialConfigCollapsed, setInitialConfigCollapsed] = useState(true);
+  const [imageError, setImageError] = useState<string | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -217,6 +221,23 @@ export function FlowEditor({
     updateNode(node.id, { videos: videos.length > 0 ? videos : undefined });
   }
 
+  function addNodeVisual(node: FlowNode) {
+    const visuals = node.visuals ?? [];
+    const visualId = createUniqueId('visual', Object.fromEntries(visuals.map((visual) => [visual.id, visual])));
+    updateNode(node.id, { visuals: [...visuals, { id: visualId, alt: '', src: '' }] });
+  }
+
+  function updateNodeVisual(node: FlowNode, visualId: string, patch: Partial<OrientationVisual>) {
+    updateNode(node.id, {
+      visuals: (node.visuals ?? []).map((visual) => (visual.id === visualId ? { ...visual, ...patch } : visual)),
+    });
+  }
+
+  function removeNodeVisual(node: FlowNode, visualId: string) {
+    const visuals = (node.visuals ?? []).filter((visual) => visual.id !== visualId);
+    updateNode(node.id, { visuals: visuals.length > 0 ? visuals : undefined });
+  }
+
   function replaceNode(node: FlowNode) {
     onChange({
       nodes: {
@@ -270,12 +291,19 @@ export function FlowEditor({
     if (node.kind === kind) return;
 
     if (kind === 'choice') {
-      replaceNode({ id: node.id, kind: 'choice', text: node.text, videos: node.videos, options: [] });
+      replaceNode({
+        id: node.id,
+        kind: 'choice',
+        text: node.text,
+        videos: node.videos,
+        visuals: node.visuals,
+        options: [],
+      });
       return;
     }
 
     if (kind === 'result') {
-      replaceNode({ id: node.id, kind: 'result', text: node.text, videos: node.videos });
+      replaceNode({ id: node.id, kind: 'result', text: node.text, videos: node.videos, visuals: node.visuals });
       return;
     }
 
@@ -284,6 +312,8 @@ export function FlowEditor({
         id: node.id,
         kind: 'score_branch',
         text: node.text,
+        videos: node.videos,
+        visuals: node.visuals,
         scoreKey: existingScoreKeys[0] ?? '',
         branches: [{ id: 'faixa_1', min: 0, max: 0, next: firstNodeId }],
       });
@@ -731,6 +761,127 @@ export function FlowEditor({
                           })}
                         </section>
                       )}
+
+                      <section className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <ImageIcon className="h-5 w-5 text-primary" aria-hidden="true" />
+                              <h5 className="font-label-md text-on-surface">Imagens na orientação</h5>
+                            </div>
+                            <p className="mt-1 max-w-xl font-body-sm text-on-surface-variant">
+                              A imagem aparece logo abaixo desta mensagem no chat. Envie um arquivo do computador ou
+                              cole um link (https://...).
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => addNodeVisual(node)}
+                            aria-label={`Adicionar imagem na ${stepLabel}`}
+                          >
+                            Adicionar imagem
+                          </Button>
+                        </div>
+
+                        {imageError && (
+                          <p role="alert" className="font-body-sm text-error">
+                            {imageError}
+                          </p>
+                        )}
+
+                        {(node.visuals ?? []).map((visual, visualIndex) => {
+                          const uploaded = visual.src.trimStart().startsWith('data:');
+
+                          return (
+                            <div
+                              key={visual.id}
+                              className="grid gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)]"
+                            >
+                              <div className="flex min-w-0 flex-col gap-3">
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">Origem da imagem</span>
+                                  <input
+                                    type="url"
+                                    aria-label={`Origem da imagem ${visualIndex + 1} da ${stepLabel}`}
+                                    className={inputClassSm}
+                                    placeholder="https://..."
+                                    disabled={uploaded}
+                                    value={uploaded ? 'Imagem enviada neste navegador' : visual.src}
+                                    onChange={(event) => updateNodeVisual(node, visual.id, { src: event.target.value })}
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-label-sm text-on-surface">
+                                    Descrição da imagem (acessibilidade)
+                                  </span>
+                                  <input
+                                    aria-label={`Descrição da imagem ${visualIndex + 1} da ${stepLabel}`}
+                                    className={inputClassSm}
+                                    value={visual.alt}
+                                    onChange={(event) => updateNodeVisual(node, visual.id, { alt: event.target.value })}
+                                  />
+                                </label>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <label className="inline-flex cursor-pointer items-center justify-center gap-2 self-start rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 font-label-md text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:border-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                                    <input
+                                      type="file"
+                                      accept={acceptImageTypes()}
+                                      className="sr-only"
+                                      aria-label={`${uploaded ? 'Trocar' : 'Enviar'} imagem ${visualIndex + 1} da ${stepLabel}`}
+                                      onChange={async (event) => {
+                                        const file = event.target.files?.[0];
+                                        if (!file) return;
+                                        try {
+                                          const dataUrl = await readFileAsDataUrl(file);
+                                          setImageError(null);
+                                          updateNodeVisual(node, visual.id, { src: dataUrl });
+                                        } catch (error) {
+                                          setImageError(
+                                            error instanceof Error
+                                              ? error.message
+                                              : 'Não foi possível enviar a imagem. Escolha outro arquivo.',
+                                          );
+                                        }
+                                        event.target.value = '';
+                                      }}
+                                    />
+                                    {uploaded ? 'Trocar imagem' : 'Enviar imagem'}
+                                  </label>
+                                  {uploaded && (
+                                    <Button
+                                      type="button"
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() => updateNodeVisual(node, visual.id, { src: '' })}
+                                    >
+                                      Deletar imagem enviada
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => removeNodeVisual(node, visual.id)}
+                                    aria-label={`Remover imagem ${visualIndex + 1}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                    Remover imagem
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {visual.src.trim().length > 0 && (
+                                <div className="aspect-video w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
+                                  <img alt={visual.alt} className="h-full w-full object-cover" src={visual.src} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </section>
 
                       {node.kind === 'choice' && (
                         <div className="flex flex-col gap-2">

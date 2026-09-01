@@ -42,7 +42,7 @@ ESTRUTURA DE UM FLUXO (GuidedFlow):
   "type": "guided_conversation",
   "status": "draft" | "published",
   "entry": { "nodeId": string, "enteringPhrases": string[], "transitionMessage": string },
-  "nodes": { [nodeId]: { "id": string, "kind": "choice"|"result"|"score_branch", "text": string, "options"?: [...], "videos"?: [...], "recommendations"?: [...] } },
+  "nodes": { [nodeId]: { "id": string, "kind": "choice"|"result"|"score_branch", "text": string, "options"?: [...], "videos"?: [...], "visuals"?: [{ "id", "alt", "src" }], "recommendations"?: [...] } },
   "nodeOrder"?: string[]
 }
 
@@ -50,6 +50,7 @@ REGRAS DE FLUXO:
 - "entry.nodeId" deve existir em "nodes".
 - "options[].next" e "branches[].next" devem apontar para um nodeId existente.
 - "effects" válidos: score ({kind:"score", scoreKey, value}), deferred_safety ({kind:"deferred_safety", flagKey, message, destination}), safety_interrupt, flow_start, navigate, end_flow.
+- "visuals" são imagens exibidas junto à mensagem do nó. "src" é um link https:// ou um caminho "./images/..." quando a imagem foi enviada.
 - Mantenha "kind" e "id" de cada nó. Se criar nó novo, crie id único.
 `;
 
@@ -116,11 +117,12 @@ REGRAS:
 
 const REGRAS_IMAGENS_ARQUIVO = `
 REGRAS CRÍTICAS PARA IMAGENS (arquivo ZIP):
-- Campos de imagem (EducationResource.imageUrl, EducationResource.featuredImage.dataUrl, EducationResourceBlock.imageUrl) aparecem no data.json como "./images/nome-do-arquivo.jpg" (caminho relativo) quando a imagem foi enviada. NUNCA edite esse caminho manualmente, NUNCA tente criar base64 (data:image...), NUNCA invente nome de arquivo.
+- Campos de imagem (EducationResource.imageUrl, EducationResource.featuredImage.dataUrl, EducationResourceBlock.imageUrl, GuidedFlow.nodes[].visuals[].src) aparecem no data.json como "./images/nome-do-arquivo.png" (caminho relativo) quando a imagem foi enviada. NUNCA edite esse caminho manualmente, NUNCA tente criar base64 (data:image...), NUNCA invente nome de arquivo.
 - Se a imagem for externa (https://...), mantenha a URL exatamente igual, a menos que o usuário peça para trocar.
-- Se o usuário pedir para "trocar/adicionar imagem", NÃO tente gerar a imagem. Em vez disso, faça UM dos dois:
+- Se o usuário pedir para "trocar/adicionar imagem", NÃO tente gerar a imagem. Em vez disso, faça UM dos seguintes:
   1) Mantenha o caminho "./images/..." original e adicione no material um novo bloco do tipo "paragraph" no início do body com o texto: "[INSTRUÇÃO PARA O ADMINISTRADOR: Para trocar a imagem de [nome do material/bloco], volte ao painel > Materiais > abra '${'{'}materialId{'}'}' > clique em 'Enviar imagem' e escolha o arquivo desejado. Sugestão da IA: descreva aqui a imagem ideal - ex: 'foto acolhedora de sala de aula com professora sorrindo']"
   2) Ou, se for imagem de bloco do tipo "image", mantenha imageUrl como "./images/..." e atualize apenas "alt" com a descrição da imagem sugerida.
+  3) Ou, se for imagem de fluxo ("flows[].nodes[].visuals[]"), mantenha o "src" original ("./images/..." ou https://) e atualize apenas o "alt", ou oriente o administrador no texto: "[INSTRUÇÃO PARA O ADMINISTRADOR: Para trocar a imagem da etapa, volte ao painel > Fluxos > mapa visual > painel da etapa > Mídia e envie a nova imagem. Sugestão da IA: descreva aqui a imagem ideal]"
 - No arquivo ZIP, a pasta "images/" contém os arquivos reais. A IA NÃO precisa e NÃO deve devolver a pasta images. Devolva APENAS o data.json editado. As imagens serão preservadas automaticamente pelo painel.
 `;
 

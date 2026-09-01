@@ -562,6 +562,27 @@ export function resolveFlowValidationTarget(
       }
     }
 
+    if (nodePath[0] === 'visuals' && nodePath[1]) {
+      const visuals = node.visuals ?? [];
+      const visualId = nodePath[1];
+      const visualIndex = visuals.findIndex((visual) => visual.id === visualId);
+      const resolvedIndex =
+        visualIndex >= 0
+          ? visualIndex
+          : /^\d+$/.test(visualId) && Number(visualId) < visuals.length
+            ? Number(visualId)
+            : -1;
+      const visual = resolvedIndex >= 0 ? visuals[resolvedIndex] : undefined;
+      if (visual) {
+        return {
+          flowId: flow.id,
+          nodeId: node.id,
+          section: 'midia',
+          description: `corrija a imagem "${visual.id}" em ${nodePrefix} no painel da etapa.`,
+        };
+      }
+    }
+
     return {
       flowId: flow.id,
       nodeId: node.id,

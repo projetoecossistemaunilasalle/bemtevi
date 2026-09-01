@@ -106,6 +106,42 @@ describe('validateDashboardFlows', () => {
     expect(issue?.message).toContain('"demo"');
   });
 
+  it('points at the offending visual when the uploaded image is corrupted', () => {
+    const broken = brokenFlow('visual-corrompido', {
+      intro: {
+        id: 'intro',
+        kind: 'result',
+        text: 'Veja a imagem',
+        visuals: [{ id: 'foto', alt: 'Foto de apoio', src: 'data:image/tiff;base64,AAAA' }],
+      },
+    });
+
+    const result = validateDashboardFlows([broken], []);
+    const issue = result.errors.find((candidate) => candidate.id === 'structural:visual-corrompido:0');
+
+    expect(issue?.path).toBe('visual-corrompido.nodes.intro.visuals.0.src');
+    expect(issue?.message).toContain('"foto"');
+    expect(issue?.message).toContain('Reenvie a imagem');
+  });
+
+  it('points at the offending visual when the external image link has no http(s) scheme', () => {
+    const broken = brokenFlow('visual-link-invalido', {
+      intro: {
+        id: 'intro',
+        kind: 'result',
+        text: 'Veja a imagem',
+        visuals: [{ id: 'foto', alt: 'Foto de apoio', src: 'ftp://exemplo.com/foto.png' }],
+      },
+    });
+
+    const result = validateDashboardFlows([broken], []);
+    const issue = result.errors.find((candidate) => candidate.id === 'structural:visual-link-invalido:0');
+
+    expect(issue?.path).toBe('visual-link-invalido.nodes.intro.visuals.0.src');
+    expect(issue?.message).toContain('link http(s) ou caminho iniciado');
+    expect(issue?.message).toContain('Cole um link completo');
+  });
+
   it('falls back to the generic flow path for unmapped structural errors', () => {
     const broken = brokenFlow(UNKNOWN_ERROR_FLOW_ID, {
       inicio: { id: 'inicio', kind: 'choice', text: 'Oi', options: [{ id: 'op', label: 'Op', next: 'fantasma' }] },

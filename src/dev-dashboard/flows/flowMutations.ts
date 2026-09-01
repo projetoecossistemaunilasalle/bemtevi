@@ -397,11 +397,13 @@ export function addNode(flow: GuidedFlow, input: AddNodeInput): { flow: GuidedFl
 /** Deep-copies a node's content, renaming option/branch ids with the same `-copy-N` suffix. */
 function deepCopyNode(source: FlowNode, newId: string, suffix: number): FlowNode {
   const videos = source.videos?.map((video) => ({ ...video }));
+  const visuals = source.visuals?.map((visual) => ({ ...visual }));
   if (source.kind === 'choice') {
     return {
       ...source,
       id: newId,
       ...(videos ? { videos } : {}),
+      ...(visuals ? { visuals } : {}),
       options: source.options.map((option) => ({
         ...option,
         id: `${option.id}-copy-${suffix}`,
@@ -415,6 +417,7 @@ function deepCopyNode(source: FlowNode, newId: string, suffix: number): FlowNode
       ...source,
       id: newId,
       ...(videos ? { videos } : {}),
+      ...(visuals ? { visuals } : {}),
       branches: source.branches.map((branch) => ({ ...branch, id: `${branch.id}-copy-${suffix}` })),
     };
   }
@@ -422,6 +425,7 @@ function deepCopyNode(source: FlowNode, newId: string, suffix: number): FlowNode
     ...source,
     id: newId,
     ...(videos ? { videos } : {}),
+    ...(visuals ? { visuals } : {}),
     ...(source.recommendations ? { recommendations: [...source.recommendations] } : {}),
   };
 }
@@ -535,6 +539,7 @@ export function switchNodeKind(
       kind: 'choice',
       text: current.text,
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
+      ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
       options: [{ id: `${nodeId}-option-1`, label: '', next: '' }],
     };
   } else if (input.kind === 'score_branch') {
@@ -543,6 +548,7 @@ export function switchNodeKind(
       kind: 'score_branch',
       text: current.text,
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
+      ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
       scoreKey: DEFAULT_SCORE_KEY,
       branches: [{ id: `${nodeId}-faixa-1`, ...DEFAULT_BRANCH_RANGE, next: '' }],
     };
@@ -552,6 +558,7 @@ export function switchNodeKind(
       kind: 'result',
       text: current.text,
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
+      ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
     };
   }
 

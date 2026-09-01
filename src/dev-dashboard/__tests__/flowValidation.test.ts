@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
+import { validateFlow } from '../../domain/flow-engine/validateFlow';
 import { validateDashboardFlows } from '../flows/flowValidation';
 
 const baseFlow: GuidedFlow = {
@@ -111,6 +112,151 @@ describe('validateDashboardFlows', () => {
     expect(result.errors.map((issue) => issue.message).join(' ')).toContain('precisa de um título');
     expect(result.errors.map((issue) => issue.message).join(' ')).toContain('URL válida do YouTube');
     expect(result.errors.map((issue) => issue.message).join(' ')).toContain('mais de um vídeo');
+  });
+
+  describe('visual sources', () => {
+    it('accepts https links, site paths, and valid image data URLs', () => {
+      const result = validateDashboardFlows(
+        [
+          {
+            ...baseFlow,
+            nodes: {
+              ...baseFlow.nodes,
+              end: {
+                ...baseFlow.nodes.end,
+                visuals: [
+                  { id: 'foto-1', alt: 'Foto de apoio', src: 'https://exemplo.com/foto.png' },
+                  { id: 'foto-2', alt: 'Imagem do site', src: '/bemtevi/flow-visuals/foto.png' },
+                  { id: 'foto-3', alt: 'Imagem enviada', src: 'data:image/png;base64,AAAA' },
+                ],
+              },
+            },
+          },
+        ],
+        ['known-resource'],
+      );
+
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('rejects unsupported mime types and malformed base64 payloads', () => {
+      const flow: GuidedFlow = {
+        ...baseFlow,
+        nodes: {
+          ...baseFlow.nodes,
+          end: {
+            ...baseFlow.nodes.end,
+            visuals: [
+              { id: 'foto-tiff', alt: 'Foto em TIFF', src: 'data:image/tiff;base64,AAAA' },
+              { id: 'foto-base64', alt: 'Imagem quebrada', src: 'data:image/png;base64,@@@' },
+            ],
+          },
+        },
+      };
+
+      const errors = validateFlow(flow).errors;
+
+      expect(errors).toContain(
+        'O recurso visual foto-tiff do nó end, no fluxo base-flow, usa um formato de imagem enviada inválido.',
+      );
+      expect(errors).toContain(
+        'O recurso visual foto-base64 do nó end, no fluxo base-flow, usa um formato de imagem enviada inválido.',
+      );
+    });
+
+    it('rejects external sources without http(s) scheme or leading slash', () => {
+      const flow: GuidedFlow = {
+        ...baseFlow,
+        nodes: {
+          ...baseFlow.nodes,
+          end: {
+            ...baseFlow.nodes.end,
+            visuals: [
+              { id: 'foto-ftp', alt: 'Foto por FTP', src: 'ftp://exemplo.com/foto.png' },
+              { id: 'foto-relativa', alt: 'Link relativo', src: 'exemplo.com/foto.png' },
+            ],
+          },
+        },
+      };
+
+      const errors = validateFlow(flow).errors;
+
+      expect(errors).toContain(
+        'O recurso visual foto-ftp do nó end, no fluxo base-flow, precisa usar um link http(s) ou caminho iniciado por "/".',
+      );
+      expect(errors).toContain(
+        'O recurso visual foto-relativa do nó end, no fluxo base-flow, precisa usar um link http(s) ou caminho iniciado por "/".',
+      );
+    });
+
+    it('keeps the missing-origin message for empty sources', () => {
+      const flow: GuidedFlow = {
+        ...baseFlow,
+        nodes: {
+          ...baseFlow.nodes,
+          end: {
+            ...baseFlow.nodes.end,
+            visuals: [{ id: 'foto-vazia', alt: 'Foto sem origem', src: '' }],
+          },
+        },
+      };
+
+      const errors = validateFlow(flow).errors;
+
+      expect(errors).toContain(
+        'O recurso visual foto-vazia do nó end, no fluxo base-flow, precisa informar uma origem.',
+      );
+      expect(errors.some((error) => error.includes('formato de imagem enviada inválido'))).toBe(false);
+      expect(errors.some((error) => error.includes('link http(s) ou caminho iniciado'))).toBe(false);
+    });
+
+    it('deep-links a corrupted image visual to the media section path', () => {
+      const result = validateDashboardFlows(
+        [
+          {
+            ...baseFlow,
+            nodes: {
+              ...baseFlow.nodes,
+              end: {
+                ...baseFlow.nodes.end,
+                visuals: [{ id: 'foto-quebrada', alt: 'Imagem corrompida', src: 'data:image/tiff;base64,AAAA' }],
+              },
+            },
+          },
+        ],
+        ['known-resource'],
+      );
+
+      const issue = result.errors.find((candidate) => candidate.path.endsWith('.visuals.0.src'));
+
+      expect(issue?.path).toBe('base-flow.nodes.end.visuals.0.src');
+      expect(issue?.message).toContain('Reenvie a imagem');
+      expect(issue?.message).toContain('"foto-quebrada"');
+    });
+
+    it('deep-links an invalid external image link to the media section path', () => {
+      const result = validateDashboardFlows(
+        [
+          {
+            ...baseFlow,
+            nodes: {
+              ...baseFlow.nodes,
+              end: {
+                ...baseFlow.nodes.end,
+                visuals: [{ id: 'foto-ftp', alt: 'Foto por FTP', src: 'ftp://exemplo.com/foto.png' }],
+              },
+            },
+          },
+        ],
+        ['known-resource'],
+      );
+
+      const issue = result.errors.find((candidate) => candidate.path.endsWith('.visuals.0.src'));
+
+      expect(issue?.path).toBe('base-flow.nodes.end.visuals.0.src');
+      expect(issue?.message).toContain('link http(s) ou caminho iniciado');
+      expect(issue?.message).toContain('Cole um link completo');
+    });
   });
 
   it('warns when score branch ranges overlap or use a score key with no scoring options', () => {

@@ -258,6 +258,30 @@ function toStructuralIssue(
     };
   }
 
+  const visualDataUrlMatch =
+    /^O recurso visual (.+?) do nó (.+?), no fluxo (.+), usa um formato de imagem enviada inválido\.$/.exec(rawMessage);
+  if (visualDataUrlMatch) {
+    const node = findNode(context, visualDataUrlMatch[2], occurrence);
+    const visual = findVisual(context, node, visualDataUrlMatch[1], occurrence);
+    return {
+      message: `A imagem "${visualDataUrlMatch[1]}" da etapa "${node ? nodeId(node) : visualDataUrlMatch[2]}" está corrompida ou em formato não suportado. Reenvie a imagem no painel da etapa.`,
+      path: `${nodePath(context, node, visualDataUrlMatch[2])}.visuals.${visual?.index ?? visualDataUrlMatch[1]}.src`,
+    };
+  }
+
+  const visualExternalUrlMatch =
+    /^O recurso visual (.+?) do nó (.+?), no fluxo (.+), precisa usar um link http\(s\) ou caminho iniciado por "\/"\.$/.exec(
+      rawMessage,
+    );
+  if (visualExternalUrlMatch) {
+    const node = findNode(context, visualExternalUrlMatch[2], occurrence);
+    const visual = findVisual(context, node, visualExternalUrlMatch[1], occurrence);
+    return {
+      message: `A imagem "${visualExternalUrlMatch[1]}" da etapa "${node ? nodeId(node) : visualExternalUrlMatch[2]}" precisa de um link http(s) ou caminho iniciado por "/". Cole um link completo no painel da etapa.`,
+      path: `${nodePath(context, node, visualExternalUrlMatch[2])}.visuals.${visual?.index ?? visualExternalUrlMatch[1]}.src`,
+    };
+  }
+
   const emptyOptionsMatch = /^O nó de escolhas (.+?) do fluxo (.+) precisa ter pelo menos uma opção\.$/.exec(
     rawMessage,
   );
@@ -581,6 +605,25 @@ function findVideo(
 
 function videoId(video: UnknownRecord, index: number) {
   return hasTextValue(video.id) ? String(video.id) : `index-${index}`;
+}
+
+function findVisual(
+  _context: FlowValidationContext,
+  node: NodeMatch | undefined,
+  label: string,
+  occurrence: number,
+): { index: number; value: UnknownRecord } | undefined {
+  const visuals = node?.value.visuals;
+  if (!Array.isArray(visuals)) return undefined;
+
+  const candidates = visuals
+    .map((value, index) => ({ value, index }))
+    .filter((item) => isRecord(item.value) && visualId(item.value, item.index) === label);
+  return candidates[Math.min(occurrence, Math.max(candidates.length - 1, 0))];
+}
+
+function visualId(visual: UnknownRecord, index: number) {
+  return hasTextValue(visual.id) ? String(visual.id) : `index-${index}`;
 }
 
 function findBranch(node: NodeMatch | undefined, label: string, occurrence: number) {

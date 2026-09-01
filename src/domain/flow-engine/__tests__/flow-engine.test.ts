@@ -849,7 +849,7 @@ describe('flow runtime', () => {
   });
 
   it('registers SRQ-20 from JSON as a normal guided flow entry phrase', () => {
-    const state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'work-stress');
+    const state = createInitialFlowStateFromRegistry(flowRegistry.flows, 'orientation-understand-feelings');
     const labels = resolveOptions(state, flowRegistry.flows).map((option) => option.label);
 
     expect(labels).toContain('Quero responder o SRQ-20');

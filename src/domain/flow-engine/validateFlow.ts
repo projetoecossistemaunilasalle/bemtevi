@@ -7,6 +7,17 @@ function hasText(value: unknown) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+const imageDataUrlPattern = /^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml|avif);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+function isValidImageDataUrl(value: string) {
+  return imageDataUrlPattern.test(value.trim());
+}
+
+function isExternalVisualSrc(value: string) {
+  const trimmed = value.trim();
+  return trimmed.startsWith('https://') || trimmed.startsWith('http://') || trimmed.startsWith('/');
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -87,6 +98,7 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
   }
 
   validateNodeVideos(flowLabel, nodeKey, nodeValue.videos, errors);
+  validateNodeVisuals(flowLabel, nodeKey, nodeValue.visuals, errors);
 
   if (node.kind === 'choice') {
     validateChoiceNode(flowLabel, node, nodeIds, errors);
@@ -96,6 +108,55 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
   if (node.kind === 'score_branch') {
     validateScoreBranchNode(flowLabel, node, nodeIds, errors);
   }
+}
+
+function validateNodeVisuals(flowLabel: string, nodeId: string, visuals: unknown, errors: string[]) {
+  if (visuals === undefined) return;
+  if (!Array.isArray(visuals)) {
+    errors.push(`Os recursos visuais do nó ${nodeId} no fluxo ${flowLabel} precisam estar em uma lista.`);
+    return;
+  }
+
+  const ids = new Set<string>();
+  visuals.forEach((visual, index) => {
+    if (!isRecord(visual)) {
+      errors.push(`O recurso visual no índice ${index} do nó ${nodeId}, no fluxo ${flowLabel}, precisa ser um objeto.`);
+      return;
+    }
+
+    const visualId = hasText(visual.id) ? String(visual.id) : `index-${index}`;
+    if (!hasText(visual.id)) {
+      errors.push(
+        `O recurso visual no índice ${index} do nó ${nodeId}, no fluxo ${flowLabel}, precisa informar um ID.`,
+      );
+    } else if (ids.has(visualId)) {
+      errors.push(`O nó ${nodeId} do fluxo ${flowLabel} tem o ID de recurso visual repetido: ${visualId}.`);
+    } else {
+      ids.add(visualId);
+    }
+
+    if (!hasText(visual.alt)) {
+      errors.push(
+        `O recurso visual ${visualId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa informar um texto alternativo.`,
+      );
+    }
+    if (!hasText(visual.src)) {
+      errors.push(`O recurso visual ${visualId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa informar uma origem.`);
+    } else {
+      const src = String(visual.src);
+      if (src.trim().startsWith('data:')) {
+        if (!isValidImageDataUrl(src)) {
+          errors.push(
+            `O recurso visual ${visualId} do nó ${nodeId}, no fluxo ${flowLabel}, usa um formato de imagem enviada inválido.`,
+          );
+        }
+      } else if (!isExternalVisualSrc(src)) {
+        errors.push(
+          `O recurso visual ${visualId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa usar um link http(s) ou caminho iniciado por "/".`,
+        );
+      }
+    }
+  });
 }
 
 function validateNodeVideos(flowLabel: string, nodeId: string, videos: unknown, errors: string[]) {

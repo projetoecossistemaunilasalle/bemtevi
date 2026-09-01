@@ -1,4 +1,11 @@
-import type { ChatMessage, FlowRuntimeState, FlowStartFlowEffect, GuidedFlow, OrientationVideo } from './types';
+import type {
+  ChatMessage,
+  FlowRuntimeState,
+  FlowStartFlowEffect,
+  GuidedFlow,
+  OrientationVideo,
+  OrientationVisual,
+} from './types';
 import { validateFlow } from './validateFlow';
 
 let messageCounter = 0;
@@ -9,6 +16,7 @@ export function createMessage(
   flowId: string,
   nodeId?: string,
   videos?: OrientationVideo[],
+  visuals?: OrientationVisual[],
 ): ChatMessage {
   messageCounter += 1;
 
@@ -21,6 +29,7 @@ export function createMessage(
   };
 
   if (videos?.length) message.videos = videos;
+  if (visuals?.length) message.visuals = visuals;
   return message;
 }
 
@@ -56,7 +65,7 @@ export function createInitialFlowState(flow: GuidedFlow, _flows: GuidedFlow[]): 
     activeNodeId: flow.entry.nodeId,
     transcript: [
       createMessage('bot', flow.entry.transitionMessage, flow.id, flow.entry.nodeId),
-      createMessage('bot', node.text, flow.id, node.id, node.videos),
+      createMessage('bot', node.text, flow.id, node.id, node.videos, node.visuals),
     ],
     suspendedFlows: {},
     answers: {},

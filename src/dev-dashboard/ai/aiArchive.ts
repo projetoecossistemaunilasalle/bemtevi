@@ -54,7 +54,7 @@ Este arquivo ZIP foi gerado pelo painel administrativo do BemTeVi para edição 
 
 O que está dentro:
 - data.json        → TODO o conteúdo editável (fluxos, materiais, contatos, locais) em formato JSON
-- images/          → pasta com as imagens enviadas (thumbnails, imagens de blocos, destaques) - NÃO EDITE MANUALMENTE
+- images/          → pasta com as imagens enviadas (imagens de fluxos, thumbnails, imagens de blocos, destaques) - NÃO EDITE MANUALMENTE
 - INSTRUCOES-PARA-IA.txt → prompt completo para colar no ChatGPT junto com o ZIP
 - LEIA-ME-IMAGENS.txt    → este arquivo
 
@@ -73,11 +73,12 @@ PARA O CHATGPT (regras de imagens):
 - NUNCA edite caminhos "./images/..." no data.json
 - NUNCA gere base64 (data:image/...) 
 - NUNCA invente nomes de arquivos na pasta images/
-- Se precisar SUGERIR nova imagem, NÃO altere o campo imageUrl/dataUrl. Em vez disso:
+- Se precisar SUGERIR nova imagem, NÃO altere o campo imageUrl/dataUrl/src. Em vez disso:
   a) Mantenha "./images/..." original
   b) Adicione um bloco "paragraph" no início do body do material com:
      "[INSTRUÇÃO PARA O ADMINISTRADOR: Para trocar a imagem de 'Título do material', volte ao painel > Materiais > abra o material > clique em 'Enviar imagem' e escolha a nova imagem. Sugestão da IA: descreva aqui como deve ser a imagem ideal - ex: 'foto real de professora acolhendo aluno em sala iluminada, tons suaves']"
   c) Ou atualize apenas o campo "alt" da imagem com a descrição sugerida
+  d) Para imagens de fluxo ("flows[].nodes[].visuals[]"), mantenha o "src" original ("./images/..." ou https://) e atualize apenas o "alt". O administrador troca a imagem em: painel > Fluxos > mapa visual > painel da etapa > Mídia
 - A pasta images/ será preservada automaticamente pelo painel. Você deve devolver APENAS o data.json editado.
 
 DÚVIDAS? Volte ao painel e use o botão "Restaurar rascunho" se algo der errado.

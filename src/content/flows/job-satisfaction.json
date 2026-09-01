@@ -1403,8 +1403,10 @@
       "id": "q-open",
       "kind": "choice",
       "text": "Você é feliz no seu trabalho?",
-      "options": [],
-      "freeText": { "next": "job-satisfaction-score" }
+      "options": [
+        { "id": "yes", "label": "Sim", "next": "job-satisfaction-score" },
+        { "id": "no", "label": "Não", "next": "job-satisfaction-score" }
+      ]
     },
     "job-satisfaction-score": {
       "id": "job-satisfaction-score",

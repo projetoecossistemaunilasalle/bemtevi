@@ -94,7 +94,7 @@ describe('OrientationScreen', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('O que você gostaria de fazer agora?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero entender como estou me sentindo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Quero falar sobre o que estou vivendo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quero organizar o que estou vivendo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero encontrar um próximo passo de cuidado' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Preciso de um momento mais leve' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Outro' })).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('OrientationScreen', () => {
     advanceInitialLoad();
 
     expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
-    expect(screen.getByText(/Quando tudo parece urgente/)).toBeInTheDocument();
+    expect(screen.getByText(/O vídeo abaixo apresenta uma forma simples/)).toBeInTheDocument();
   });
 
   it('exposes the conversation as an accessible log with sender context', () => {
@@ -204,90 +204,81 @@ describe('OrientationScreen', () => {
     expect(screen.getByText(/Quando muitas demandas se acumulam/)).toBeInTheDocument();
   });
 
-  it('supports free text input when enabled on a choice node', () => {
+  it('shows the document visual where the organization flow requests it', () => {
     renderOrientation();
-    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
+    startOrientationWithStarter('Quero organizar o que estou vivendo');
 
-    const input = screen.getByPlaceholderText('Digite ou escolha uma opção');
-    fireEvent.change(input, { target: { value: 'Hoje foi um dia difícil com as turmas' } });
-
-    const submitBtn = screen.getByRole('button', { name: 'Enviar opção selecionada' });
-    expect(submitBtn).toBeEnabled();
-
-    fireEvent.click(submitBtn);
+    fireEvent.click(
+      screen.getByRole('option', { name: 'Preciso decidir o que fazer primeiro diante de várias situações.' }),
+    );
     advanceInitialLoad();
 
-    expect(screen.getByText('Hoje foi um dia difícil com as turmas')).toBeInTheDocument();
-    expect(screen.getByText('Obrigado por compartilhar. Podemos seguir sem analisar esse texto.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: 'Recurso visual para decidir se algo precisa ser resolvido hoje, pode ser planejado, precisa aguardar ou pode ficar em espera.',
+      }),
+    ).toBeInTheDocument();
   });
 
-  it('shows neutral talk-through starter transition message', () => {
+  it('shows the organization starter transition message', () => {
     renderOrientation();
-    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
-
-    expect(screen.getByText('Podemos organizar isso por partes, sem pressa.')).toBeInTheDocument();
-    expect(screen.getByText('O que mais marcou seu dia ou sua semana?')).toBeInTheDocument();
-  });
-
-  it('shows neutral next-step starter transition message', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
-
-    expect(screen.getByText('Vamos escolher um próximo passo possível para agora.')).toBeInTheDocument();
-    expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
-  });
-
-  it('shows neutral app-destination options', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
-
-    fireEvent.click(screen.getByRole('option', { name: 'Materiais, contatos ou apoio' }));
-    advanceInitialLoad();
-
-    expect(screen.getByRole('option', { name: 'Abrir materiais educativos' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Abrir contatos de apoio' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Abrir apoio agora' })).toBeInTheDocument();
-  });
-
-  it('routes from a neutral option into a specific guided flow', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
-
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas demandas ao mesmo tempo' }));
-    advanceInitialLoad();
-
-    expect(screen.getByText('Muitas demandas ao mesmo tempo')).toBeInTheDocument();
-    expect(screen.getByText(/Vamos olhar para essa sobrecarga com calma/)).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' })).toBeInTheDocument();
-  });
-
-  it('offers a calm next-step route after a regular flow result', () => {
-    renderOrientation();
-    startOrientationWithStarter('Quero falar sobre o que estou vivendo');
-
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas demandas ao mesmo tempo' }));
-    advanceInitialLoad();
-
-    fireEvent.click(screen.getByRole('option', { name: 'Muitas tarefas ao mesmo tempo' }));
-    advanceInitialLoad();
-
-    fireEvent.click(screen.getByRole('option', { name: 'Quero pensar em uma pausa curta' }));
-    advanceInitialLoad();
+    startOrientationWithStarter('Quero organizar o que estou vivendo');
 
     expect(
       screen.getByText(
-        'Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.',
+        'Às vezes, sabemos como estamos nos sentindo, mas ainda precisamos encontrar uma forma de lidar com aquilo que está acontecendo.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Escolher o que fazer agora' })).toBeInTheDocument();
+    expect(screen.getByText('O que mais se aproxima do que você está vivendo?')).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole('option', { name: 'Escolher o que fazer agora' }));
+  it('shows the next-care starter transition message', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
+
+    expect(
+      screen.getByText(
+        'Nem sempre o próximo passo precisa ser grande. Às vezes, uma ação pequena e possível já pode ajudar a começar a cuidar do que você precisa agora.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Que tipo de próximo passo parece mais útil?')).toBeInTheDocument();
+  });
+
+  it('shows the document visual for the support network step', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero encontrar um próximo passo de cuidado');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Quero buscar apoio de alguém.' }));
     advanceInitialLoad();
 
     expect(
-      screen.getByText('Antes de encerrar, você pode escolher com calma o que faz sentido agora.'),
+      screen.getByRole('img', { name: 'Recurso visual para identificar pessoas e formas de apoio na rede pessoal.' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Qual próximo passo você prefere?')).toBeInTheDocument();
+  });
+
+  it('shows the document visual for a difficult conversation', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero organizar o que estou vivendo');
+
+    fireEvent.click(
+      screen.getByRole('option', { name: 'Preciso lidar com uma conversa ou situação difícil com alguém.' }),
+    );
+    advanceInitialLoad();
+
+    expect(screen.getByRole('img', { name: 'Recurso visual para preparar uma conversa difícil.' })).toBeInTheDocument();
+  });
+
+  it('shows the document visual for a calm practice', () => {
+    renderOrientation();
+    startOrientationWithStarter('Preciso de um momento mais leve');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Quero fazer uma prática rápida.' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Respiração Borboleta.' }));
+    advanceInitialLoad();
+
+    expect(screen.getByRole('img', { name: 'Passo a passo da Respiração Borboleta.' })).toBeInTheDocument();
   });
 
   it('continues SRQ-20 after Q17 yes and navigates to apoio only after the final result', () => {

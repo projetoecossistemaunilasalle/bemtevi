@@ -271,8 +271,51 @@ function restoreImages(
     return r;
   });
 
+  // Fluxos: restaura "visuals[].src" que a IA devolveu como "./images/..."
+  const currentFlowsById = new Map(currentDraft.flows.map((flow) => [flow.id, flow]));
+
+  function restoreFlowVisuals(flow: GuidedFlow): GuidedFlow {
+    const original = currentFlowsById.get(flow.id);
+    let nextNodes: GuidedFlow['nodes'] | undefined;
+
+    Object.entries(flow.nodes).forEach(([nodeKey, node]) => {
+      if (!node.visuals?.length) return;
+
+      let changed = false;
+      const visuals = node.visuals.map((visual) => {
+        if (typeof visual.src !== 'string' || !visual.src.startsWith('./images/')) return visual;
+
+        // 1) Mesmo fluxo/nó/visual por id no draft atual, com dataUrl original
+        const origVisuals = original && nodeKey in original.nodes ? original.nodes[nodeKey].visuals : undefined;
+        const origVisual = origVisuals?.find((v) => v.id === visual.id);
+        if (origVisual && origVisual.src.startsWith('data:')) {
+          changed = true;
+          return { ...visual, src: origVisual.src };
+        }
+
+        // 2) Fallback: mapa de imagens extraídas do draft atual
+        const restored = restoreViaImageMap(visual.src);
+        if (restored && restored.startsWith('data:')) {
+          changed = true;
+          return { ...visual, src: restored };
+        }
+
+        return visual;
+      });
+
+      if (!changed) return;
+      nextNodes ??= { ...flow.nodes };
+      nextNodes[nodeKey] = { ...node, visuals };
+    });
+
+    return nextNodes ? { ...flow, nodes: nextNodes } : flow;
+  }
+
+  const restoredFlows = aiPayload.flows.map((flow) => restoreFlowVisuals(flow));
+
   return {
     ...aiPayload,
+    flows: restoredFlows,
     educationMaterials: restoredMaterials,
   };
 }

@@ -582,6 +582,103 @@ describe('switchNodeKind', () => {
   });
 });
 
+describe('visuals', () => {
+  const visual = { id: 'img1', alt: 'Foto acolhedora', src: 'https://exemplo.com/foto.png' };
+
+  it('switchNodeKind choice → result preserves visuals as a fresh deep copy', () => {
+    const flow = baseFlow({
+      q1: {
+        id: 'q1',
+        kind: 'choice',
+        text: 'Escolha',
+        visuals: [visual],
+        options: [{ id: 'yes', label: 'Sim', next: 'done' }],
+      },
+      done: { id: 'done', kind: 'result', text: 'Fim' },
+    });
+    const snapshot = JSON.parse(JSON.stringify(flow)) as GuidedFlow;
+
+    const { flow: next, node } = switchNodeKind(flow, 'q1', { kind: 'result' });
+
+    const result = node as ResultFlowNode;
+    expect(result.visuals).toEqual([visual]);
+    expect(result.visuals).not.toBe(flow.nodes.q1.visuals);
+    expect(result.visuals![0]).not.toBe(flow.nodes.q1.visuals![0]);
+    // Mutating the rebuilt array must not leak into the original node.
+    result.visuals![0].alt = 'Alterada';
+    result.visuals!.push({ id: 'img2', alt: 'Outra', src: '' });
+    expect(flow.nodes.q1.visuals).toEqual([visual]);
+    expect(JSON.parse(JSON.stringify(flow))).toEqual(snapshot);
+    expect(next.nodes.q1).toBe(node);
+  });
+
+  it('switchNodeKind result → score_branch preserves visuals as a fresh deep copy', () => {
+    const flow = baseFlow({
+      fim: { id: 'fim', kind: 'result', text: 'Fim', visuals: [visual] },
+    });
+
+    const { node } = switchNodeKind(flow, 'fim', { kind: 'score_branch' });
+
+    const branched = node as ScoreBranchFlowNode;
+    expect(branched.visuals).toEqual([visual]);
+    expect(branched.visuals).not.toBe(flow.nodes.fim.visuals);
+    expect(branched.visuals![0]).not.toBe(flow.nodes.fim.visuals![0]);
+    branched.visuals![0].alt = 'Alterada';
+    expect(flow.nodes.fim.visuals![0].alt).toBe('Foto acolhedora');
+  });
+
+  it('switchNodeKind score_branch → choice preserves visuals as a fresh deep copy', () => {
+    const flow = baseFlow({
+      calc: {
+        id: 'calc',
+        kind: 'score_branch',
+        text: 'Calc',
+        visuals: [visual],
+        scoreKey: 'pontuacao',
+        branches: [{ id: 'alta', min: 6, max: 10, next: 'fim' }],
+      },
+      fim: { id: 'fim', kind: 'result', text: 'Fim' },
+    });
+
+    const { node } = switchNodeKind(flow, 'calc', { kind: 'choice' });
+
+    const choice = node as ChoiceFlowNode;
+    expect(choice.visuals).toEqual([visual]);
+    expect(choice.visuals).not.toBe(flow.nodes.calc.visuals);
+    expect(choice.visuals![0]).not.toBe(flow.nodes.calc.visuals![0]);
+    choice.visuals![0].alt = 'Alterada';
+    expect(flow.nodes.calc.visuals![0].alt).toBe('Foto acolhedora');
+  });
+
+  it('duplicateNode deep-copies visuals: editing the copy leaves the source untouched', () => {
+    const flow = baseFlow({
+      q1: {
+        id: 'q1',
+        kind: 'choice',
+        text: 'Escolha',
+        visuals: [visual],
+        options: [{ id: 'yes', label: 'Sim', next: 'done' }],
+      },
+      done: { id: 'done', kind: 'result', text: 'Fim' },
+    });
+
+    const { flow: next, newNodeId } = duplicateNode(flow, 'q1');
+
+    const copy = next.nodes[newNodeId] as ChoiceFlowNode;
+    expect(copy.visuals).toEqual([visual]);
+    expect(copy.visuals).not.toBe(flow.nodes.q1.visuals);
+    expect(copy.visuals![0]).not.toBe(flow.nodes.q1.visuals![0]);
+
+    copy.visuals![0] = { ...copy.visuals![0], alt: 'Nova descrição' };
+    copy.visuals!.push({ id: 'img2', alt: '', src: '' });
+
+    expect(flow.nodes.q1.visuals).toEqual([visual]);
+    expect(flow.nodes.q1.visuals).toHaveLength(1);
+    expect(copy.visuals).toHaveLength(2);
+    expect(copy.visuals![0].alt).toBe('Nova descrição');
+  });
+});
+
 describe('moveNode', () => {
   function orderedFlow(): { flow: GuidedFlow; snapshot: GuidedFlow } {
     const flow = {

@@ -45,6 +45,7 @@ const flow: GuidedFlow = {
       kind: 'result',
       text: 'Assista antes de continuar.',
       videos: [{ id: 'video-1', title: 'Vídeo', url: 'https://exemplo.com/nao-youtube' }],
+      visuals: [{ id: 'visual-1', alt: 'Imagem', src: 'data:image/tiff;base64,ZZZ' }],
     },
     result: { id: 'result', kind: 'result', text: 'Fim.' },
   },
@@ -82,6 +83,21 @@ describe('resolveFlowValidationTarget', () => {
 
   it('maps video url issues to the midia section', () => {
     expect(resolveFlowValidationTarget(issue(`${flow.id}.nodes.media.videos.video-1.url`), [flow])).toMatchObject({
+      flowId: flow.id,
+      nodeId: 'media',
+      section: 'midia',
+    });
+  });
+
+  it('maps visual issues by id to the midia section naming the image', () => {
+    const target = resolveFlowValidationTarget(issue(`${flow.id}.nodes.media.visuals.visual-1.src`), [flow]);
+
+    expect(target).toMatchObject({ flowId: flow.id, nodeId: 'media', section: 'midia' });
+    expect(target?.description).toContain('corrija a imagem "visual-1"');
+  });
+
+  it('maps visual issues by numeric index to the same midia section', () => {
+    expect(resolveFlowValidationTarget(issue(`${flow.id}.nodes.media.visuals.0.src`), [flow])).toMatchObject({
       flowId: flow.id,
       nodeId: 'media',
       section: 'midia',

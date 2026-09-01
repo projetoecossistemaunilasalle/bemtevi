@@ -38,13 +38,26 @@ export function FlowPreview({ flow, flows }: { flow: GuidedFlow; flows: GuidedFl
         {state.transcript.map((message) => (
           <div
             key={message.id}
-            className={`rounded-2xl px-4 py-3 ${message.videos?.length ? 'w-full max-w-2xl' : ''} ${
+            className={`rounded-2xl px-4 py-3 ${message.videos?.length || message.visuals?.length ? 'w-full max-w-2xl' : ''} ${
               message.sender === 'bot'
                 ? 'self-start rounded-bl-sm bg-primary-fixed/30'
                 : 'self-end rounded-br-sm bg-primary text-on-primary'
             }`}
           >
             <p className="font-body-md">{message.text}</p>
+            {message.sender === 'bot' && message.visuals && message.visuals.length > 0 && (
+              <div className="mt-3 grid gap-3">
+                {message.visuals.map((visual) => (
+                  <img
+                    key={visual.id}
+                    src={visual.src}
+                    alt={visual.alt}
+                    className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            )}
             {message.sender === 'bot' && message.videos && message.videos.length > 0 && (
               <div className="mt-3 grid gap-3">
                 {message.videos.map((video) => (

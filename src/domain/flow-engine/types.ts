@@ -73,11 +73,18 @@ export interface OrientationVideo {
   url: string;
 }
 
+export interface OrientationVisual {
+  id: string;
+  alt: string;
+  src: string;
+}
+
 export interface ChoiceFlowNode {
   id: string;
   kind: 'choice';
   text: string;
   videos?: OrientationVideo[];
+  visuals?: OrientationVisual[];
   options: FlowOption[];
   freeText?: FreeTextFlowAdvance;
 }
@@ -87,6 +94,7 @@ export interface ResultFlowNode {
   kind: 'result';
   text: string;
   videos?: OrientationVideo[];
+  visuals?: OrientationVisual[];
   recommendations?: string[];
 }
 
@@ -103,6 +111,7 @@ export interface ScoreBranchFlowNode {
   kind: 'score_branch';
   text: string;
   videos?: OrientationVideo[];
+  visuals?: OrientationVisual[];
   scoreKey: string;
   branches: ScoreBranch[];
 }
@@ -129,6 +138,7 @@ export interface ChatMessage {
   flowId: string;
   nodeId?: string;
   videos?: OrientationVideo[];
+  visuals?: OrientationVisual[];
 }
 
 export interface SuspendedFlowState {

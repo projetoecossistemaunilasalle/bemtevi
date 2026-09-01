@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type {
   ChoiceFlowNode,
@@ -23,6 +23,7 @@ import {
   selectClassName,
 } from './flowEffectFields';
 import { Button } from '../../design-system/components/Button';
+import { acceptImageTypes, readFileAsDataUrl } from '../components/fileUpload';
 
 const kindLabels: Record<FlowNode['kind'], string> = {
   choice: 'Escolha',
@@ -73,6 +74,18 @@ function uniqueVideoId(node: FlowNode): string {
   while (videos.some((video) => video.id === candidate)) {
     index += 1;
     candidate = `${node.id}-video-${index}`;
+  }
+  return candidate;
+}
+
+/** First free `${node.id}-visual-N`, mirroring uniqueVideoId. */
+function uniqueVisualId(node: FlowNode): string {
+  const visuals = node.visuals ?? [];
+  let index = visuals.length + 1;
+  let candidate = `${node.id}-visual-${index}`;
+  while (visuals.some((visual) => visual.id === candidate)) {
+    index += 1;
+    candidate = `${node.id}-visual-${index}`;
   }
   return candidate;
 }
@@ -789,9 +802,11 @@ interface MediaSectionProps {
   onNodeChange: MediaNodeChange;
 }
 
-/** Mídia body: video rows for every kind, recommendations for result nodes only. */
+/** Mídia body: video rows and image rows for every kind, recommendations for result nodes only. */
 function MediaSection({ node, onNodeChange }: MediaSectionProps) {
   const videos = node.videos ?? [];
+  const visuals = node.visuals ?? [];
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   return (
     <>
@@ -863,6 +878,156 @@ function MediaSection({ node, onNodeChange }: MediaSectionProps) {
       >
         Adicionar vídeo
       </Button>
+      {/* Imagens: sem catálogo — upload local (data URL) ou link externo. */}
+      <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
+        <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">Imagens</span>
+        {visuals.length === 0 && (
+          <p className="font-body-md text-xs text-on-surface-variant">
+            A imagem aparece logo abaixo da mensagem no chat. Envie um arquivo ou cole um link https://…
+          </p>
+        )}
+        {visuals.map((visual, index) => {
+          const uploaded = visual.src.trimStart().startsWith('data:');
+          const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setUploadError(null);
+            try {
+              const dataUrl = await readFileAsDataUrl(file);
+              onNodeChange((current) => ({
+                ...current,
+                visuals: (current.visuals ?? []).map((candidate, candidateIndex) =>
+                  candidateIndex === index ? { ...candidate, src: dataUrl } : candidate,
+                ),
+              }));
+            } catch (error) {
+              setUploadError(
+                error instanceof Error ? error.message : 'Não foi possível enviar a imagem. Escolha outro arquivo.',
+              );
+            } finally {
+              event.target.value = '';
+            }
+          };
+          return (
+            <div
+              key={visual.id}
+              data-testid={`visual-row-${index + 1}`}
+              className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest p-2"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+                  Origem da imagem
+                </span>
+                {uploaded ? (
+                  <input
+                    aria-label={`Origem da imagem ${index + 1}`}
+                    className={textFieldClassName}
+                    value="Imagem enviada neste navegador"
+                    disabled
+                  />
+                ) : (
+                  <DraftTextField
+                    ariaLabel={`Origem da imagem ${index + 1}`}
+                    value={visual.src}
+                    onCommit={(src) =>
+                      onNodeChange((current) => ({
+                        ...current,
+                        visuals: (current.visuals ?? []).map((candidate, candidateIndex) =>
+                          candidateIndex === index ? { ...candidate, src } : candidate,
+                        ),
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">
+                  Descrição da imagem (acessibilidade)
+                </span>
+                <DraftTextField
+                  ariaLabel={`Descrição da imagem ${index + 1}`}
+                  value={visual.alt}
+                  onCommit={(alt) =>
+                    onNodeChange((current) => ({
+                      ...current,
+                      visuals: (current.visuals ?? []).map((candidate, candidateIndex) =>
+                        candidateIndex === index ? { ...candidate, alt } : candidate,
+                      ),
+                    }))
+                  }
+                />
+              </div>
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 self-start rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 font-label-md text-sm text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:border-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <input
+                  type="file"
+                  accept={acceptImageTypes()}
+                  className="sr-only"
+                  aria-label={`${uploaded ? 'Trocar' : 'Enviar'} imagem ${index + 1}`}
+                  onChange={handleUpload}
+                />
+                {uploaded ? 'Trocar imagem' : 'Enviar imagem'}
+              </label>
+              {uploaded && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="self-start"
+                  onClick={() =>
+                    onNodeChange((current) => ({
+                      ...current,
+                      visuals: (current.visuals ?? []).map((candidate, candidateIndex) =>
+                        candidateIndex === index ? { ...candidate, src: '' } : candidate,
+                      ),
+                    }))
+                  }
+                >
+                  Deletar imagem enviada
+                </Button>
+              )}
+              {visual.src !== '' && (
+                <div className="aspect-video w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
+                  <img src={visual.src} alt={visual.alt} className="h-full w-full object-cover" />
+                </div>
+              )}
+              <button
+                type="button"
+                aria-label={`Remover imagem ${index + 1}`}
+                onClick={() =>
+                  onNodeChange((current) => {
+                    const remaining = (current.visuals ?? []).filter((_, candidateIndex) => candidateIndex !== index);
+                    if (remaining.length === 0) {
+                      // Dropping the last visual removes the key entirely.
+                      const { visuals: _dropped, ...nodeWithoutVisuals } = current;
+                      return nodeWithoutVisuals;
+                    }
+                    return { ...current, visuals: remaining };
+                  })
+                }
+                className="self-start rounded-full px-2 py-1 font-label-sm text-xs text-on-surface-variant transition-colors hover:bg-error-container/60 hover:text-on-error-container"
+              >
+                Remover imagem
+              </button>
+            </div>
+          );
+        })}
+        {uploadError && (
+          <p role="alert" className="font-body-md text-xs text-error">
+            {uploadError}
+          </p>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            onNodeChange((current) => ({
+              ...current,
+              visuals: [...(current.visuals ?? []), { id: uniqueVisualId(current), alt: '', src: '' }],
+            }))
+          }
+        >
+          Adicionar imagem
+        </Button>
+      </div>
       {node.kind === 'result' && <RecommendationsField node={node} onNodeChange={onNodeChange} />}
     </>
   );

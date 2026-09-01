@@ -1,4 +1,5 @@
 import type { DashboardDraftContent } from './exportBundle';
+import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource, EducationResourceBlock } from '../../domain/resources/types';
 import { parseImageDataUrl } from '../components/fileUpload';
 
@@ -29,7 +30,11 @@ function extFromMime(mime: string): string {
 }
 
 function isDataUrl(value: string | undefined): value is string {
-  return typeof value === 'string' && value.startsWith('data:');
+  return typeof value === 'string' && value.trimStart().startsWith('data:');
+}
+
+function safePathSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]/g, '_') || 'item';
 }
 
 function imageFileName(
@@ -45,6 +50,36 @@ function imageFileName(
     ? `${resourceId}-block-${blockId}${safeFileName ? `-${safeFileName}` : ''}`
     : `${resourceId}-${purpose}${safeFileName ? `-${safeFileName}` : ''}`;
   return `images/${base}.${ext}`;
+}
+
+function flowVisualFileName(flowId: string, nodeId: string, visualId: string, mimeType: string): string {
+  return `images/flow-${safePathSegment(flowId)}-node-${safePathSegment(nodeId)}-visual-${safePathSegment(visualId)}.${extFromMime(mimeType)}`;
+}
+
+function replaceDataUrlsInFlow(flow: GuidedFlow, images: ExtractedImage[]): GuidedFlow {
+  let nextNodes: GuidedFlow['nodes'] | undefined;
+
+  Object.entries(flow.nodes).forEach(([nodeKey, node]) => {
+    if (!node.visuals?.length) return;
+
+    const visuals = node.visuals.map((visual) => {
+      if (!isDataUrl(visual.src)) return visual;
+
+      const parsed = parseImageDataUrl(visual.src);
+      if (!parsed) return visual;
+
+      const name = flowVisualFileName(flow.id, node.id, visual.id, parsed.mimeType);
+      images.push({ name, data: parsed.data, mimeType: parsed.mimeType });
+      return { ...visual, src: `./${name}` };
+    });
+
+    if (visuals.some((visual, index) => visual !== node.visuals?.[index])) {
+      nextNodes ??= { ...flow.nodes };
+      nextNodes[nodeKey] = { ...node, visuals };
+    }
+  });
+
+  return nextNodes ? { ...flow, nodes: nextNodes } : flow;
 }
 
 function replaceDataUrlInBlock(
@@ -108,6 +143,7 @@ export function extractImagesFromDrafts(drafts: DashboardDraftContent): ExtractI
 
   const json: DashboardDraftContent = {
     ...drafts,
+    flows: drafts.flows.map((flow) => replaceDataUrlsInFlow(flow, images)),
     educationMaterials: drafts.educationMaterials.map((resource) => replaceDataUrlsInResource(resource, images)),
   };
 
