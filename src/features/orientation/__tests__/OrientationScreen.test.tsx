@@ -97,7 +97,7 @@ describe('OrientationScreen', () => {
     expect(screen.getByRole('button', { name: 'Quero organizar o que estou vivendo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quero encontrar um próximo passo de cuidado' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Preciso de um momento mais leve' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Outro' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Outro' })).not.toBeInTheDocument();
     expect(screen.getByText('Este espaço não pede sua identificação e não salva sua conversa.')).toBeInTheDocument();
 
     expect(screen.queryByRole('log', { name: 'Histórico da orientação guiada' })).not.toBeInTheDocument();

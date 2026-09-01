@@ -35,12 +35,6 @@ const INTRO_STARTERS = [
     flowId: 'orientation-calm-moment',
     recordAsMessage: true,
   },
-  {
-    id: 'other',
-    label: 'Outro',
-    flowId: 'orientation-understand-feelings',
-    recordAsMessage: false,
-  },
 ] as const;
 
 type IntroStarter = (typeof INTRO_STARTERS)[number];

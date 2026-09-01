@@ -47,7 +47,7 @@ export function ResourceDetailScreen() {
           ))}
         </div>
         <h1 className="font-headline-lg text-on-surface">{resource.title}</h1>
-        <p className="font-body-lg text-on-surface-variant">{resource.description}</p>
+        <p className="font-body-lg text-on-surface-variant text-justify whitespace-pre-line">{resource.description}</p>
       </header>
 
       {featuredImage ? (
@@ -99,7 +99,7 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
     return (
       <Card className="p-6">
         {block.title ? <h2 className="mb-2 font-headline-sm text-on-surface">{block.title}</h2> : null}
-        <p className="font-body-lg text-on-surface-variant">{block.text}</p>
+        <p className="font-body-lg text-on-surface-variant text-justify whitespace-pre-line">{block.text}</p>
       </Card>
     );
   }
@@ -108,7 +108,7 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
     return (
       <Card className="p-6">
         {block.title ? <h2 className="mb-2 font-headline-sm text-on-surface">{block.title}</h2> : null}
-        <ul className="list-disc space-y-2 pl-5 font-body-lg text-on-surface-variant">
+        <ul className="list-disc space-y-2 pl-5 font-body-lg text-on-surface-variant text-justify">
           {block.items
             ?.filter((item) => item.trim())
             .map((item, index) => (
@@ -136,7 +136,11 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
           {block.title || block.description ? (
             <div className="p-5">
               {block.title ? <h2 className="font-headline-sm text-on-surface">{block.title}</h2> : null}
-              {block.description ? <p className="font-body-md text-on-surface-variant">{block.description}</p> : null}
+              {block.description ? (
+                <p className="font-body-md text-on-surface-variant text-justify whitespace-pre-line">
+                  {block.description}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <iframe

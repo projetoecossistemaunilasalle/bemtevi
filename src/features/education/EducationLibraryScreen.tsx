@@ -83,7 +83,9 @@ export function EducationLibraryScreen() {
                         </div>
                       ) : null}
                     </div>
-                    <p className="font-body-md text-on-surface-variant">{resource.description}</p>
+                    <p className="font-body-md text-on-surface-variant text-justify whitespace-pre-line">
+                      {resource.description}
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {resource.tags.map((tag) => (
                         <span

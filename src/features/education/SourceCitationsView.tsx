@@ -21,7 +21,7 @@ export function SourceCitationsView({
     return (
       <div className={`flex flex-col gap-1.5 ${className}`}>
         {citations.map((citation) => (
-          <p key={citation.id} className="font-body-md text-on-surface-variant leading-relaxed">
+          <p key={citation.id} className="font-body-md text-on-surface-variant leading-relaxed text-justify">
             {citation.segments.map((segment, index) =>
               segment.kind === 'link' && segment.url ? (
                 <a
@@ -53,7 +53,7 @@ export function SourceCitationsView({
       <div className="flex flex-col gap-3 divide-y divide-outline-variant/20">
         {citations.map((citation, idx) => (
           <div key={citation.id} className={idx > 0 ? 'pt-3' : ''}>
-            <p className="font-body-md text-on-surface-variant leading-relaxed">
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-justify">
               {citation.segments.map((segment, index) =>
                 segment.kind === 'link' && segment.url ? (
                   <a
