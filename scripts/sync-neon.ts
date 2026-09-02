@@ -29,6 +29,8 @@ async function executeSql(query: string, params: unknown[] = []) {
 }
 
 async function main() {
+  const allowExistingReplace = process.env.ALLOW_PUBLISHED_CONTENT_REPLACE === 'true';
+
   console.log('--- Sincronização BemTeVi <-> Neon DB ---');
   console.log('Construindo snapshot completo do conteúdo embutido...');
   const payload = getBundledContent();
@@ -53,6 +55,13 @@ async function main() {
   const publisherId = rows[0]?.published_by || '00000000-0000-0000-0000-000000000001';
 
   if (rows.length > 0) {
+    if (!allowExistingReplace) {
+      throw new Error(
+        `Publicação existente encontrada na revisão ${rows[0].revision}. A sincronização do bundle é bloqueada para não apagar conteúdo editado no painel. ` +
+          'Use ALLOW_PUBLISHED_CONTENT_REPLACE=true somente para uma substituição completa e intencional.',
+      );
+    }
+
     const currentRevision = Number(rows[0].revision) || 1;
     const nextRevision = currentRevision + 1;
     console.log(`Atualizando de revisão ${currentRevision} para revisão ${nextRevision}...`);

@@ -60,6 +60,7 @@ Copie `.env.example` para `.env`:
 - **Privacidade em primeiro lugar:** nada de login, CPF, e-mail ou identificação. Respostas, scores e transcrições existem só em memória durante a sessão e são descartados. O único dado persistido é a preferência não sensível `bemtevi:onboarding-seen` (localStorage).
 - **Não é IA:** a orientação é determinística. Nunca apresente o app como chatbot de IA.
 - **Conteúdo embutido é só fallback:** editar JSON em `src/content` não muda o que os usuários veem — é preciso publicar uma nova revisão no Neon, salvo quando o banco está vazio ou indisponível.
+- **Sincronização do bundle é protegida:** `scripts/sync-neon.ts` só cria o primeiro conteúdo publicado. Para substituir uma revisão existente por todo o conteúdo embutido, é obrigatório definir `ALLOW_PUBLISHED_CONTENT_REPLACE=true`; o uso normal é publicar pelo dashboard.
 - **Publish não sobrescreve:** conflito de revisão ou falha de validação mantém o rascunho local intacto.
 - **Limites de payload:** 1 MiB por imagem, 5 MiB por requisição.
 
