@@ -32,17 +32,18 @@ const payload: PublishedContentPayload = {
 
 describe('aiPrompts (visuals de fluxo)', () => {
   it('prompt do arquivo ZIP ensina a IA sobre imagens de fluxo', () => {
-    const prompt = buildFullPayloadPromptForArchive(payload);
+    const prompt = buildFullPayloadPromptForArchive(payload, 39);
 
     expect(prompt).toContain('GuidedFlow.nodes[].visuals[].src');
     expect(prompt).toContain('NUNCA edite esse caminho');
-    expect(prompt).toContain('flows[].nodes[].visuals[]');
+    expect(prompt).toContain('Fluxos > mapa visual > painel da etapa > Mídia');
   });
 
-  it('prompt do arquivo orienta a IA a não trocar a imagem do fluxo', () => {
-    const prompt = buildFullPayloadPromptForArchive(payload);
+  it('prompt do arquivo orienta a IA a não enviar paths de imagem em operações', () => {
+    const prompt = buildFullPayloadPromptForArchive(payload, 39);
 
-    expect(prompt).toContain('mantenha o "src" original ("./images/..." ou https://) e atualize apenas o "alt"');
+    expect(prompt).toContain('NÃO tente gerar a imagem nem inclua campos de imagem em uma operação');
+    expect(prompt).toContain('Não altere imagens: não envie campos com "./images/..." nem "data:image/..."');
     expect(prompt).toContain('Fluxos > mapa visual > painel da etapa > Mídia');
   });
 

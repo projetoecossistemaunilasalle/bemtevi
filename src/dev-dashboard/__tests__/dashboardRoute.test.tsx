@@ -27,7 +27,6 @@ function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
 const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
 
 const dashboardMocks = vi.hoisted(() => ({
-  publishMode: 'export' as 'export' | 'database',
   content: null as PublishedContentPayload | null,
   snapshot: null as PublishedContentSnapshot | null,
   publish: vi.fn(),
@@ -35,7 +34,7 @@ const dashboardMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../publishing/publishMode', () => ({
-  getDashboardPublishMode: () => dashboardMocks.publishMode,
+  getDashboardPublishMode: () => 'database',
 }));
 
 vi.mock('../../app/content/PublishedContentContext', () => ({
@@ -279,7 +278,6 @@ describe('DashboardRoute', () => {
     localStorage.clear();
     shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact());
     vi.clearAllMocks();
-    dashboardMocks.publishMode = 'export';
     dashboardMocks.content = asPayload(getShippedDashboardContent());
     dashboardMocks.snapshot = null;
     dashboardMocks.account = { id: 'admin-id', email: 'admin@bemtevi.test' };
@@ -361,7 +359,7 @@ describe('DashboardRoute', () => {
       'Contatos',
       'Assistente IA',
       'Estatísticas',
-      'Exportar',
+      'Publicar',
     ]);
     expect(
       screen.getByText('Gerencie o conteúdo publicado e consulte estatísticas agregadas de acesso.'),
@@ -386,7 +384,7 @@ describe('DashboardRoute', () => {
     const contactsTab = screen.getByRole('tab', { name: 'Contatos' });
     const aiTab = screen.getByRole('tab', { name: 'Assistente IA' });
     const analyticsTab = screen.getByRole('tab', { name: 'Estatísticas' });
-    const exportTab = screen.getByRole('tab', { name: 'Exportar' });
+    const exportTab = screen.getByRole('tab', { name: 'Publicar' });
     const flowsPanel = screen.getByRole('tabpanel', { name: 'Fluxos' });
 
     expect(flowsTab).toHaveAttribute('tabindex', '0');
@@ -546,7 +544,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Endereço' })).toHaveValue('Rua Reordenada, 123');
   });
 
-  it('summarizes edited contacts and enables contact-only exports', () => {
+  it('summarizes edited contacts and enables contact-only publication', () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -557,12 +555,12 @@ describe('DashboardRoute', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), {
       target: { value: 'CAPS II Centro' },
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
 
     const contactsStat = screen.getByText('Contatos', { selector: 'p' }).parentElement;
     expect(contactsStat).not.toBeNull();
     expect(within(contactsStat!).getByText('1 editado')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeEnabled();
   });
 
   it('routes duplicate shipped contact edits and removal through the selected original source index', () => {
@@ -799,7 +797,7 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('tab', { name: 'Contatos' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('shows contact errors locally and includes them in global export validation', () => {
+  it('shows contact errors locally and includes them in global publication validation', () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -810,8 +808,8 @@ describe('DashboardRoute', () => {
     fireEvent.change(screen.getByLabelText('Título do fluxo'), {
       target: { value: 'Fluxo com alteração válida' },
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
-    expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
+    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Contatos' }));
     fireEvent.click(screen.getByRole('button', { name: 'Novo contato' }));
@@ -820,12 +818,12 @@ describe('DashboardRoute', () => {
     expect(screen.getAllByText('O endereço é obrigatório.').length).toBeGreaterThan(0);
     expect(screen.getAllByText('O telefone precisa ter pelo menos 8 dígitos.').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
     expect(screen.getByText('1 editado')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
 
-  it('navigates and scrolls to the validation error summary when clicking Revisar erros from the export tab', () => {
+  it('navigates and scrolls to the validation error summary when clicking Revisar erros from the publish tab', () => {
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -836,9 +834,9 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Materiais' }));
     fireEvent.change(screen.getByLabelText('Título do material'), { target: { value: '' } });
 
-    // Go to Exportar / Publicar tab
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
-    expect(screen.getByText('Ainda não é possível exportar')).toBeInTheDocument();
+    // Go to the publish tab.
+    fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
+    expect(screen.getByText('Ainda não é possível publicar')).toBeInTheDocument();
 
     const reviewButton = screen.getByRole('button', { name: 'Revisar 1 erro em Materiais' });
     expect(reviewButton).toBeInTheDocument();
@@ -2016,22 +2014,8 @@ describe('DashboardRoute', () => {
     expect(screen.queryByLabelText('Chave da pontuação')).not.toBeInTheDocument();
   });
 
-  it('shows Exportar tab and export UI in export mode', () => {
-    dashboardMocks.publishMode = 'export';
-    render(
-      <MemoryRouter>
-        <DashboardRoute />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('tab', { name: 'Exportar' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'Exportar' }));
-    expect(screen.getByRole('button', { name: 'Gerar arquivo ZIP' })).toBeInTheDocument();
-  });
-
-  it('shows Publicar tab and publish UI in database mode', async () => {
+  it('shows the database-backed publication UI', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -2046,7 +2030,6 @@ describe('DashboardRoute', () => {
 
   it('publishes merged content and clears local drafts on success', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     localStorage.setItem(
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
@@ -2102,7 +2085,6 @@ describe('DashboardRoute', () => {
 
   it('keeps local drafts when publication fails', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     localStorage.setItem(
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
@@ -2137,7 +2119,6 @@ describe('DashboardRoute', () => {
 
   it('compares edits against the database content baseline', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     dashboardMocks.content = {
       flows: [],
       educationMaterials: [],
@@ -2181,7 +2162,6 @@ describe('DashboardRoute', () => {
 
   it('renders "Limpar TODAS as alterações" button disabled when no local draft changes exist', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     dashboardMocks.content = {
       flows: [],
       educationMaterials: [],
@@ -2209,7 +2189,6 @@ describe('DashboardRoute', () => {
 
   it('clears all local draft changes when "Limpar TODAS as alterações" is confirmed', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
     dashboardMocks.content = {
       flows: [],
       educationMaterials: [],
@@ -2259,7 +2238,6 @@ describe('DashboardRoute', () => {
   });
 
   it('displays concurrent publication notice when background revision advances and preserves unsaved draft work', async () => {
-    dashboardMocks.publishMode = 'database';
     dashboardMocks.snapshot = {
       schemaVersion: '1.0.0',
       revision: 8,
@@ -2313,8 +2291,6 @@ describe('DashboardRoute', () => {
 
   it('renders backup and restore buttons on publish tab', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
-
     render(
       <MemoryRouter>
         <DashboardRoute />
@@ -2392,8 +2368,6 @@ describe('DashboardRoute', () => {
 
   it('shows payload size limit warning and disables publish when draft exceeds 5 MiB', async () => {
     const user = userEvent.setup();
-    dashboardMocks.publishMode = 'database';
-
     const baseShipped = asPayload(getShippedDashboardContent());
     dashboardMocks.content = {
       ...baseShipped,

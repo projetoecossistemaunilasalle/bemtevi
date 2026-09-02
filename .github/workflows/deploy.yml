@@ -36,7 +36,6 @@ jobs:
       - run: pnpm build
         env:
           VITE_ENABLE_DEV_DASHBOARD: 'true'
-          VITE_DASHBOARD_PUBLISH_MODE: database
           VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
           VITE_NEON_DATA_API_URL: ${{ vars.VITE_NEON_DATA_API_URL }}
           VITE_ENABLE_PAGE_ANALYTICS: 'true'

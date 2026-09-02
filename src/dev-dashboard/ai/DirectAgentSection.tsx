@@ -15,9 +15,10 @@ import {
   Unplug,
 } from 'lucide-react';
 import { Button } from '../../design-system/components/Button';
-import { validatePublicationPayload, type PublishedContentPayload } from '../../app/content/publishedContent';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { buildDirectAgentPrompt, copyTextWithFallback } from './aiPrompts';
 import { parseAiResponseText, preparePayloadForAi } from './aiArchive';
+import { applyAiOperations } from './aiOperations';
 import {
   agentBridgeDefaults,
   getAgentBridgeStatus,
@@ -30,7 +31,9 @@ import { agentSetups, detectSetupPlatform, getAgentSetup, type SetupPlatform } f
 
 interface DirectAgentSectionProps {
   draft: PublishedContentPayload;
-  onApply: (nextPayload: PublishedContentPayload) => void;
+  /** The Neon revision used to build the AI request. */
+  baseRevision: number;
+  onApply: (nextPayload: PublishedContentPayload, envelope: ReturnType<typeof parseAiResponseText>) => void;
 }
 
 type RunStatus =
@@ -51,7 +54,7 @@ function StepNumber({ children }: { children: string }) {
   );
 }
 
-export function DirectAgentSection({ draft, onApply }: DirectAgentSectionProps) {
+export function DirectAgentSection({ draft, baseRevision, onApply }: DirectAgentSectionProps) {
   const [bridgeUrl, setBridgeUrl] = useState(initialBridgeUrl);
   const [pairCode, setPairCode] = useState('');
   const [token, setToken] = useState(() => sessionStorage.getItem(agentBridgeDefaults.tokenStorageKey) || '');
@@ -139,15 +142,16 @@ export function DirectAgentSection({ draft, onApply }: DirectAgentSectionProps) 
 
     try {
       const { payload } = preparePayloadForAi(draft);
-      const prompt = buildDirectAgentPrompt(payload, instruction.trim());
+      const prompt = buildDirectAgentPrompt(payload, instruction.trim(), baseRevision);
       const output = await runAgent(bridgeUrl, token, provider, prompt, {
         signal: controller.signal,
         onEvent: (event) => {
           if (event.type === 'progress') setRunStatus({ kind: 'running', message: event.message });
         },
       });
-      const nextPayload = validatePublicationPayload(parseAiResponseText(output));
-      onApply(nextPayload);
+      const operations = parseAiResponseText(output);
+      const nextPayload = applyAiOperations(draft, operations, baseRevision);
+      onApply(nextPayload, operations);
       setRunStatus({
         kind: 'success',
         message: `${selected.label} concluiu a tarefa. As alterações foram aplicadas ao rascunho para revisão.`,

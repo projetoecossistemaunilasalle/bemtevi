@@ -1,35 +1,25 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { documentFlows } from '../src/content/flows/documentFlows';
-import { resourcesContent } from '../src/content/resources/resources';
 import { parseGuidedFlow } from '../src/domain/flow-engine/parseFlow';
 import { validateFlow } from '../src/domain/flow-engine/validateFlow';
 import type { ChoiceFlowNode, ResultFlowNode, GuidedFlow } from '../src/domain/flow-engine/types';
+import { parsePayload } from '../src/app/content/publishedContent';
 
 export function getRepoRoot(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 }
 
-function loadJsonFlows(rootDir: string): GuidedFlow[] {
-  const flowsDir = path.join(rootDir, 'src', 'content', 'flows');
-  if (!existsSync(flowsDir)) {
-    return [];
-  }
-
-  const files = readdirSync(flowsDir).filter((file) => file.endsWith('.json'));
-  return files.map((file) => {
-    const filePath = path.join(flowsDir, file);
-    const raw = readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown;
-    return parseGuidedFlow(parsed);
-  });
-}
-
 export function loadRegisteredFlows(rootDir?: string): GuidedFlow[] {
   const resolvedRoot = rootDir ?? getRepoRoot();
-  const jsonFlows = loadJsonFlows(resolvedRoot);
-  return [...documentFlows, ...jsonFlows];
+  const snapshotPath = path.join(resolvedRoot, 'src', 'content', 'generated', 'published-content.snapshot.json');
+  if (!existsSync(snapshotPath)) {
+    throw new Error('Snapshot publicado não encontrado. Execute pnpm run content:pull antes de validar os fluxos.');
+  }
+  const raw = readFileSync(snapshotPath, 'utf-8');
+  const snapshot = JSON.parse(raw) as { payload?: unknown };
+  const payload = parsePayload(snapshot.payload);
+  return payload.flows.map((flow) => parseGuidedFlow(flow));
 }
 
 export function validateRegisteredFlows(flows: GuidedFlow[]): string[] {
@@ -185,7 +175,9 @@ export function validateContent(): string[] {
     errors.push(...validateSrq20Contract(srq20Flow));
   }
 
-  const resourceIds = resourcesContent.resources.map((r) => r.id);
+  const snapshotPath = path.join(rootDir, 'src', 'content', 'generated', 'published-content.snapshot.json');
+  const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf-8')) as { payload?: unknown };
+  const resourceIds = parsePayload(snapshot.payload).educationMaterials.map((resource) => resource.id);
   errors.push(...validateResourceRecommendations(flows, resourceIds));
 
   return errors;

@@ -4,10 +4,13 @@ import { Button } from '../../design-system/components/Button';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { createAiArchive, parseAiArchiveFile, downloadBlob } from './aiArchive';
 import { DirectAgentSection } from './DirectAgentSection';
+import { applyAiOperations, type AiOperationEnvelope } from './aiOperations';
 
 interface AiArchiveSectionProps {
   draft: PublishedContentPayload;
-  onApply: (nextPayload: PublishedContentPayload) => void;
+  /** The Neon revision used to build the AI request. */
+  baseRevision: number;
+  onApply: (nextPayload: PublishedContentPayload, envelope: AiOperationEnvelope) => void;
 }
 
 type Status =
@@ -25,7 +28,7 @@ export function AiArchiveSection(props: AiArchiveSectionProps) {
   );
 }
 
-function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
+function AiFileArchiveSection({ draft, baseRevision, onApply }: AiArchiveSectionProps) {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -33,7 +36,7 @@ function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
   async function handleDownload() {
     setStatus({ kind: 'downloading' });
     try {
-      const { zipData, fileName, imageCount } = await createAiArchive(draft);
+      const { zipData, fileName, imageCount } = await createAiArchive(draft, baseRevision);
       const blob = new Blob([zipData as unknown as BlobPart], { type: 'application/zip' });
       downloadBlob(blob, fileName);
       setStatus({
@@ -52,9 +55,9 @@ function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
   async function handleFile(file: File) {
     setStatus({ kind: 'idle' });
     try {
-      const payload = await parseAiArchiveFile(file);
-      // Validação rápida será feita pelo pai ao aplicar (parsePayload), mas já mostramos sucesso aqui
-      onApply(payload);
+      const operations = await parseAiArchiveFile(file);
+      const payload = applyAiOperations(draft, operations, baseRevision);
+      onApply(payload, operations);
       setStatus({
         kind: 'success',
         message: `Arquivo "${file.name}" validado! Revise as alterações abaixo e publique quando estiver pronto.`,
@@ -113,9 +116,9 @@ function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
           </h3>
           <p className="font-body-sm text-on-surface-variant">
             Depois que o ChatGPT devolver o arquivo (ZIP com{' '}
-            <code className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-xs">data.json</code> ou apenas{' '}
-            <code className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-xs">.json</code>), envie aqui.
-            O painel validará e aplicará no rascunho.
+            <code className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-xs">operations.json</code> ou
+            apenas <code className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-xs">.json</code>), envie
+            aqui. O painel validará as operações antes de aplicá-las ao rascunho.
           </p>
           <div
             role="button"
@@ -199,7 +202,7 @@ function AiFileArchiveSection({ draft, onApply }: AiArchiveSectionProps) {
               “Siga as instruções de INSTRUCOES-PARA-IA.txt. Quero que: [descreva aqui o que mudar]”
             </em>
           </li>
-          <li>O ChatGPT devolverá um novo arquivo (ZIP ou data.json). Baixe-o.</li>
+          <li>O ChatGPT devolverá um novo arquivo (ZIP ou operations.json). Baixe-o.</li>
           <li>
             Volte aqui, clique em <strong className="text-on-surface">Selecionar arquivo da IA</strong> ou arraste o
             arquivo na área pontilhada.

@@ -2,6 +2,7 @@ import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { EducationResource } from '../../domain/resources/types';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
+import { AI_OPERATIONS_SCHEMA_VERSION } from './aiOperations';
 
 const INSTRUCOES_COMUNS = `INSTRUÇÕES OBRIGATÓRIAS:
 - Responda SEMPRE em português do Brasil (PT-BR).
@@ -119,12 +120,65 @@ const REGRAS_IMAGENS_ARQUIVO = `
 REGRAS CRÍTICAS PARA IMAGENS (arquivo ZIP):
 - Campos de imagem (EducationResource.imageUrl, EducationResource.featuredImage.dataUrl, EducationResourceBlock.imageUrl, GuidedFlow.nodes[].visuals[].src) aparecem no data.json como "./images/nome-do-arquivo.png" (caminho relativo) quando a imagem foi enviada. NUNCA edite esse caminho manualmente, NUNCA tente criar base64 (data:image...), NUNCA invente nome de arquivo.
 - Se a imagem for externa (https://...), mantenha a URL exatamente igual, a menos que o usuário peça para trocar.
-- Se o usuário pedir para "trocar/adicionar imagem", NÃO tente gerar a imagem. Em vez disso, faça UM dos seguintes:
-  1) Mantenha o caminho "./images/..." original e adicione no material um novo bloco do tipo "paragraph" no início do body com o texto: "[INSTRUÇÃO PARA O ADMINISTRADOR: Para trocar a imagem de [nome do material/bloco], volte ao painel > Materiais > abra '${'{'}materialId{'}'}' > clique em 'Enviar imagem' e escolha o arquivo desejado. Sugestão da IA: descreva aqui a imagem ideal - ex: 'foto acolhedora de sala de aula com professora sorrindo']"
-  2) Ou, se for imagem de bloco do tipo "image", mantenha imageUrl como "./images/..." e atualize apenas "alt" com a descrição da imagem sugerida.
-  3) Ou, se for imagem de fluxo ("flows[].nodes[].visuals[]"), mantenha o "src" original ("./images/..." ou https://) e atualize apenas o "alt", ou oriente o administrador no texto: "[INSTRUÇÃO PARA O ADMINISTRADOR: Para trocar a imagem da etapa, volte ao painel > Fluxos > mapa visual > painel da etapa > Mídia e envie a nova imagem. Sugestão da IA: descreva aqui a imagem ideal]"
-- No arquivo ZIP, a pasta "images/" contém os arquivos reais. A IA NÃO precisa e NÃO deve devolver a pasta images. Devolva APENAS o data.json editado. As imagens serão preservadas automaticamente pelo painel.
+- Se o usuário pedir para "trocar/adicionar imagem", NÃO tente gerar a imagem nem inclua campos de imagem em uma operação. Em vez disso, adicione um bloco de texto sem imagem orientando o administrador a usar o painel: Materiais > abra o material > Enviar imagem, ou Fluxos > mapa visual > painel da etapa > Mídia. Inclua apenas a descrição da imagem sugerida.
+- No arquivo ZIP, a pasta "images/" contém os arquivos reais. A IA NÃO precisa e NÃO deve devolver a pasta images. Devolva APENAS operations.json; as imagens serão preservadas automaticamente pelo painel.
 `;
+
+const REGRAS_OPERACOES = `
+FORMATO OBRIGATÓRIO DA RESPOSTA (AiOperationEnvelope):
+{
+  "schemaVersion": "${AI_OPERATIONS_SCHEMA_VERSION}",
+  "baseRevision": number,
+  "operations": [
+    { "op": "add", "scope": "flows"|"educationMaterials"|"educationGroups"|"contacts"|"locations", "value": { ...item completo } },
+    { "op": "update", "scope": "...", "id": "id-existente", "patch": { "campo": "novo valor" } },
+    { "op": "delete", "scope": "...", "id": "id-existente", "confirmation": true }
+  ],
+  "selfCheck": {
+    "reviewed": true,
+    "noOutOfScopeChanges": true,
+    "noUnrequestedDeletes": true,
+    "noUnsupportedImagePaths": true,
+    "notes": ["resumo curto da conferência"]
+  }
+}
+
+REGRAS CRÍTICAS DAS OPERAÇÕES:
+- Devolva SOMENTE operações explícitas. A ausência de um item NUNCA significa removê-lo.
+- Use "delete" apenas quando o administrador pedir para excluir e informe "confirmation": true.
+- Em "update", envie somente os campos que realmente serão alterados; nunca envie "id" dentro de "patch".
+- Em "add", envie o item novo completo, com ID único.
+- Não altere "defaultGroupOrder" pela IA.
+- Antes de responder, confira IDs, referências entre fluxos, grupos, locais e contatos; registre a conferência em selfCheck.notes.
+- Não altere imagens: não envie campos com "./images/..." nem "data:image/...". Para trocar imagens, oriente o administrador a usar o painel.
+`;
+
+function buildOperationsPrompt(
+  header: string,
+  payload: PublishedContentPayload,
+  baseRevision: number,
+  instruction: string,
+  includeArchiveImageRules: boolean,
+): string {
+  return `${header}
+
+${INSTRUCOES_COMUNS}
+${REGRAS_PAYLOAD_COMPLETO}
+${includeArchiveImageRules ? REGRAS_IMAGENS_ARQUIVO : ''}
+${REGRAS_OPERACOES}
+
+REVISÃO BASE OBRIGATÓRIA: ${baseRevision}
+
+TAREFA SOLICITADA PELO ADMINISTRADOR:
+${instruction}
+
+CONTEÚDO ATUAL (somente para referência; não o devolva inteiro):
+\`\`\`json
+${JSON.stringify(payload, null, 2)}
+\`\`\`
+
+Responda APENAS com o AiOperationEnvelope em \`\`\`json. Não devolva o payload completo.`;
+}
 
 // Helpers
 
@@ -155,28 +209,6 @@ ${exemplo ?? jsonStr.slice(0, 300) + '\n... (mesma estrutura completa)'}
 Lembre-se: devolva APENAS o bloco \`\`\`json com o JSON válido. Nenhum texto antes ou depois.`;
 }
 
-function wrapJsonPromptWithImages(header: string, regras: string, json: unknown, instrucoesUsuario: string): string {
-  const jsonStr = JSON.stringify(json, null, 2);
-  return `${header}
-
-${INSTRUCOES_COMUNS}
-${regras}
-${REGRAS_IMAGENS_ARQUIVO}
-${instrucoesUsuario}
-
-CONTEÚDO ATUAL (data.json dentro do ZIP - edite e devolva APENAS este JSON):
-\`\`\`json
-${jsonStr}
-\`\`\`
-
-FORMATO DA RESPOSTA:
-- Devolva APENAS o JSON completo editado dentro de \`\`\`json, OU um arquivo data.json dentro de um ZIP se o ChatGPT permitir envio de arquivo.
-- NUNCA inclua a pasta images/. Ela será mantida automaticamente.
-- Se o usuário enviou um ZIP, você recebeu apenas o data.json + as imagens separadas. Edite o data.json e devolva-o.
-
-Lembre-se: APENAS JSON válido dentro de \`\`\`json. Sem explicações fora.`;
-}
-
 // Builders
 
 export function buildFullPayloadPrompt(payload: PublishedContentPayload): string {
@@ -192,35 +224,30 @@ TAREFA DO USUÁRIO (o administrador dirá o que quer alterar em seguida, mas se 
   return wrapJsonPrompt(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
 }
 
-export function buildFullPayloadPromptForArchive(payload: PublishedContentPayload): string {
+export function buildFullPayloadPromptForArchive(payload: PublishedContentPayload, baseRevision: number): string {
   const header = `Você é um assistente editorial do projeto BemTeVi, uma plataforma de apoio a professores que enfrentam violência escolar no Brasil. Você recebeu um arquivo ZIP com data.json + pasta images/.`;
-  const instrucoesUsuario = `
-TAREFA DO USUÁRIO (o administrador dirá o que quer alterar em seguida, mas se nada for dito, revise ortografia, clareza e tom acolhedor sem mudar estrutura):
-
-- Faça APENAS as alterações solicitadas pelo administrador na próxima mensagem.
-- Se o administrador pedir para "melhorar textos", reescreva mantendo sentido e estrutura.
-- Se pedir para "adicionar" algo, crie com id único e estrutura válida.
-- Nunca remova itens que não foram solicitados para remoção.
-- Para imagens, siga rigorosamente as REGRAS DE IMAGENS acima: NUNCA edite caminhos ./images/... e NUNCA gere base64. Instrua o administrador via bloco de texto.
-`;
-  return wrapJsonPromptWithImages(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
+  return buildOperationsPrompt(
+    header,
+    payload,
+    baseRevision,
+    'Faça somente as alterações solicitadas pelo administrador na próxima mensagem. Se não houver pedido, não proponha operações.',
+    true,
+  );
 }
 
-export function buildDirectAgentPrompt(payload: PublishedContentPayload, instruction: string): string {
+export function buildDirectAgentPrompt(
+  payload: PublishedContentPayload,
+  instruction: string,
+  baseRevision: number,
+): string {
   const header = `Você é um assistente editorial conectado diretamente ao painel administrativo do BemTeVi, uma plataforma de apoio a professores que enfrentam violência escolar no Brasil.`;
-  const instrucoesUsuario = `
-TAREFA SOLICITADA PELO ADMINISTRADOR:
-${instruction}
-
-REGRAS DE EXECUÇÃO:
-- Faça somente as alterações pedidas acima.
-- Trabalhe apenas sobre o JSON fornecido. Não leia nem altere arquivos do computador.
-- Nunca remova conteúdo que não foi solicitado para remoção.
-- Preserve todos os IDs, exceto quando a tarefa pedir explicitamente a criação de um item novo.
-- Para imagens, mantenha rigorosamente os caminhos ./images/... e nunca gere base64.
-- Devolva o payload completo, incluindo coleções que não foram alteradas.
-`;
-  return wrapJsonPromptWithImages(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
+  return buildOperationsPrompt(
+    header,
+    payload,
+    baseRevision,
+    `${instruction}\n\nTrabalhe somente sobre o JSON fornecido. Não leia nem altere arquivos do computador.`,
+    false,
+  );
 }
 
 export function buildFlowPrompt(flow: GuidedFlow): string {

@@ -21,10 +21,8 @@ import { Button } from '../design-system/components/Button';
 import { AlertCircle, Download, Info, Upload } from 'lucide-react';
 import { EducationDashboard } from './education/EducationDashboard';
 import { validateDashboardEducation } from './education/educationValidation';
-import { ExportDashboard } from './export/ExportDashboard';
 import { PublishDashboard } from './publishing/PublishDashboard';
 import { computeChangeSummary } from './publishing/changeSummary';
-import { getDashboardPublishMode } from './publishing/publishMode';
 import { usePublishedContent } from '../app/content/PublishedContentContext';
 import type { PublishedContentPayload } from '../app/content/publishedContent';
 import { FlowDashboard } from './flows/FlowDashboard';
@@ -44,6 +42,7 @@ import type { DashboardShippedContent } from './content/shippedContent';
 import { scheduleValidationFocus, scheduleValidationSummaryScroll } from './validation/validationNavigation';
 import { AiArchiveSection } from './ai/AiArchiveSection';
 import { createDraftFromAiPayload } from './ai/aiDraft';
+import type { AiOperationEnvelope } from './ai/aiOperations';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -275,7 +274,6 @@ export function DashboardRoute() {
     path?: string;
   } | null>(null);
   const { content: baseline, snapshot } = usePublishedContent();
-  const publishMode = getDashboardPublishMode();
   const shipped = useMemo(() => {
     if (!baseline) return baseline;
 
@@ -346,6 +344,7 @@ export function DashboardRoute() {
     typeof draftState.baseRevision === 'number' &&
     snapshot.revision > draftState.baseRevision &&
     hasDashboardChanges(draftState);
+  const hasPendingDraft = hasDashboardChanges(draftState);
 
   function setActiveTab(tab: DashboardTab) {
     setActiveTabState(tab);
@@ -422,18 +421,6 @@ export function DashboardRoute() {
     }),
     [flowValidation, educationValidation, contactValidation],
   );
-  const drafts = {
-    flows: mergedDrafts.flows,
-    educationMaterials: mergedDrafts.educationMaterials,
-    educationGroups: mergedDrafts.educationGroups,
-    contacts: mergedDrafts.contacts,
-    locations: mergedDrafts.locations,
-    defaultGroupOrder: mergedDrafts.defaultGroupOrder,
-    removedEducationGroupIds: draftState.removedGroupIds ?? [],
-    removedEducationMaterialIds: draftState.removedEducationMaterialIds ?? [],
-    removedContactIds: draftState.removedContactIds ?? [],
-    removedLocationIds: draftState.removedLocationIds ?? [],
-  };
   const publishedDraft = useMemo<PublishedContentPayload>(
     () => ({
       flows: mergedDrafts.flows,
@@ -540,9 +527,21 @@ export function DashboardRoute() {
     }
   }
 
-  function handleAiApply(nextPayload: PublishedContentPayload) {
+  function handleAiApply(nextPayload: PublishedContentPayload, envelope: AiOperationEnvelope) {
     if (!shipped) {
       setStorageError('Aguarde o carregamento do conteúdo publicado antes de aplicar a resposta da IA.');
+      return;
+    }
+    if (snapshot === null || snapshot.revision !== envelope.baseRevision) {
+      setStorageError(
+        'A resposta da IA foi criada para uma revisão diferente do Neon. Recarregue o Dashboard e solicite uma nova proposta para evitar sobrescrever alterações de outra pessoa.',
+      );
+      return;
+    }
+    if (hasDashboardChanges(draftState)) {
+      setStorageError(
+        'A resposta da IA não foi aplicada porque há um rascunho local pendente. Publique-o ou faça uma cópia de segurança e descarte-o antes de usar a IA.',
+      );
       return;
     }
     try {
@@ -572,7 +571,6 @@ export function DashboardRoute() {
       <DashboardShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        publishMode={publishMode}
         pendingChanges={changeSummary.total}
         draftUpdatedAt={draftState.updatedAt}
         tabErrorCounts={tabErrorCounts}
@@ -631,6 +629,26 @@ export function DashboardRoute() {
                 ...current,
                 addedFlows: [...current.addedFlows, createLocalFlow(current.addedFlows.length)],
               }))
+            }
+            onFlowImport={(flow) =>
+              updateDraftState((current) => {
+                const addedIndex = current.addedFlows.findIndex((candidate) => candidate.id === flow.id);
+                if (addedIndex >= 0) {
+                  return { ...current, addedFlows: updateRecordAtIndex(current.addedFlows, addedIndex, flow) };
+                }
+
+                const shippedIndex = shipped.flows.findIndex((candidate) => candidate.id === flow.id);
+                if (shippedIndex >= 0) {
+                  const { id: _id, ...patch } = flow;
+                  return {
+                    ...current,
+                    flowPatches: upsertPatchById(current.flowPatches, flow.id, shippedIndex, patch),
+                    removedFlowIds: (current.removedFlowIds ?? []).filter((id) => id !== flow.id),
+                  };
+                }
+
+                return { ...current, addedFlows: [...current.addedFlows, flow] };
+              })
             }
             onFlowRemove={(flowId) =>
               updateDraftState((current) => {
@@ -1063,43 +1081,56 @@ export function DashboardRoute() {
             }
           />
         )}
-        {activeTab === 'ai' && <AiArchiveSection draft={publishedDraft} onApply={handleAiApply} />}
-        {activeTab === 'analytics' && <AnalyticsDashboard />}
-        {activeTab === 'export' &&
-          (publishMode === 'database' ? (
-            <PublishDashboard
-              baseline={shipped}
-              draft={publishedDraft}
-              validation={validation}
-              draftUpdatedAt={draftState.updatedAt}
-              expectedRevision={draftState.baseRevision ?? null}
-              basePayload={draftState.basePayload}
-              onMergeConflict={rebaseDraftAfterMergeConflict}
-              onPublished={clearDraftsAfterPublication}
-              onResetDrafts={resetLocalDrafts}
-              onDownloadBackup={handleDownloadBackup}
-              onRestoreBackup={() => fileInputRef.current?.click()}
-              onOpenValidationArea={(area) => {
-                setActiveTab(area === 'export' ? 'export' : area);
-                scheduleValidationSummaryScroll();
-              }}
-              onNavigate={handleNavigate}
-            />
+        {activeTab === 'ai' &&
+          (snapshot === null ? (
+            <section className="rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+              <h2 className="font-headline-sm">Aguarde o conteúdo publicado do Neon</h2>
+              <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
+                O assistente só trabalha sobre uma revisão confirmada do Neon. Verifique a conexão e recarregue o
+                Dashboard antes de solicitar uma alteração.
+              </p>
+            </section>
+          ) : hasPendingDraft ? (
+            <section className="flex flex-col gap-4 rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+              <div>
+                <h2 className="font-headline-sm">Finalize o rascunho antes de usar a IA</h2>
+                <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
+                  Há alterações locais ainda não publicadas. Para evitar que uma proposta da IA sobrescreva ou misture
+                  mudanças pendentes, publique este rascunho ou baixe uma cópia de segurança e descarte-o antes de
+                  solicitar novas edições.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => setActiveTab('export')}>Revisar e publicar</Button>
+                <Button variant="secondary" onClick={handleDownloadBackup}>
+                  Baixar cópia do rascunho
+                </Button>
+              </div>
+            </section>
           ) : (
-            <ExportDashboard
-              shipped={shipped}
-              drafts={drafts}
-              validation={validation}
-              draftUpdatedAt={draftState.updatedAt}
-              onResetDrafts={resetLocalDrafts}
-              onDownloadBackup={handleDownloadBackup}
-              onRestoreBackup={() => fileInputRef.current?.click()}
-              onOpenValidationArea={(area) => {
-                setActiveTab(area === 'export' ? 'export' : area);
-                scheduleValidationSummaryScroll();
-              }}
-            />
+            <AiArchiveSection draft={publishedDraft} baseRevision={snapshot.revision} onApply={handleAiApply} />
           ))}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
+        {activeTab === 'export' && (
+          <PublishDashboard
+            baseline={shipped}
+            draft={publishedDraft}
+            validation={validation}
+            draftUpdatedAt={draftState.updatedAt}
+            expectedRevision={draftState.baseRevision ?? null}
+            basePayload={draftState.basePayload}
+            onMergeConflict={rebaseDraftAfterMergeConflict}
+            onPublished={clearDraftsAfterPublication}
+            onResetDrafts={resetLocalDrafts}
+            onDownloadBackup={handleDownloadBackup}
+            onRestoreBackup={() => fileInputRef.current?.click()}
+            onOpenValidationArea={(area) => {
+              setActiveTab(area === 'export' ? 'export' : area);
+              scheduleValidationSummaryScroll();
+            }}
+            onNavigate={handleNavigate}
+          />
+        )}
       </DashboardShell>
       <input
         ref={fileInputRef}

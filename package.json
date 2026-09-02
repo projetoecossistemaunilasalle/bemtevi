@@ -30,6 +30,8 @@
     "test:watch:wsl": "node.exe scripts/run-project-command.mjs test:watch",
     "validate:flows": "node scripts/run-project-command.mjs validate:flows",
     "validate:flows:wsl": "node.exe scripts/run-project-command.mjs validate:flows",
+    "content:pull": "node scripts/run-project-command.mjs content:pull",
+    "content:pull:wsl": "node.exe scripts/run-project-command.mjs content:pull",
     "check": "node scripts/run-project-command.mjs check",
     "check:wsl": "node.exe scripts/run-project-command.mjs check"
   },

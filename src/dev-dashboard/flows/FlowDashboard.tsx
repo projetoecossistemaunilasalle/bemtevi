@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import type { EducationResource } from '../../domain/resources/types';
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
@@ -6,6 +7,8 @@ import { Button } from '../../design-system/components/Button';
 import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
 import type { DashboardValidationIssue } from '../validation/validationTypes';
 import { validateDashboardFlows } from './flowValidation';
+import { parseGuidedFlow } from '../../domain/flow-engine/parseFlow';
+import { validateFlow } from '../../domain/flow-engine/validateFlow';
 import { FlowEditor } from './FlowEditor';
 import { FlowMap } from './FlowMap';
 import { FlowPreview } from './FlowPreview';
@@ -55,6 +58,7 @@ export function FlowDashboard({
   externalFocus,
   onFlowChange,
   onFlowAdd,
+  onFlowImport,
   onFlowRemove,
 }: {
   flows: GuidedFlow[];
@@ -62,6 +66,7 @@ export function FlowDashboard({
   externalFocus?: { id: string; requestId: number } | null;
   onFlowChange: (flowIndex: number, flowId: string, patch: Partial<GuidedFlow>) => void;
   onFlowAdd?: () => void;
+  onFlowImport?: (flow: GuidedFlow) => void;
   onFlowRemove?: (flowId: string) => void;
 }) {
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(() => flows[0]?.id ?? null);
@@ -73,6 +78,8 @@ export function FlowDashboard({
   const [nodeScrollRequest, setNodeScrollRequest] = useState<{ nodeId: string; requestId: number } | null>(null);
   const [nodeSearch, setNodeSearch] = useState('');
   const [activeNodeFilter, setActiveNodeFilter] = useState<NodeFilter>('all');
+  const flowImportRef = useRef<HTMLInputElement>(null);
+  const [flowImportError, setFlowImportError] = useState<string | null>(null);
   // Deep-link from the validation summary onto the map surface. Consumed by
   // FlowMap/FlowDestinationMap; cleared when the user navigates manually.
   const [validationFocusRequest, setValidationFocusRequest] = useState<MapFocusRequest | null>(null);
@@ -155,10 +162,29 @@ export function FlowDashboard({
     return (
       <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
         <p className="font-body-md text-on-surface-variant">Nenhum fluxo disponível.</p>
-        {onFlowAdd && (
-          <Button className="mt-3" onClick={onFlowAdd}>
-            + Criar Novo Fluxo
-          </Button>
+        {(onFlowAdd || onFlowImport) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {onFlowAdd && <Button onClick={onFlowAdd}>+ Criar Novo Fluxo</Button>}
+            {onFlowImport && (
+              <>
+                <Button variant="secondary" onClick={() => flowImportRef.current?.click()}>
+                  Importar fluxo JSON
+                </Button>
+                <input
+                  ref={flowImportRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleFlowImportFile}
+                />
+              </>
+            )}
+          </div>
+        )}
+        {flowImportError && (
+          <p role="alert" className="mt-3 font-body-sm text-error">
+            {flowImportError}
+          </p>
         )}
       </section>
     );
@@ -176,6 +202,31 @@ export function FlowDashboard({
   function selectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
     setNodeScrollRequest((request) => ({ nodeId, requestId: (request?.requestId ?? 0) + 1 }));
+  }
+
+  function handleFlowImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !onFlowImport) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result ?? '')) as unknown;
+        const flow = parseGuidedFlow(parsed);
+        const result = validateFlow(flow);
+        if (!result.valid) {
+          throw new Error(result.errors.join(' '));
+        }
+        onFlowImport(flow);
+        setSelectedFlowId(flow.id);
+        setFlowImportError(null);
+      } catch (error) {
+        setFlowImportError(error instanceof Error ? error.message : 'Não foi possível importar o fluxo JSON.');
+      }
+    };
+    reader.onerror = () => setFlowImportError('Não foi possível ler o arquivo do fluxo.');
+    reader.readAsText(file);
   }
 
   function handleEditNode(flowId: string, nodeId: string) {
@@ -311,13 +362,38 @@ export function FlowDashboard({
           })}
 
           {onFlowAdd && (
-            <button
-              type="button"
-              onClick={onFlowAdd}
-              className="mt-2 w-full rounded-lg border border-dashed border-outline-variant bg-transparent py-2 text-center font-label-md text-primary hover:bg-surface-container transition-colors"
-            >
-              + Criar Novo Fluxo
-            </button>
+            <div className="mt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onFlowAdd}
+                className="w-full rounded-lg border border-dashed border-outline-variant bg-transparent py-2 text-center font-label-md text-primary hover:bg-surface-container transition-colors"
+              >
+                + Criar Novo Fluxo
+              </button>
+              {onFlowImport && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => flowImportRef.current?.click()}
+                    className="w-full rounded-lg border border-outline-variant bg-surface-container-low py-2 text-center font-label-md text-primary hover:bg-surface-container transition-colors"
+                  >
+                    Importar fluxo JSON
+                  </button>
+                  <input
+                    ref={flowImportRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={handleFlowImportFile}
+                  />
+                </>
+              )}
+              {flowImportError && (
+                <p role="alert" className="font-body-sm text-error">
+                  {flowImportError}
+                </p>
+              )}
+            </div>
           )}
         </div>
 

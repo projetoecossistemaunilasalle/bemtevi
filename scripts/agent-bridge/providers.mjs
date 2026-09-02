@@ -5,6 +5,23 @@ import path from 'node:path';
 
 const MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
 const RUN_TIMEOUT_MS = 10 * 60 * 1000;
+const SAFE_ENVIRONMENT_KEYS = [
+  'PATH',
+  'PATHEXT',
+  'SystemRoot',
+  'WINDIR',
+  'ComSpec',
+  'TEMP',
+  'TMP',
+  'HOME',
+  'USERPROFILE',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
+];
 
 const providerDefinitions = [
   { id: 'codex', label: 'Codex', command: 'codex', envCommand: 'BEMTEVI_CODEX_COMMAND' },
@@ -42,6 +59,14 @@ export function listProviders() {
     label: definition.label,
     available: resolveExecutable(definition) !== null,
   }));
+}
+
+function createSafeAgentEnvironment() {
+  // Content agents receive their task through stdin. Do not inherit project or
+  // database credentials that could be read from the spawned process.
+  return Object.fromEntries(
+    SAFE_ENVIRONMENT_KEYS.flatMap((key) => (process.env[key] === undefined ? [] : [[key, process.env[key]]])),
+  );
 }
 
 export function createProviderInvocation(providerId, executable, prompt, workspaceRoot) {
@@ -193,12 +218,19 @@ export function runProvider({ providerId, prompt, workspaceRoot, emit, signal })
   if (!executable) throw new Error(`${definition.label} não foi encontrado neste computador.`);
 
   const invocation = createProviderInvocation(providerId, executable, prompt, workspaceRoot);
+  const isolatedDirectory = mkdtempSync(path.join(tmpdir(), 'bemtevi-content-agent-'));
+  const existingCleanup = invocation.cleanup;
+  invocation.cwd ??= isolatedDirectory;
+  invocation.cleanup = () => {
+    existingCleanup?.();
+    rmSync(isolatedDirectory, { recursive: true, force: true });
+  };
   const state = { result: '', plainOutput: [], stderr: [], outputBytes: 0 };
 
   return new Promise((resolve, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       cwd: invocation.cwd ?? workspaceRoot,
-      env: process.env,
+      env: createSafeAgentEnvironment(),
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,

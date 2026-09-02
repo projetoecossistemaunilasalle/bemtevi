@@ -37,6 +37,10 @@ function renderWithContent(ui: ReactElement, payload: PublishedContentPayload = 
   );
 }
 
+function contentWithoutEducation(): PublishedContentPayload {
+  return { ...getBundledContent(), educationMaterials: [], educationGroups: [] };
+}
+
 function buildDatabaseEducationPayload(): PublishedContentPayload {
   const bundled = getBundledContent();
   const dbResource = {
@@ -248,6 +252,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      contentWithoutEducation(),
     );
 
     const groupHeadings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
@@ -275,6 +280,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      contentWithoutEducation(),
     );
 
     // geral has no heading (h2); named group heading should appear
@@ -340,6 +346,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      contentWithoutEducation(),
     );
 
     const separator = screen.getByRole('separator', { name: 'Separador entre grupos de materiais' });
@@ -374,11 +381,12 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      contentWithoutEducation(),
     );
 
     // geral has no h2 heading; check resource card titles (h3) instead
     // Filter out the shipped resources that also render in geral
-    const baseTitles = new Set(resourcesContent.resources.map((r) => r.title));
+    const baseTitles = new Set(getBundledContent().educationMaterials.map((r) => r.title));
     const resourceTitles = screen
       .getAllByRole('heading', { level: 3 })
       .map((h) => h.textContent)
@@ -764,7 +772,7 @@ describe('ResourceDetailScreen', () => {
 });
 
 it('resolves local dashboard education drafts for preview', async () => {
-  const resource = resourcesContent.resources[0];
+  const resource = getBundledContent().educationMaterials[0];
   localStorage.setItem(
     'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify(
@@ -789,7 +797,8 @@ it('resolves local dashboard education drafts for preview', async () => {
 });
 
 it('ignores unchanged education patches when computing preview warning state', async () => {
-  const resource = resourcesContent.resources[0];
+  const bundled = getBundledContent();
+  const resource = bundled.educationMaterials[0];
   localStorage.setItem(
     'bemtevi:dev-dashboard:drafts:v1',
     JSON.stringify(
@@ -813,7 +822,7 @@ it('ignores unchanged education patches when computing preview warning state', a
 
   expect(preview.isPreviewingDrafts).toBe(false);
   expect(preview.changedResourceIds).toEqual([]);
-  expect(preview.resources).toEqual(resourcesContent.resources);
+  expect(preview.resources).toEqual(bundled.educationMaterials);
 });
 
 describe('resolveVideoEmbed', () => {

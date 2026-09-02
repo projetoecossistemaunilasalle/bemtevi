@@ -39,7 +39,19 @@ pnpm run check
 
 > Em WSL, use as variantes `:wsl` (ex.: `pnpm run dev:wsl`). O dev server roda na porta `3000`.
 
-Comandos disponíveis: `dev`, `build`, `preview`, `typecheck`, `lint`, `format` / `format:check`, `validate:flows`, `test`, `check`.
+Comandos disponíveis: `dev`, `build`, `preview`, `typecheck`, `lint`, `format` / `format:check`, `validate:flows`, `content:pull`, `test`, `check`.
+
+### Espelho local do conteúdo publicado
+
+```bash
+pnpm run content:pull
+```
+
+`content:pull` lê somente a revisão `current` do Neon usando `VITE_NEON_AUTH_URL` e
+`VITE_NEON_DATA_API_URL`, valida o conteúdo e atualiza
+`src/content/generated/published-content.snapshot.json`. Não usa `DATABASE_URL`, não recebe
+credenciais administrativas e nunca grava no Neon. O snapshot deve ser versionado no Git como
+espelho e fallback local da revisão publicada; ele não é uma origem de publicação.
 
 ## Variáveis de ambiente
 
@@ -49,7 +61,6 @@ Copie `.env.example` para `.env`:
 | ----------------------------------------------- | -------------------------------------------------------------------------- |
 | `VITE_ENABLE_DEV_DASHBOARD`                     | Habilita as rotas `/login` e `/dashboard`.                                 |
 | `VITE_DISABLE_AUTH`                             | Bypass de autenticação com conta mock (só para teste local).               |
-| `VITE_DASHBOARD_PUBLISH_MODE`                   | `database` (default, escreve no Neon) ou `export` (ZIP legado).            |
 | `VITE_NEON_AUTH_URL` / `VITE_NEON_DATA_API_URL` | Endpoints públicos do projeto Neon (Auth e Data API).                      |
 | `VITE_ENABLE_PAGE_ANALYTICS`                    | Contadores diários agregados, sem identificação (exige migração de banco). |
 
@@ -60,7 +71,8 @@ Copie `.env.example` para `.env`:
 - **Privacidade em primeiro lugar:** nada de login, CPF, e-mail ou identificação. Respostas, scores e transcrições existem só em memória durante a sessão e são descartados. O único dado persistido é a preferência não sensível `bemtevi:onboarding-seen` (localStorage).
 - **Não é IA:** a orientação é determinística. Nunca apresente o app como chatbot de IA.
 - **Conteúdo embutido é só fallback:** editar JSON em `src/content` não muda o que os usuários veem — é preciso publicar uma nova revisão no Neon, salvo quando o banco está vazio ou indisponível.
-- **Sincronização do bundle é protegida:** `scripts/sync-neon.ts` só cria o primeiro conteúdo publicado. Para substituir uma revisão existente por todo o conteúdo embutido, é obrigatório definir `ALLOW_PUBLISHED_CONTENT_REPLACE=true`; o uso normal é publicar pelo dashboard.
+- **Sem publicação pelo repositório:** não existe comando ou variável de ambiente que envie conteúdo local ao Neon. O Dashboard é o único publicador; `content:pull` apenas espelha o Neon no Git.
+- **Importação de fluxos:** o Dashboard aceita um arquivo JSON de fluxo como rascunho. O arquivo é validado e só chega ao Neon após revisão e publicação explícita no painel.
 - **Publish não sobrescreve:** conflito de revisão ou falha de validação mantém o rascunho local intacto.
 - **Limites de payload:** 1 MiB por imagem, 5 MiB por requisição.
 

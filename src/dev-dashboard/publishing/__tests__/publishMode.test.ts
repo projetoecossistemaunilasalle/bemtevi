@@ -1,21 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getDashboardPublishMode } from '../publishMode';
-
-afterEach(() => vi.unstubAllEnvs());
+import { describe, expect, it } from 'vitest';
+import { DASHBOARD_PUBLISH_MODE, getDashboardPublishMode } from '../publishMode';
 
 describe('getDashboardPublishMode', () => {
-  it('defaults to database publication', () => {
-    vi.stubEnv('VITE_DASHBOARD_PUBLISH_MODE', '');
+  it('only permits database publication', () => {
     expect(getDashboardPublishMode()).toBe('database');
-  });
-
-  it('enables ZIP export only for the explicit export value', () => {
-    vi.stubEnv('VITE_DASHBOARD_PUBLISH_MODE', 'export');
-    expect(getDashboardPublishMode()).toBe('export');
-  });
-
-  it.each(['DATABASE', 'true', 'zip'])('treats unsupported value %s as database mode', (value) => {
-    vi.stubEnv('VITE_DASHBOARD_PUBLISH_MODE', value);
-    expect(getDashboardPublishMode()).toBe('database');
+    expect(DASHBOARD_PUBLISH_MODE).toBe('database');
   });
 });

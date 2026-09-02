@@ -1,14 +1,12 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { FileEdit } from 'lucide-react';
 import { DashboardNotice } from './DashboardNotice';
-import type { DashboardPublishMode } from '../publishing/publishMode';
 
 export type DashboardTab = 'flows' | 'education' | 'contacts' | 'analytics' | 'export' | 'ai';
 
 export function DashboardShell({
   activeTab,
   onTabChange,
-  publishMode,
   pendingChanges,
   draftUpdatedAt,
   tabErrorCounts,
@@ -16,21 +14,19 @@ export function DashboardShell({
 }: {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
-  publishMode: DashboardPublishMode;
   pendingChanges?: number;
   draftUpdatedAt?: string | null;
   tabErrorCounts?: Partial<Record<DashboardTab, number>>;
   children: ReactNode;
 }) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const finalTabLabel = publishMode === 'database' ? 'Publicar' : 'Exportar';
   const tabs: Array<{ id: DashboardTab; label: string }> = [
     { id: 'flows', label: 'Fluxos' },
     { id: 'education', label: 'Materiais' },
     { id: 'contacts', label: 'Contatos' },
     { id: 'ai', label: 'Assistente IA' },
     { id: 'analytics', label: 'Estatísticas' },
-    { id: 'export', label: finalTabLabel },
+    { id: 'export', label: 'Publicar' },
   ];
   const hasPendingChanges = typeof pendingChanges === 'number' && pendingChanges > 0;
 
