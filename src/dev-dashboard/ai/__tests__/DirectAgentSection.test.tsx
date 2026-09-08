@@ -37,6 +37,7 @@ describe('DirectAgentSection', () => {
         { id: 'codex', label: 'Codex', available: true },
         { id: 'claude', label: 'Claude Code', available: false },
         { id: 'hermes', label: 'Hermes Agent', available: false },
+        { id: 'antigravity', label: 'Antigravity', available: false },
       ],
     });
     runAgent.mockResolvedValue(
@@ -73,6 +74,10 @@ describe('DirectAgentSection', () => {
     await user.click(screen.getByRole('radio', { name: /Hermes Agent/ }));
     expect(screen.getByText('hermes setup --portal')).toBeInTheDocument();
     expect(screen.getByText(/permite escolher entre vários serviços de IA/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /Antigravity/ }));
+    expect(screen.getByText('irm https://antigravity.google/cli/install.ps1 | iex')).toBeInTheDocument();
+    expect(screen.getByText(/Usa a sua conta Google autenticada no Antigravity CLI/)).toBeInTheDocument();
   });
 
   it('pareia a ponte, executa o agente e aplica as operações ao rascunho', async () => {

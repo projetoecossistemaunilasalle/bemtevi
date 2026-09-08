@@ -127,6 +127,40 @@ export const agentSetups: AgentSetup[] = [
       ],
     },
   },
+  {
+    id: 'antigravity',
+    label: 'Antigravity',
+    shortDescription: 'Assistente do Google Antigravity, conectado à sua conta Google.',
+    accountDescription: 'Usa a sua conta Google autenticada no Antigravity CLI (agy).',
+    bestFor: 'Uma boa escolha para quem usa ou desenvolve com o Google Antigravity.',
+    docsUrl: 'https://antigravity.google/docs/cli',
+    commands: {
+      windows: [
+        {
+          label: '1. Instale o Antigravity CLI',
+          command: 'irm https://antigravity.google/cli/install.ps1 | iex',
+          help: 'Execute no PowerShell. O comando agy será registrado automaticamente.',
+        },
+        {
+          label: '2. Entre na sua conta',
+          command: 'agy',
+          help: 'Siga as instruções para autorizar o acesso com sua conta Google.',
+        },
+      ],
+      mac_linux: [
+        {
+          label: '1. Instale o Antigravity CLI',
+          command: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+          help: 'O instalador configura o comando agy no seu terminal.',
+        },
+        {
+          label: '2. Entre na sua conta',
+          command: 'agy',
+          help: 'Siga as instruções para autorizar o acesso com sua conta Google.',
+        },
+      ],
+    },
+  },
 ];
 
 export function getAgentSetup(id: AgentProviderId) {

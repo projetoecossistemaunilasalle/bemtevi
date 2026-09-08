@@ -27,6 +27,7 @@ const providerDefinitions = [
   { id: 'codex', label: 'Codex', command: 'codex', envCommand: 'BEMTEVI_CODEX_COMMAND' },
   { id: 'claude', label: 'Claude Code', command: 'claude', envCommand: 'BEMTEVI_CLAUDE_COMMAND' },
   { id: 'hermes', label: 'Hermes Agent', command: 'hermes', envCommand: 'BEMTEVI_HERMES_COMMAND' },
+  { id: 'antigravity', label: 'Antigravity', command: 'agy', envCommand: 'BEMTEVI_ANTIGRAVITY_COMMAND' },
 ];
 
 function commandCandidates(command) {
@@ -50,7 +51,15 @@ function commandCandidates(command) {
 function resolveExecutable(definition) {
   const configured = process.env[definition.envCommand];
   if (configured) return existsSync(configured) ? configured : null;
-  return commandCandidates(definition.command)[0] ?? null;
+  const fromPath = commandCandidates(definition.command)[0] ?? null;
+  if (fromPath) return fromPath;
+  if (definition.id === 'antigravity') {
+    const defaultWin = process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'agy', 'bin', 'agy.exe') : null;
+    if (defaultWin && existsSync(defaultWin)) return defaultWin;
+    const defaultNix = process.env.HOME ? path.join(process.env.HOME, '.local', 'bin', 'agy') : null;
+    if (defaultNix && existsSync(defaultNix)) return defaultNix;
+  }
+  return null;
 }
 
 export function listProviders() {
@@ -178,6 +187,41 @@ export function createProviderInvocation(providerId, executable, prompt, workspa
     };
   }
 
+  if (providerId === 'antigravity') {
+    return {
+      command: executable,
+      args: [
+        '--input-format',
+        'stream-json',
+        '--output-format',
+        'stream-json',
+        '--sandbox',
+        '--disable-slash-commands',
+      ],
+      stdin:
+        JSON.stringify({
+          event: 'user',
+          message: { content: prompt },
+        }) + '\n',
+      parseLine(line, state, emit) {
+        const event = safeParseJson(line);
+        if (!event) return;
+        if (event.event === 'result') {
+          if (event.result?.status === 'ERROR') {
+            state.errorMessage = event.result.error || 'Falha na execução do Antigravity.';
+          } else {
+            state.result = event.result?.response ?? '';
+          }
+        } else if (event.event === 'step_update') {
+          const update = event.step_update;
+          if (update?.step_type === 'agent_response' && update.text_delta) {
+            emit({ type: 'progress', message: 'Antigravity está preparando a resposta.' });
+          }
+        }
+      },
+    };
+  }
+
   throw new Error('Provedor de agente desconhecido.');
 }
 
@@ -268,8 +312,8 @@ export function runProvider({ providerId, prompt, workspaceRoot, emit, signal })
     child.on('error', (error) => finish(() => reject(error)));
     child.on('close', (code) => {
       finish(() => {
-        if (code !== 0) {
-          const details = state.stderr.filter(Boolean).slice(-8).join('\n');
+        if (code !== 0 || state.errorMessage) {
+          const details = state.errorMessage || state.stderr.filter(Boolean).slice(-8).join('\n');
           reject(new Error(details || `${definition.label} encerrou com código ${code}.`));
           return;
         }

@@ -34,4 +34,23 @@ describe('agent bridge provider policies', () => {
     expect(invocation.args).not.toContain('terminal');
     expect(invocation.args).not.toContain('file');
   });
+
+  it('runs Antigravity in sandbox mode without slash commands using stream-json', () => {
+    const invocation = createProviderInvocation('antigravity', 'agy', 'prompt', process.cwd());
+
+    expect(invocation.args).toEqual(
+      expect.arrayContaining([
+        '--input-format',
+        'stream-json',
+        '--output-format',
+        'stream-json',
+        '--sandbox',
+        '--disable-slash-commands',
+      ]),
+    );
+    expect(JSON.parse(invocation.stdin)).toEqual({
+      event: 'user',
+      message: { content: 'prompt' },
+    });
+  });
 });

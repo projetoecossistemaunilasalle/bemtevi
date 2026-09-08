@@ -1,43 +1,37 @@
-# Walkthrough: Blindagem do Salvamento Local e Sincronização de Rascunhos
+# Walkthrough: Integração do Antigravity na Conexão com Assistente de IA
 
-Todas as brechas identificadas na auditoria do sistema de rascunhos e persistência foram corrigidas com sucesso.
+O **Antigravity** (`agy`) foi adicionado com sucesso como provedor de assistente de IA suportado na ponte local e no painel administrativo do BemTeVi.
 
 ---
 
 ## 1. O que foi implementado
 
-### A. Recuperação Automática do IndexedDB no Boot
+### A. Ponte Local de Agentes (`scripts/agent-bridge`)
 
-- **Arquivo modificado**: [`src/dev-dashboard/draft-storage/dashboardStorage.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/draft-storage/dashboardStorage.ts)
-  - Criada a função `restoreDraftFromIndexedDbFallback()`.
-  - Se o `localStorage` estiver vazio ou corrompido, o sistema consulta assincronamente a base local `bemtevi_dashboard_db` (IndexedDB).
-  - Se houver rascunho com alterações válidas no IndexedDB, restaura automaticamente para a memória e sincroniza com o `localStorage`.
-- **Arquivo modificado**: [`src/dev-dashboard/DashboardRoute.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/DashboardRoute.tsx)
-  - Adicionado `useEffect` de inicialização para acionar o fallback do IndexedDB sem sobrescrever alterações em andamento.
+- **Provedor cadastrado**: Adicionado `antigravity` em `providerDefinitions` em [`scripts/agent-bridge/providers.mjs`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/scripts/agent-bridge/providers.mjs) com comando `agy` e variável de override `BEMTEVI_ANTIGRAVITY_COMMAND`.
+- **Resolução resiliente**: Em `resolveExecutable`, foi adicionada busca automática nos caminhos padrão do CLI do Antigravity (`%LOCALAPPDATA%\agy\bin\agy.exe` no Windows e `~/.local/bin/agy` no Linux/macOS) caso o executável não esteja no PATH global.
+- **Invocação segura e não-interativa**:
+  - Parâmetros: `--input-format stream-json --output-format stream-json --sandbox --disable-slash-commands`.
+  - Comunicação de entrada estruturada em NDJSON no stdin: `{"event":"user","message":{"content":prompt}}`.
+  - Leitura em tempo real dos eventos `step_update` (emitindo notificações de progresso na interface) e `result` (capturando a resposta JSON de operações ou propagando erros de execução).
+- **Testes da ponte**: Novo teste em [`scripts/agent-bridge/__tests__/providers.test.mjs`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/scripts/agent-bridge/__tests__/providers.test.mjs) validando o isolamento de sandbox, flags de stream-json e estrutura do evento.
 
-### B. Sincronização em Tempo Real entre Múltiplas Abas
+### B. Interface do Painel Administrativo (`src/dev-dashboard/ai`)
 
-- **Arquivo modificado**: [`src/dev-dashboard/DashboardRoute.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/DashboardRoute.tsx)
-  - Adicionado listener de evento `window.addEventListener('storage', handleStorageChange)` monitorando a chave `DASHBOARD_STORAGE_KEY`.
-  - Quando uma aba edita ou limpa o rascunho, qualquer outra aba aberta no mesmo navegador atualiza seu estado em memória instantaneamente, eliminando conflitos de sobrescrita cega ("Last-Write-Wins" local).
-
-### C. Verificação e Alerta Preventivo de Limite de Tamanho de Payload
-
-- **Arquivo modificado**: [`src/dev-dashboard/publishing/PublishDashboard.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/publishing/PublishDashboard.tsx)
-  - Medição do tamanho real do payload (`getPublishedPayloadSize`) em relação ao teto de 5 MiB do Neon Postgres.
-  - Alerta preventivo se o conteúdo ultrapassar 80% (4 MiB) da capacidade.
-  - Bloqueio da ação de publicar com aviso claro e explicativo se o payload ultrapassar 5 MiB, impedindo falhas inesperadas na API.
+- **Tipos**: [`src/dev-dashboard/ai/agentBridge.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/agentBridge.ts) atualizado com `'antigravity'` no tipo `AgentProviderId`.
+- **Instalação e Instruções Guiadas**:
+  - [`src/dev-dashboard/ai/agentSetup.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/agentSetup.ts) recebeu as instruções e comandos oficiais do Antigravity para Windows (`irm https://antigravity.google/cli/install.ps1 | iex`) e macOS/Linux (`curl -fsSL https://antigravity.google/cli/install.sh | bash`), além do passo de autenticação com a conta Google via `agy`.
+- **Componente Visual**:
+  - [`src/dev-dashboard/ai/DirectAgentSection.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/DirectAgentSection.tsx) atualizado para listar o Antigravity e dimensionado para grid responsiva (`sm:grid-cols-2 xl:grid-cols-4`).
+- **Testes de interface**:
+  - [`src/dev-dashboard/ai/__tests__/DirectAgentSection.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/__tests__/DirectAgentSection.test.tsx) atualizado para incluir o Antigravity e validar sua exibição e comandos.
 
 ---
 
 ## 2. Validação e Testes
 
-- **Typecheck**: `pnpm typecheck` executado e aprovado com 0 erros.
-- **ESLint**: `pnpm exec eslint` executado nos módulos modificados e aprovado com 0 erros e 0 avisos.
-- **Testes Unitários e de Integração**: `pnpm test` executou **58 arquivos de teste** e **734 testes** passaram com 100% de sucesso.
-- **Novos Testes Adicionados**:
-  1. `restores draft from IndexedDB fallback when localStorage is empty` em [`dashboardStorage.test.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/__tests__/dashboardStorage.test.ts).
-  2. `does not overwrite newer localStorage draft with older IndexedDB draft` em [`dashboardStorage.test.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/__tests__/dashboardStorage.test.ts).
-  3. `restores draft from IndexedDB fallback on mount when localStorage is empty` em [`dashboardRoute.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/__tests__/dashboardRoute.test.tsx).
-  4. `syncs draft state when another tab writes to localStorage via storage event` em [`dashboardRoute.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/__tests__/dashboardRoute.test.tsx).
-  5. `shows payload size limit warning and disables publish when draft exceeds 5 MiB` em [`dashboardRoute.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/__tests__/dashboardRoute.test.tsx).
+- **Detecção do CLI**: `node -e "import('./scripts/agent-bridge/providers.mjs').then(m => console.log(m.listProviders()))"` confirmou que o Antigravity instalado localmente (`agy.exe`) é identificado com `available: true`.
+- **Testes Unitários de IA e Ponte**: `pnpm exec vitest run scripts/agent-bridge src/dev-dashboard/ai` aprovou todos os 18 testes.
+- **Typecheck**: `pnpm exec tsc --noEmit` passou com 0 erros.
+- **Linting**: `pnpm exec eslint scripts/agent-bridge src/dev-dashboard/ai` passou com 0 avisos/erros.
+- **Suíte Completa**: `pnpm exec vitest run` executou **65 arquivos de teste** e **783 testes** passaram com 100% de sucesso.
