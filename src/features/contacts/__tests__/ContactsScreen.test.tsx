@@ -119,6 +119,15 @@ afterEach(() => {
 });
 
 describe('ContactsScreen', () => {
+  it('shows guidance for choosing the appropriate healthcare service', () => {
+    renderWithContent(<ContactsScreen />);
+
+    expect(screen.getByRole('heading', { name: 'Onde buscar atendimento?' })).toBeInTheDocument();
+    expect(screen.getByText('UBS — Unidade Básica de Saúde')).toBeInTheDocument();
+    expect(screen.getByText('CAPS — Centro de Atenção Psicossocial')).toBeInTheDocument();
+    expect(screen.getByText('Pronto-socorro / UPA')).toBeInTheDocument();
+  });
+
   it('renders all configured Canoas services', () => {
     renderWithContent(<ContactsScreen />, getBundledContent());
 

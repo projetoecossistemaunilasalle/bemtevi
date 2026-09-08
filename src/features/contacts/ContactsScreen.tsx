@@ -1,7 +1,8 @@
-import { List, Map as MapIcon, MapPin } from 'lucide-react';
+import { Building2, HeartPulse, Hospital, List, Map as MapIcon, MapPin } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
 import { canoasServices } from '../../content/services/canoas-services';
+import { healthcareServiceGuidance } from '../../content/support/contacts';
 import { Page } from '../../design-system/components/Page';
 import { ServiceCard } from '../../design-system/components/ServiceCard';
 import { getServiceCoordinates, haversineKm, type GeoCoordinates } from '../../lib/geo/geo';
@@ -70,6 +71,51 @@ export function ContactsScreen() {
           <h1 className="font-headline-lg text-on-surface">{directoryTitle}</h1>
         </div>
         <p className="font-body-md text-on-surface-variant">{canoasServices.description}</p>
+      </section>
+
+      <section
+        aria-labelledby="service-guidance-title"
+        className="overflow-hidden rounded-2xl bg-surface-container-low shadow-sm"
+      >
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+              <Hospital size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="service-guidance-title" className="font-headline-sm text-on-surface">
+                Onde buscar atendimento?
+              </h2>
+              <p className="font-body-md text-on-surface-variant">Entenda qual serviço pode ajudar neste momento.</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 grid divide-y divide-outline-variant/40 border-t border-outline-variant/40 md:grid-cols-3 md:divide-x md:divide-y-0">
+          {healthcareServiceGuidance.map((item) => {
+            const Icon = item.id === 'guidance-ubs' ? Building2 : item.id === 'guidance-caps' ? HeartPulse : Hospital;
+            const iconColor =
+              item.id === 'guidance-ubs'
+                ? 'text-secondary'
+                : item.id === 'guidance-caps'
+                  ? 'text-primary'
+                  : 'text-error';
+
+            return (
+              <article key={item.id} className="flex gap-3 px-5 py-5 sm:px-6">
+                <Icon className={`${iconColor} mt-0.5 shrink-0`} size={21} aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h3 className="font-label-md font-bold text-on-surface">{item.title}</h3>
+                    <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-xs font-semibold text-on-surface-variant">
+                      {item.badge}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 font-body-md leading-relaxed text-on-surface-variant">{item.description}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <div className="mb-stack-md flex flex-col gap-3">
