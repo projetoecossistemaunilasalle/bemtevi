@@ -239,6 +239,20 @@ describe('validateDashboardEducation', () => {
     );
   });
 
+  it('rejects PDF blocks with invalid URLs', () => {
+    const result = validateDashboardEducation(
+      [{ ...baseResource, body: [{ id: 'pdf-one', kind: 'pdf', title: 'Cartilha', url: 'documento.pdf' }] }],
+      [],
+    );
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        id: 'invalid-pdf-block-url:resource-one:pdf-one',
+        message: 'A URL do PDF precisa começar com http:// ou https://.',
+      }),
+    );
+  });
+
   describe('group validation', () => {
     it('detects duplicate group IDs', () => {
       const groups: EducationResourceGroup[] = [

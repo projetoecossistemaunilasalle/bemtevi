@@ -624,6 +624,57 @@ describe('ResourceDetailScreen', () => {
     expect(description.compareDocumentPosition(iframe) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 
+  it('renders a PDF inside the material with a direct-open fallback', () => {
+    const baseResource = resourcesContent.resources[0];
+    const pdfTitle = 'Cartilha de acolhimento';
+    const pdfUrl = 'https://example.com/cartilha.pdf';
+
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          addedEducationMaterials: [
+            {
+              ...baseResource,
+              id: 'pdf-block-material',
+              body: [{ id: 'pdf-one', kind: 'pdf', title: pdfTitle, url: pdfUrl }],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao/pdf-block-material']}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTitle(pdfTitle)).toHaveAttribute('src', pdfUrl);
+    expect(screen.getByRole('link', { name: /abrir pdf em outra aba/i })).toHaveAttribute('href', pdfUrl);
+  });
+
+  it('renders legacy PDF source links inside the material', () => {
+    const resource = resourcesContent.resources.find((candidate) =>
+      candidate.body?.some((block) => block.kind === 'sourceLink' && block.url?.includes('.pdf')),
+    );
+    const pdfBlock = resource?.body?.find((block) => block.kind === 'sourceLink' && block.url?.includes('.pdf'));
+
+    if (!resource || !pdfBlock?.url) throw new Error('Expected a seeded material with a PDF source link.');
+
+    renderWithContent(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTitle(pdfBlock.label ?? 'Documento em PDF')).toHaveAttribute('src', pdfBlock.url);
+  });
+
   it('previews local dashboard drafts with a warning banner', () => {
     const resource = resourcesContent.resources[0];
     localStorage.setItem(

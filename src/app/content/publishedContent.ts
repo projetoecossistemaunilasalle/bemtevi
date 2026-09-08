@@ -48,7 +48,15 @@ export class PublishedContentValidationError extends Error {
 
 const SUPPORTED_AUDIENCES = ['teachers', 'public_school_teachers', 'general'] as const;
 const SUPPORTED_BADGE_TONES = ['primary', 'secondary', 'neutral'] as const;
-const SUPPORTED_EDUCATION_BLOCK_KINDS = ['paragraph', 'heading', 'list', 'image', 'video', 'sourceLink'] as const;
+const SUPPORTED_EDUCATION_BLOCK_KINDS = [
+  'paragraph',
+  'heading',
+  'list',
+  'image',
+  'video',
+  'pdf',
+  'sourceLink',
+] as const;
 const PAYLOAD_KEYS: (keyof PublishedContentPayload)[] = [
   'flows',
   'educationMaterials',

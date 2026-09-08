@@ -173,6 +173,16 @@ describe('published content validation', () => {
     expect(() => parsePayload(payload)).toThrow(/body/i);
   });
 
+  it('accepts PDF blocks in published material content', () => {
+    const payload = getBundledContent();
+    payload.educationMaterials[0] = {
+      ...payload.educationMaterials[0],
+      body: [{ id: 'pdf', kind: 'pdf', title: 'Cartilha', url: 'https://example.com/cartilha.pdf' }],
+    };
+
+    expect(parsePayload(payload).educationMaterials[0].body?.[0]).toMatchObject({ kind: 'pdf' });
+  });
+
   it('rejects a row with an empty published_at', () => {
     const row = {
       id: 'current' as const,

@@ -36,6 +36,7 @@ const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
   list: 'Lista',
   image: 'Imagem',
   video: 'Vídeo',
+  pdf: 'PDF incorporado',
   sourceLink: 'Link da fonte',
   link: 'Link',
 };
@@ -130,6 +131,9 @@ function getBlockSummary(block: EducationResourceBlock): string {
   }
   if (block.kind === 'video') {
     return block.title || block.url || 'Vídeo sem URL';
+  }
+  if (block.kind === 'pdf') {
+    return block.title || block.url || 'PDF sem URL';
   }
   if (block.kind === 'image') {
     if (block.imageFileName) return `Imagem: ${block.imageFileName}`;
@@ -1087,6 +1091,7 @@ function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: nu
   if (kind === 'list') return { id, kind, title: 'Nova lista', items: ['Novo item'] };
   if (kind === 'image') return { id, kind, imageUrl: '', alt: '' };
   if (kind === 'video') return { id, kind, title: 'Novo vídeo', url: 'https://www.youtube.com/watch?v=abcdef12345' };
+  if (kind === 'pdf') return { id, kind, title: 'Novo PDF', url: 'https://example.com/documento.pdf' };
   if (kind === 'sourceLink') return { id, kind, label: 'Acessar fonte original', url: 'https://example.com' };
   if (kind === 'link') return { id, kind, label: 'Formulário', url: 'https://example.com' };
 
@@ -1180,6 +1185,37 @@ function BlockFields({
             onChange={(e) => onChange({ url: e.target.value })}
           />
         </label>
+      </div>
+    );
+  }
+
+  if (block.kind === 'pdf') {
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">Título do PDF do bloco {blockNumber}</span>
+          <input
+            aria-label={`Título do PDF do bloco ${blockNumber}`}
+            className={baseInput}
+            value={block.title ?? ''}
+            onChange={(e) => onChange({ title: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-label-md text-on-surface">URL direta do PDF do bloco {blockNumber}</span>
+          <input
+            data-validation-path={`${validationPath}.url`}
+            aria-label={`URL do PDF do bloco ${blockNumber}`}
+            aria-invalid={invalid || undefined}
+            className={baseInput}
+            value={block.url ?? ''}
+            onChange={(e) => onChange({ url: e.target.value })}
+          />
+        </label>
+        <FieldHint>
+          Use uma URL pública direta para o arquivo PDF. Se a fonte bloquear incorporação, o leitor poderá abrir o
+          documento em outra aba.
+        </FieldHint>
       </div>
     );
   }

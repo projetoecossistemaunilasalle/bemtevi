@@ -175,6 +175,15 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
     );
   }
 
+  if (block.kind === 'pdf' && block.url) {
+    return <PdfEmbed title={block.title} url={block.url} />;
+  }
+
+  // Existing material records used sourceLink for PDFs before PDF blocks existed.
+  if (block.kind === 'sourceLink' && block.url && isPdfUrl(block.url)) {
+    return <PdfEmbed title={block.label} url={block.url} />;
+  }
+
   if (block.kind === 'sourceLink') {
     const textToRender = block.label || source;
     return (
@@ -212,4 +221,34 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
   }
 
   return null;
+}
+
+function PdfEmbed({ title: rawTitle, url }: { title?: string; url: string }) {
+  const title = rawTitle?.trim() || 'Documento em PDF';
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <h2 className="font-headline-sm text-on-surface">{title}</h2>
+        <a
+          className="inline-flex items-center gap-2 font-label-md text-primary hover:underline"
+          href={url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Abrir PDF em outra aba
+          <ExternalLink size={16} />
+        </a>
+      </div>
+      <iframe className="h-[min(75vh,900px)] min-h-[36rem] w-full border-0" src={url} title={title} />
+    </Card>
+  );
+}
+
+function isPdfUrl(value: string) {
+  try {
+    return new URL(value).pathname.toLowerCase().includes('.pdf');
+  } catch {
+    return false;
+  }
 }

@@ -196,6 +196,16 @@ function validateBodyBlock(issues: DashboardValidationIssue[], resourceId: strin
     });
   }
 
+  if (block.kind === 'pdf' && !isHttpUrl(block.url ?? '')) {
+    issues.push({
+      level: 'error',
+      area: 'education',
+      id: `invalid-pdf-block-url:${resourceId}:${block.id}`,
+      message: 'A URL do PDF precisa começar com http:// ou https://.',
+      path: `${path}.url`,
+    });
+  }
+
   if (block.kind === 'sourceLink') {
     const hasLabel = Boolean(block.label?.trim());
     const hasValidUrl = isHttpUrl(block.url ?? '');

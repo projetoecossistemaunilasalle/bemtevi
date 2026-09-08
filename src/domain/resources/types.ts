@@ -7,7 +7,15 @@ export type EducationResourceFeaturedImage =
   | { kind: 'external'; imageUrl: string; alt?: string }
   | { kind: 'uploaded'; dataUrl: string; alt?: string; fileName?: string };
 
-export type EducationResourceBlockKind = 'paragraph' | 'heading' | 'list' | 'image' | 'video' | 'sourceLink' | 'link';
+export type EducationResourceBlockKind =
+  | 'paragraph'
+  | 'heading'
+  | 'list'
+  | 'image'
+  | 'video'
+  | 'pdf'
+  | 'sourceLink'
+  | 'link';
 
 export interface EducationResourceBlock {
   id: string;
