@@ -43,6 +43,6 @@ describe('HomeScreen onboarding', () => {
     });
     expect(screen.getByRole('heading', { name: 'Que bom ter você aqui!' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Como você está hoje?' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /qual serviço de saúde posso acessar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quero escolher um próximo passo/i })).toBeInTheDocument();
   });
 });

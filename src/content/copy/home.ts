@@ -14,8 +14,8 @@ export const homeCopy = {
   actions: [
     {
       id: 'immediate-support',
-      label: 'Qual serviço de saúde posso acessar?',
-      description: 'Consulte canais de apoio e escolha onde buscar atendimento.',
+      label: 'Quero escolher um próximo passo',
+      description: 'Explore pequenas ações de cuidado, apoio de alguém ou ajuda profissional.',
     },
     {
       id: 'guided-orientation',
@@ -24,8 +24,8 @@ export const homeCopy = {
     },
     {
       id: 'professional-support',
-      label: 'Buscar um serviço de saúde',
-      description: 'Encontre serviços de saúde e apoio próximos a você.',
+      label: 'Quero encontrar atendimento',
+      description: 'Encontre serviços e contatos de saúde e apoio disponíveis na sua região.',
     },
   ],
 } satisfies HomeCopy;

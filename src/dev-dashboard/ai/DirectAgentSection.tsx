@@ -183,8 +183,8 @@ export function DirectAgentSection({ draft, baseRevision, onApply }: DirectAgent
           <div>
             <h2 className="font-headline-sm text-on-surface">Use um assistente de IA no painel</h2>
             <p className="mt-1 max-w-3xl font-body-md text-on-surface-variant">
-              Escolha Codex, Claude Code, Hermes ou Antigravity. A configuração é feita uma vez; depois, basta escrever o que você
-              quer revisar ou alterar.
+              Escolha Codex, Claude Code, Hermes ou Antigravity. A configuração é feita uma vez; depois, basta escrever
+              o que você quer revisar ou alterar.
             </p>
           </div>
         </div>
@@ -214,7 +214,11 @@ export function DirectAgentSection({ draft, baseRevision, onApply }: DirectAgent
                 <p className="mt-1 font-body-sm text-on-surface-variant">
                   Se você já usa um deles, escolha o mesmo. O BemTeVi funciona com qualquer um dos quatro.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Assistente de IA">
+                <div
+                  className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                  role="radiogroup"
+                  aria-label="Assistente de IA"
+                >
                   {agentSetups.map((item) => (
                     <button
                       key={item.id}

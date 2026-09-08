@@ -40,7 +40,7 @@ export function HomeScreen() {
             <div className="flex flex-col gap-1 text-left px-1">
               <h2 className="font-headline-sm text-on-surface">Escolha por onde começar</h2>
               <p className="font-body-md text-on-surface-variant">
-                A indicação considera o que você precisa neste momento. Você também pode buscar um contato diretamente.
+                Escolha o caminho que mais combina com o que você precisa agora.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-stack-sm">
