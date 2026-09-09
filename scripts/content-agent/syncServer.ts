@@ -10,6 +10,12 @@ const HOST = '127.0.0.1';
 const MAX_BODY_BYTES = 7 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 6 * 1024 * 1024;
 const DEFAULT_PORT = 4319;
+const DEFAULT_DASHBOARD_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+] as const;
 
 export interface DraftSyncServerOptions {
   store: DraftStore;
@@ -266,7 +272,7 @@ export function runDefaultDraftSyncServer() {
     store: new DraftStore(path.join(projectRoot, '.bemtevi', 'content-drafts')),
     port: Number(process.env.BEMTEVI_CONTENT_AGENT_SYNC_PORT || DEFAULT_PORT),
     pairCode: process.env.BEMTEVI_CONTENT_AGENT_SYNC_CODE,
-    allowedOrigins: (process.env.BEMTEVI_DASHBOARD_ORIGINS || 'http://localhost:3000,http://localhost:3001')
+    allowedOrigins: (process.env.BEMTEVI_DASHBOARD_ORIGINS || DEFAULT_DASHBOARD_ORIGINS.join(','))
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),

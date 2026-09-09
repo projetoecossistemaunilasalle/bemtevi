@@ -18,7 +18,7 @@ describe('API local de sincronização', () => {
         store,
         port: 0,
         pairCode: '123456',
-        allowedOrigins: ['http://localhost:3000'],
+        allowedOrigins: ['http://localhost:3000', 'http://127.0.0.1:3000'],
       });
       await new Promise<void>((resolve) => sync.server.listen(0, '127.0.0.1', resolve));
       const address = sync.server.address() as AddressInfo;
@@ -36,6 +36,15 @@ describe('API local de sincronização', () => {
           body: JSON.stringify({ code: '123456' }),
         });
         expect(pair.status).toBe(200);
+        const localAddressPreflight = await fetch(`${endpoint}/v1/pair`, {
+          method: 'OPTIONS',
+          headers: {
+            Origin: 'http://127.0.0.1:3000',
+            'Access-Control-Request-Method': 'POST',
+          },
+        });
+        expect(localAddressPreflight.status).toBe(204);
+        expect(localAddressPreflight.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:3000');
         const { token } = (await pair.json()) as { token: string };
         const current = await fetch(`${endpoint}/v1/drafts/${draft.draftId}`, {
           headers: { Authorization: `Bearer ${token}`, Origin: 'http://localhost:3000' },
