@@ -701,7 +701,7 @@ describe('dashboardStorage', () => {
     expect(merged.flows[1]).toEqual({ ...originalFlow, title: 'Edited Flow' });
   });
 
-  it('saves lightweight draft without basePayload if full draft exceeds storage quota', () => {
+  it('preserves the base and reports quota failure without saving a truncated draft', () => {
     let callCount = 0;
     const mockStorage = {
       getItem: vi.fn(),
@@ -730,10 +730,10 @@ describe('dashboardStorage', () => {
       flowPatches: [{ id: 'flow-1', patch: { title: 'Patched' } }],
     };
 
-    saveDashboardDrafts(heavyDraft, mockStorage);
-    expect(mockStorage.setItem).toHaveBeenCalledTimes(2);
-    const saved = JSON.parse((mockStorage.setItem as ReturnType<typeof vi.fn>).mock.calls[1][1] as string);
-    expect(saved.basePayload).toBeUndefined();
+    expect(() => saveDashboardDrafts(heavyDraft, mockStorage)).toThrow();
+    expect(mockStorage.setItem).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse((mockStorage.setItem as ReturnType<typeof vi.fn>).mock.calls[0][1] as string);
+    expect(saved.basePayload).toEqual(heavyDraft.basePayload);
     expect(saved.flowPatches).toEqual(heavyDraft.flowPatches);
   });
 

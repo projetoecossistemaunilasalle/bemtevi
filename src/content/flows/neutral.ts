@@ -118,13 +118,7 @@ export const neutralFlows = [
         id: 'b2-pausa-curta',
         kind: 'result',
         text: 'Uma pausa curta pode ser suficiente para interromper, por alguns instantes, o ritmo das demandas.\n\nVocê pode experimentar uma prática breve de respiração, grounding ou pausa guiada.',
-        videos: [
-          {
-            id: 'video-respiracao-geometrica-b2',
-            title: 'Técnica de respiração seguindo as figuras geométricas (1 minuto e 50 segundos)',
-            url: 'https://www.youtube.com/watch?v=DgsLVZYN8Xg',
-          },
-        ],
+        exercise: 'breathing',
       },
       'b3-espaco-descanso': {
         id: 'b3-espaco-descanso',
@@ -200,13 +194,7 @@ export const neutralFlows = [
         id: 'c4-irritacao',
         kind: 'result',
         text: 'A irritabilidade costuma surgir quando nossos limites foram ultrapassados por muito tempo. Faça uma pausa e realize respirações lentas para reduzir a tensão corporal imediata.',
-        videos: [
-          {
-            id: 'video-respiracao-geometrica-c4',
-            title: 'Técnica de respiração seguindo as figuras geométricas (1 minuto e 50 segundos)',
-            url: 'https://www.youtube.com/watch?v=DgsLVZYN8Xg',
-          },
-        ],
+        exercise: 'breathing',
       },
 
       // CAMINHO D — NÃO SEI BEM O QUE ESTOU SENTINDO

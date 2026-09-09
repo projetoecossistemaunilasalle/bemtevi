@@ -88,13 +88,7 @@ export const documentFlows = [
         id: 'b2-pausa-curta',
         kind: 'choice',
         text: 'Uma pausa curta pode ajudar a interromper, por alguns instantes, o ritmo das demandas.',
-        videos: [
-          {
-            id: 'video-pausa-curta',
-            title: 'Técnica de respiração seguindo figuras geométricas',
-            url: 'https://www.youtube.com/watch?v=DgsLVZYN8Xg',
-          },
-        ],
+        exercise: 'breathing',
         options: close('b2-pausa-curta'),
       },
       'b3-espaco-descanso': {
@@ -151,9 +145,7 @@ export const documentFlows = [
         id: 'c4-irritacao',
         kind: 'choice',
         text: 'A irritabilidade pode aparecer quando os limites foram ultrapassados por muito tempo. Faça uma pausa e realize respirações lentas.',
-        videos: [
-          { id: 'video-irritacao', title: 'Respiração geométrica', url: 'https://www.youtube.com/watch?v=DgsLVZYN8Xg' },
-        ],
+        exercise: 'breathing',
         options: close('c4-irritacao'),
       },
       'd1-identificacao': {

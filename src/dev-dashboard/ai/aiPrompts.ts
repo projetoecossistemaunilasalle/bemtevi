@@ -43,7 +43,7 @@ ESTRUTURA DE UM FLUXO (GuidedFlow):
   "type": "guided_conversation",
   "status": "draft" | "published",
   "entry": { "nodeId": string, "enteringPhrases": string[], "transitionMessage": string },
-  "nodes": { [nodeId]: { "id": string, "kind": "choice"|"result"|"score_branch", "text": string, "options"?: [...], "videos"?: [...], "visuals"?: [{ "id", "alt", "src" }], "recommendations"?: [...] } },
+  "nodes": { [nodeId]: { "id": string, "kind": "choice"|"result"|"score_branch", "text": string, "options"?: [...], "videos"?: [...], "visuals"?: [{ "id", "alt", "src" }], "recommendations"?: [...], "exercise"?: "breathing" } },
   "nodeOrder"?: string[]
 }
 
@@ -52,6 +52,7 @@ REGRAS DE FLUXO:
 - "options[].next" e "branches[].next" devem apontar para um nodeId existente.
 - "effects" válidos: score ({kind:"score", scoreKey, value}), deferred_safety ({kind:"deferred_safety", flagKey, message, destination}), safety_interrupt, flow_start, navigate, end_flow.
 - "visuals" são imagens exibidas junto à mensagem do nó. "src" é um link https:// ou um caminho "./images/..." quando a imagem foi enviada.
+- "exercise": "breathing" adiciona o exercício interativo nativo de respiração guiada à etapa.
 - Mantenha "kind" e "id" de cada nó. Se criar nó novo, crie id único.
 `;
 

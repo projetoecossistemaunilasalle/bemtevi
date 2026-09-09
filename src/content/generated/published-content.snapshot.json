@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "revision": 39,
+  "revision": 40,
   "payload": {
     "flows": [
       {
@@ -140,13 +140,6 @@
             "id": "c4-irritacao",
             "kind": "choice",
             "text": "A irritabilidade pode aparecer quando os limites foram ultrapassados por muito tempo. Faça uma pausa e realize respirações lentas.",
-            "videos": [
-              {
-                "id": "video-irritacao",
-                "url": "https://www.youtube.com/watch?v=DgsLVZYN8Xg",
-                "title": "Respiração geométrica"
-              }
-            ],
             "options": [
               {
                 "id": "back-home",
@@ -162,7 +155,8 @@
                 "label": "Quero escolher outro caminho.",
                 "effects": [{ "kind": "flow_start", "flowId": "orientation-understand-feelings" }]
               }
-            ]
+            ],
+            "exercise": "breathing"
           },
           "a1-sobrecarga": {
             "id": "a1-sobrecarga",
@@ -214,13 +208,6 @@
             "id": "b2-pausa-curta",
             "kind": "choice",
             "text": "Uma pausa curta pode ajudar a interromper, por alguns instantes, o ritmo das demandas.",
-            "videos": [
-              {
-                "id": "video-pausa-curta",
-                "url": "https://www.youtube.com/watch?v=DgsLVZYN8Xg",
-                "title": "Técnica de respiração seguindo figuras geométricas"
-              }
-            ],
             "options": [
               {
                 "id": "back-home",
@@ -236,7 +223,8 @@
                 "label": "Quero escolher outro caminho.",
                 "effects": [{ "kind": "flow_start", "flowId": "orientation-understand-feelings" }]
               }
-            ]
+            ],
+            "exercise": "breathing"
           },
           "d4-concentracao": {
             "id": "d4-concentracao",
@@ -3268,7 +3256,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Estratégias de suporte para apoiar o professor no cuidado pessoal com a sua saúde mental.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-1" }
       },
       {
         "id": "teacher-caring-selfcare",
@@ -3293,7 +3281,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Estratégias práticas e acessíveis de autocuidado e preservação da saúde mental desenvolvidas para apoiar educadores no cotidiano.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-2" }
       },
       {
         "id": "manejar-emocoes-crise",
@@ -3318,7 +3306,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Orientações sobre regulação emocional, reconhecimento de sentimentos e enfrentamento saudável em períodos de crise e alta demanda.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "green-patch" }
       },
       {
         "id": "cartilha-mindfulness",
@@ -3343,7 +3331,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Fundamentos e práticas breves de atenção plena para desacelerar o fluxo de pensamentos e restaurar a presença no momento presente.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-1" }
       },
       {
         "id": "enfrentando-estresse",
@@ -3368,7 +3356,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Identificação de sinais de estresse, fases do esgotamento e estratégias comportamentais para manejo da sobrecarga diária.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
       },
       {
         "id": "estigma-preconceito-saude-mental",
@@ -3393,7 +3381,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Informações educativas para desmistificar o sofrimento psíquico, combater o estigma e acolher quem passa por momentos difíceis.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "green-patch" }
       },
       {
         "id": "promovendo-resiliencia",
@@ -3418,7 +3406,7 @@
         "audience": "teachers",
         "imageUrl": "/bemtevi/hands_holding_plant.png",
         "description": "Estratégias para cultivar recursos internos, resiliência emocional e enfrentamento positivo diante de adversidades.",
-        "featuredImage": { "kind": "catalog", "imageId": "respiracao-1" }
+        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
       },
       {
         "id": "material-local-2",
@@ -3456,7 +3444,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "green-patch" }
       },
       {
         "id": "material-local-3",
@@ -3494,7 +3482,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-1" }
       },
       {
         "id": "material-local-4",
@@ -3532,7 +3520,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "green-patch" }
+        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
       },
       {
         "id": "material-local-5",
@@ -3570,7 +3558,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-2" }
       },
       {
         "id": "material-local-6",
@@ -3608,7 +3596,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-1" }
       },
       {
         "id": "material-local-7",
@@ -3673,7 +3661,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Entenda como funciona a Rede de Atenção Psicossocial do SUS e conheça caminhos para buscar acolhimento e cuidado em saúde mental.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-2" }
       },
       {
         "id": "material-local-9",
@@ -3711,7 +3699,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "green-patch" }
       },
       {
         "id": "material-local-10",
@@ -3743,7 +3731,7 @@
         "audience": "teachers",
         "imageUrl": "",
         "description": "Material editável apenas neste navegador.",
-        "featuredImage": { "kind": "catalog", "imageId": "hands-holding-plant" }
+        "featuredImage": { "kind": "catalog", "imageId": "classroom-2" }
       },
       {
         "id": "material-local-11",
@@ -4438,6 +4426,6 @@
     ],
     "defaultGroupOrder": 0
   },
-  "publishedAt": "2026-09-02T16:08:03.86737+00:00",
+  "publishedAt": "2026-09-08T21:35:30.406+00:00",
   "publishedBy": "74abfc80-0933-4e74-acf6-664e68493447"
 }

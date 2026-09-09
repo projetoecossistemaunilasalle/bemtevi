@@ -7,15 +7,15 @@ describe('draftDb', () => {
     vi.restoreAllMocks();
   });
 
-  it('handles missing indexedDB environment gracefully without throwing', async () => {
+  it('reports failed writes when IndexedDB is unavailable', async () => {
     const originalIndexedDb = globalThis.indexedDB;
     delete (globalThis as { indexedDB?: unknown }).indexedDB;
 
     try {
       const state = createEmptyDashboardDraftState();
-      await expect(saveDraftToIndexedDb(state)).resolves.toBeUndefined();
+      await expect(saveDraftToIndexedDb(state)).rejects.toThrow();
       await expect(loadDraftFromIndexedDb()).resolves.toBeNull();
-      await expect(clearDraftFromIndexedDb()).resolves.toBeUndefined();
+      await expect(clearDraftFromIndexedDb()).rejects.toThrow();
     } finally {
       globalThis.indexedDB = originalIndexedDb;
     }

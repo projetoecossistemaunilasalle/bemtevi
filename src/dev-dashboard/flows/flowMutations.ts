@@ -538,6 +538,7 @@ export function switchNodeKind(
       id: nodeId,
       kind: 'choice',
       text: current.text,
+      ...(current.exercise ? { exercise: current.exercise } : {}),
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
       ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
       options: [{ id: `${nodeId}-option-1`, label: '', next: '' }],
@@ -547,6 +548,7 @@ export function switchNodeKind(
       id: nodeId,
       kind: 'score_branch',
       text: current.text,
+      ...(current.exercise ? { exercise: current.exercise } : {}),
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
       ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
       scoreKey: DEFAULT_SCORE_KEY,
@@ -557,6 +559,7 @@ export function switchNodeKind(
       id: nodeId,
       kind: 'result',
       text: current.text,
+      ...(current.exercise ? { exercise: current.exercise } : {}),
       ...(current.videos ? { videos: current.videos.map((video) => ({ ...video })) } : {}),
       ...(current.visuals ? { visuals: current.visuals.map((visual) => ({ ...visual })) } : {}),
     };

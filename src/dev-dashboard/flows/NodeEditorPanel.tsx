@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import type {
   ChoiceFlowNode,
   FlowEffect,
+  FlowExercise,
   FlowNode,
   FlowOption,
   GuidedFlow,
@@ -810,6 +811,36 @@ function MediaSection({ node, onNodeChange }: MediaSectionProps) {
 
   return (
     <>
+      {/* Exercício interativo: componente nativo acoplado à etapa (ex: respiração guiada). */}
+      <div className="flex flex-col gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low p-2">
+        <label className="flex flex-col gap-1">
+          <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant">Exercício interativo</span>
+          <select
+            aria-label="Exercício interativo"
+            className={selectClassName}
+            value={node.exercise ?? ''}
+            onChange={(event) => {
+              const nextExercise = event.target.value as FlowExercise | '';
+              onNodeChange((current) => {
+                if (!nextExercise) {
+                  const { exercise: _dropped, ...nodeWithoutExercise } = current;
+                  return nodeWithoutExercise;
+                }
+                return { ...current, exercise: nextExercise };
+              });
+            }}
+          >
+            <option value="">Nenhum exercício</option>
+            <option value="breathing">Respiração guiada</option>
+          </select>
+        </label>
+        {node.exercise === 'breathing' && (
+          <p className="font-body-md text-xs text-on-surface-variant">
+            O exercício de respiração guiada será exibido diretamente nesta etapa do fluxo.
+          </p>
+        )}
+      </div>
+
       {videos.map((video, index) => (
         <div
           key={video.id}

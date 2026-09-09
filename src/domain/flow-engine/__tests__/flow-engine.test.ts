@@ -1057,4 +1057,45 @@ describe('flow runtime', () => {
       expect.objectContaining({ id: 'post-flow-next-step-start' }),
     );
   });
+
+  it('propagates exercise property to chat messages during flow initialization and advance', () => {
+    const exerciseFlow: GuidedFlow = {
+      id: 'exercise-flow',
+      version: '1.0.0',
+      locale: 'pt-BR',
+      title: 'Fluxo com exercício',
+      type: 'guided_conversation',
+      status: 'approved',
+      entry: {
+        nodeId: 'start',
+        enteringPhrases: ['Quero testar exercício'],
+        transitionMessage: 'Iniciando teste.',
+      },
+      nodes: {
+        start: {
+          id: 'start',
+          kind: 'choice',
+          text: 'Escolha uma opção:',
+          options: [{ id: 'opt-breathe', label: 'Fazer respiração', next: 'breathe-node' }],
+        },
+        'breathe-node': {
+          id: 'breathe-node',
+          kind: 'choice',
+          text: 'Faça uma pausa para respirar.',
+          exercise: 'breathing',
+          options: [{ id: 'opt-done', label: 'Concluir', next: 'breathe-node' }],
+        },
+      },
+    };
+
+    expect(validateFlow(exerciseFlow)).toEqual({ valid: true, errors: [] });
+
+    const state = createInitialFlowState(exerciseFlow, [exerciseFlow]);
+    const advanced = advanceFlow(state, [exerciseFlow], 'Fazer respiração');
+
+    const botMessage = advanced.transcript.find((m) => m.nodeId === 'breathe-node');
+    expect(botMessage).toBeDefined();
+    expect(botMessage?.exercise).toBe('breathing');
+    expect(botMessage?.text).toBe('Faça uma pausa para respirar.');
+  });
 });

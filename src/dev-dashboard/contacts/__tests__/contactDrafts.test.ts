@@ -18,12 +18,14 @@ describe('contactDrafts', () => {
   });
 
   it('creates the first unused stable local service ID', () => {
-    expect(createLocalService(['service-local-1', 'service-local-3']).id).toBe('service-local-2');
+    const first = createLocalService([]).id;
+    expect(first).toMatch(/^service-local-/);
+    expect(createLocalService([]).id).not.toBe(first);
   });
 
   it('creates a contact with friendly starter values and pending review metadata', () => {
     expect(createLocalService(['service-local-1'])).toEqual({
-      id: 'service-local-2',
+      id: expect.stringMatching(/^service-local-/),
       name: 'Novo contato',
       type: 'Outro',
       badgeTone: 'neutral',
@@ -52,12 +54,12 @@ describe('contactDrafts', () => {
 
   it('does not reuse removed location IDs', () => {
     expect(createLocalLocation(['location-local-1', 'location-local-3'])).toEqual({
-      id: 'location-local-2',
+      id: expect.stringMatching(/^location-local-/),
       city: '',
       state: '',
     });
     expect(createLocalLocation(['location-local-1', 'location-local-2'])).toMatchObject({
-      id: 'location-local-3',
+      id: expect.stringMatching(/^location-local-/),
     });
   });
 });

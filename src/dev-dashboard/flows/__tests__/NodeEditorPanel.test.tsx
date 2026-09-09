@@ -1429,6 +1429,57 @@ describe('NodeEditorPanel imagens', () => {
     expect(node.branches).toEqual([{ id: 'r1-faixa-1', min: 0, max: 5, next: 'fim' }]);
     expect(node.visuals).toEqual([{ id: 'r1-visual-1', alt: '', src: '' }]);
   });
+
+  it('updates the node exercise to breathing when selected', async () => {
+    const user = userEvent.setup();
+    const props = renderPanel(createFlow(), 'q1');
+    const select = screen.getByRole('combobox', { name: 'Exercício interativo' });
+    expect(select).toHaveValue('');
+
+    await user.selectOptions(select, 'breathing');
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const patch = lastPatch(props.onFlowChange);
+    expect(patch.nodes?.q1).toMatchObject({ exercise: 'breathing' });
+  });
+
+  it('removes the exercise key when "Nenhum exercício" is selected', async () => {
+    const user = userEvent.setup();
+    const flow = createFlow({
+      nodes: {
+        q1: { ...choiceNode, exercise: 'breathing' },
+        fim: resultNode,
+      },
+    });
+    const props = renderPanel(flow, 'q1');
+    const select = screen.getByRole('combobox', { name: 'Exercício interativo' });
+    expect(select).toHaveValue('breathing');
+    expect(screen.getByText(/exercício de respiração guiada será exibido/i)).toBeInTheDocument();
+
+    await user.selectOptions(select, '');
+
+    expect(props.onFlowChange).toHaveBeenCalledTimes(1);
+    const patch = lastPatch(props.onFlowChange);
+    expect(patch.nodes?.q1).not.toHaveProperty('exercise');
+  });
+
+  it('allows configuring exercise on result and score_branch nodes', async () => {
+    const user = userEvent.setup();
+    const resultFlow = createFlow({
+      nodes: {
+        fim: { ...resultNode, exercise: 'breathing' },
+      },
+      nodeOrder: ['fim'],
+      entry: { nodeId: 'fim', enteringPhrases: [], transitionMessage: '' },
+    });
+    const props = renderPanel(resultFlow, 'fim');
+    const select = screen.getByRole('combobox', { name: 'Exercício interativo' });
+    expect(select).toHaveValue('breathing');
+
+    await user.selectOptions(select, '');
+    const patch = lastPatch(props.onFlowChange);
+    expect(patch.nodes?.fim).not.toHaveProperty('exercise');
+  });
 });
 
 describe('NodeEditorPanel troca de tipo', () => {

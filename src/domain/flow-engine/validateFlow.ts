@@ -2,6 +2,7 @@ import { parseYouTubeVideoId } from '../media/youtube';
 import type { ChoiceFlowNode, FlowEffect, FlowNode, FlowValidationResult, ScoreBranchFlowNode } from './types';
 
 const allowedFlowPurposes = ['orientation_entry', 'post_flow_routing'];
+const allowedFlowExercises = ['breathing'];
 
 function hasText(value: unknown) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -99,6 +100,7 @@ function validateNode(flowLabel: string, nodeKey: string, nodeValue: unknown, no
 
   validateNodeVideos(flowLabel, nodeKey, nodeValue.videos, errors);
   validateNodeVisuals(flowLabel, nodeKey, nodeValue.visuals, errors);
+  validateNodeExercise(flowLabel, nodeKey, nodeValue.exercise, errors);
 
   if (node.kind === 'choice') {
     validateChoiceNode(flowLabel, node, nodeIds, errors);
@@ -189,6 +191,15 @@ function validateNodeVideos(flowLabel: string, nodeId: string, videos: unknown, 
       errors.push(`O vídeo ${videoId} do nó ${nodeId}, no fluxo ${flowLabel}, precisa usar uma URL válida do YouTube.`);
     }
   });
+}
+
+function validateNodeExercise(flowLabel: string, nodeId: string, exercise: unknown, errors: string[]) {
+  if (exercise === undefined) return;
+  if (typeof exercise !== 'string' || !allowedFlowExercises.includes(exercise)) {
+    errors.push(
+      `O exercício do nó ${nodeId} no fluxo ${flowLabel} deve ser um destes: ${allowedFlowExercises.join(', ')}.`,
+    );
+  }
 }
 
 function validateChoiceNode(flowLabel: string, node: ChoiceFlowNode, nodeIds: Set<string>, errors: string[]) {

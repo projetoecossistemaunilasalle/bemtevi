@@ -9,7 +9,7 @@ export const generatedResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['regulação-emocional', 'respiração', 'professores'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'classroom-1' },
     body: [
       {
         id: 'overview',

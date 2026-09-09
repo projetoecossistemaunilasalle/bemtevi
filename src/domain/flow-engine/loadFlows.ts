@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  FlowExercise,
   FlowRuntimeState,
   FlowStartFlowEffect,
   GuidedFlow,
@@ -17,6 +18,7 @@ export function createMessage(
   nodeId?: string,
   videos?: OrientationVideo[],
   visuals?: OrientationVisual[],
+  exercise?: FlowExercise,
 ): ChatMessage {
   messageCounter += 1;
 
@@ -30,6 +32,7 @@ export function createMessage(
 
   if (videos?.length) message.videos = videos;
   if (visuals?.length) message.visuals = visuals;
+  if (exercise) message.exercise = exercise;
   return message;
 }
 
@@ -65,7 +68,7 @@ export function createInitialFlowState(flow: GuidedFlow, _flows: GuidedFlow[]): 
     activeNodeId: flow.entry.nodeId,
     transcript: [
       createMessage('bot', flow.entry.transitionMessage, flow.id, flow.entry.nodeId),
-      createMessage('bot', node.text, flow.id, node.id, node.videos, node.visuals),
+      createMessage('bot', node.text, flow.id, node.id, node.videos, node.visuals, node.exercise),
     ],
     suspendedFlows: {},
     answers: {},

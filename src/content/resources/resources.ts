@@ -18,7 +18,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['regulação-emocional', 'sala-de-aula', 'professores'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'classroom-1' },
     body: [
       {
         id: 'overview',
@@ -56,7 +56,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['autocuidado', 'professores', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'classroom-2' },
     body: [
       {
         id: 'overview',
@@ -82,7 +82,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['emocoes', 'crise', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'green-patch' },
     body: [
       {
         id: 'overview',
@@ -108,7 +108,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['mindfulness', 'atencao-plena', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'classroom-1' },
     body: [
       {
         id: 'overview',
@@ -134,7 +134,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['estresse', 'familia', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'hands-holding-plant' },
     body: [
       {
         id: 'overview',
@@ -160,7 +160,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['estigma', 'apoio', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'green-patch' },
     body: [
       {
         id: 'overview',
@@ -186,7 +186,7 @@ const baseResources = [
     imageUrl: '/bemtevi/hands_holding_plant.png',
     tags: ['resiliencia', 'autocuidado', 'cartilha'],
     audience: 'teachers',
-    featuredImage: { kind: 'catalog', imageId: 'respiracao-1' },
+    featuredImage: { kind: 'catalog', imageId: 'hands-holding-plant' },
     body: [
       {
         id: 'overview',

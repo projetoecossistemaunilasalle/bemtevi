@@ -9,6 +9,7 @@ import { Page } from '../../design-system/components/Page';
 import type { EducationResource, EducationResourceBlock } from '../../domain/resources/types';
 import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { resolveVideoEmbed } from './videoEmbeds';
+import { InstagramEmbed } from '../../design-system/components/InstagramEmbed';
 import { SourceCitationsView } from './SourceCitationsView';
 import { isLegacySourceBlock, parseSourceCitations } from './sourceFormatter';
 
@@ -150,6 +151,26 @@ function ResourceBodyBlock({ block, source }: { block: EducationResourceBlock; s
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+        </Card>
+      );
+    }
+
+    if (video.kind === 'instagram') {
+      return (
+        <Card className="overflow-hidden p-0">
+          {block.title || block.description ? (
+            <div className="p-5">
+              {block.title ? <h2 className="font-headline-sm text-on-surface">{block.title}</h2> : null}
+              {block.description ? (
+                <p className="font-body-md text-on-surface-variant text-justify whitespace-pre-line">
+                  {block.description}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="flex w-full justify-center p-3 sm:p-5">
+            <InstagramEmbed url={video.url} title={block.title} />
+          </div>
         </Card>
       );
     }

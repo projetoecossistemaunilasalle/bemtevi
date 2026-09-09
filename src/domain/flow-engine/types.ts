@@ -79,12 +79,15 @@ export interface OrientationVisual {
   src: string;
 }
 
+export type FlowExercise = 'breathing';
+
 export interface ChoiceFlowNode {
   id: string;
   kind: 'choice';
   text: string;
   videos?: OrientationVideo[];
   visuals?: OrientationVisual[];
+  exercise?: FlowExercise;
   options: FlowOption[];
   freeText?: FreeTextFlowAdvance;
 }
@@ -95,6 +98,7 @@ export interface ResultFlowNode {
   text: string;
   videos?: OrientationVideo[];
   visuals?: OrientationVisual[];
+  exercise?: FlowExercise;
   recommendations?: string[];
 }
 
@@ -112,6 +116,7 @@ export interface ScoreBranchFlowNode {
   text: string;
   videos?: OrientationVideo[];
   visuals?: OrientationVisual[];
+  exercise?: FlowExercise;
   scoreKey: string;
   branches: ScoreBranch[];
 }
@@ -139,6 +144,7 @@ export interface ChatMessage {
   nodeId?: string;
   videos?: OrientationVideo[];
   visuals?: OrientationVisual[];
+  exercise?: FlowExercise;
 }
 
 export interface SuspendedFlowState {

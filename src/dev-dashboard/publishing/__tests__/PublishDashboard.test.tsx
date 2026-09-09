@@ -19,8 +19,8 @@ const contact: ServiceDirectoryEntry = {
   name: 'Contato Um',
   type: 'CAPS',
   badgeTone: 'primary',
-  city: 'Canoas',
-  state: 'RS',
+  city: '',
+  state: '',
   address: 'Rua Um, 123',
   phoneDisplay: '(51) 3000-0000',
   phoneHref: 'tel:5130000000',
@@ -123,230 +123,114 @@ function renderPublish({
 }
 
 describe('PublishDashboard', () => {
-  it('shows the complete change summary and current revision', () => {
-    renderPublish();
-
-    expect(screen.getAllByText('Contatos').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('1 adicionado')).toBeInTheDocument();
-    expect(screen.getByText(/Revisão atual: 4/)).toBeInTheDocument();
-  });
-
-  it('disables publication for validation errors and provides a button to review them', async () => {
-    const user = userEvent.setup();
-    const { onOpenValidationArea } = renderPublish({ validation: validationWithError });
-
-    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
-    expect(screen.getByText('Ainda não é possível publicar')).toBeInTheDocument();
-
-    const reviewButton = screen.getByRole('button', { name: 'Revisar 1 erro em Contatos' });
-    expect(reviewButton).toBeInTheDocument();
-
-    await user.click(reviewButton);
-    expect(onOpenValidationArea).toHaveBeenCalledWith('contacts');
-  });
-
-  it('disables publication when there are no changes', () => {
-    renderPublish({ draft: baseline });
-
+  async function prepare(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await screen.findByRole('heading', { name: 'Revisão final' });
+  }
+  async function review(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Confirmar revisão do resultado' }));
+    await screen.findByRole('button', { name: 'Confirmar publicação' });
+  }
+  it('shows all local changes and blocks invalid content', () => {
+    renderPublish({ validation: validationWithError });
+    expect(screen.getByRole('heading', { name: 'Alterações do seu rascunho (1)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
-
-  it('requires an explicit second confirmation action', async () => {
+  it('requires review of the exact combined candidate before sending', async () => {
     const user = userEvent.setup();
-    const { publish } = renderPublish();
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-
-    expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    const publish = vi.fn().mockResolvedValue(makeSnapshot(5, draftWithChanges));
+    const { onPublished } = renderPublish({ publish });
+    await prepare(user);
     expect(publish).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
-    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeInTheDocument();
+    await review(user);
     expect(publish).not.toHaveBeenCalled();
-  });
-
-  it('publishes the full merged payload with the admin id', async () => {
-    const user = userEvent.setup();
-    const publish = vi.fn().mockResolvedValue(makeSnapshot(5));
-    const onPublished = vi.fn();
-    renderPublish({ publish, onPublished });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    await waitFor(() => expect(publish).toHaveBeenCalledWith(draftWithChanges, 'admin-id', 4));
-    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(5)));
+    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(5, draftWithChanges)));
+    expect(publish).toHaveBeenCalledWith(draftWithChanges, account.id, 4);
   });
-
-  it('shows pending state and prevents duplicate publication', async () => {
+  it('prepares independent concurrent changes without automatically publishing', async () => {
     const user = userEvent.setup();
-    let resolvePublish: (value: PublishedContentSnapshot) => void = () => undefined;
-    const publish = vi.fn(
-      () =>
-        new Promise<PublishedContentSnapshot>((resolve) => {
-          resolvePublish = resolve;
-        }),
-    );
-    renderPublish({ publish });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    const remote = { ...baseline, defaultGroupOrder: 2 };
+    const publish = vi.fn().mockResolvedValue(makeSnapshot(6));
+    renderPublish({
+      publish,
+      basePayload: baseline,
+      refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
+    });
+    await prepare(user);
+    expect(publish).not.toHaveBeenCalled();
+    await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
+    expect(publish).toHaveBeenCalledWith({ ...draftWithChanges, defaultGroupOrder: 2 }, account.id, 5);
+  });
+  it('resolves and undoes a field conflict without resetting the draft', async () => {
+    const user = userEvent.setup();
+    const b = { ...baseline, contacts: [contact] };
+    const local = { ...b, contacts: [{ ...contact, name: 'Minha alteração' }] };
+    const remote = { ...b, contacts: [{ ...contact, name: 'Alteração publicada' }] };
+    const publish = vi.fn().mockResolvedValue(makeSnapshot(6, local));
+    const onMergeConflict = vi.fn();
+    renderPublish({
+      publish,
+      basePayload: b,
+      draft: local,
+      onMergeConflict,
+      refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
+    });
+    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    expect(await screen.findByText('1 conflitos pendentes')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Contatos \/ contact-one \/ Nome/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Alterações já publicadas/ })).toBeInTheDocument();
+    expect(publish).not.toHaveBeenCalled();
+    expect(onMergeConflict).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
+    expect(await screen.findByText('0 conflitos pendentes')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Desfazer escolha' }));
+    expect(await screen.findByText('1 conflitos pendentes')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
+    await review(user);
+    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
+    expect(publish).toHaveBeenCalledWith(local, account.id, 5);
+  });
+  it('does not blindly retry when the remote advances after review', async () => {
+    const user = userEvent.setup();
+    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'private detail'));
+    const refreshLatest = vi
+      .fn()
+      .mockResolvedValueOnce(makeSnapshot(4))
+      .mockResolvedValueOnce(makeSnapshot(5, { ...baseline, defaultGroupOrder: 2 }));
+    renderPublish({ publish, refreshLatest });
+    await prepare(user);
+    await review(user);
+    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
+    expect(await screen.findByText(/Há uma nova publicação/)).toBeInTheDocument();
     expect(publish).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Confirmar publicação' })).not.toBeInTheDocument();
-    expect(screen.getByText('Publicando…')).toBeInTheDocument();
-
-    resolvePublish(makeSnapshot(5));
-    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
   });
-
-  it('reports conflict without calling onPublished', async () => {
+  it('blocks confirmation without real authentication', async () => {
     const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'boom'));
-    const onPublished = vi.fn();
-    renderPublish({ publish, onPublished });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(
-      'Outra publicação foi salva antes desta. Recarregue o conteúdo publicado antes de tentar novamente.',
-    );
-    expect(onPublished).not.toHaveBeenCalled();
-  });
-
-  it('automatically retries with a merged payload for independent concurrent edits', async () => {
-    const user = userEvent.setup();
-    const base = { ...baseline, contacts: [contact] };
-    const local = { ...base, contacts: [{ ...contact, name: 'Nome local' }] };
-    const remote = { ...base, contacts: [{ ...contact, phoneDisplay: '(51) 3111-0000' }] };
-    const latestSnapshot = makeSnapshot(5, remote);
-    const publishedSnapshot = makeSnapshot(6, {
-      ...remote,
-      contacts: [{ ...contact, name: 'Nome local', phoneDisplay: '(51) 3111-0000' }],
-    });
-    const publish = vi
-      .fn<PublishedContentContextValue['publish']>()
-      .mockRejectedValueOnce(new PublishedContentRepositoryError('conflict', 'conflito'))
-      .mockResolvedValueOnce(publishedSnapshot);
-    const refreshLatest = vi.fn().mockResolvedValue(latestSnapshot);
-    const onPublished = vi.fn();
-
-    renderPublish({
-      publish,
-      snapshot: makeSnapshot(4, base),
-      draft: local,
-      basePayload: base,
-      refreshLatest,
-      onPublished,
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(publishedSnapshot));
-    expect(refreshLatest).toHaveBeenCalledTimes(1);
-    expect(publish).toHaveBeenCalledTimes(2);
-    expect(publish).toHaveBeenNthCalledWith(2, publishedSnapshot.payload, 'admin-id', 5);
-  });
-
-  it('keeps the draft and identifies overlapping concurrent edits', async () => {
-    const user = userEvent.setup();
-    const base = { ...baseline, contacts: [contact] };
-    const local = { ...base, contacts: [{ ...contact, name: 'Nome local' }] };
-    const remote = { ...base, contacts: [{ ...contact, name: 'Nome remoto' }] };
-    const latestSnapshot = makeSnapshot(5, remote);
-    const publish = vi
-      .fn<PublishedContentContextValue['publish']>()
-      .mockRejectedValue(new PublishedContentRepositoryError('conflict', 'conflito'));
-    const refreshLatest = vi.fn().mockResolvedValue(latestSnapshot);
-    const onMergeConflict = vi.fn();
-    const onPublished = vi.fn();
-
-    renderPublish({
-      publish,
-      snapshot: makeSnapshot(4, base),
-      draft: local,
-      basePayload: base,
-      refreshLatest,
-      onMergeConflict,
-      onPublished,
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Contato “contact-one”, nome');
-    expect(alert).not.toHaveTextContent('contacts[contact-one].name');
-    expect(onMergeConflict).toHaveBeenCalledWith(latestSnapshot);
-    expect(onPublished).not.toHaveBeenCalled();
-    expect(publish).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports real-auth requirement for unauthorized publication', async () => {
-    const user = userEvent.setup();
-    const publish = vi.fn();
-    renderPublish({ publish, currentAccount: null });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Entre com uma conta administrativa real para publicar.');
+    const { publish } = renderPublish({ currentAccount: null });
+    await prepare(user);
+    await review(user);
+    expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeDisabled();
     expect(publish).not.toHaveBeenCalled();
   });
-
-  it('maps an unauthorized repository error to the real-auth message', async () => {
-    const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('unauthorized', 'boom'));
-    renderPublish({ publish });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Entre com uma conta administrativa real para publicar.');
+  it('preserves export and does not leak comparison errors', () => {
+    const invalid = { ...draftWithChanges, contacts: [contact, contact] };
+    renderPublish({ draft: invalid });
+    expect(screen.getByRole('alert')).toHaveTextContent('Seu rascunho não foi descartado');
+    expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
-
-  it('reports configuration failures safely', async () => {
+  it('reports uncertain results safely and prevents duplicate sends', async () => {
     const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('not_configured', 'secret detail'));
+    const publish = vi.fn().mockRejectedValue(new Error('secret database stack'));
     renderPublish({ publish });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await prepare(user);
+    await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('A conexão pública com o Neon não está configurada.');
-    expect(alert).not.toHaveTextContent('secret detail');
-  });
-
-  it('reports generic failures safely without leaking error text', async () => {
-    const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new Error('neon secret leak'));
-    renderPublish({ publish });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Não foi possível publicar agora. Tente novamente.');
-    expect(alert).not.toHaveTextContent('neon secret leak');
-  });
-
-  it('calls onPublished only after repository success', async () => {
-    const user = userEvent.setup();
-    const publish = vi.fn().mockResolvedValue(makeSnapshot(6));
-    const onPublished = vi.fn();
-    renderPublish({ publish, onPublished });
-
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    expect(onPublished).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(6)));
+    expect(alert).toHaveTextContent('Não foi possível confirmar o resultado');
+    expect(alert).not.toHaveTextContent('secret');
+    expect(publish).toHaveBeenCalledTimes(1);
   });
 });

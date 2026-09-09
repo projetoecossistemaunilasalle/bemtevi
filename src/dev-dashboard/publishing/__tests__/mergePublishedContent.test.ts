@@ -99,14 +99,14 @@ describe('mergePublishedContent', () => {
       flows: [{ ...baseFlow, nodes: { start: { ...baseFlow.nodes.start, text: 'Texto local' } } } as never],
     });
     const remote = payload({
-      flows: [{ ...baseFlow, nodes: { start: { ...baseFlow.nodes.start, id: 'start-remoto' } } } as never],
+      flows: [{ ...baseFlow, nodes: { start: { ...baseFlow.nodes.start, title: 'Título remoto' } } } as never],
     });
 
     const result = mergePublishedContent(base, local, remote);
 
     expect(result.conflicts).toEqual([]);
     expect(result.payload?.flows[0]).toMatchObject({
-      nodes: { start: { id: 'start-remoto', text: 'Texto local' } },
+      nodes: { start: { id: 'start', title: 'Título remoto', text: 'Texto local' } },
     });
   });
 });

@@ -624,6 +624,53 @@ describe('ResourceDetailScreen', () => {
     expect(description.compareDocumentPosition(iframe) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 
+  it('renders an Instagram block inside the material with blockquote and fallback link', () => {
+    const baseResource = resourcesContent.resources[0];
+    const postTitle = 'Publicação educativa no Instagram';
+    const postDescription = 'Dicas de saúde mental compartilhadas no nosso perfil oficial.';
+    const instagramUrl = 'https://www.instagram.com/p/DFxyz123/';
+
+    localStorage.setItem(
+      'bemtevi:dev-dashboard:drafts:v1',
+      JSON.stringify(
+        createDraftState({
+          addedEducationMaterials: [
+            {
+              ...baseResource,
+              id: 'instagram-block-material',
+              title: 'Material com post do Instagram',
+              body: [
+                {
+                  id: 'instagram-post',
+                  kind: 'video',
+                  title: postTitle,
+                  description: postDescription,
+                  url: instagramUrl,
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao/instagram-block-material']}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: postTitle })).toBeInTheDocument();
+    expect(screen.getByText(postDescription)).toBeInTheDocument();
+    const blockquote = document.querySelector('blockquote.instagram-media');
+    expect(blockquote).toBeInTheDocument();
+    expect(blockquote).toHaveAttribute('data-instgrm-permalink', instagramUrl);
+    const link = screen.getByRole('link', { name: /abrir no instagram/i });
+    expect(link).toHaveAttribute('href', instagramUrl);
+  });
+
   it('renders a PDF inside the material with a direct-open fallback', () => {
     const baseResource = resourcesContent.resources[0];
     const pdfTitle = 'Cartilha de acolhimento';
@@ -886,7 +933,27 @@ describe('resolveVideoEmbed', () => {
     });
   });
 
-  it('falls back to a link for generic video URLs', async () => {
+  it('recognizes Instagram /p/ URLs', async () => {
+    const { resolveVideoEmbed } = await import('../videoEmbeds');
+
+    expect(resolveVideoEmbed('https://www.instagram.com/p/DFxyz123/')).toEqual({
+      kind: 'instagram',
+      url: 'https://www.instagram.com/p/DFxyz123/',
+      permalink: 'https://www.instagram.com/p/DFxyz123/',
+    });
+  });
+
+  it('recognizes Instagram /reel/ URLs', async () => {
+    const { resolveVideoEmbed } = await import('../videoEmbeds');
+
+    expect(resolveVideoEmbed('https://www.instagram.com/reel/C-xyz789/')).toEqual({
+      kind: 'instagram',
+      url: 'https://www.instagram.com/reel/C-xyz789/',
+      permalink: 'https://www.instagram.com/reel/C-xyz789/',
+    });
+  });
+
+  it('falls back to a link for generic or unknown video URLs', async () => {
     const { resolveVideoEmbed } = await import('../videoEmbeds');
 
     expect(resolveVideoEmbed('https://example.com/video')).toEqual({

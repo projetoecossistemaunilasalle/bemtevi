@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Page } from '../design-system/components/Page';
 import { PageHeader } from '../design-system/components/PageHeader';
@@ -7,22 +7,17 @@ import {
   createEmptyDashboardDraftState,
   type DashboardRecordPatch,
   type DashboardDraftState,
-  DASHBOARD_STORAGE_KEY,
-  exportDraftAsJson,
-  hasDashboardChanges,
-  importDraftFromJson,
-  loadDashboardDrafts,
   mergeDashboardDrafts,
-  resetDashboardDrafts,
-  restoreDraftFromIndexedDbFallback,
-  saveDashboardDrafts,
 } from './draft-storage/dashboardStorage';
 import { Button } from '../design-system/components/Button';
 import { AlertCircle, Download, Info, Upload } from 'lucide-react';
 import { EducationDashboard } from './education/EducationDashboard';
 import { validateDashboardEducation } from './education/educationValidation';
 import { PublishDashboard } from './publishing/PublishDashboard';
-import { computeChangeSummary } from './publishing/changeSummary';
+import { compareContent } from './publishing/semanticDiff';
+import { useDraftWorkspace } from './draft-storage/useDraftWorkspace';
+import { WorkspaceHistory } from './draft-storage/WorkspaceHistory';
+import { createWorkspace } from './draft-storage/workspace';
 import { usePublishedContent } from '../app/content/PublishedContentContext';
 import type { PublishedContentPayload } from '../app/content/publishedContent';
 import { FlowDashboard } from './flows/FlowDashboard';
@@ -36,7 +31,6 @@ import { createLocalLocation, createLocalService } from './contacts/contactDraft
 import { validateDashboardContacts } from './contacts/contactsValidation';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard';
 import { normalizeContactLocations } from '../domain/services/locations';
-import type { PublishedContentSnapshot } from '../app/content/publishedContent';
 import { parsePayload, validatePublicationPayload } from '../app/content/publishedContent';
 import type { DashboardShippedContent } from './content/shippedContent';
 import { scheduleValidationFocus, scheduleValidationSummaryScroll } from './validation/validationNavigation';
@@ -70,8 +64,8 @@ function upsertPatchById<T extends { id: string }>(
   );
 }
 
-function createLocalEducationMaterial(existingCount: number) {
-  const suffix = existingCount + 1;
+function createLocalEducationMaterial(_existingCount: number) {
+  const suffix = crypto.randomUUID();
 
   return {
     id: `material-local-${suffix}`,
@@ -95,10 +89,10 @@ function createLocalEducationMaterial(existingCount: number) {
 }
 
 function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shippedGroups: EducationResourceGroup[]) {
-  let suffix = 1;
+  let suffix = crypto.randomUUID();
   const allGroupIds = new Set([...shippedGroups, ...existingAddedGroups].map((g) => g.id));
   while (allGroupIds.has(`group-local-${suffix}`)) {
-    suffix++;
+    suffix = crypto.randomUUID();
   }
 
   return {
@@ -109,8 +103,8 @@ function createLocalGroup(existingAddedGroups: EducationResourceGroup[], shipped
   };
 }
 
-function createLocalFlow(existingCount: number) {
-  const suffix = existingCount + 1;
+function createLocalFlow(_existingCount: number) {
+  const suffix = crypto.randomUUID();
   const id = `flow-local-${suffix}`;
 
   return {
@@ -274,7 +268,7 @@ export function DashboardRoute() {
     path?: string;
   } | null>(null);
   const { content: baseline, snapshot } = usePublishedContent();
-  const shipped = useMemo(() => {
+  const remoteContent = useMemo(() => {
     if (!baseline) return baseline;
 
     const normalized = normalizeContactLocations(baseline.contacts, baseline.locations ?? [], {
@@ -286,65 +280,24 @@ export function DashboardRoute() {
       locations: normalized.locations,
     };
   }, [baseline]);
-  const [draftState, setDraftState] = useState(() => loadDashboardDrafts());
-  const [storageError, setStorageError] = useState<string | null>(null);
-  const mergedDrafts = useMemo(() => mergeDashboardDrafts(shipped, draftState), [draftState, shipped]);
-
-  useEffect(() => {
-    let active = true;
-    void restoreDraftFromIndexedDbFallback().then((restored) => {
-      if (!active || !restored) return;
-      setDraftState((current) => {
-        if (hasDashboardChanges(current)) return current;
-        return restored;
-      });
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleStorageChange(event: StorageEvent) {
-      if (event.key !== DASHBOARD_STORAGE_KEY) return;
-      if (event.newValue === null) {
-        setDraftState(createEmptyDashboardDraftState());
-        return;
-      }
-      try {
-        const nextDraft = loadDashboardDrafts({
-          getItem: () => event.newValue,
-          setItem: () => {},
-          removeItem: () => {},
-          clear: () => {},
-          key: () => null,
-          length: 1,
-        });
-        setDraftState((current) => {
-          if (nextDraft.updatedAt && current.updatedAt) {
-            const nextTime = new Date(nextDraft.updatedAt).getTime();
-            const currentTime = new Date(current.updatedAt).getTime();
-            if (nextTime <= currentTime) return current;
-          }
-          return nextDraft;
-        });
-      } catch {
-        // Ignore malformed storage payload from external tab
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  const store = useDraftWorkspace(toPublishedContentPayload(remoteContent), snapshot?.revision ?? null);
+  const { workspace, status: saveStatus, error: storageError, setError: setStorageError } = store;
+  const shipped = workspace?.local ?? remoteContent;
+  // Existing editors emit a one-operation patch against L; patches are never persisted.
+  const draftState: DashboardDraftState = {
+    ...createEmptyDashboardDraftState(),
+    baseRevision: workspace?.base.revision,
+    basePayload: workspace?.base.payload,
+    updatedAt: workspace?.updatedAt ?? null,
+  };
+  const mergedDrafts = shipped;
 
   const hasBackgroundRevision =
     snapshot !== null &&
     typeof draftState.baseRevision === 'number' &&
     snapshot.revision > draftState.baseRevision &&
-    hasDashboardChanges(draftState);
-  const hasPendingDraft = hasDashboardChanges(draftState);
+    workspace !== null;
+  const hasPendingDraft = workspace !== null;
 
   function setActiveTab(tab: DashboardTab) {
     setActiveTabState(tab);
@@ -372,29 +325,9 @@ export function DashboardRoute() {
   }
 
   function updateDraftState(updater: (current: DashboardDraftState) => DashboardDraftState) {
-    setDraftState((current) => {
-      const updatedDraft = updater(current);
-      const startsDraft = !hasDashboardChanges(current) && hasDashboardChanges(updatedDraft);
-      const baseRevision = current.baseRevision === undefined ? (snapshot?.revision ?? null) : current.baseRevision;
-      const basePayload = current.basePayload ?? (startsDraft ? toPublishedContentPayload(shipped) : undefined);
-      const next = {
-        ...updatedDraft,
-        baseRevision,
-        ...(basePayload ? { basePayload } : {}),
-        updatedAt: new Date().toISOString(),
-      };
-
-      try {
-        saveDashboardDrafts(next);
-        queueMicrotask(() => setStorageError(null));
-      } catch {
-        queueMicrotask(() =>
-          setStorageError(
-            'Não foi possível salvar o rascunho no localStorage deste navegador. Uma cópia de segurança está no banco de dados local (IndexedDB) e na memória desta página.',
-          ),
-        );
-      }
-      return next;
+    store.update((current) => {
+      const operation = updater(createEmptyDashboardDraftState());
+      return { ...current, local: mergeDashboardDrafts(current.local, operation), reconciliation: undefined };
     });
   }
 
@@ -433,30 +366,10 @@ export function DashboardRoute() {
     [mergedDrafts],
   );
 
-  function rebaseDraftAfterMergeConflict(nextSnapshot: PublishedContentSnapshot) {
-    setDraftState((current) => {
-      if (!hasDashboardChanges(current)) return current;
-
-      const next = {
-        ...current,
-        baseRevision: nextSnapshot.revision,
-        basePayload: nextSnapshot.payload,
-        updatedAt: new Date().toISOString(),
-      };
-      try {
-        saveDashboardDrafts(next);
-        queueMicrotask(() => setStorageError(null));
-      } catch {
-        queueMicrotask(() =>
-          setStorageError(
-            'O conteúdo publicado foi atualizado, mas não foi possível salvar a nova base do rascunho no localStorage.',
-          ),
-        );
-      }
-      return next;
-    });
-  }
-  const changeSummary = useMemo(() => computeChangeSummary(shipped, publishedDraft), [shipped, publishedDraft]);
+  const changeSummary = useMemo(
+    () => compareContent(workspace?.base.payload ?? remoteContent, publishedDraft),
+    [workspace?.base.payload, remoteContent, publishedDraft],
+  );
   const tabErrorCounts: Partial<Record<DashboardTab, number>> = {
     flows: flowValidation.errors.length,
     education: educationValidation.errors.length,
@@ -464,18 +377,16 @@ export function DashboardRoute() {
   };
 
   function retryDraftSave() {
-    try {
-      saveDashboardDrafts(draftState);
-      setStorageError(null);
-    } catch {
-      setStorageError(
-        'O navegador ainda não permite salvar o rascunho no localStorage. Verifique o espaço disponível ou baixe uma cópia de segurança em arquivo.',
-      );
-    }
+    void store.checkpoint();
   }
 
   function handleDownloadBackup() {
-    const json = exportDraftAsJson(draftState);
+    downloadBackup(
+      JSON.stringify(store.current.current ?? createWorkspace(publishedDraft, snapshot?.revision ?? null), null, 2),
+    );
+  }
+
+  function downloadBackup(json: string) {
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -492,10 +403,7 @@ export function DashboardRoute() {
     reader.onload = () => {
       try {
         const text = String(reader.result ?? '');
-        const imported = importDraftFromJson(text);
-        setDraftState(imported);
-        saveDashboardDrafts(imported);
-        setStorageError(null);
+        void store.restore(text);
       } catch (err) {
         setStorageError(err instanceof Error ? err.message : 'Falha ao restaurar rascunho do arquivo.');
       }
@@ -505,26 +413,7 @@ export function DashboardRoute() {
   }
 
   function resetLocalDrafts() {
-    try {
-      setDraftState(resetDashboardDrafts());
-      setStorageError(null);
-    } catch {
-      setStorageError(
-        'Não foi possível apagar o rascunho deste navegador. Nada foi descartado; verifique a permissão de armazenamento e tente novamente.',
-      );
-    }
-  }
-
-  function clearDraftsAfterPublication() {
-    try {
-      setDraftState(resetDashboardDrafts());
-      setStorageError(null);
-    } catch {
-      setDraftState(createEmptyDashboardDraftState());
-      setStorageError(
-        'A publicação foi concluída, mas o navegador não conseguiu apagar a cópia local antiga. Evite recarregar a página até liberar o armazenamento.',
-      );
-    }
+    void store.archive();
   }
 
   function handleAiApply(nextPayload: PublishedContentPayload, envelope: AiOperationEnvelope) {
@@ -538,7 +427,7 @@ export function DashboardRoute() {
       );
       return;
     }
-    if (hasDashboardChanges(draftState)) {
+    if (hasPendingDraft) {
       setStorageError(
         'A resposta da IA não foi aplicada porque há um rascunho local pendente. Publique-o ou faça uma cópia de segurança e descarte-o antes de usar a IA.',
       );
@@ -571,566 +460,606 @@ export function DashboardRoute() {
       <DashboardShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        pendingChanges={changeSummary.total}
-        draftUpdatedAt={draftState.updatedAt}
+        pendingChanges={changeSummary.ok ? changeSummary.value.length : undefined}
+        draftUpdatedAt={saveStatus === 'saved' ? draftState.updatedAt : null}
         tabErrorCounts={tabErrorCounts}
       >
-        {hasBackgroundRevision && (
-          <aside
-            role="status"
-            className="rounded-lg border border-primary/35 bg-primary-container/20 p-4 text-on-surface"
-          >
-            <p className="flex items-center gap-2 font-label-md font-semibold text-primary">
-              <Info aria-hidden="true" className="h-5 w-5 shrink-0" />
-              Nova publicação detectada no banco (Revisão {snapshot?.revision})
-            </p>
-            <p className="mt-1 max-w-[75ch] font-body-md text-on-surface-variant">
-              Outro administrador publicou alterações no banco de dados. Suas alterações locais continuam ativas e
-              seguras. Ao publicar suas alterações na aba “Publicar”, as modificações serão mescladas automaticamente.
-            </p>
-          </aside>
-        )}
-        {storageError ? (
-          <aside
-            role="alert"
-            className="rounded-lg border border-error/35 bg-error-container/55 p-4 text-on-error-container"
-          >
-            <p className="flex items-center gap-2 font-label-md">
-              <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
-              Aviso sobre o salvamento local do rascunho
-            </p>
-            <p className="mt-1 max-w-[70ch] font-body-md">{storageError}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" onClick={retryDraftSave}>
-                Tentar salvar novamente
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handleDownloadBackup}>
-                <Download className="mr-1 h-4 w-4" /> Baixar cópia de segurança (.json)
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-1 h-4 w-4" /> Restaurar de arquivo (.json)
-              </Button>
-            </div>
-          </aside>
-        ) : null}
-        {activeTab === 'flows' && (
-          <FlowDashboard
-            flows={mergedDrafts.flows}
-            resources={mergedDrafts.educationMaterials}
-            externalFocus={flowFocusRequest}
-            onFlowChange={(flowIndex, flowId, patch) =>
-              updateDraftState((current) => ({
-                ...current,
-                flowPatches: upsertPatchById(current.flowPatches, flowId, flowIndex, patch),
-              }))
-            }
-            onFlowAdd={() =>
-              updateDraftState((current) => ({
-                ...current,
-                addedFlows: [...current.addedFlows, createLocalFlow(current.addedFlows.length)],
-              }))
-            }
-            onFlowImport={(flow) =>
-              updateDraftState((current) => {
-                const addedIndex = current.addedFlows.findIndex((candidate) => candidate.id === flow.id);
-                if (addedIndex >= 0) {
-                  return { ...current, addedFlows: updateRecordAtIndex(current.addedFlows, addedIndex, flow) };
-                }
-
-                const shippedIndex = shipped.flows.findIndex((candidate) => candidate.id === flow.id);
-                if (shippedIndex >= 0) {
-                  const { id: _id, ...patch } = flow;
-                  return {
-                    ...current,
-                    flowPatches: upsertPatchById(current.flowPatches, flow.id, shippedIndex, patch),
-                    removedFlowIds: (current.removedFlowIds ?? []).filter((id) => id !== flow.id),
-                  };
-                }
-
-                return { ...current, addedFlows: [...current.addedFlows, flow] };
-              })
-            }
-            onFlowRemove={(flowId) =>
-              updateDraftState((current) => {
-                const shippedIndex = shipped.flows.findIndex((f) => f.id === flowId);
-                return {
-                  ...current,
-                  addedFlows: current.addedFlows.filter((f) => f.id !== flowId),
-                  removedFlowIds:
-                    shippedIndex >= 0
-                      ? [...new Set([...(current.removedFlowIds ?? []), flowId])]
-                      : current.removedFlowIds,
-                };
-              })
-            }
+        <div inert={(store.locked || saveStatus === 'loading') && activeTab !== 'export'}>
+          <WorkspaceHistory
+            workspaces={store.available}
+            disabled={store.locked || saveStatus === 'loading'}
+            onRestore={store.restore}
           />
-        )}
-        {activeTab === 'education' && (
-          <EducationDashboard
-            resources={mergedDrafts.educationMaterials}
-            groups={mergedDrafts.educationGroups}
-            defaultGroupOrder={mergedDrafts.defaultGroupOrder}
-            externalFocus={educationFocusRequest}
-            onResourceChange={(resourceIndex, resourceId, patch) =>
-              updateDraftState((current) => {
-                const origin = resolveEducationResourceOrigin(
-                  shipped.educationMaterials,
-                  current.addedEducationMaterials,
-                  current.removedEducationMaterialIds ?? [],
-                  resourceIndex,
-                  resourceId,
-                );
-                if (!origin || origin.id !== resourceId) return current;
+          <p role="status" className="font-body-md text-on-surface-variant">
+            {saveStatus === 'saving'
+              ? 'Salvando…'
+              : saveStatus === 'saved'
+                ? 'Salvo neste navegador'
+                : saveStatus === 'loading'
+                  ? 'Carregando rascunhos…'
+                  : saveStatus === 'error'
+                    ? 'Não foi possível salvar'
+                    : 'Nenhum rascunho aberto'}
+          </p>
+          {!changeSummary.ok && (
+            <p role="alert">Não foi possível comparar as alterações. Seu rascunho não foi descartado.</p>
+          )}
+          {store.recovery && (
+            <section className="p-4">
+              <h2 className="font-headline-sm">Recuperação assistida</h2>
+              <p>
+                Não foi encontrada uma base confiável. Baixe o original antes de reconstruir. A reconstrução aplica o
+                material recuperável sobre a publicação atual e exige sua revisão; não recupera a ancestralidade
+                perdida.
+              </p>
+              <Button variant="secondary" onClick={() => downloadBackup(store.recovery!)}>
+                Baixar original
+              </Button>
+              <Button onClick={() => void store.recoverAgainstRemote()}>Reconstruir contra a publicação atual</Button>
+            </section>
+          )}
+          {!workspace && store.available.length > 0 && (
+            <section className="p-4">
+              <h2 className="font-headline-sm">Rascunhos preservados</h2>
+              <p>Retomar cria uma cópia independente. Nenhuma outra aba será substituída.</p>
+              {store.available.map((item) => (
+                <Button
+                  key={item.workspaceId}
+                  variant="secondary"
+                  onClick={() => void store.restore(JSON.stringify(item))}
+                >
+                  Retomar {item.archived ? 'arquivo' : 'rascunho'} {item.workspaceId.slice(0, 8)} (geração{' '}
+                  {item.generation})
+                </Button>
+              ))}
+            </section>
+          )}
+          {hasBackgroundRevision && (
+            <aside
+              role="status"
+              className="rounded-lg border border-primary/35 bg-primary-container/20 p-4 text-on-surface"
+            >
+              <p className="flex items-center gap-2 font-label-md font-semibold text-primary">
+                <Info aria-hidden="true" className="h-5 w-5 shrink-0" />
+                Nova publicação detectada no banco (Revisão {snapshot?.revision})
+              </p>
+              <p className="mt-1 max-w-[75ch] font-body-md text-on-surface-variant">
+                Outro administrador publicou alterações no banco de dados. Suas alterações locais continuam ativas e
+                preservadas. Revise o resultado combinado na aba “Publicar” antes de confirmar uma nova publicação.
+              </p>
+            </aside>
+          )}
+          {storageError ? (
+            <aside
+              role="alert"
+              className="rounded-lg border border-error/35 bg-error-container/55 p-4 text-on-error-container"
+            >
+              <p className="flex items-center gap-2 font-label-md">
+                <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
+                Aviso sobre o salvamento local do rascunho
+              </p>
+              <p className="mt-1 max-w-[70ch] font-body-md">{storageError}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={retryDraftSave}>
+                  Tentar salvar novamente
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleDownloadBackup}>
+                  <Download className="mr-1 h-4 w-4" /> Baixar cópia de segurança (.json)
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="mr-1 h-4 w-4" /> Restaurar de arquivo (.json)
+                </Button>
+              </div>
+            </aside>
+          ) : null}
+          {activeTab === 'flows' && (
+            <FlowDashboard
+              flows={mergedDrafts.flows}
+              resources={mergedDrafts.educationMaterials}
+              externalFocus={flowFocusRequest}
+              onFlowChange={(flowIndex, flowId, patch) =>
+                updateDraftState((current) => ({
+                  ...current,
+                  flowPatches: upsertPatchById(current.flowPatches, flowId, flowIndex, patch),
+                }))
+              }
+              onFlowAdd={() =>
+                updateDraftState((current) => ({
+                  ...current,
+                  addedFlows: [...current.addedFlows, createLocalFlow(current.addedFlows.length)],
+                }))
+              }
+              onFlowImport={(flow) =>
+                updateDraftState((current) => {
+                  const addedIndex = current.addedFlows.findIndex((candidate) => candidate.id === flow.id);
+                  if (addedIndex >= 0) {
+                    return { ...current, addedFlows: updateRecordAtIndex(current.addedFlows, addedIndex, flow) };
+                  }
 
-                if (origin.kind === 'added') {
+                  const shippedIndex = shipped.flows.findIndex((candidate) => candidate.id === flow.id);
+                  if (shippedIndex >= 0) {
+                    const { id: _id, ...patch } = flow;
+                    return {
+                      ...current,
+                      flowPatches: upsertPatchById(current.flowPatches, flow.id, shippedIndex, patch),
+                      removedFlowIds: (current.removedFlowIds ?? []).filter((id) => id !== flow.id),
+                    };
+                  }
+
+                  return { ...current, addedFlows: [...current.addedFlows, flow] };
+                })
+              }
+              onFlowRemove={(flowId) =>
+                updateDraftState((current) => {
+                  const shippedIndex = shipped.flows.findIndex((f) => f.id === flowId);
                   return {
                     ...current,
-                    addedEducationMaterials: updateRecordAtIndex(
-                      current.addedEducationMaterials,
-                      origin.addedIndex,
+                    addedFlows: current.addedFlows.filter((f) => f.id !== flowId),
+                    removedFlowIds:
+                      shippedIndex >= 0
+                        ? [...new Set([...(current.removedFlowIds ?? []), flowId])]
+                        : current.removedFlowIds,
+                  };
+                })
+              }
+            />
+          )}
+          {activeTab === 'education' && (
+            <EducationDashboard
+              resources={mergedDrafts.educationMaterials}
+              groups={mergedDrafts.educationGroups}
+              defaultGroupOrder={mergedDrafts.defaultGroupOrder}
+              externalFocus={educationFocusRequest}
+              onResourceChange={(resourceIndex, resourceId, patch) =>
+                updateDraftState((current) => {
+                  const origin = resolveEducationResourceOrigin(
+                    shipped.educationMaterials,
+                    current.addedEducationMaterials,
+                    current.removedEducationMaterialIds ?? [],
+                    resourceIndex,
+                    resourceId,
+                  );
+                  if (!origin || origin.id !== resourceId) return current;
+
+                  if (origin.kind === 'added') {
+                    return {
+                      ...current,
+                      addedEducationMaterials: updateRecordAtIndex(
+                        current.addedEducationMaterials,
+                        origin.addedIndex,
+                        patch,
+                      ),
+                    };
+                  }
+
+                  return {
+                    ...current,
+                    educationMaterialPatches: upsertPatchById(
+                      current.educationMaterialPatches,
+                      resourceId,
+                      origin.sourceIndex,
                       patch,
                     ),
                   };
-                }
-
-                return {
+                })
+              }
+              onResourceAdd={() => {
+                const newMaterial = createLocalEducationMaterial(
+                  shipped.educationMaterials.length + draftState.addedEducationMaterials.length,
+                );
+                updateDraftState((current) => ({
                   ...current,
-                  educationMaterialPatches: upsertPatchById(
-                    current.educationMaterialPatches,
+                  addedEducationMaterials: [...current.addedEducationMaterials, newMaterial],
+                }));
+                return newMaterial.id;
+              }}
+              onResourceRemove={(resourceIndex, resourceId) =>
+                updateDraftState((current) => {
+                  const origin = resolveEducationResourceOrigin(
+                    shipped.educationMaterials,
+                    current.addedEducationMaterials,
+                    current.removedEducationMaterialIds ?? [],
+                    resourceIndex,
                     resourceId,
-                    origin.sourceIndex,
-                    patch,
-                  ),
-                };
-              })
-            }
-            onResourceAdd={() => {
-              const newMaterial = createLocalEducationMaterial(
-                shipped.educationMaterials.length + draftState.addedEducationMaterials.length,
-              );
-              updateDraftState((current) => ({
-                ...current,
-                addedEducationMaterials: [...current.addedEducationMaterials, newMaterial],
-              }));
-              return newMaterial.id;
-            }}
-            onResourceRemove={(resourceIndex, resourceId) =>
-              updateDraftState((current) => {
-                const origin = resolveEducationResourceOrigin(
-                  shipped.educationMaterials,
-                  current.addedEducationMaterials,
-                  current.removedEducationMaterialIds ?? [],
-                  resourceIndex,
-                  resourceId,
-                );
-                if (!origin || origin.id !== resourceId) return current;
+                  );
+                  if (!origin || origin.id !== resourceId) return current;
 
-                if (origin.kind === 'added') {
-                  return {
-                    ...current,
-                    addedEducationMaterials: current.addedEducationMaterials.filter(
-                      (_, index) => index !== origin.addedIndex,
-                    ),
-                  };
-                }
-
-                return {
-                  ...current,
-                  educationMaterialPatches: current.educationMaterialPatches.filter((patch) => patch.id !== origin.id),
-                  removedEducationMaterialIds: [
-                    ...new Set([...(current.removedEducationMaterialIds ?? []), origin.id]),
-                  ],
-                };
-              })
-            }
-            onGroupChange={(groupIndex, groupId, patch) =>
-              updateDraftState((current) => {
-                const addedIndex = findGroupIndex(current.addedGroups, groupId);
-
-                if (addedIndex >= 0) {
-                  return {
-                    ...current,
-                    addedGroups: updateRecordAtIndex(current.addedGroups, addedIndex, patch),
-                  };
-                }
-
-                const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
-                if (shippedIndex < 0) return current;
-
-                return {
-                  ...current,
-                  groupPatches: upsertPatchById(current.groupPatches, groupId, shippedIndex, patch),
-                };
-              })
-            }
-            onGroupAdd={() =>
-              updateDraftState((current) => ({
-                ...current,
-                addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups)],
-              }))
-            }
-            onGroupRemove={(_groupIndex, groupId) =>
-              updateDraftState((current) => {
-                const addedIndex = findGroupIndex(current.addedGroups, groupId);
-                const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
-                if (addedIndex < 0 && shippedIndex < 0) return current;
-
-                const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
-                const assignedResources = currentMergedDrafts.educationMaterials.flatMap((resource, resourceIndex) =>
-                  resource.group === groupId ? [{ resource, resourceIndex }] : [],
-                );
-                let next: typeof current = {
-                  ...current,
-                  addedGroups: current.addedGroups.filter((_, index) => index !== addedIndex),
-                  groupPatches: current.groupPatches.filter((patch) => patch.id !== groupId),
-                  removedGroupIds:
-                    shippedIndex >= 0
-                      ? [...new Set([...(current.removedGroupIds ?? []), groupId])]
-                      : current.removedGroupIds,
-                };
-
-                assignedResources.forEach(({ resource, resourceIndex }) => {
-                  const addedMaterialIndex = resourceIndex - shipped.educationMaterials.length;
-
-                  if (addedMaterialIndex >= 0) {
-                    next = {
-                      ...next,
-                      addedEducationMaterials: updateRecordAtIndex(next.addedEducationMaterials, addedMaterialIndex, {
-                        group: DEFAULT_EDUCATION_GROUP_ID,
-                      }),
+                  if (origin.kind === 'added') {
+                    return {
+                      ...current,
+                      addedEducationMaterials: current.addedEducationMaterials.filter(
+                        (_, index) => index !== origin.addedIndex,
+                      ),
                     };
-                    return;
                   }
 
-                  next = {
-                    ...next,
-                    educationMaterialPatches: upsertPatchById(
-                      next.educationMaterialPatches,
-                      resource.id,
-                      resourceIndex,
-                      { group: DEFAULT_EDUCATION_GROUP_ID },
+                  return {
+                    ...current,
+                    educationMaterialPatches: current.educationMaterialPatches.filter(
+                      (patch) => patch.id !== origin.id,
                     ),
+                    removedEducationMaterialIds: [
+                      ...new Set([...(current.removedEducationMaterialIds ?? []), origin.id]),
+                    ],
                   };
-                });
+                })
+              }
+              onGroupChange={(groupIndex, groupId, patch) =>
+                updateDraftState((current) => {
+                  const addedIndex = findGroupIndex(current.addedGroups, groupId);
 
-                return next;
-              })
-            }
-            onGroupMove={(groupIndex, direction) =>
-              updateDraftState((current) => {
-                if (groupIndex === 0 && direction === -1) {
+                  if (addedIndex >= 0) {
+                    return {
+                      ...current,
+                      addedGroups: updateRecordAtIndex(current.addedGroups, addedIndex, patch),
+                    };
+                  }
+
+                  const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                  if (shippedIndex < 0) return current;
+
+                  return {
+                    ...current,
+                    groupPatches: upsertPatchById(current.groupPatches, groupId, shippedIndex, patch),
+                  };
+                })
+              }
+              onGroupAdd={() =>
+                updateDraftState((current) => ({
+                  ...current,
+                  addedGroups: [...current.addedGroups, createLocalGroup(current.addedGroups, shipped.educationGroups)],
+                }))
+              }
+              onGroupRemove={(_groupIndex, groupId) =>
+                updateDraftState((current) => {
+                  const addedIndex = findGroupIndex(current.addedGroups, groupId);
+                  const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                  if (addedIndex < 0 && shippedIndex < 0) return current;
+
                   const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
-                  const groups = currentMergedDrafts.educationGroups;
-                  if (groups.length === 0) return current;
+                  const assignedResources = currentMergedDrafts.educationMaterials.flatMap((resource, resourceIndex) =>
+                    resource.group === groupId ? [{ resource, resourceIndex }] : [],
+                  );
+                  let next: typeof current = {
+                    ...current,
+                    addedGroups: current.addedGroups.filter((_, index) => index !== addedIndex),
+                    groupPatches: current.groupPatches.filter((patch) => patch.id !== groupId),
+                    removedGroupIds:
+                      shippedIndex >= 0
+                        ? [...new Set([...(current.removedGroupIds ?? []), groupId])]
+                        : current.removedGroupIds,
+                  };
 
-                  const firstGroup = groups[0];
-                  const defaultGroupOrder = currentMergedDrafts.defaultGroupOrder;
-                  if (!firstGroup || firstGroup.order <= defaultGroupOrder) return current;
+                  assignedResources.forEach(({ resource, resourceIndex }) => {
+                    const addedMaterialIndex = resourceIndex - shipped.educationMaterials.length;
 
-                  const firstAddedIndex = findGroupIndex(current.addedGroups, firstGroup.id);
-                  if (firstAddedIndex >= 0) {
+                    if (addedMaterialIndex >= 0) {
+                      next = {
+                        ...next,
+                        addedEducationMaterials: updateRecordAtIndex(next.addedEducationMaterials, addedMaterialIndex, {
+                          group: DEFAULT_EDUCATION_GROUP_ID,
+                        }),
+                      };
+                      return;
+                    }
+
+                    next = {
+                      ...next,
+                      educationMaterialPatches: upsertPatchById(
+                        next.educationMaterialPatches,
+                        resource.id,
+                        resourceIndex,
+                        { group: DEFAULT_EDUCATION_GROUP_ID },
+                      ),
+                    };
+                  });
+
+                  return next;
+                })
+              }
+              onGroupMove={(groupIndex, direction) =>
+                updateDraftState((current) => {
+                  if (groupIndex === 0 && direction === -1) {
+                    const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
+                    const groups = currentMergedDrafts.educationGroups;
+                    if (groups.length === 0) return current;
+
+                    const firstGroup = groups[0];
+                    const defaultGroupOrder = currentMergedDrafts.defaultGroupOrder;
+                    if (!firstGroup || firstGroup.order <= defaultGroupOrder) return current;
+
+                    const firstAddedIndex = findGroupIndex(current.addedGroups, firstGroup.id);
+                    if (firstAddedIndex >= 0) {
+                      return {
+                        ...current,
+                        defaultGroupOrder: firstGroup.order,
+                        addedGroups: updateRecordAtIndex(current.addedGroups, firstAddedIndex, {
+                          order: defaultGroupOrder,
+                        }),
+                      };
+                    }
+
+                    const firstShippedIndex = findGroupIndex(shipped.educationGroups, firstGroup.id);
+                    if (firstShippedIndex < 0) return current;
+
                     return {
                       ...current,
                       defaultGroupOrder: firstGroup.order,
-                      addedGroups: updateRecordAtIndex(current.addedGroups, firstAddedIndex, {
+                      groupPatches: upsertPatchById(current.groupPatches, firstGroup.id, firstShippedIndex, {
                         order: defaultGroupOrder,
                       }),
                     };
                   }
 
-                  const firstShippedIndex = findGroupIndex(shipped.educationGroups, firstGroup.id);
-                  if (firstShippedIndex < 0) return current;
+                  if (groupIndex === -1) {
+                    const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
+                    const groups = currentMergedDrafts.educationGroups;
+                    if (groups.length === 0) return current;
 
-                  return {
-                    ...current,
-                    defaultGroupOrder: firstGroup.order,
-                    groupPatches: upsertPatchById(current.groupPatches, firstGroup.id, firstShippedIndex, {
-                      order: defaultGroupOrder,
-                    }),
-                  };
-                }
+                    const defaultGroupOrder = currentMergedDrafts.defaultGroupOrder;
+                    const adjacentGroup = direction === -1 ? groups[groups.length - 1] : groups[0];
+                    if (!adjacentGroup) return current;
+                    if (direction === -1 && defaultGroupOrder <= adjacentGroup.order) return current;
+                    if (direction === 1 && defaultGroupOrder >= adjacentGroup.order) return current;
 
-                if (groupIndex === -1) {
-                  const currentMergedDrafts = mergeDashboardDrafts(shipped, current);
-                  const groups = currentMergedDrafts.educationGroups;
-                  if (groups.length === 0) return current;
+                    const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
+                    if (adjacentAddedIndex >= 0) {
+                      return {
+                        ...current,
+                        defaultGroupOrder: adjacentGroup.order,
+                        addedGroups: updateRecordAtIndex(current.addedGroups, adjacentAddedIndex, {
+                          order: defaultGroupOrder,
+                        }),
+                      };
+                    }
 
-                  const defaultGroupOrder = currentMergedDrafts.defaultGroupOrder;
-                  const adjacentGroup = direction === -1 ? groups[groups.length - 1] : groups[0];
-                  if (!adjacentGroup) return current;
-                  if (direction === -1 && defaultGroupOrder <= adjacentGroup.order) return current;
-                  if (direction === 1 && defaultGroupOrder >= adjacentGroup.order) return current;
+                    const adjacentShippedIndex = findGroupIndex(shipped.educationGroups, adjacentGroup.id);
+                    if (adjacentShippedIndex < 0) return current;
 
-                  const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
-                  if (adjacentAddedIndex >= 0) {
                     return {
                       ...current,
                       defaultGroupOrder: adjacentGroup.order,
-                      addedGroups: updateRecordAtIndex(current.addedGroups, adjacentAddedIndex, {
+                      groupPatches: upsertPatchById(current.groupPatches, adjacentGroup.id, adjacentShippedIndex, {
                         order: defaultGroupOrder,
                       }),
                     };
                   }
 
-                  const adjacentShippedIndex = findGroupIndex(shipped.educationGroups, adjacentGroup.id);
-                  if (adjacentShippedIndex < 0) return current;
+                  const nextIndex = groupIndex + direction;
+                  if (
+                    nextIndex < 0 ||
+                    nextIndex >= mergedDrafts.educationGroups.length ||
+                    mergedDrafts.educationGroups[groupIndex] === undefined ||
+                    mergedDrafts.educationGroups[nextIndex] === undefined
+                  ) {
+                    return current;
+                  }
+
+                  const currentGroup = mergedDrafts.educationGroups[groupIndex];
+                  const adjacentGroup = mergedDrafts.educationGroups[nextIndex];
+                  const currentAddedIndex = findGroupIndex(current.addedGroups, currentGroup.id);
+                  const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
+                  let next = current;
+
+                  function applyShippedPatch(groupId: string, patch: Partial<EducationResourceGroup>) {
+                    const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
+                    if (shippedIndex < 0) return;
+
+                    next = {
+                      ...next,
+                      groupPatches: upsertPatchById(next.groupPatches, groupId, shippedIndex, patch),
+                    };
+                  }
+
+                  function applyLocalGroup(index: number, patch: Partial<EducationResourceGroup>) {
+                    if (index < 0) return;
+
+                    next = {
+                      ...next,
+                      addedGroups: updateRecordAtIndex(next.addedGroups, index, patch),
+                    };
+                  }
+
+                  if (currentAddedIndex >= 0) {
+                    applyLocalGroup(currentAddedIndex, { order: adjacentGroup.order });
+                  } else {
+                    applyShippedPatch(currentGroup.id, { order: adjacentGroup.order });
+                  }
+
+                  if (adjacentAddedIndex >= 0) {
+                    applyLocalGroup(adjacentAddedIndex, { order: currentGroup.order });
+                  } else {
+                    applyShippedPatch(adjacentGroup.id, { order: currentGroup.order });
+                  }
+
+                  return next;
+                })
+              }
+            />
+          )}
+          {activeTab === 'contacts' && (
+            <ContactsDashboard
+              services={mergedDrafts.contacts}
+              locations={mergedDrafts.locations}
+              validation={contactValidation}
+              externalFocus={contactsFocusRequest}
+              onServiceChange={(serviceIndex, serviceId, patch) =>
+                updateDraftState((current) => {
+                  const origin = resolveContactOrigin(
+                    shipped.contacts,
+                    current.addedContacts,
+                    current.removedContactIds ?? [],
+                    serviceIndex,
+                    serviceId,
+                  );
+                  if (!origin || origin.id !== serviceId) return current;
+
+                  if (origin.kind === 'added') {
+                    return {
+                      ...current,
+                      addedContacts: updateRecordAtIndex(current.addedContacts, origin.addedIndex, patch),
+                    };
+                  }
 
                   return {
                     ...current,
-                    defaultGroupOrder: adjacentGroup.order,
-                    groupPatches: upsertPatchById(current.groupPatches, adjacentGroup.id, adjacentShippedIndex, {
-                      order: defaultGroupOrder,
-                    }),
+                    contactPatches: upsertPatchById(
+                      current.contactPatches,
+                      origin.id,
+                      origin.sourceIndex,
+                      patch,
+                      shipped.contacts.filter((contact) => contact.id === origin.id).length === 1,
+                    ),
                   };
-                }
-
-                const nextIndex = groupIndex + direction;
-                if (
-                  nextIndex < 0 ||
-                  nextIndex >= mergedDrafts.educationGroups.length ||
-                  mergedDrafts.educationGroups[groupIndex] === undefined ||
-                  mergedDrafts.educationGroups[nextIndex] === undefined
-                ) {
-                  return current;
-                }
-
-                const currentGroup = mergedDrafts.educationGroups[groupIndex];
-                const adjacentGroup = mergedDrafts.educationGroups[nextIndex];
-                const currentAddedIndex = findGroupIndex(current.addedGroups, currentGroup.id);
-                const adjacentAddedIndex = findGroupIndex(current.addedGroups, adjacentGroup.id);
-                let next = current;
-
-                function applyShippedPatch(groupId: string, patch: Partial<EducationResourceGroup>) {
-                  const shippedIndex = findGroupIndex(shipped.educationGroups, groupId);
-                  if (shippedIndex < 0) return;
-
-                  next = {
-                    ...next,
-                    groupPatches: upsertPatchById(next.groupPatches, groupId, shippedIndex, patch),
-                  };
-                }
-
-                function applyLocalGroup(index: number, patch: Partial<EducationResourceGroup>) {
-                  if (index < 0) return;
-
-                  next = {
-                    ...next,
-                    addedGroups: updateRecordAtIndex(next.addedGroups, index, patch),
-                  };
-                }
-
-                if (currentAddedIndex >= 0) {
-                  applyLocalGroup(currentAddedIndex, { order: adjacentGroup.order });
-                } else {
-                  applyShippedPatch(currentGroup.id, { order: adjacentGroup.order });
-                }
-
-                if (adjacentAddedIndex >= 0) {
-                  applyLocalGroup(adjacentAddedIndex, { order: currentGroup.order });
-                } else {
-                  applyShippedPatch(adjacentGroup.id, { order: currentGroup.order });
-                }
-
-                return next;
-              })
-            }
-          />
-        )}
-        {activeTab === 'contacts' && (
-          <ContactsDashboard
-            services={mergedDrafts.contacts}
-            locations={mergedDrafts.locations}
-            validation={contactValidation}
-            externalFocus={contactsFocusRequest}
-            onServiceChange={(serviceIndex, serviceId, patch) =>
-              updateDraftState((current) => {
-                const origin = resolveContactOrigin(
-                  shipped.contacts,
-                  current.addedContacts,
-                  current.removedContactIds ?? [],
-                  serviceIndex,
-                  serviceId,
+                })
+              }
+              onServiceAdd={() => {
+                const newService = createLocalService(
+                  mergedDrafts.contacts.map((service) => service.id),
+                  mergedDrafts.locations,
                 );
-                if (!origin || origin.id !== serviceId) return current;
-
-                if (origin.kind === 'added') {
-                  return {
-                    ...current,
-                    addedContacts: updateRecordAtIndex(current.addedContacts, origin.addedIndex, patch),
-                  };
-                }
-
-                return {
+                updateDraftState((current) => ({
                   ...current,
-                  contactPatches: upsertPatchById(
-                    current.contactPatches,
-                    origin.id,
-                    origin.sourceIndex,
-                    patch,
-                    shipped.contacts.filter((contact) => contact.id === origin.id).length === 1,
-                  ),
-                };
-              })
-            }
-            onServiceAdd={() => {
-              const newService = createLocalService(
-                mergedDrafts.contacts.map((service) => service.id),
-                mergedDrafts.locations,
-              );
-              updateDraftState((current) => ({
-                ...current,
-                addedContacts: [...current.addedContacts, newService],
-              }));
-              return newService.id;
-            }}
-            onServiceRemove={(serviceIndex, serviceId) =>
-              updateDraftState((current) => {
-                const origin = resolveContactOrigin(
-                  shipped.contacts,
-                  current.addedContacts,
-                  current.removedContactIds ?? [],
-                  serviceIndex,
-                  serviceId,
-                );
-                if (!origin || origin.id !== serviceId) return current;
-
-                if (origin.kind === 'added') {
+                  addedContacts: [...current.addedContacts, newService],
+                }));
+                return newService.id;
+              }}
+              onServiceRemove={(serviceIndex, serviceId) =>
+                store.update((current) => {
+                  if (current.local.contacts[serviceIndex]?.id !== serviceId) return current;
                   return {
                     ...current,
-                    addedContacts: current.addedContacts.filter((_, index) => index !== origin.addedIndex),
+                    local: {
+                      ...current.local,
+                      contacts: current.local.contacts.filter((_, index) => index !== serviceIndex),
+                    },
+                    reconciliation: undefined,
                   };
-                }
+                })
+              }
+              onLocationChange={(locationIndex, locationId, patch) =>
+                updateDraftState((current) => {
+                  const origin = resolveLocationOrigin(
+                    shipped.locations ?? [],
+                    current.addedLocations,
+                    current.removedLocationIds ?? [],
+                    locationIndex,
+                    locationId,
+                  );
+                  if (!origin || origin.id !== locationId) return current;
 
-                return {
-                  ...current,
-                  contactPatches: current.contactPatches.filter((patch) => patch.id !== origin.id),
-                  addedContacts: current.addedContacts.filter((contact) => contact.id !== origin.id),
-                  removedContactIds: [...new Set([...(current.removedContactIds ?? []), origin.id])],
-                };
-              })
-            }
-            onLocationChange={(locationIndex, locationId, patch) =>
-              updateDraftState((current) => {
-                const origin = resolveLocationOrigin(
-                  shipped.locations ?? [],
-                  current.addedLocations,
-                  current.removedLocationIds ?? [],
-                  locationIndex,
-                  locationId,
-                );
-                if (!origin || origin.id !== locationId) return current;
+                  if (origin.kind === 'added') {
+                    return {
+                      ...current,
+                      addedLocations: updateRecordAtIndex(current.addedLocations, origin.addedIndex, patch),
+                    };
+                  }
 
-                if (origin.kind === 'added') {
                   return {
                     ...current,
-                    addedLocations: updateRecordAtIndex(current.addedLocations, origin.addedIndex, patch),
+                    locationPatches: upsertPatchById(
+                      current.locationPatches,
+                      origin.id,
+                      origin.sourceIndex,
+                      patch,
+                      (shipped.locations ?? []).filter((location) => location.id === origin.id).length === 1,
+                    ),
                   };
-                }
-
-                return {
+                })
+              }
+              onLocationAdd={() => {
+                const existingIds = [
+                  ...(shipped.locations ?? []).map((location) => location.id),
+                  ...draftState.addedLocations.map((location) => location.id),
+                  ...(draftState.removedLocationIds ?? []),
+                ];
+                const newLocation = createLocalLocation(existingIds);
+                updateDraftState((current) => ({
                   ...current,
-                  locationPatches: upsertPatchById(
-                    current.locationPatches,
-                    origin.id,
-                    origin.sourceIndex,
-                    patch,
-                    (shipped.locations ?? []).filter((location) => location.id === origin.id).length === 1,
-                  ),
-                };
-              })
-            }
-            onLocationAdd={() => {
-              const existingIds = [
-                ...(shipped.locations ?? []).map((location) => location.id),
-                ...draftState.addedLocations.map((location) => location.id),
-                ...(draftState.removedLocationIds ?? []),
-              ];
-              const newLocation = createLocalLocation(existingIds);
-              updateDraftState((current) => ({
-                ...current,
-                addedLocations: [...current.addedLocations, newLocation],
-              }));
-              return newLocation.id;
-            }}
-            onLocationRemove={(locationIndex, locationId) =>
-              updateDraftState((current) => {
-                const origin = resolveLocationOrigin(
-                  shipped.locations ?? [],
-                  current.addedLocations,
-                  current.removedLocationIds ?? [],
-                  locationIndex,
-                  locationId,
-                );
-                if (!origin || origin.id !== locationId) return current;
-                if (mergedDrafts.contacts.some((contact) => contact.locationId === origin.id)) return current;
+                  addedLocations: [...current.addedLocations, newLocation],
+                }));
+                return newLocation.id;
+              }}
+              onLocationRemove={(locationIndex, locationId) =>
+                updateDraftState((current) => {
+                  const origin = resolveLocationOrigin(
+                    shipped.locations ?? [],
+                    current.addedLocations,
+                    current.removedLocationIds ?? [],
+                    locationIndex,
+                    locationId,
+                  );
+                  if (!origin || origin.id !== locationId) return current;
+                  if (mergedDrafts.contacts.some((contact) => contact.locationId === origin.id)) return current;
 
-                if (origin.kind === 'added') {
+                  if (origin.kind === 'added') {
+                    return {
+                      ...current,
+                      addedLocations: current.addedLocations.filter((_, index) => index !== origin.addedIndex),
+                      removedLocationIds: [...new Set([...(current.removedLocationIds ?? []), origin.id])],
+                    };
+                  }
+
                   return {
                     ...current,
-                    addedLocations: current.addedLocations.filter((_, index) => index !== origin.addedIndex),
+                    locationPatches: current.locationPatches.filter((patch) => patch.id !== origin.id),
                     removedLocationIds: [...new Set([...(current.removedLocationIds ?? []), origin.id])],
                   };
-                }
-
-                return {
-                  ...current,
-                  locationPatches: current.locationPatches.filter((patch) => patch.id !== origin.id),
-                  removedLocationIds: [...new Set([...(current.removedLocationIds ?? []), origin.id])],
-                };
-              })
-            }
-          />
-        )}
-        {activeTab === 'ai' &&
-          (snapshot === null ? (
-            <section className="rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
-              <h2 className="font-headline-sm">Aguarde o conteúdo publicado do Neon</h2>
-              <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
-                O assistente só trabalha sobre uma revisão confirmada do Neon. Verifique a conexão e recarregue o
-                Dashboard antes de solicitar uma alteração.
-              </p>
-            </section>
-          ) : hasPendingDraft ? (
-            <section className="flex flex-col gap-4 rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
-              <div>
-                <h2 className="font-headline-sm">Finalize o rascunho antes de usar a IA</h2>
+                })
+              }
+            />
+          )}
+          {activeTab === 'ai' &&
+            (snapshot === null ? (
+              <section className="rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+                <h2 className="font-headline-sm">Aguarde o conteúdo publicado do Neon</h2>
                 <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
-                  Há alterações locais ainda não publicadas. Para evitar que uma proposta da IA sobrescreva ou misture
-                  mudanças pendentes, publique este rascunho ou baixe uma cópia de segurança e descarte-o antes de
-                  solicitar novas edições.
+                  O assistente só trabalha sobre uma revisão confirmada do Neon. Verifique a conexão e recarregue o
+                  Dashboard antes de solicitar uma alteração.
                 </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => setActiveTab('export')}>Revisar e publicar</Button>
-                <Button variant="secondary" onClick={handleDownloadBackup}>
-                  Baixar cópia do rascunho
-                </Button>
-              </div>
-            </section>
-          ) : (
-            <AiArchiveSection draft={publishedDraft} baseRevision={snapshot.revision} onApply={handleAiApply} />
-          ))}
-        {activeTab === 'analytics' && <AnalyticsDashboard />}
-        {activeTab === 'export' && (
-          <PublishDashboard
-            baseline={shipped}
-            draft={publishedDraft}
-            validation={validation}
-            draftUpdatedAt={draftState.updatedAt}
-            expectedRevision={draftState.baseRevision ?? null}
-            basePayload={draftState.basePayload}
-            onMergeConflict={rebaseDraftAfterMergeConflict}
-            onPublished={clearDraftsAfterPublication}
-            onResetDrafts={resetLocalDrafts}
-            onDownloadBackup={handleDownloadBackup}
-            onRestoreBackup={() => fileInputRef.current?.click()}
-            onOpenValidationArea={(area) => {
-              setActiveTab(area === 'export' ? 'export' : area);
-              scheduleValidationSummaryScroll();
-            }}
-            onNavigate={handleNavigate}
-          />
-        )}
+              </section>
+            ) : hasPendingDraft ? (
+              <section className="flex flex-col gap-4 rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+                <div>
+                  <h2 className="font-headline-sm">Finalize o rascunho antes de usar a IA</h2>
+                  <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
+                    Há alterações locais ainda não publicadas. Para evitar que uma proposta da IA sobrescreva ou misture
+                    mudanças pendentes, publique este rascunho ou baixe uma cópia de segurança e descarte-o antes de
+                    solicitar novas edições.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => setActiveTab('export')}>Revisar e publicar</Button>
+                  <Button variant="secondary" onClick={handleDownloadBackup}>
+                    Baixar cópia do rascunho
+                  </Button>
+                </div>
+              </section>
+            ) : (
+              <AiArchiveSection draft={publishedDraft} baseRevision={snapshot.revision} onApply={handleAiApply} />
+            ))}
+          {activeTab === 'analytics' && <AnalyticsDashboard />}
+          {activeTab === 'export' && (
+            <PublishDashboard
+              baseline={workspace?.base.payload ?? remoteContent}
+              draft={publishedDraft}
+              validation={validation}
+              draftUpdatedAt={draftState.updatedAt}
+              expectedRevision={draftState.baseRevision ?? null}
+              basePayload={draftState.basePayload}
+              workspaceStore={store}
+              onPublished={() => {}}
+              onResetDrafts={resetLocalDrafts}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreBackup={() => fileInputRef.current?.click()}
+              onOpenValidationArea={(area) => {
+                setActiveTab(area === 'export' ? 'export' : area);
+                scheduleValidationSummaryScroll();
+              }}
+              onNavigate={handleNavigate}
+            />
+          )}
+        </div>
       </DashboardShell>
       <input
         ref={fileInputRef}

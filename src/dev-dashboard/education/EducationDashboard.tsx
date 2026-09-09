@@ -1085,7 +1085,7 @@ function GroupManagementSection({
 }
 
 function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: number): EducationResourceBlock {
-  const id = `body-block-${Date.now()}-${existingCount + 1}`;
+  const id = `body-block-${crypto.randomUUID()}-${existingCount + 1}`;
 
   if (kind === 'heading') return { id, kind, text: 'Novo título' };
   if (kind === 'list') return { id, kind, title: 'Nova lista', items: ['Novo item'] };

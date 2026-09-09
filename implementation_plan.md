@@ -1,63 +1,121 @@
-# Plano de Implementação: Suporte ao Antigravity na Conexão de Assistentes de IA
+# Plano de Implementação: Suporte a Embeds de Posts e Reels do Instagram
 
-Adicionar o **Antigravity** (`agy`) como quarto provedor de assistente de IA na ponte local (`scripts/agent-bridge`) e no painel administrativo do BemTeVi (`src/dev-dashboard/ai`).
-
----
-
-## Proposta de Alterações
-
-### 1. Ponte Local de Agentes (`scripts/agent-bridge`)
-
-#### [MODIFY] [`scripts/agent-bridge/providers.mjs`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/scripts/agent-bridge/providers.mjs)
-
-- Adicionar o provedor `antigravity` à lista `providerDefinitions`:
-  - `id: 'antigravity'`, `label: 'Antigravity'`, `command: 'agy'`, `envCommand: 'BEMTEVI_ANTIGRAVITY_COMMAND'`.
-- Melhorar `resolveExecutable` com resolução resiliente (verificando também diretórios de instalação padrão do `agy` no Windows/Linux se não estiver diretamente no PATH).
-- Implementar `createProviderInvocation` para `antigravity`:
-  - Execução via `--input-format stream-json --output-format stream-json --sandbox --disable-slash-commands`.
-  - Envio do prompt via stdin estruturado como NDJSON: `{"event":"user","message":{"content":prompt}}`.
-  - Processamento de streaming de eventos (`event.step_update` emitindo progresso, `event.result` capturando o texto final ou erro).
-- Tratar possíveis erros emitidos no evento `result` com status `ERROR`.
-
-#### [MODIFY] [`scripts/agent-bridge/__tests__/providers.test.mjs`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/scripts/agent-bridge/__tests__/providers.test.mjs)
-
-- Adicionar caso de teste cobrindo a invocação do Antigravity, garantindo os argumentos de sandbox, flags de isolamento e estrutura do evento stdin.
+Adicionar suporte oficial e seguro a embeds de posts (`/p/...`) e Reels (`/reel/...`) públicos do Instagram no mesmo ecossistema onde hoje são exibidos vídeos do YouTube, centralizando o reconhecimento no resolver de mídia existente.
 
 ---
 
-### 2. Frontend do Painel Administrativo (`src/dev-dashboard/ai`)
+## 1. Contexto e Objetivos
 
-#### [MODIFY] [`src/dev-dashboard/ai/agentBridge.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/agentBridge.ts)
+Atualmente, materiais educativos e telas de conteúdo no Bem-te-vi utilizam o resolver `resolveVideoEmbed` (`src/features/education/videoEmbeds.ts`) e componentes dedicados para incorporar vídeos do YouTube via iframe `youtube-nocookie.com`. Links desconhecidos recebem um card com fallback para link externo.
 
-- Atualizar a união de tipos `AgentProviderId` para incluir `'antigravity'`.
+Esta tarefa adiciona capacidade técnica de embutir publicações e Reels do Instagram:
 
-#### [MODIFY] [`src/dev-dashboard/ai/agentSetup.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/agentSetup.ts)
-
-- Adicionar o objeto de setup do `antigravity` na lista `agentSetups`, contendo:
-  - Descrição amigável em português.
-  - Comandos oficiais de instalação para Windows (`irm https://antigravity.google/cli/install.ps1 | iex`) e macOS/Linux (`curl -fsSL https://antigravity.google/cli/install.sh | bash`).
-  - Instruções de login com a conta Google via comando `agy`.
-
-#### [MODIFY] [`src/dev-dashboard/ai/DirectAgentSection.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/DirectAgentSection.tsx)
-
-- Atualizar a descrição da seção para mencionar o Antigravity.
-- Ajustar a grade de seleção de assistentes para `grid gap-3 sm:grid-cols-2 xl:grid-cols-4` para acomodar os 4 assistentes harmoniosamente.
-
-#### [MODIFY] [`src/dev-dashboard/ai/__tests__/DirectAgentSection.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/dev-dashboard/ai/__tests__/DirectAgentSection.test.tsx)
-
-- Incluir o `antigravity` no mock de status da ponte.
-- Adicionar verificação de alternância para o card do Antigravity e exibição dos comandos de instalação.
+1. **Preservar integralmente o comportamento do YouTube**.
+2. **Reconhecer URLs do Instagram**: `/p/...` e `/reel/...`.
+3. **Embed oficial**: Carregar `https://www.instagram.com/embed.js` e renderizar `blockquote.instagram-media`.
+4. **Script único**: O script do Instagram deve ser carregado no máximo uma vez na aplicação e `window.instgrm?.Embeds.process()` deve ser acionado a cada novo embed renderizado.
+5. **Privacidade e segurança**: Sem chamadas a APIs privadas, scraping, download de mídia, backend, tokens Meta ou serviços pagos.
+6. **Fallback robusto**: Exibir botão/link claro "Abrir no Instagram" caso o script falhe, o post seja privado ou tenha sido removido.
+7. **Responsividade**: Limitar largura a `max-w-[540px]`, mantendo adaptação a telas mobile pequenas sem overflow.
+8. **Não alterar fluxos existentes**: Nenhuma URL dos fluxos de orientação deve ser alterada agora.
+9. **Centralização**: Centralizar a detecção no resolver de mídia existente (`resolveVideoEmbed`).
 
 ---
 
-## Plano de Verificação
+## 2. Mudanças Propostas
+
+### A. Domínio de Mídia (`src/domain/media/`)
+
+#### [NEW] [`src/domain/media/instagram.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/domain/media/instagram.ts)
+
+- Criação das funções:
+  - `parseInstagramUrl(value: string): ParsedInstagramMedia | null`
+  - Extrai `type: 'post' | 'reel'`, `id: string`, `permalink: string`.
+  - Suporta domínios `instagram.com`, `www.instagram.com`, `m.instagram.com`.
+  - Reconhece `/p/{id}` e `/reel/{id}` (e `/reels/{id}`).
+  - Higieniza parâmetros de URL e normaliza o permalink canônico com barra final.
+
+#### [NEW] [`src/domain/media/__tests__/instagram.test.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/domain/media/__tests__/instagram.test.ts)
+
+- Testes unitários para validação de parsing do Instagram:
+  - Posts (`/p/DFxyz...`)
+  - Reels (`/reel/C-xyz...`)
+  - Variações com parâmetros de query (`?utm_source=...`), barras finais e subdomínio móvel (`m.instagram.com`).
+  - URLs inválidas, perfis (`/@usuario`), stories e links não-Instagram retornam `null`.
+
+---
+
+### B. Resolver de Mídia (`src/features/education/videoEmbeds.ts`)
+
+#### [MODIFY] [`src/features/education/videoEmbeds.ts`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/features/education/videoEmbeds.ts)
+
+- Centralizar o reconhecimento:
+  ```typescript
+  export type ResolvedVideoEmbed =
+    | { kind: 'youtube'; embedUrl: string }
+    | { kind: 'instagram'; url: string; permalink: string }
+    | { kind: 'link'; url: string };
+  ```
+- Na função `resolveVideoEmbed(url: string)`:
+  1. Mantém `getYouTubeEmbedUrl(url)` -> `{ kind: 'youtube', embedUrl }`.
+  2. Avalia `parseInstagramUrl(url)` -> `{ kind: 'instagram', url: media.permalink, permalink: media.permalink }`.
+  3. Mantém fallback padrão -> `{ kind: 'link', url }`.
+
+---
+
+### C. Componente de Embed (`src/design-system/components/InstagramEmbed.tsx`)
+
+#### [NEW] [`src/design-system/components/InstagramEmbed.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/design-system/components/InstagramEmbed.tsx)
+
+- Mecanismo oficial de script:
+  - `loadInstagramEmbedScript()`: Promise singleton que injeta `<script async src="https://www.instagram.com/embed.js">` no máximo uma vez no documento (e reutiliza se já estiver no DOM).
+- Ciclo de vida React:
+  - No mount do componente, invoca `loadInstagramEmbedScript()`.
+  - Quando carregado com sucesso, chama `window.instgrm?.Embeds.process()`.
+  - Tratamento de erro (`hasError`): se o script falhar ao carregar (rede, adblocker, erro de CDN), exibe estado de fallback com mensagem explicativa e botão/link "Abrir no Instagram".
+- Estrutura HTML:
+  - `<blockquote className="instagram-media" data-instgrm-permalink={permalink} data-instgrm-version="14">...</blockquote>`
+  - Conteúdo interno acessível com link direto para a publicação antes da substituição pelo iframe do Instagram.
+- Estilização e responsividade:
+  - `w-full max-w-[540px] mx-auto min-w-0` para não quebrar em telas mobile menores (ex.: 320px–375px).
+
+#### [NEW] [`src/design-system/components/__tests__/InstagramEmbed.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/design-system/components/__tests__/InstagramEmbed.test.tsx)
+
+- Testes cobrindo:
+  - Inclusão de `blockquote.instagram-media` com `data-instgrm-permalink`.
+  - Carregamento do script no máximo uma vez em múltiplos embeds.
+  - Chamada a `window.instgrm.Embeds.process()` quando o embed é montado.
+  - Renderização do fallback com link "Abrir no Instagram" quando o script falha.
+
+---
+
+### D. Renderização de Materiais Educativos (`ResourceDetailScreen.tsx`)
+
+#### [MODIFY] [`src/features/education/ResourceDetailScreen.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/features/education/ResourceDetailScreen.tsx)
+
+- Tratar o caso `video.kind === 'instagram'` quando `block.kind === 'video'`:
+  - Renderiza o card do material com título/descrição (se houver) e o componente `InstagramEmbed`.
+  - Mantém o bloco YouTube e o fallback `video.kind === 'link'` idênticos ao comportamento atual.
+
+---
+
+### E. Testes Automatizados
+
+#### [MODIFY] [`src/features/education/__tests__/EducationScreens.test.tsx`](file:///c:/Users/Vitor/Desktop/Vinicius/Projetos/bemtevi/src/features/education/__tests__/EducationScreens.test.tsx)
+
+- Adicionar os 4 testes especificados nos requisitos de `resolveVideoEmbed`:
+  1. `URL de YouTube continua virando embed de YouTube`
+  2. `/p/... é reconhecido como Instagram`
+  3. `/reel/... é reconhecido como Instagram`
+  4. `URL desconhecida continua usando o fallback existente`
+- Adicionar teste de integração para renderização de bloco de vídeo com URL do Instagram em `ResourceDetailScreen`.
+
+---
+
+## 3. Plano de Verificação
 
 ### Testes Automatizados
 
-1. `pnpm exec vitest run scripts/agent-bridge src/dev-dashboard/ai`
-2. `pnpm exec tsc --noEmit`
-3. Executar suíte completa de testes para garantir nenhuma regressão: `pnpm exec vitest run`
-
-### Verificação Prática
-
-- Testar a chamada de detecção do executável via `listProviders()` com Node.js na linha de comando para confirmar que o `agy.exe` local é detectado como disponível (`available: true`).
+- Executar a suite completa com `npm test` para garantir que os 789 testes pré-existentes continuem passando junto com os novos testes unitários e de integração.
+- Executar verificação de tipos com `npm run typecheck`.
+- Executar linter com `npm run lint`.

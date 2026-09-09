@@ -281,6 +281,42 @@ describe('OrientationScreen', () => {
     expect(screen.getByRole('img', { name: 'Passo a passo da Respiração Borboleta.' })).toBeInTheDocument();
   });
 
+  it('renders interactive breathing exercise for short pause (b2-pausa-curta)', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero entender como estou me sentindo');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido cansado(a) e preciso descansar.' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Fazer uma pausa curta.' }));
+    advanceInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'Começar a respirar' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Uma pausa curta pode ajudar a interromper, por alguns instantes, o ritmo das demandas.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Técnica de respiração seguindo figuras geométricas')).not.toBeInTheDocument();
+  });
+
+  it('renders interactive breathing exercise for irritation (c4-irritacao)', () => {
+    renderOrientation();
+    startOrientationWithStarter('Quero entender como estou me sentindo');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tenho percebido emoções difíceis de lidar.' }));
+    advanceInitialLoad();
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tenho ficado irritado(a) ou impaciente.' }));
+    advanceInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'Começar a respirar' })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'A irritabilidade pode aparecer quando os limites foram ultrapassados por muito tempo. Faça uma pausa e realize respirações lentas.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Respiração geométrica')).not.toBeInTheDocument();
+  });
+
   it('continues SRQ-20 after Q17 yes and navigates to apoio only after the final result', () => {
     renderOrientation();
 

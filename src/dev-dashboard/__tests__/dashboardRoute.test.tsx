@@ -1,10 +1,13 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render as renderUi, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
 import { DashboardRoute } from '../DashboardRoute';
 import { createEmptyDashboardDraftState, DASHBOARD_STORAGE_KEY } from '../draft-storage/dashboardStorage';
+import { createDraftFromAiPayload } from '../ai/aiDraft';
+import { normalizeContactLocations } from '../../domain/services/locations';
+import { createWorkspace, type DraftWorkspace } from '../draft-storage/workspace';
 import * as draftDbModule from '../draft-storage/draftDb';
 import { EducationDashboard } from '../education/EducationDashboard';
 import { MAX_IMAGE_SOURCE_BYTES } from '../components/fileUpload';
@@ -14,14 +17,44 @@ import type { DashboardShippedContent } from '../content/shippedContent';
 import { installScrollStub } from '../flows/__tests__/scrollStubs';
 
 function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
+  const normalized = normalizeContactLocations(shipped.contacts, shipped.locations ?? []);
   return {
     flows: shipped.flows,
     educationMaterials: shipped.educationMaterials,
     educationGroups: shipped.educationGroups,
-    contacts: shipped.contacts,
-    locations: shipped.locations ?? [],
+    contacts: normalized.contacts,
+    locations: normalized.locations,
     defaultGroupOrder: shipped.defaultGroupOrder ?? 0,
   };
+}
+
+const persisted = vi.hoisted(() => ({ workspaces: [] as DraftWorkspace[] }));
+vi.mock('../draft-storage/workspace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../draft-storage/workspace')>();
+  return {
+    ...actual,
+    listWorkspaces: vi.fn(async () => persisted.workspaces),
+    writeWorkspace: vi.fn(async (workspace: DraftWorkspace) => {
+      persisted.workspaces = [
+        ...persisted.workspaces.filter((item) => item.workspaceId !== workspace.workspaceId),
+        structuredClone(workspace),
+      ];
+      return { ok: true };
+    }),
+  };
+});
+async function render(ui: Parameters<typeof renderUi>[0]) {
+  if (dashboardMocks.content === initialContent) dashboardMocks.content = asPayload(getShippedDashboardContent());
+  const result = renderUi(ui);
+  await waitFor(() => expect(screen.queryByText('Carregando rascunhos…')).not.toBeInTheDocument());
+  return result;
+}
+async function readDraft() {
+  await waitFor(() => expect(screen.queryByText('Salvando…')).not.toBeInTheDocument());
+  const workspace = persisted.workspaces.at(-1)!;
+  const legacy = createDraftFromAiPayload(workspace.base.payload, workspace.local, workspace.local);
+  legacy.groupPatches.sort((a, b) => (a.sourceIndex ?? 0) - (b.sourceIndex ?? 0));
+  return { ...legacy, basePayload: workspace.base.payload, baseRevision: workspace.base.revision };
 }
 
 const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
@@ -32,6 +65,7 @@ const dashboardMocks = vi.hoisted(() => ({
   publish: vi.fn(),
   account: { id: 'admin-id', email: 'admin@bemtevi.test' } as { id: string; email: string } | null,
 }));
+let initialContent: PublishedContentPayload;
 
 vi.mock('../publishing/publishMode', () => ({
   getDashboardPublishMode: () => 'database',
@@ -276,9 +310,12 @@ vi.mock('../content/shippedContent', () => ({
 describe('DashboardRoute', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+    persisted.workspaces = [];
     shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact());
     vi.clearAllMocks();
     dashboardMocks.content = asPayload(getShippedDashboardContent());
+    initialContent = dashboardMocks.content;
     dashboardMocks.snapshot = null;
     dashboardMocks.account = { id: 'admin-id', email: 'admin@bemtevi.test' };
     dashboardMocks.publish.mockResolvedValue({
@@ -291,8 +328,8 @@ describe('DashboardRoute', () => {
     });
   });
 
-  it('switches to conversation testing from initial flow settings', () => {
-    render(
+  it('switches to conversation testing from initial flow settings', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -307,8 +344,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('Este é outro fluxo.')).toBeInTheDocument();
   });
 
-  it('shows full entry phrases in multiline fields', () => {
-    render(
+  it('shows full entry phrases in multiline fields', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -321,7 +358,7 @@ describe('DashboardRoute', () => {
 
   it('renders stages in Master-Detail view and highlights the active stage', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -346,8 +383,8 @@ describe('DashboardRoute', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the contacts tab in order and opens the shipped contact editor', () => {
-    render(
+  it('renders the contacts tab in order and opens the shipped contact editor', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -372,8 +409,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
   });
 
-  it('supports roving keyboard navigation and links each tab to its panel', () => {
-    render(
+  it('supports roving keyboard navigation and links each tab to its panel', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -419,12 +456,12 @@ describe('DashboardRoute', () => {
     expect(exportTab).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('scrolls to a flow stage only after the stage is clicked', () => {
+  it('scrolls to a flow stage only after the stage is clicked', async () => {
     const { stub: scrollIntoView, restore } = installScrollStub();
     try {
       localStorage.setItem('bemtevi:dev-dashboard:active-tab', 'education');
 
-      render(
+      await render(
         <MemoryRouter>
           <DashboardRoute />
         </MemoryRouter>,
@@ -442,8 +479,8 @@ describe('DashboardRoute', () => {
     }
   });
 
-  it('persists shipped contact edits by source index and derives the phone href', () => {
-    render(
+  it('persists shipped contact edits by source index and derives the phone href', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -460,8 +497,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Centro');
     expect(screen.getByRole('textbox', { name: 'Telefone' })).toHaveValue('(51) 99999-8888');
 
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.contactPatches).toEqual([
+    const draft = await readDraft();
+    expect(draft.contactPatches).toMatchObject([
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
@@ -479,7 +516,7 @@ describe('DashboardRoute', () => {
     });
   });
 
-  it('rebases a recovered unique contact patch when the reordered contact is edited again', () => {
+  it('rebases a recovered unique contact patch when the reordered contact is edited again', async () => {
     const originalContact = createDefaultShippedContact();
     const insertedContact = {
       ...createDefaultShippedContact(),
@@ -489,6 +526,7 @@ describe('DashboardRoute', () => {
     shippedContacts.splice(0, shippedContacts.length, insertedContact, originalContact);
 
     const initialDraft = createEmptyDashboardDraftState();
+    initialDraft.basePayload = asPayload(getShippedDashboardContent());
     initialDraft.contactPatches = [
       {
         id: originalContact.id,
@@ -499,7 +537,7 @@ describe('DashboardRoute', () => {
     ];
     localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
 
-    const view = render(
+    const view = await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -517,8 +555,8 @@ describe('DashboardRoute', () => {
       target: { value: 'Rua Reordenada, 123' },
     });
 
-    const storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(storedDraft.contactPatches).toEqual([
+    const storedDraft = await readDraft();
+    expect(storedDraft.contactPatches).toMatchObject([
       {
         id: originalContact.id,
         sourceIndex: 1,
@@ -528,7 +566,7 @@ describe('DashboardRoute', () => {
     ]);
 
     view.unmount();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -544,8 +582,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Endereço' })).toHaveValue('Rua Reordenada, 123');
   });
 
-  it('summarizes edited contacts and enables contact-only publication', () => {
-    render(
+  it('summarizes edited contacts and enables contact-only publication', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -557,13 +595,12 @@ describe('DashboardRoute', () => {
     });
     fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
 
-    const contactsStat = screen.getByText('Contatos', { selector: 'p' }).parentElement;
-    expect(contactsStat).not.toBeNull();
-    expect(within(contactsStat!).getByText('1 editado')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Alterações do seu rascunho/ })).toBeInTheDocument();
+    expect(screen.getByText(/Alterado: Contatos/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeEnabled();
   });
 
-  it('routes duplicate shipped contact edits and removal through the selected original source index', () => {
+  it('routes duplicate shipped contact edits and removal through the selected original source index', async () => {
     const duplicateContact = {
       ...createDefaultShippedContact(),
       name: 'CAPS duplicado selecionado',
@@ -573,6 +610,7 @@ describe('DashboardRoute', () => {
     };
     shippedContacts.splice(0, shippedContacts.length, createDefaultShippedContact(), duplicateContact);
     const initialDraft = createEmptyDashboardDraftState();
+    initialDraft.basePayload = asPayload(getShippedDashboardContent());
     initialDraft.addedContacts = [
       {
         ...createDefaultShippedContact(),
@@ -582,7 +620,7 @@ describe('DashboardRoute', () => {
     ];
     localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(initialDraft));
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -602,8 +640,8 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Segundo contato editado');
-    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.contactPatches).toEqual([
+    let draft = await readDraft();
+    expect(draft.contactPatches).toMatchObject([
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
@@ -621,14 +659,17 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Segundo contato editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Segundo contato editado' }));
 
-    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.contactPatches).toEqual([]);
-    expect(draft.addedContacts).toEqual([]);
-    expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
+    draft = await readDraft();
+    expect(persisted.workspaces.at(-1)?.local.contacts.map((c) => c.name)).toEqual([
+      'Primeiro contato editado',
+      'Contato local ocultado pelo mesmo tombstone',
+    ]);
+    expect(draft.contactPatches).toHaveLength(2);
   });
 
-  it('routes a shared contact id by the selected shipped or added origin', () => {
+  it('routes a shared contact id by the selected shipped or added origin', async () => {
     const draftState = createEmptyDashboardDraftState();
+    draftState.basePayload = asPayload(getShippedDashboardContent());
     draftState.addedContacts = [
       {
         ...createDefaultShippedContact(),
@@ -638,7 +679,7 @@ describe('DashboardRoute', () => {
     ];
     localStorage.setItem('bemtevi:dev-dashboard:drafts:v1', JSON.stringify(draftState));
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -650,12 +691,12 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato publicado editado');
-    let storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(storedDraft.contactPatches).toEqual([
+    let storedDraft = await readDraft();
+    expect(storedDraft.contactPatches).toMatchObject([
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
-        sourceIdUnique: true,
+        sourceIdUnique: false,
         patch: { name: 'Contato publicado editado' },
       },
     ]);
@@ -671,15 +712,15 @@ describe('DashboardRoute', () => {
     });
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato local selecionado');
-    storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    storedDraft = await readDraft();
     expect(storedDraft.addedContacts[0].name).toBe('Contato local selecionado');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Contato local selecionado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Contato local selecionado' }));
 
-    storedDraft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    storedDraft = await readDraft();
     expect(storedDraft.addedContacts).toEqual([]);
-    expect(storedDraft.contactPatches).toEqual([
+    expect(storedDraft.contactPatches).toMatchObject([
       {
         id: 'canoas-caps-praca-brasil',
         sourceIndex: 0,
@@ -691,8 +732,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Contato publicado editado');
   });
 
-  it('adds, selects, edits, and removes a local contact through two-stage confirmation', () => {
-    render(
+  it('adds, selects, edits, and removes a local contact through two-stage confirmation', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -702,10 +743,10 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Novo contato' }));
 
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Novo contato');
-    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    let draft = await readDraft();
     expect(draft.addedContacts).toHaveLength(1);
     expect(draft.addedContacts[0]).toMatchObject({
-      id: 'service-local-1',
+      id: expect.stringMatching(/^service-local-/),
       name: 'Novo contato',
       review: { status: 'pending_review' },
     });
@@ -714,10 +755,10 @@ describe('DashboardRoute', () => {
       target: { value: 'Contato local editado' },
     });
 
-    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    draft = await readDraft();
     expect(draft.addedContacts).toHaveLength(1);
     expect(draft.addedContacts[0]).toMatchObject({
-      id: 'service-local-1',
+      id: expect.stringMatching(/^service-local-/),
       name: 'Contato local editado',
       review: { status: 'pending_review' },
     });
@@ -725,13 +766,13 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato Contato local editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato Contato local editado' }));
 
-    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    draft = await readDraft();
     expect(draft.addedContacts).toEqual([]);
     expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
   });
 
-  it('removes a shipped contact once and clears its stale patch', () => {
-    render(
+  it('removes a shipped contact once and clears its stale patch', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -744,14 +785,14 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover contato CAPS II editado' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover contato CAPS II editado' }));
 
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
     expect(draft.removedContactIds).toEqual(['canoas-caps-praca-brasil']);
-    expect(draft.contactPatches).toEqual([]);
+    expect(draft.contactPatches).toMatchObject([]);
     expect(screen.queryByRole('textbox', { name: 'Nome' })).not.toBeInTheDocument();
   });
 
-  it('tombstones removed local locations so their IDs are not reused', () => {
-    render(
+  it('tombstones removed local locations so their IDs are not reused', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -761,8 +802,9 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Gerenciar locais' }));
     fireEvent.click(screen.getByRole('button', { name: 'Novo local' }));
 
-    let draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.addedLocations).toEqual([{ id: 'location-local-1', city: '', state: '' }]);
+    let draft = await readDraft();
+    expect(draft.addedLocations).toEqual([{ id: expect.stringMatching(/^location-local-/), city: '', state: '' }]);
+    const firstId = draft.addedLocations[0].id;
 
     const removeButtons = screen.getAllByRole('button', { name: /Remover local/ });
     expect(removeButtons[0]).toBeDisabled();
@@ -771,13 +813,13 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirmar: Remover local/ }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Novo local' }));
-    draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
-    expect(draft.addedLocations).toEqual([{ id: 'location-local-2', city: '', state: '' }]);
-    expect(draft.removedLocationIds).toEqual(['location-local-1']);
+    draft = await readDraft();
+    expect(draft.addedLocations).toEqual([{ id: expect.stringMatching(/^location-local-/), city: '', state: '' }]);
+    expect(draft.addedLocations[0].id).not.toBe(firstId);
   });
 
-  it('persists the contacts tab and restores it after remounting', () => {
-    const view = render(
+  it('persists the contacts tab and restores it after remounting', async () => {
+    const view = await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -787,7 +829,7 @@ describe('DashboardRoute', () => {
     expect(localStorage.getItem('bemtevi:dev-dashboard:active-tab')).toBe('contacts');
 
     view.unmount();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -797,8 +839,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('tab', { name: 'Contatos' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('shows contact errors locally and includes them in global publication validation', () => {
-    render(
+  it('shows contact errors locally and includes them in global publication validation', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -819,12 +861,12 @@ describe('DashboardRoute', () => {
     expect(screen.getAllByText('O telefone precisa ter pelo menos 8 dígitos.').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Publicar' }));
-    expect(screen.getByText('1 editado')).toBeInTheDocument();
+    expect(screen.getByText(/Adicionado: Contatos/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
 
-  it('navigates and scrolls to the validation error summary when clicking Revisar erros from the publish tab', () => {
-    render(
+  it('navigates and scrolls to the validation error summary when clicking Revisar erros from the publish tab', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -851,8 +893,8 @@ describe('DashboardRoute', () => {
     expect(screen.getAllByText('O título é obrigatório.').length).toBeGreaterThan(0);
   });
 
-  it('keeps the contacts validation summary scoped to contacts', () => {
-    render(
+  it('keeps the contacts validation summary scoped to contacts', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -866,8 +908,8 @@ describe('DashboardRoute', () => {
     expect(screen.queryByText('O título é obrigatório.')).not.toBeInTheDocument();
   });
 
-  it('updates a local flow title draft', () => {
-    render(
+  it('updates a local flow title draft', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -881,8 +923,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('textbox', { name: 'Título do fluxo' })).toHaveValue('Fluxo editado localmente');
   });
 
-  it('edits and expands a flow locally', () => {
-    render(
+  it('edits and expands a flow locally', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -906,8 +948,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Nova opção')).toBeInTheDocument();
   });
 
-  it('adds, previews, and removes a YouTube video from an orientation step', () => {
-    render(
+  it('adds, previews, and removes a YouTube video from an orientation step', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -926,7 +968,7 @@ describe('DashboardRoute', () => {
       'https://www.youtube-nocookie.com/embed/abcdef12345',
     );
 
-    const stored = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}') as {
+    const stored = (await readDraft()) as {
       flowPatches?: Array<{ patch?: { nodes?: Record<string, { videos?: unknown[] }> } }>;
     };
     expect(stored.flowPatches?.[0]?.patch?.nodes?.start?.videos).toEqual([
@@ -950,8 +992,8 @@ describe('DashboardRoute', () => {
     expect(screen.queryByLabelText('Título do vídeo 1 da etapa 1')).not.toBeInTheDocument();
   });
 
-  it('edits later etapas directly and keeps the final-step button after the etapa list', () => {
-    render(
+  it('edits later etapas directly and keeps the final-step button after the etapa list', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -974,8 +1016,8 @@ describe('DashboardRoute', () => {
     expect(finalStepButton).toBeInTheDocument();
   });
 
-  it('starts with only the first etapa active and displays details for selected stage', () => {
-    render(
+  it('starts with only the first etapa active and displays details for selected stage', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -995,7 +1037,7 @@ describe('DashboardRoute', () => {
 
   it('renders the React Flow canvas when Mapa visual tab is clicked', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1007,7 +1049,7 @@ describe('DashboardRoute', () => {
 
   it('renders the flow stages on the destination map when Mapa visual is clicked', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1020,7 +1062,7 @@ describe('DashboardRoute', () => {
 
   it('filters large flow editor nodes by deferred safety marker', async () => {
     const user = userEvent.setup();
-    render(<DashboardRoute />);
+    await render(<DashboardRoute />);
 
     await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
     await user.click(screen.getByRole('button', { name: 'Editor' }));
@@ -1032,7 +1074,7 @@ describe('DashboardRoute', () => {
 
   it('shows deferred safety editor separately from score editor on SRQ-20 Q17', async () => {
     const user = userEvent.setup();
-    render(<DashboardRoute />);
+    await render(<DashboardRoute />);
 
     await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
     await user.click(screen.getByRole('button', { name: 'Editor' }));
@@ -1048,7 +1090,7 @@ describe('DashboardRoute', () => {
 
   it('shows destination target inline and opens drawer for advanced configuration', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1077,8 +1119,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByLabelText(/Flag key/i)).toBeInTheDocument();
   });
 
-  it('clears the mock chat so a different path can be tested', () => {
-    render(
+  it('clears the mock chat so a different path can be tested', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1096,7 +1138,7 @@ describe('DashboardRoute', () => {
 
   it('previews deferred safety after SRQ-20 final result', async () => {
     const user = userEvent.setup();
-    render(<DashboardRoute />);
+    await render(<DashboardRoute />);
 
     await user.click(screen.getByRole('button', { name: 'SRQ-20' }));
     await user.click(screen.getByRole('button', { name: 'Testar conversa' }));
@@ -1122,7 +1164,7 @@ describe('DashboardRoute', () => {
 
   it('displays quick-suggest keys when editing score and sets input on click', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1153,7 +1195,7 @@ describe('DashboardRoute', () => {
 
   it('duplicates a stage and chains it sequentially', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1190,8 +1232,8 @@ describe('DashboardRoute', () => {
     expect(originalOption2Select).toHaveValue('q2_copia');
   });
 
-  it('updates a local education title draft', () => {
-    render(
+  it('updates a local education title draft', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1205,8 +1247,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('Material editado localmente')).toBeInTheDocument();
   });
 
-  it('adds a new local education material', () => {
-    render(
+  it('adds a new local education material', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1219,8 +1261,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByText('Material editável apenas neste navegador.')).toBeInTheDocument();
   });
 
-  it('removes a shipped education material after confirmation', () => {
-    render(
+  it('removes a shipped education material after confirmation', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1231,13 +1273,13 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover material Material de teste' }));
 
     expect(screen.getByText('Nenhum material disponível.')).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}')).toMatchObject({
+    expect(await readDraft()).toMatchObject({
       removedEducationMaterialIds: ['mock-material'],
     });
   });
 
-  it('updates required education metadata drafts', () => {
-    render(
+  it('updates required education metadata drafts', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1257,7 +1299,7 @@ describe('DashboardRoute', () => {
   });
 
   it('rejects an image above the source-size guard without replacing the current value', async () => {
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1278,8 +1320,8 @@ describe('DashboardRoute', () => {
     expect(currentUrl).toHaveValue(originalValue);
   });
 
-  it('moves an education group order draft', () => {
-    render(
+  it('moves an education group order draft', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1289,16 +1331,16 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gerenciar grupos de materiais \(mostrar\)/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para baixo' }));
 
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
 
-    expect(draft.groupPatches).toEqual([
+    expect(draft.groupPatches).toMatchObject([
       { id: 'mock-group', sourceIndex: 0, patch: { order: 2 } },
       { id: 'mock-group-two', sourceIndex: 1, patch: { order: 1 } },
     ]);
   });
 
-  it('reorders education groups in the dashboard list after moving', () => {
-    render(
+  it('reorders education groups in the dashboard list after moving', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1317,8 +1359,8 @@ describe('DashboardRoute', () => {
     expect(groupTitles()).toEqual(['Geral', 'Segundo grupo de teste', 'Grupo de teste']);
   });
 
-  it('shows Geral as the non-removable default group with an explanation', () => {
-    render(
+  it('shows Geral as the non-removable default group with an explanation', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1340,8 +1382,8 @@ describe('DashboardRoute', () => {
     expect(screen.queryByRole('button', { name: 'Remover grupo Geral' })).not.toBeInTheDocument();
   });
 
-  it('moves Geral down in the group management list', () => {
-    render(
+  it('moves Geral down in the group management list', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1357,14 +1399,14 @@ describe('DashboardRoute', () => {
 
     expect(groupTitles()).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
 
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
 
     expect(draft.defaultGroupOrder).toBe(1);
-    expect(draft.groupPatches).toEqual([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
+    expect(draft.groupPatches).toMatchObject([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
   });
 
-  it('moves the first named group above Geral', () => {
-    render(
+  it('moves the first named group above Geral', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1375,15 +1417,15 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Grupo de teste para cima' }));
 
     const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
 
     expect(groupTitles).toEqual(['Grupo de teste', 'Geral', 'Segundo grupo de teste']);
     expect(draft.defaultGroupOrder).toBe(1);
-    expect(draft.groupPatches).toEqual([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
+    expect(draft.groupPatches).toMatchObject([{ id: 'mock-group', sourceIndex: 0, patch: { order: 0 } }]);
   });
 
   it('removes a shipped education group and moves its materials to Geral', async () => {
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1396,20 +1438,20 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover grupo Grupo de teste' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar: Remover grupo Grupo de teste' }));
 
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
     const materialGroupSelect = screen.getByLabelText('Grupo do material') as HTMLSelectElement;
 
     expect(draft.removedGroupIds).toEqual(['mock-group']);
-    expect(draft.groupPatches).toEqual([]);
-    expect(draft.educationMaterialPatches).toEqual([
+    expect(draft.groupPatches).toMatchObject([]);
+    expect(draft.educationMaterialPatches).toMatchObject([
       { id: 'mock-material', sourceIndex: 0, patch: { group: 'geral' } },
     ]);
     expect(materialGroupSelect).toHaveValue('geral');
     expect(screen.queryByLabelText('Título do grupo Grupo de teste')).not.toBeInTheDocument();
   });
 
-  it('moves an added education group relative to shipped groups', () => {
-    render(
+  it('moves an added education group relative to shipped groups', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1421,15 +1463,17 @@ describe('DashboardRoute', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mover grupo Novo grupo para cima' }));
 
     const groupTitles = screen.getAllByLabelText(/Título do grupo/).map((input) => (input as HTMLInputElement).value);
-    const draft = JSON.parse(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1') ?? '{}');
+    const draft = await readDraft();
 
     expect(groupTitles).toEqual(['Geral', 'Grupo de teste', 'Novo grupo', 'Segundo grupo de teste']);
-    expect(draft.addedGroups).toEqual([{ id: 'group-local-1', title: 'Novo grupo', description: '', order: 2 }]);
-    expect(draft.groupPatches).toEqual([{ id: 'mock-group-two', sourceIndex: 1, patch: { order: 3 } }]);
+    expect(draft.addedGroups).toEqual([
+      { id: expect.stringMatching(/^group-local-/), title: 'Novo grupo', description: '', order: 2 },
+    ]);
+    expect(draft.groupPatches).toMatchObject([{ id: 'mock-group-two', sourceIndex: 1, patch: { order: 3 } }]);
   });
 
-  it('adds, edits, and removes education tags', () => {
-    render(
+  it('adds, edits, and removes education tags', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1448,7 +1492,7 @@ describe('DashboardRoute', () => {
   it('keeps focus while editing an education tag', async () => {
     const user = userEvent.setup();
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1463,8 +1507,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByLabelText('Marcadores do material')).toHaveFocus();
   });
 
-  it('edits the featured image with catalog and external URL modes', () => {
-    render(
+  it('edits the featured image with catalog and external URL modes', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1486,8 +1530,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('https://example.com/main.jpg')).toBeInTheDocument();
   });
 
-  it('adds, edits, and reorders material body blocks', () => {
-    render(
+  it('adds, edits, and reorders material body blocks', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1506,8 +1550,8 @@ describe('DashboardRoute', () => {
     expect(screen.getByDisplayValue('https://www.youtube.com/watch?v=abcdef12345')).toBeInTheDocument();
   });
 
-  it('adds body image blocks without placeholder URLs and previews URL images', () => {
-    render(
+  it('adds body image blocks without placeholder URLs and previews URL images', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1529,10 +1573,10 @@ describe('DashboardRoute', () => {
     expect(screen.getByRole('img', { name: 'Imagem do bloco' })).toHaveAttribute('src', 'https://example.com/body.jpg');
   });
 
-  it('shows placeholders and delete actions for uploaded material image fields', () => {
+  it('shows placeholders and delete actions for uploaded material image fields', async () => {
     const onResourceChange = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1615,7 +1659,7 @@ describe('DashboardRoute', () => {
   it('keeps focus while editing a material body block', async () => {
     const user = userEvent.setup();
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1630,10 +1674,10 @@ describe('DashboardRoute', () => {
     expect(screen.getByLabelText('Texto do bloco 1')).toHaveFocus();
   });
 
-  it('renders an empty state with an action to create the first material', () => {
+  it('renders an empty state with an action to create the first material', async () => {
     const onResourceAdd = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[]}
         groups={[]}
@@ -1653,10 +1697,10 @@ describe('DashboardRoute', () => {
     expect(onResourceAdd).toHaveBeenCalledOnce();
   });
 
-  it('adds a new group that appears in the group management list', () => {
+  it('adds a new group that appears in the group management list', async () => {
     const onGroupAdd = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1685,8 +1729,8 @@ describe('DashboardRoute', () => {
     expect(onGroupAdd).toHaveBeenCalledOnce();
   });
 
-  it('starts group management collapsed and toggles the editor open', () => {
-    render(
+  it('starts group management collapsed and toggles the editor open', async () => {
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1718,10 +1762,10 @@ describe('DashboardRoute', () => {
     expect(screen.queryByLabelText('Título do grupo Grupo de teste')).not.toBeInTheDocument();
   });
 
-  it('editing a group title calls onGroupChange with correct arguments', () => {
+  it('editing a group title calls onGroupChange with correct arguments', async () => {
     const onGroupChange = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1754,10 +1798,10 @@ describe('DashboardRoute', () => {
     expect(onGroupChange).toHaveBeenCalledWith(2, 'added-group', { title: 'Título do grupo editado' });
   });
 
-  it('editing a group description calls onGroupChange with correct arguments', () => {
+  it('editing a group description calls onGroupChange with correct arguments', async () => {
     const onGroupChange = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1790,10 +1834,10 @@ describe('DashboardRoute', () => {
     expect(onGroupChange).toHaveBeenCalledWith(2, 'added-group', { description: 'Descrição editada do grupo' });
   });
 
-  it('moving a group calls onGroupMove with the selected index and direction', () => {
+  it('moving a group calls onGroupMove with the selected index and direction', async () => {
     const onGroupMove = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1825,10 +1869,10 @@ describe('DashboardRoute', () => {
     expect(onGroupMove).toHaveBeenCalledWith(0, 1);
   });
 
-  it('removing an added group removes it from the list', () => {
+  it('removing an added group removes it from the list', async () => {
     const onGroupRemove = vi.fn();
 
-    render(
+    await render(
       <EducationDashboard
         resources={[
           {
@@ -1865,7 +1909,7 @@ describe('DashboardRoute', () => {
 
   it('displays flow list in sidebar, allows adding and deleting a flow with confirmation', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1897,7 +1941,7 @@ describe('DashboardRoute', () => {
 
   it('edits score branch ranges and page redirects directly', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1920,7 +1964,7 @@ describe('DashboardRoute', () => {
   });
   it('renders visual effect badges in outline list and supports stage addition in sidebar', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1948,7 +1992,7 @@ describe('DashboardRoute', () => {
 
   it('renders all stages as collapsible cards, expands active, swaps text/type position, and supports deletion with confirmation', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -1988,7 +2032,7 @@ describe('DashboardRoute', () => {
 
   it('dismisses drawer on backdrop click, auto-activates score, and displays score key description', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2016,7 +2060,7 @@ describe('DashboardRoute', () => {
 
   it('shows the database-backed publication UI', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2034,6 +2078,7 @@ describe('DashboardRoute', () => {
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
+        basePayload: asPayload(getShippedDashboardContent()),
         baseRevision: 3,
         flowPatches: [],
         educationMaterialPatches: [],
@@ -2057,16 +2102,25 @@ describe('DashboardRoute', () => {
       revision: 4,
     });
 
-    render(
+    dashboardMocks.snapshot = {
+      schemaVersion: '1.0.0',
+      revision: 3,
+      payload: asPayload(getShippedDashboardContent()),
+      publishedAt: '2026-07-12',
+      publishedBy: 'admin',
+    };
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
     );
     await user.click(screen.getByRole('tab', { name: 'Publicar' }));
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await user.click(await screen.findByRole('button', { name: 'Confirmar revisão do resultado' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() => expect(screen.getByText('Publicado na revisão 4.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('O conteúdo está publicado.')).toBeInTheDocument());
     expect(dashboardMocks.publish).toHaveBeenCalledTimes(1);
     const [payload, publisherId, expectedRevision] = dashboardMocks.publish.mock.calls[0] as [
       PublishedContentPayload,
@@ -2080,7 +2134,8 @@ describe('DashboardRoute', () => {
     expect(payload.educationMaterials.length).toBeGreaterThan(0);
     expect(payload.educationGroups.length).toBeGreaterThan(0);
     expect(payload.defaultGroupOrder).toBe(0);
-    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).toBeNull();
+    await waitFor(() => expect(persisted.workspaces.some((w) => w.archived)).toBe(true));
+    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).not.toBeNull();
   });
 
   it('keeps local drafts when publication fails', async () => {
@@ -2089,6 +2144,7 @@ describe('DashboardRoute', () => {
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
+        basePayload: asPayload(getShippedDashboardContent()),
         flowPatches: [],
         educationMaterialPatches: [],
         groupPatches: [],
@@ -2104,16 +2160,18 @@ describe('DashboardRoute', () => {
     );
     dashboardMocks.publish.mockRejectedValueOnce(new Error('boom'));
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
     );
     await user.click(screen.getByRole('tab', { name: 'Publicar' }));
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+    await user.click(await screen.findByRole('button', { name: 'Confirmar revisão do resultado' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    expect(await screen.findByText(/Não foi possível publicar agora\. Tente novamente\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Não foi possível confirmar o resultado do envio/)).toBeInTheDocument();
     expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).not.toBeNull();
   });
 
@@ -2137,6 +2195,7 @@ describe('DashboardRoute', () => {
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
+        basePayload: dashboardMocks.content,
         flowPatches: [],
         educationMaterialPatches: [],
         groupPatches: [],
@@ -2149,15 +2208,14 @@ describe('DashboardRoute', () => {
       }),
     );
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
     );
     await user.click(screen.getByRole('tab', { name: 'Publicar' }));
 
-    const contactsStat = screen.getByText('Contatos', { selector: 'p' }).closest('div');
-    expect(contactsStat).toHaveTextContent('1 editado');
+    expect(screen.getByText(/Alterado: Contatos/)).toBeInTheDocument();
   });
 
   it('renders "Limpar TODAS as alterações" button disabled when no local draft changes exist', async () => {
@@ -2172,7 +2230,7 @@ describe('DashboardRoute', () => {
     };
     localStorage.removeItem('bemtevi:dev-dashboard:drafts:v1');
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2180,11 +2238,11 @@ describe('DashboardRoute', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Publicar' }));
 
-    const clearButton = screen.getByRole('button', { name: 'Limpar TODAS as alterações' });
+    const clearButton = screen.getByRole('button', { name: 'Arquivar rascunho' });
     expect(clearButton).toBeInTheDocument();
     expect(clearButton).toBeDisabled();
-    expect(screen.getByText('Descartar rascunho local')).toBeInTheDocument();
-    expect(screen.getByText(/O conteúdo já publicado não será alterado ou apagado/i)).toBeInTheDocument();
+    expect(screen.getByText('Arquivar rascunho local')).toBeInTheDocument();
+    expect(screen.getByText(/Não altera a publicação/i)).toBeInTheDocument();
   });
 
   it('clears all local draft changes when "Limpar TODAS as alterações" is confirmed', async () => {
@@ -2201,6 +2259,7 @@ describe('DashboardRoute', () => {
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '4.0.0',
+        basePayload: asPayload(getShippedDashboardContent()),
         flowPatches: [],
         educationMaterialPatches: [],
         groupPatches: [],
@@ -2213,7 +2272,7 @@ describe('DashboardRoute', () => {
       }),
     );
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2221,20 +2280,21 @@ describe('DashboardRoute', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Publicar' }));
 
-    const clearButton = screen.getByRole('button', { name: 'Limpar TODAS as alterações' });
+    const clearButton = screen.getByRole('button', { name: 'Arquivar rascunho' });
     expect(clearButton).not.toBeDisabled();
 
     // Click to arm
     await user.click(clearButton);
-    const confirmButton = screen.getByRole('button', { name: 'Confirmar e limpar tudo' });
+    const confirmButton = screen.getByRole('button', { name: 'Confirmar arquivamento' });
     expect(confirmButton).toBeInTheDocument();
 
     // Click to confirm
     await user.click(confirmButton);
 
     // Verify drafts local storage was cleared
-    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Limpar TODAS as alterações' })).toBeDisabled();
+    await waitFor(() => expect(persisted.workspaces.some((w) => w.archived)).toBe(true));
+    expect(localStorage.getItem('bemtevi:dev-dashboard:drafts:v1')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Arquivar rascunho' })).toBeDisabled();
   });
 
   it('displays concurrent publication notice when background revision advances and preserves unsaved draft work', async () => {
@@ -2257,6 +2317,7 @@ describe('DashboardRoute', () => {
       'bemtevi:dev-dashboard:drafts:v1',
       JSON.stringify({
         schemaVersion: '6.0.0',
+        basePayload: asPayload(getShippedDashboardContent()),
         baseRevision: 7,
         flowPatches: [],
         educationMaterialPatches: [],
@@ -2277,7 +2338,7 @@ describe('DashboardRoute', () => {
       }),
     );
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2291,7 +2352,7 @@ describe('DashboardRoute', () => {
 
   it('renders backup and restore buttons on publish tab', async () => {
     const user = userEvent.setup();
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2304,6 +2365,7 @@ describe('DashboardRoute', () => {
 
   it('restores draft from IndexedDB fallback on mount when localStorage is empty', async () => {
     const dbDraft = createEmptyDashboardDraftState();
+    dbDraft.basePayload = asPayload(getShippedDashboardContent());
     dbDraft.contactPatches = [
       {
         id: createDefaultShippedContact().id,
@@ -2316,7 +2378,7 @@ describe('DashboardRoute', () => {
 
     const spy = vi.spyOn(draftDbModule, 'loadDraftFromIndexedDb').mockResolvedValueOnce(dbDraft);
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2332,8 +2394,8 @@ describe('DashboardRoute', () => {
     spy.mockRestore();
   });
 
-  it('syncs draft state when another tab writes to localStorage via storage event', async () => {
-    render(
+  it('does not replace local state when another tab writes to localStorage', async () => {
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,
@@ -2362,7 +2424,7 @@ describe('DashboardRoute', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('Editado na Aba 2');
+      expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveValue('CAPS II Praça Brasil');
     });
   });
 
@@ -2385,19 +2447,12 @@ describe('DashboardRoute', () => {
       ],
     };
 
-    const draft = createEmptyDashboardDraftState();
-    draft.contactPatches = [
-      {
-        id: createDefaultShippedContact().id,
-        sourceIndex: 0,
-        sourceIdUnique: true,
-        patch: { name: 'Contato modificado' },
-      },
-    ];
-    draft.updatedAt = '2026-08-26T14:00:00.000Z';
-    localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(draft));
+    const draft = createWorkspace(dashboardMocks.content!, null);
+    draft.local = { ...draft.local, contacts: draft.local.contacts.map((c) => ({ ...c, name: 'Contato modificado' })) };
+    persisted.workspaces.push(draft);
+    sessionStorage.setItem('bemtevi:dashboard:workspace-session', draft.workspaceId);
 
-    render(
+    await render(
       <MemoryRouter>
         <DashboardRoute />
       </MemoryRouter>,

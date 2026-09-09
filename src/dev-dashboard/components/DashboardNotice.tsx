@@ -18,7 +18,8 @@ export function DashboardNotice() {
       <div className="flex-1">
         <h2 className="font-headline-sm text-on-surface">Rascunho local</h2>
         <p className="mt-1 font-body-md text-on-surface-variant">
-          Este conteúdo está salvo apenas neste navegador. Ele ainda não foi publicado.
+          As edições são locais até a publicação. Confira o estado do salvamento e baixe uma cópia antes de sair se
+          houver falha.
         </p>
       </div>
       <button

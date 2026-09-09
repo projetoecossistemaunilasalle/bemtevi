@@ -14,7 +14,7 @@ const ambientAudioUrl = `${import.meta.env.BASE_URL}audio/sunset-plains.mp3`;
 
 type PhaseIndex = 0 | 1 | 2;
 
-export function BreathingExercise() {
+export function BreathingExercise({ className }: { className?: string } = {}) {
   const [active, setActive] = useState(false);
   const [phase, setPhase] = useState<PhaseIndex>(0);
   const [countdown, setCountdown] = useState<number>(PHASES[0].duration);
@@ -104,7 +104,9 @@ export function BreathingExercise() {
   const phaseLabel = PHASES[phase].label;
 
   return (
-    <section className="bg-[#EEF8F3] rounded-xl p-6 border border-primary/20 shadow-sm flex flex-col items-center gap-6">
+    <section
+      className={`bg-[#EEF8F3] rounded-xl p-6 border border-primary/20 shadow-sm flex flex-col items-center gap-6 ${className ?? ''}`}
+    >
       <audio
         ref={audioRef}
         src={ambientAudioUrl}

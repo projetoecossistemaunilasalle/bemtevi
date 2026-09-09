@@ -19,9 +19,8 @@ export function createLocalService(
   locations: ServiceLocation[] = [],
 ): ServiceDirectoryEntry {
   const ids = new Set(existingIds);
-  let suffix = 1;
-
-  while (ids.has(`service-local-${suffix}`)) suffix += 1;
+  let suffix = crypto.randomUUID();
+  while (ids.has(`service-local-${suffix}`)) suffix = crypto.randomUUID();
 
   const defaultLocation = locations[0];
 
@@ -47,9 +46,8 @@ export function createLocalService(
 
 export function createLocalLocation(existingIds: Iterable<string>): ServiceLocation {
   const ids = new Set(existingIds);
-  let suffix = 1;
-
-  while (ids.has(`location-local-${suffix}`)) suffix += 1;
+  let suffix = crypto.randomUUID();
+  while (ids.has(`location-local-${suffix}`)) suffix = crypto.randomUUID();
 
   return { id: `location-local-${suffix}`, city: '', state: '' };
 }

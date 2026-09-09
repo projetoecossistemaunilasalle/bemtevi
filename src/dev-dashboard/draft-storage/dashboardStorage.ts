@@ -184,25 +184,9 @@ function isDashboardPayload(value: unknown): value is PublishedContentPayload {
 }
 
 export function saveDashboardDrafts(state: DashboardDraftState, storage: Storage = localStorage) {
-  // Always trigger async persistence to IndexedDB for safety against localStorage quotas
-  void saveDraftToIndexedDb(state);
-
-  try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {
-    // If quota exceeded or failed, try saving a lightweight version without basePayload in localStorage
-    if (state.basePayload) {
-      try {
-        const lightweight = { ...state };
-        delete lightweight.basePayload;
-        storage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
-        return;
-      } catch {
-        // Fall through to throw so the UI surfaces the storage alert, but IndexedDB still holds the full draft
-      }
-    }
-    throw error;
-  }
+  // Legacy backup is best effort, never evidence that a checkpoint was committed.
+  void saveDraftToIndexedDb(state).catch(() => {});
+  storage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 export async function restoreDraftFromIndexedDbFallback(
@@ -217,6 +201,7 @@ export async function restoreDraftFromIndexedDbFallback(
   if (localHasChanges && localDraft.updatedAt && dbDraft.updatedAt) {
     const localTime = new Date(localDraft.updatedAt).getTime();
     const dbTime = new Date(dbDraft.updatedAt).getTime();
+    if (localTime === dbTime && !localDraft.basePayload && dbDraft.basePayload) return dbDraft;
     if (localTime >= dbTime) {
       return null;
     }
@@ -236,7 +221,7 @@ export async function restoreDraftFromIndexedDbFallback(
 export function resetDashboardDrafts(storage: Storage = localStorage) {
   const empty = createEmptyDashboardDraftState();
   storage.removeItem(STORAGE_KEY);
-  void clearDraftFromIndexedDb();
+  void clearDraftFromIndexedDb().catch(() => {});
   return empty;
 }
 
@@ -254,6 +239,13 @@ export function importDraftFromJson(rawJson: string): DashboardDraftState {
     throw new Error('Formato de rascunho inválido.');
   }
   const record = parsed as Record<string, unknown>;
+  if (
+    !['1.0.0', '2.0.0', '3.0.0', '4.0.0', '5.0.0', DASHBOARD_DRAFT_SCHEMA_VERSION].includes(
+      String(record.schemaVersion),
+    )
+  ) {
+    throw new Error('Versão de rascunho não reconhecida. O arquivo original não foi alterado.');
+  }
   if (
     !Array.isArray(record.flowPatches) &&
     !Array.isArray(record.educationMaterialPatches) &&
@@ -275,10 +267,36 @@ export function importDraftFromJson(rawJson: string): DashboardDraftState {
     key: () => null,
     length: 1,
   };
-  return loadDashboardDrafts(mockStorage);
+  const loaded = loadDashboardDrafts(mockStorage);
+  for (const key of [
+    'flowPatches',
+    'educationMaterialPatches',
+    'groupPatches',
+    'contactPatches',
+    'locationPatches',
+    'addedFlows',
+    'addedEducationMaterials',
+    'addedGroups',
+    'addedContacts',
+    'addedLocations',
+    'removedGroupIds',
+    'removedFlowIds',
+    'removedEducationMaterialIds',
+    'removedContactIds',
+    'removedLocationIds',
+  ]) {
+    if (record[key] !== undefined && !Array.isArray(record[key]))
+      throw new Error('O arquivo contém uma coleção inválida. O original foi preservado.');
+  }
+  // Import is recovery, not cleanup: invalid effects must remain available for correction.
+  if (Array.isArray(record.flowPatches)) loaded.flowPatches = record.flowPatches as DashboardDraftState['flowPatches'];
+  if (Array.isArray(record.addedFlows)) loaded.addedFlows = record.addedFlows as DashboardDraftState['addedFlows'];
+  return loaded;
 }
 
 export function mergeDashboardDrafts(shipped: DashboardShippedContent, drafts: DashboardDraftState) {
+  // A remote refresh must never change the ancestry or the local editing result.
+  shipped = drafts.basePayload ?? shipped;
   const removedGroupIds = new Set(drafts.removedGroupIds ?? []);
   const educationGroups = mergeRecords(shipped.educationGroups, drafts.groupPatches, drafts.addedGroups).filter(
     (group) => !removedGroupIds.has(group.id),

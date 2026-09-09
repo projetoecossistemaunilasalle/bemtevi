@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Send, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
+import { BreathingExercise } from '../../design-system/components/BreathingExercise';
 import { YouTubeVideoCard } from '../../design-system/components/YouTubeVideoCard';
 import { advanceFlow } from '../../domain/flow-engine/advanceFlow';
 import { createInitialFlowStateFromRegistry, createMessage, getActiveFlow } from '../../domain/flow-engine/loadFlows';
@@ -377,7 +378,8 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const label = isUser ? 'Você' : 'BemTeVi';
   const videos = isUser ? [] : (message.videos ?? []);
   const visuals = isUser ? [] : (message.visuals ?? []);
-  const hasMedia = videos.length > 0 || visuals.length > 0;
+  const exercise = isUser ? undefined : message.exercise;
+  const hasMedia = videos.length > 0 || visuals.length > 0 || exercise !== undefined;
 
   return (
     <article className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -423,6 +425,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
               {videos.map((video) => (
                 <YouTubeVideoCard key={video.id} title={video.title} url={video.url} />
               ))}
+            </div>
+          )}
+          {exercise === 'breathing' && (
+            <div className="mt-3 w-full">
+              <BreathingExercise />
             </div>
           )}
         </div>
