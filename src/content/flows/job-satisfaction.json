@@ -1427,20 +1427,17 @@
     "low-satisfaction-result": {
       "id": "low-satisfaction-result",
       "kind": "result",
-      "text": "Com base nas suas respostas, muitos aspectos do seu trabalho estão gerando insatisfação. Isso é um sinal importante — pode valer a pena conversar com alguém de confiança ou buscar apoio profissional para refletir sobre os próximos passos. Reconhecer o que pesa já é um começo.",
-      "recommendations": ["teacher-emotional-regulation-classroom"]
+      "text": "Com base nas suas respostas, muitos aspectos do seu trabalho estão gerando insatisfação. Isso é um sinal importante — pode valer a pena conversar com alguém de confiança ou buscar apoio profissional para refletir sobre os próximos passos. Reconhecer o que pesa já é um começo."
     },
     "moderate-satisfaction-result": {
       "id": "moderate-satisfaction-result",
       "kind": "result",
-      "text": "Com base nas suas respostas, você tem uma relação mista com o trabalho — alguns pontos trazem satisfação, outros geram incômodo. Olhar para esses contrastes com curiosidade, em vez de cobrança, pode ajudar a entender o que vale a pena fortalecer e onde pedir apoio.",
-      "recommendations": ["teacher-emotional-regulation-classroom"]
+      "text": "Com base nas suas respostas, você tem uma relação mista com o trabalho — alguns pontos trazem satisfação, outros geram incômodo. Olhar para esses contrastes com curiosidade, em vez de cobrança, pode ajudar a entender o que vale a pena fortalecer e onde pedir apoio."
     },
     "high-satisfaction-result": {
       "id": "high-satisfaction-result",
       "kind": "result",
-      "text": "Com base nas suas respostas, no geral você está satisfeito(a) com o seu trabalho. Continue valorizando o que faz bem na sua rotina e cultivando os aspectos positivos. Mesmo assim, vale ficar atento(a) aos pontos que ainda incomodam — pequenas mudanças também contam.",
-      "recommendations": ["teacher-emotional-regulation-classroom"]
+      "text": "Com base nas suas respostas, no geral você está satisfeito(a) com o seu trabalho. Continue valorizando o que faz bem na sua rotina e cultivando os aspectos positivos. Mesmo assim, vale ficar atento(a) aos pontos que ainda incomodam — pequenas mudanças também contam."
     }
   }
 }

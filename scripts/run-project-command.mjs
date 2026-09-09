@@ -63,6 +63,18 @@ function runStep(step) {
     case 'build':
       runBin('vite', ['build']);
       break;
+    case 'content-agent:mcp':
+      runBin('tsx', ['scripts/content-agent/server.ts']);
+      break;
+    case 'content-agent:sync':
+      runBin('tsx', ['scripts/content-agent/syncServer.ts']);
+      break;
+    case 'content-agent:login':
+      runBin('tsx', ['scripts/content-agent/authCli.ts', 'login']);
+      break;
+    case 'content-agent:logout':
+      runBin('tsx', ['scripts/content-agent/authCli.ts', 'logout']);
+      break;
     default:
       fail(`Unknown check step: ${step}`);
   }
@@ -104,6 +116,18 @@ switch (command) {
     break;
   case 'content:pull':
     runBin('tsx', ['scripts/content-pull.ts']);
+    break;
+  case 'content-agent:mcp':
+    runBin('tsx', ['scripts/content-agent/server.ts']);
+    break;
+  case 'content-agent:sync':
+    runBin('tsx', ['scripts/content-agent/syncServer.ts']);
+    break;
+  case 'content-agent:login':
+    runBin('tsx', ['scripts/content-agent/authCli.ts', 'login']);
+    break;
+  case 'content-agent:logout':
+    runBin('tsx', ['scripts/content-agent/authCli.ts', 'logout']);
     break;
   case 'check':
     ['typecheck', 'lint', 'format:check', 'validate:flows', 'test', 'build'].forEach(runStep);

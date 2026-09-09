@@ -1,5 +1,13 @@
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import type { ConflictDecisions } from '../publishing/semanticDiff';
+import type { ContentDraft } from '../draft-sync/contentDraft';
+
+export interface McpDraftLink {
+  draftId: string;
+  /** Last generation confirmed by the local DraftStore. */
+  generation: number;
+  candidateDigest: string;
+}
 
 export interface ReconciliationSession {
   base: PublishedContentPayload;
@@ -27,6 +35,8 @@ export interface DraftWorkspace {
   reconciliation?: ReconciliationSession;
   publicationAttempt?: PublicationAttempt;
   legacyOriginal?: string;
+  /** Present when this workspace is backed by a DraftStore created by MCP. */
+  mcpDraft?: McpDraftLink;
 }
 export type WorkspaceWriteResult = { ok: true } | { ok: false; code: 'storage_unavailable' | 'generation_conflict' };
 const DATABASE = 'bemtevi_dashboard_workspaces';
@@ -39,6 +49,22 @@ export function createWorkspace(payload: PublishedContentPayload, revision: numb
     base: { revision, payload },
     local: payload,
     updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Opens an MCP draft without changing its remote identity or generation. */
+export function createWorkspaceFromContentDraft(draft: ContentDraft): DraftWorkspace {
+  const workspace = createWorkspace(draft.base.payload, draft.base.revision);
+  return {
+    ...workspace,
+    generation: draft.generation,
+    local: draft.candidate,
+    updatedAt: draft.updatedAt,
+    mcpDraft: {
+      draftId: draft.draftId,
+      generation: draft.generation,
+      candidateDigest: draft.candidateDigest,
+    },
   };
 }
 
@@ -214,6 +240,16 @@ export function importWorkspace(raw: string): DraftWorkspace {
       !Number.isSafeInteger(parsed.publicationAttempt.generation))
   )
     throw new Error('Tentativa de publicação inválida.');
+  if (
+    parsed.mcpDraft &&
+    (typeof parsed.mcpDraft.draftId !== 'string' ||
+      !parsed.mcpDraft.draftId.trim() ||
+      !Number.isSafeInteger(parsed.mcpDraft.generation) ||
+      parsed.mcpDraft.generation < 1 ||
+      typeof parsed.mcpDraft.candidateDigest !== 'string' ||
+      !parsed.mcpDraft.candidateDigest.trim())
+  )
+    throw new Error('Vínculo com o rascunho do assistente inválido.');
   return {
     ...parsed,
     workspaceId: crypto.randomUUID(),

@@ -10,7 +10,7 @@ export const homeCopy = {
   educationalDisclaimer:
     'As informações têm caráter educativo e preventivo e não substituem acompanhamento profissional.',
   privacyReassurance:
-    'Este é um espaço seguro. O BemTeVi não pede login, CPF, e-mail, nome ou escola. Suas conversas e respostas não ficam guardadas entre sessões. O navegador lembra apenas que você já viu a apresentação.',
+    'Este é um espaço seguro. O BemTeVi não pede login, CPF, e-mail, nome ou escola. Suas conversas e respostas não ficam guardadas entre acessos. O navegador lembra apenas que você já viu a apresentação.',
   actions: [
     {
       id: 'immediate-support',
@@ -28,4 +28,9 @@ export const homeCopy = {
       description: 'Encontre serviços e contatos de saúde e apoio disponíveis na sua região.',
     },
   ],
+  materialsAction: {
+    id: 'education-materials',
+    label: 'Materiais educativos',
+    description: 'Explore guias, vídeos e conteúdos sobre saúde mental na escola.',
+  },
 } satisfies HomeCopy;

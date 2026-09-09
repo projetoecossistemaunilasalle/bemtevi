@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createWorkspace, importWorkspace, writeWorkspace } from '../draft-storage/workspace';
+import {
+  createWorkspace,
+  createWorkspaceFromContentDraft,
+  importWorkspace,
+  writeWorkspace,
+} from '../draft-storage/workspace';
 import type { DraftWorkspace } from '../draft-storage/workspace';
+import type { ContentDraft } from '../draft-sync/contentDraft';
 const payload = {
   flows: [],
   educationMaterials: [],
@@ -33,6 +39,26 @@ function database(previous?: DraftWorkspace) {
 
 afterEach(() => vi.unstubAllGlobals());
 describe('workspace repository', () => {
+  it('preserva draftId e geração ao abrir um rascunho criado pelo MCP', () => {
+    const draft = {
+      schemaVersion: 1,
+      draftId: 'mcp-draft',
+      generation: 7,
+      base: { revision: 3, digest: 'base', payload },
+      candidate: payload,
+      candidateDigest: 'candidate',
+      validation: { valid: true, issues: [] },
+      createdAt: '2026-09-09T12:00:00.000Z',
+      updatedAt: '2026-09-09T12:01:00.000Z',
+    } satisfies ContentDraft;
+
+    const workspace = createWorkspaceFromContentDraft(draft);
+
+    expect(workspace.generation).toBe(7);
+    expect(workspace.mcpDraft).toEqual({ draftId: 'mcp-draft', generation: 7, candidateDigest: 'candidate' });
+    expect(workspace.base.revision).toBe(3);
+  });
+
   it('does not confirm a successful request before transaction completion', async () => {
     const mock = database();
     let finished = false;

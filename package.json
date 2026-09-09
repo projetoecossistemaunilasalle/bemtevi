@@ -7,6 +7,10 @@
   "scripts": {
     "dev": "node scripts/run-project-command.mjs dev",
     "agent:bridge": "node scripts/agent-bridge/server.mjs",
+    "content-agent:mcp": "node scripts/run-project-command.mjs content-agent:mcp",
+    "content-agent:sync": "node scripts/run-project-command.mjs content-agent:sync",
+    "content-agent:login": "node scripts/run-project-command.mjs content-agent:login",
+    "content-agent:logout": "node scripts/run-project-command.mjs content-agent:logout",
     "dev:wsl": "node.exe scripts/run-project-command.mjs dev",
     "install:win": "pnpm install --modules-dir=node_modules.win",
     "install:wsl": "pnpm install --modules-dir=node_modules.wsl",

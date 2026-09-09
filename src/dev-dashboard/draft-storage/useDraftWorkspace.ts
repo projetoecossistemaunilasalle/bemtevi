@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
-import { createWorkspace, importWorkspace, listWorkspaces, writeWorkspace, type DraftWorkspace } from './workspace';
+import {
+  createWorkspace,
+  createWorkspaceFromContentDraft,
+  importWorkspace,
+  listWorkspaces,
+  writeWorkspace,
+  type DraftWorkspace,
+} from './workspace';
+import type { ContentDraft } from '../draft-sync/contentDraft';
 import {
   DASHBOARD_STORAGE_KEY,
   hasDashboardChanges,
@@ -190,6 +198,58 @@ export function useDraftWorkspace(remote: PublishedContentPayload, revision: num
     }
   }
 
+  /**
+   * Opens a DraftStore envelope while preserving its remote draftId and
+   * generation. Generic file imports intentionally create an independent
+   * workspace, but an MCP draft must remain addressable for synchronization.
+   */
+  async function restoreContentDraft(draft: ContentDraft) {
+    if (busy.current) return false;
+    setBusy(true);
+    try {
+      if (current.current && !(await checkpoint())) return false;
+      const next = createWorkspaceFromContentDraft(draft);
+      const saved = await writeWorkspace(next, null);
+      if (!saved.ok) {
+        setError('Não foi possível abrir o rascunho do assistente. A cópia atual foi preservada.');
+        return false;
+      }
+      confirmed.current.set(next.workspaceId, next.generation);
+      current.current = next;
+      setWorkspace(next);
+      setAvailable((all) => [...all.filter((item) => item.workspaceId !== next.workspaceId), next]);
+      try {
+        sessionStorage.setItem(POINTER, next.workspaceId);
+      } catch {
+        /* The workspace itself is already durable. */
+      }
+      setStatus('saved');
+      setError(null);
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível abrir o rascunho do assistente.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Stores the latest remote generation after an update through DraftStore. */
+  async function markMcpDraftSynced(draft: ContentDraft) {
+    const previous = current.current;
+    if (!previous || previous.mcpDraft?.draftId !== draft.draftId) return false;
+    const next = {
+      ...previous,
+      updatedAt: draft.updatedAt,
+      mcpDraft: {
+        draftId: draft.draftId,
+        generation: draft.generation,
+        candidateDigest: draft.candidateDigest,
+      },
+    };
+    return commit(next);
+  }
+
   async function archive(expected?: DraftWorkspace) {
     if (expected && current.current !== expected) return false;
     const previous = current.current;
@@ -245,6 +305,8 @@ export function useDraftWorkspace(remote: PublishedContentPayload, revision: num
     persist,
     checkpoint,
     restore,
+    restoreContentDraft,
+    markMcpDraftSynced,
     archive,
     recoverAgainstRemote,
     setBusy,

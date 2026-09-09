@@ -336,14 +336,12 @@
     "low-distress-result": {
       "id": "low-distress-result",
       "kind": "result",
-      "text": "Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia. Isso não significa que tudo está perfeito — mas sugere que, neste momento, você tem encontrado formas de cuidar de si. Continue prestando atenção em como se sente e valorize os momentos que te fazem bem.",
-      "recommendations": ["teacher-emotional-regulation-classroom"]
+      "text": "Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia. Isso não significa que tudo está perfeito — mas sugere que, neste momento, você tem encontrado formas de cuidar de si. Continue prestando atenção em como se sente e valorize os momentos que te fazem bem."
     },
     "possible-distress-result": {
       "id": "possible-distress-result",
       "kind": "result",
-      "text": "Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento. Isso não é um diagnóstico — é um sinal de que vale a pena prestar mais atenção em si mesmo(a). Muitas pessoas passam por fases assim, e buscar apoio é um ato de coragem, não de fraqueza.",
-      "recommendations": ["teacher-emotional-regulation-classroom"]
+      "text": "Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento. Isso não é um diagnóstico — é um sinal de que vale a pena prestar mais atenção em si mesmo(a). Muitas pessoas passam por fases assim, e buscar apoio é um ato de coragem, não de fraqueza."
     }
   }
 }

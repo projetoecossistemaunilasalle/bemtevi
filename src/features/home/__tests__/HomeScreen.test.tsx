@@ -44,5 +44,8 @@ describe('HomeScreen onboarding', () => {
     expect(screen.getByRole('heading', { name: 'Que bom ter você aqui!' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Como você está hoje?' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /quero escolher um próximo passo/i })).toBeInTheDocument();
+    expect(screen.getByText(/não ficam guardadas entre acessos/i)).toBeInTheDocument();
+    expect(screen.queryByText(/entre sessões/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /materiais educativos/i })).toHaveAttribute('href', '/educacao');
   });
 });

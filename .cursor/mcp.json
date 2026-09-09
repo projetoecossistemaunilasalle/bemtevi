@@ -2,6 +2,10 @@
   "mcpServers": {
     "Neon": {
       "url": "https://mcp.neon.tech/mcp"
+    },
+    "bemtevi-content": {
+      "command": "pnpm",
+      "args": ["run", "content-agent:mcp"]
     }
   }
 }

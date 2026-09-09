@@ -2544,20 +2544,17 @@
           "low-satisfaction-result": {
             "id": "low-satisfaction-result",
             "kind": "result",
-            "text": "Com base nas suas respostas, muitos aspectos do seu trabalho estão gerando insatisfação. Isso é um sinal importante — pode valer a pena conversar com alguém de confiança ou buscar apoio profissional para refletir sobre os próximos passos. Reconhecer o que pesa já é um começo.",
-            "recommendations": ["teacher-emotional-regulation-classroom"]
+            "text": "Com base nas suas respostas, muitos aspectos do seu trabalho estão gerando insatisfação. Isso é um sinal importante — pode valer a pena conversar com alguém de confiança ou buscar apoio profissional para refletir sobre os próximos passos. Reconhecer o que pesa já é um começo."
           },
           "high-satisfaction-result": {
             "id": "high-satisfaction-result",
             "kind": "result",
-            "text": "Com base nas suas respostas, no geral você está satisfeito(a) com o seu trabalho. Continue valorizando o que faz bem na sua rotina e cultivando os aspectos positivos. Mesmo assim, vale ficar atento(a) aos pontos que ainda incomodam — pequenas mudanças também contam.",
-            "recommendations": ["teacher-emotional-regulation-classroom"]
+            "text": "Com base nas suas respostas, no geral você está satisfeito(a) com o seu trabalho. Continue valorizando o que faz bem na sua rotina e cultivando os aspectos positivos. Mesmo assim, vale ficar atento(a) aos pontos que ainda incomodam — pequenas mudanças também contam."
           },
           "moderate-satisfaction-result": {
             "id": "moderate-satisfaction-result",
             "kind": "result",
-            "text": "Com base nas suas respostas, você tem uma relação mista com o trabalho — alguns pontos trazem satisfação, outros geram incômodo. Olhar para esses contrastes com curiosidade, em vez de cobrança, pode ajudar a entender o que vale a pena fortalecer e onde pedir apoio.",
-            "recommendations": ["teacher-emotional-regulation-classroom"]
+            "text": "Com base nas suas respostas, você tem uma relação mista com o trabalho — alguns pontos trazem satisfação, outros geram incômodo. Olhar para esses contrastes com curiosidade, em vez de cobrança, pode ajudar a entender o que vale a pena fortalecer e onde pedir apoio."
           }
         },
         "title": "Satisfação no trabalho",
@@ -2899,14 +2896,12 @@
           "low-distress-result": {
             "id": "low-distress-result",
             "kind": "result",
-            "text": "Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia. Isso não significa que tudo está perfeito — mas sugere que, neste momento, você tem encontrado formas de cuidar de si. Continue prestando atenção em como se sente e valorize os momentos que te fazem bem.",
-            "recommendations": ["teacher-emotional-regulation-classroom"]
+            "text": "Com base nas suas respostas, você parece estar lidando bem com as demandas do dia a dia. Isso não significa que tudo está perfeito — mas sugere que, neste momento, você tem encontrado formas de cuidar de si. Continue prestando atenção em como se sente e valorize os momentos que te fazem bem."
           },
           "possible-distress-result": {
             "id": "possible-distress-result",
             "kind": "result",
-            "text": "Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento. Isso não é um diagnóstico — é um sinal de que vale a pena prestar mais atenção em si mesmo(a). Muitas pessoas passam por fases assim, e buscar apoio é um ato de coragem, não de fraqueza.",
-            "recommendations": ["teacher-emotional-regulation-classroom"]
+            "text": "Com base nas suas respostas, você pode estar passando por um momento de maior sofrimento. Isso não é um diagnóstico — é um sinal de que vale a pena prestar mais atenção em si mesmo(a). Muitas pessoas passam por fases assim, e buscar apoio é um ato de coragem, não de fraqueza."
           }
         },
         "title": "SRQ-20",

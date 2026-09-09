@@ -95,13 +95,11 @@ export const workStressFlow = {
       id: 'small-pause',
       kind: 'result',
       text: 'Experimente pausar por um minuto, soltar os ombros e escolher apenas uma ação pequena para agora.',
-      recommendations: ['teacher-emotional-regulation-classroom'],
     },
     'resource-result': {
       id: 'resource-result',
       kind: 'result',
       text: 'Separei um material educativo que pode ajudar a reconhecer sinais de sobrecarga e organizar estratégias de cuidado.',
-      recommendations: ['teacher-emotional-regulation-classroom'],
     },
     'support-result': {
       id: 'support-result',

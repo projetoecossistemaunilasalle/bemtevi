@@ -37,6 +37,8 @@ import { scheduleValidationFocus, scheduleValidationSummaryScroll } from './vali
 import { AiArchiveSection } from './ai/AiArchiveSection';
 import { createDraftFromAiPayload } from './ai/aiDraft';
 import type { AiOperationEnvelope } from './ai/aiOperations';
+import { McpDraftSection } from './ai/McpDraftSection';
+import type { ContentDraft } from './draft-sync/contentDraft';
 
 function upsertPatchById<T extends { id: string }>(
   records: Array<DashboardRecordPatch<T>>,
@@ -267,6 +269,7 @@ export function DashboardRoute() {
     requestId: number;
     path?: string;
   } | null>(null);
+  const [mcpDraft, setMcpDraft] = useState<ContentDraft | null>(null);
   const { content: baseline, snapshot } = usePublishedContent();
   const remoteContent = useMemo(() => {
     if (!baseline) return baseline;
@@ -413,6 +416,7 @@ export function DashboardRoute() {
   }
 
   function resetLocalDrafts() {
+    setMcpDraft(null);
     void store.archive();
   }
 
@@ -449,6 +453,24 @@ export function DashboardRoute() {
       setStorageError(`A resposta da IA não pôde ser aplicada: ${message}`);
       // Mantém rascunho atual intacto
     }
+  }
+
+  async function handleMcpDraftOpen(nextDraft: ContentDraft) {
+    if (workspace && workspace.mcpDraft?.draftId !== nextDraft.draftId) {
+      setStorageError(
+        'O painel já possui um rascunho aberto. Arquive ou exporte essa cópia antes de abrir outro rascunho do assistente.',
+      );
+      return;
+    }
+    const opened = await store.restoreContentDraft(nextDraft);
+    if (!opened) return;
+    setMcpDraft(nextDraft);
+    setActiveTab('export');
+  }
+
+  function handleMcpDraftSynced(nextDraft: ContentDraft) {
+    setMcpDraft(nextDraft);
+    void store.markMcpDraftSynced(nextDraft);
   }
 
   return (
@@ -1009,35 +1031,47 @@ export function DashboardRoute() {
               }
             />
           )}
-          {activeTab === 'ai' &&
-            (snapshot === null ? (
-              <section className="rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
-                <h2 className="font-headline-sm">Aguarde o conteúdo publicado do Neon</h2>
-                <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
-                  O assistente só trabalha sobre uma revisão confirmada do Neon. Verifique a conexão e recarregue o
-                  Dashboard antes de solicitar uma alteração.
-                </p>
-              </section>
-            ) : hasPendingDraft ? (
-              <section className="flex flex-col gap-4 rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
-                <div>
-                  <h2 className="font-headline-sm">Finalize o rascunho antes de usar a IA</h2>
+          {activeTab === 'ai' && (
+            <>
+              <McpDraftSection
+                candidate={publishedDraft}
+                activeDraft={mcpDraft}
+                activeDraftId={workspace?.mcpDraft?.draftId}
+                activeDraftGeneration={workspace?.mcpDraft?.generation}
+                onOpen={(nextDraft) => void handleMcpDraftOpen(nextDraft)}
+                onAttach={setMcpDraft}
+                onSynced={handleMcpDraftSynced}
+              />
+              {snapshot === null ? (
+                <section className="rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+                  <h2 className="font-headline-sm">Aguarde o conteúdo publicado do Neon</h2>
                   <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
-                    Há alterações locais ainda não publicadas. Para evitar que uma proposta da IA sobrescreva ou misture
-                    mudanças pendentes, publique este rascunho ou baixe uma cópia de segurança e descarte-o antes de
-                    solicitar novas edições.
+                    O assistente só trabalha sobre uma revisão confirmada do Neon. Verifique a conexão e recarregue o
+                    Dashboard antes de solicitar uma alteração.
                   </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => setActiveTab('export')}>Revisar e publicar</Button>
-                  <Button variant="secondary" onClick={handleDownloadBackup}>
-                    Baixar cópia do rascunho
-                  </Button>
-                </div>
-              </section>
-            ) : (
-              <AiArchiveSection draft={publishedDraft} baseRevision={snapshot.revision} onApply={handleAiApply} />
-            ))}
+                </section>
+              ) : hasPendingDraft ? (
+                <section className="flex flex-col gap-4 rounded-lg border border-primary/35 bg-primary-container/15 p-5 text-on-surface">
+                  <div>
+                    <h2 className="font-headline-sm">Finalize o rascunho antes de usar a IA</h2>
+                    <p className="mt-2 max-w-[75ch] font-body-md text-on-surface-variant">
+                      Há alterações locais ainda não publicadas. Para evitar que uma proposta da IA sobrescreva ou
+                      misture mudanças pendentes, publique este rascunho ou baixe uma cópia de segurança e descarte-o
+                      antes de solicitar novas edições.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button onClick={() => setActiveTab('export')}>Revisar e publicar</Button>
+                    <Button variant="secondary" onClick={handleDownloadBackup}>
+                      Baixar cópia do rascunho
+                    </Button>
+                  </div>
+                </section>
+              ) : (
+                <AiArchiveSection draft={publishedDraft} baseRevision={snapshot.revision} onApply={handleAiApply} />
+              )}
+            </>
+          )}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
           {activeTab === 'export' && (
             <PublishDashboard
@@ -1048,7 +1082,7 @@ export function DashboardRoute() {
               expectedRevision={draftState.baseRevision ?? null}
               basePayload={draftState.basePayload}
               workspaceStore={store}
-              onPublished={() => {}}
+              onPublished={() => setMcpDraft(null)}
               onResetDrafts={resetLocalDrafts}
               onDownloadBackup={handleDownloadBackup}
               onRestoreBackup={() => fileInputRef.current?.click()}

@@ -12,4 +12,5 @@ export interface HomeCopy extends ContentMetadata {
   educationalDisclaimer: string;
   privacyReassurance: string;
   actions: HomeActionCopy[];
+  materialsAction?: HomeActionCopy;
 }

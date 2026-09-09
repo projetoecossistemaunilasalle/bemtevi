@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Compass, MapPin, MessageCircleHeart, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowRight, Compass, GraduationCap, MapPin, MessageCircleHeart, Shield } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { homeCopy } from '../../content/copy/home';
 import { ActionCard } from '../../design-system/components/ActionCard';
@@ -63,6 +63,29 @@ export function HomeScreen() {
                 onClick={() => navigate(routes.contacts)}
               />
             </div>
+            {homeCopy.materialsAction ? (
+              <Link
+                to={routes.education}
+                className="w-full bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low hover:border-secondary active:scale-[0.99] transition-all duration-200 rounded-xl px-5 py-3.5 flex items-center justify-between text-left gap-4 shadow-sm group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <div className="flex items-center gap-3.5">
+                  <span className="p-2.5 rounded-lg bg-surface-container text-secondary shrink-0 group-hover:scale-105 transition-transform">
+                    <GraduationCap size={22} />
+                  </span>
+                  <div className="flex flex-col text-left">
+                    <span className="font-headline-sm text-base text-on-surface">{homeCopy.materialsAction.label}</span>
+                    <span className="font-body-md text-sm text-on-surface-variant">
+                      {homeCopy.materialsAction.description}
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight
+                  size={20}
+                  className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-0.5 shrink-0 transition-all"
+                  aria-hidden="true"
+                />
+              </Link>
+            ) : null}
           </section>
         </Page>
       )}

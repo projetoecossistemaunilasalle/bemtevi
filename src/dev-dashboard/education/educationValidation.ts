@@ -1,7 +1,7 @@
 import type { EducationResource } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
-import { findFeaturedImageOption } from '../../content/resources/featuredImages';
+import { isFeaturedImageId } from '../../content/resources/featuredImageIds';
 import { isImageDataUrl } from '../components/fileUpload';
 import { createValidationResult, type DashboardValidationIssue } from '../validation/validationTypes';
 import { findDuplicateIds } from '../validation/duplicateIds';
@@ -56,8 +56,7 @@ export function validateDashboardEducation(resources: EducationResource[], group
         path: `${resource.id}.featuredImage`,
       });
     } else if (resource.featuredImage.kind === 'catalog') {
-      const option = findFeaturedImageOption(resource.featuredImage.imageId);
-      if (!option) {
+      if (!isFeaturedImageId(resource.featuredImage.imageId)) {
         issues.push({
           level: 'error',
           area: 'education',

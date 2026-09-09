@@ -16,15 +16,19 @@ describe('Home copy', () => {
     expect(homeCopy.subtitle).toBeTruthy();
     expect(homeCopy.educationalDisclaimer).toBeTruthy();
     expect(homeCopy.privacyReassurance).toBeTruthy();
+    expect(homeCopy.privacyReassurance).toContain('entre acessos');
+    expect(homeCopy.privacyReassurance).not.toContain('entre sessões');
   });
 
-  it('has actions defined', () => {
+  it('has actions and materialsAction defined', () => {
     expect(homeCopy.actions.length).toBeGreaterThan(0);
     homeCopy.actions.forEach((action) => {
       expect(action.id).toBeTruthy();
       expect(action.label).toBeTruthy();
       expect(action.description).toBeTruthy();
     });
+    expect(homeCopy.materialsAction?.label).toBeTruthy();
+    expect(homeCopy.materialsAction?.description).toBeTruthy();
   });
 });
 

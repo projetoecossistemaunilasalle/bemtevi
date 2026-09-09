@@ -8,8 +8,8 @@ export interface NeonConfig {
 
 export function getNeonConfig(): NeonConfig {
   return {
-    authUrl: import.meta.env.VITE_NEON_AUTH_URL ?? '',
-    dataApiUrl: import.meta.env.VITE_NEON_DATA_API_URL ?? '',
+    authUrl: import.meta.env?.VITE_NEON_AUTH_URL ?? '',
+    dataApiUrl: import.meta.env?.VITE_NEON_DATA_API_URL ?? '',
   };
 }
 
