@@ -1,25 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AlertCircle, Plus } from 'lucide-react';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
-import { Button } from '../../design-system/components/Button';
 import { ServiceCard } from '../../design-system/components/ServiceCard';
 import { ConfirmButton } from '../components/ConfirmButton';
-import { Field } from '../components/Field';
-import { inputClass, inputInvalidClass, textareaClass } from '../components/fieldStyles';
 import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
-import { fieldHasError, issuesForPath, type FieldIssues } from '../validation/fieldIssues';
 import type { DashboardValidationIssue, DashboardValidationResult } from '../validation/validationTypes';
 import { scheduleValidationFocus } from '../validation/validationNavigation';
-import {
-  applyLocationSelection,
-  badgeToneForServiceType,
-  groupContactsByLocation,
-  locationLabel,
-  normalizePhoneHref,
-} from './contactDrafts';
-import { MAX_SERVICE_TYPE_LENGTH } from './contactsValidation';
-
-const serviceTypeSuggestions = ['CAPS', 'UBS', 'CRAS', 'CREAS', 'Universidade', 'Outro'];
+import { ContactDirectoryList } from './ContactDirectoryList';
+import { ContactFields } from './ContactFields';
+import { ContactLocationManager } from './ContactLocationManager';
+import { normalizeContactValidationPath } from './contactValidationNavigation';
 
 interface ServiceSelection {
   index: number;
@@ -75,6 +64,7 @@ export function ContactsDashboard({
     }
   }, [externalFocus?.requestId, externalFocus?.id, externalFocus?.path, locations, services]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
   const serviceAtSelectedIndex = selection ? services[selection.index] : undefined;
   const selectedIndex =
     selection && serviceAtSelectedIndex?.id === selection.id
@@ -170,181 +160,30 @@ export function ContactsDashboard({
         <p className="font-body-md text-on-surface-variant">Edite os serviços que aparecem na rede de apoio.</p>
       </header>
 
-      <section className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-headline-sm text-on-surface">Locais</h3>
-            <p className="font-body-md text-on-surface-variant">
-              Cadastre as cidades usadas para organizar os contatos.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            aria-expanded={locationManagementOpen}
-            aria-controls="contacts-location-management-content"
-            onClick={() => setLocationManagementOpen((current) => !current)}
-          >
-            {locationManagementOpen ? 'Ocultar' : 'Gerenciar locais'}
-          </Button>
-        </div>
-
-        {locationManagementOpen ? (
-          <div
-            id="contacts-location-management-content"
-            data-validation-path="locations"
-            className="dashboard-validation-target mt-4 flex flex-col gap-3"
-          >
-            {locations.map((location, locationIndex) => {
-              const contactCount = services.filter((service) => service.locationId === location.id).length;
-              const cityIssues = issuesForPath(validation, `locations.${locationIndex}.city`);
-              const stateIssues = issuesForPath(validation, `locations.${locationIndex}.state`);
-              const locationId = `${fieldId}-location-${locationIndex}`;
-
-              return (
-                <div
-                  key={`${location.id}-${locationIndex}`}
-                  className="grid items-end gap-3 rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 md:grid-cols-[minmax(0,1fr)_96px_auto_auto]"
-                >
-                  <Field
-                    label="Cidade"
-                    htmlFor={`${locationId}-city`}
-                    issues={cityIssues}
-                    validationPath={`locations.${locationIndex}.city`}
-                  >
-                    <input
-                      id={`${locationId}-city`}
-                      className={fieldClass(cityIssues)}
-                      value={location.city}
-                      onChange={(event) => onLocationChange(locationIndex, location.id, { city: event.target.value })}
-                    />
-                  </Field>
-                  <Field
-                    label="Estado"
-                    htmlFor={`${locationId}-state`}
-                    issues={stateIssues}
-                    validationPath={`locations.${locationIndex}.state`}
-                  >
-                    <input
-                      id={`${locationId}-state`}
-                      maxLength={2}
-                      className={fieldClass(stateIssues)}
-                      value={location.state}
-                      onChange={(event) =>
-                        onLocationChange(locationIndex, location.id, {
-                          state: event.target.value.toLocaleUpperCase('pt-BR').slice(0, 2),
-                        })
-                      }
-                    />
-                  </Field>
-                  <span className="pb-2 font-label-sm text-on-surface-variant">
-                    {contactCount} {contactCount === 1 ? 'contato' : 'contatos'}
-                  </span>
-                  <div className="flex flex-col items-start gap-1">
-                    <ConfirmButton
-                      prompt="Remover local"
-                      disabled={contactCount > 0}
-                      onConfirm={() => onLocationRemove(locationIndex, location.id)}
-                      aria-label={`Remover local ${locationLabel(location)}`}
-                    />
-                    {contactCount > 0 ? (
-                      <span className="font-label-sm text-on-surface-variant">
-                        Realocar os contatos antes de remover.
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-            <div>
-              <Button type="button" variant="secondary" onClick={onLocationAdd}>
-                <Plus aria-hidden="true" className="h-5 w-5" />
-                Novo local
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <ContactLocationManager
+        locations={locations}
+        services={services}
+        validation={validation}
+        fieldId={fieldId}
+        open={locationManagementOpen}
+        onToggleOpen={() => setLocationManagementOpen((current) => !current)}
+        onLocationChange={onLocationChange}
+        onLocationAdd={onLocationAdd}
+        onLocationRemove={onLocationRemove}
+      />
 
       <div className="grid gap-stack-md lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-          <div ref={addActionRef}>
-            <Button type="button" className="w-full" onClick={addService}>
-              <Plus aria-hidden="true" className="h-5 w-5" />
-              Novo contato
-            </Button>
-          </div>
-
-          {services.length === 0 ? (
-            <p className="rounded-lg bg-surface-container-low p-3 font-body-md text-on-surface-variant">
-              Nenhum contato cadastrado ainda.
-            </p>
-          ) : null}
-
-          <ul aria-label="Contatos disponíveis" className="flex flex-col gap-3">
-            {groupContactsByLocation(services, locations).map((group, groupIndex) => {
-              const headingId = `${fieldId}-contact-group-${groupIndex}`;
-              const label = group.location ? locationLabel(group.location) : 'Sem local';
-
-              return (
-                <li key={group.location?.id ?? 'unassigned'} role="group" aria-labelledby={headingId}>
-                  <div className="mb-1 flex items-center gap-2 px-1">
-                    <span id={headingId} className="font-label-sm text-on-surface-variant">
-                      {label}
-                    </span>
-                    <span className="rounded-full bg-surface-container-low px-2 py-0.5 font-label-sm text-on-surface-variant">
-                      {group.entries.length}
-                    </span>
-                  </div>
-                  <ul className="flex flex-col gap-2">
-                    {group.entries.map(({ service, index: serviceIndex }) => {
-                      const isSelected = serviceIndex === effectiveIndex;
-                      const buttonTextId = `${fieldId}-contact-${serviceIndex}`;
-
-                      return (
-                        <li key={`${service.id}-${serviceIndex}`}>
-                          <button
-                            ref={(button) => {
-                              serviceButtonRefs.current[serviceIndex] = button;
-                            }}
-                            type="button"
-                            aria-pressed={isSelected}
-                            aria-labelledby={`${headingId} ${buttonTextId}`}
-                            onClick={() => setSelection({ index: serviceIndex, id: service.id })}
-                            className={`flex min-h-11 w-full flex-col justify-center rounded-lg px-3 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                              isSelected
-                                ? 'bg-primary text-on-primary shadow-sm'
-                                : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                            }`}
-                          >
-                            <span id={buttonTextId} className="flex flex-col">
-                              <span className="font-label-md">{service.name || 'Contato sem nome'}</span>
-                              <span
-                                className={`font-label-sm ${
-                                  isSelected ? 'text-on-primary/85' : 'text-on-surface-variant'
-                                }`}
-                              >
-                                {service.type || 'Sem tipo'} · {service.city || 'Sem cidade'}
-                              </span>
-                              {validation.errors.some((issue) => issue.path?.startsWith(`contacts.${serviceIndex}`)) ? (
-                                <span
-                                  className={`mt-1 inline-flex items-center gap-1 font-label-sm ${isSelected ? 'text-on-primary' : 'text-error'}`}
-                                >
-                                  <AlertCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                                  Precisa de correção
-                                </span>
-                              ) : null}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
+        <ContactDirectoryList
+          services={services}
+          locations={locations}
+          effectiveIndex={effectiveIndex}
+          fieldId={fieldId}
+          validation={validation}
+          addActionRef={addActionRef}
+          serviceButtonRefs={serviceButtonRefs}
+          onAddService={addService}
+          onSelectService={(index, id) => setSelection({ index, id })}
+        />
 
         {selectedService ? (
           <section
@@ -393,226 +232,4 @@ export function ContactsDashboard({
       <ValidationSummary result={validation} getIssueAction={getIssueAction} />
     </section>
   );
-}
-
-function ContactFields({
-  fieldId,
-  service,
-  locations,
-  serviceIndex,
-  validation,
-  onChange,
-}: {
-  fieldId: string;
-  service: ServiceDirectoryEntry;
-  locations: ServiceLocation[];
-  serviceIndex: number;
-  validation: DashboardValidationResult;
-  onChange: (patch: Partial<ServiceDirectoryEntry>) => void;
-}) {
-  const path = `contacts.${serviceIndex}`;
-  const nameIssues = issuesForPath(validation, `${path}.name`);
-  const typeIssues = issuesForPath(validation, `${path}.type`);
-  const locationIssues = mergeFieldIssues(
-    issuesForPath(validation, `${path}.locationId`),
-    issuesForPath(validation, `${path}.city`),
-    issuesForPath(validation, `${path}.state`),
-  );
-  const addressIssues = issuesForPath(validation, `${path}.address`);
-  const phoneIssues = mergeFieldIssues(
-    issuesForPath(validation, `${path}.phoneDisplay`),
-    issuesForPath(validation, `${path}.phoneHref`),
-  );
-  const hoursIssues = issuesForPath(validation, `${path}.hours`);
-  const notesIssues = issuesForPath(validation, `${path}.notes`);
-  const latIssues = issuesForPath(validation, `${path}.lat`);
-  const lngIssues = issuesForPath(validation, `${path}.lng`);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Field
-        label="Nome"
-        htmlFor={`${fieldId}-name`}
-        hint="Nome exibido na rede de apoio."
-        issues={nameIssues}
-        validationPath={`${path}.name`}
-      >
-        <input
-          id={`${fieldId}-name`}
-          className={fieldClass(nameIssues)}
-          value={service.name}
-          onChange={(event) => onChange({ name: event.target.value })}
-        />
-      </Field>
-
-      <Field
-        label="Categoria curta"
-        htmlFor={`${fieldId}-type`}
-        hint={`Use apenas uma etiqueta curta, com até ${MAX_SERVICE_TYPE_LENGTH} caracteres. Ex.: CAPS, UBS ou Clínica-escola.`}
-        issues={typeIssues}
-        validationPath={`${path}.type`}
-      >
-        <input
-          id={`${fieldId}-type`}
-          list="contact-service-type-suggestions"
-          maxLength={MAX_SERVICE_TYPE_LENGTH}
-          className={fieldClass(typeIssues)}
-          value={service.type}
-          onChange={(event) => {
-            const type = event.target.value;
-            onChange({ type, badgeTone: badgeToneForServiceType(type) });
-          }}
-        />
-      </Field>
-      <datalist id="contact-service-type-suggestions">
-        {serviceTypeSuggestions.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-
-      <Field
-        label="Local"
-        htmlFor={`${fieldId}-location`}
-        hint="Cidade onde o atendimento é oferecido. Gerencie as cidades em “Gerenciar locais”."
-        issues={locationIssues}
-        validationPath={`${path}.locationId`}
-      >
-        <select
-          id={`${fieldId}-location`}
-          className={fieldClass(locationIssues)}
-          value={service.locationId ?? ''}
-          onChange={(event) => onChange(applyLocationSelection(service, event.target.value || null, locations))}
-        >
-          <option value="">Sem local (atendimento nacional)</option>
-          {locations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {locationLabel(location)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field
-        label="Endereço"
-        htmlFor={`${fieldId}-address`}
-        hint="Local exibido para quem busca atendimento."
-        issues={addressIssues}
-        validationPath={`${path}.address`}
-      >
-        <input
-          id={`${fieldId}-address`}
-          className={fieldClass(addressIssues)}
-          value={service.address}
-          onChange={(event) => onChange({ address: event.target.value })}
-        />
-      </Field>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field
-          label="Latitude (opcional)"
-          htmlFor={`${fieldId}-lat`}
-          hint="Ex.: -29.9145"
-          issues={latIssues}
-          validationPath={`${path}.lat`}
-        >
-          <input
-            id={`${fieldId}-lat`}
-            type="number"
-            step="any"
-            className={fieldClass(latIssues)}
-            value={service.lat ?? ''}
-            onChange={(event) => {
-              const val = event.target.value.trim();
-              onChange({ lat: val === '' ? undefined : Number(val) });
-            }}
-          />
-        </Field>
-
-        <Field
-          label="Longitude (opcional)"
-          htmlFor={`${fieldId}-lng`}
-          hint="Ex.: -51.1812"
-          issues={lngIssues}
-          validationPath={`${path}.lng`}
-        >
-          <input
-            id={`${fieldId}-lng`}
-            type="number"
-            step="any"
-            className={fieldClass(lngIssues)}
-            value={service.lng ?? ''}
-            onChange={(event) => {
-              const val = event.target.value.trim();
-              onChange({ lng: val === '' ? undefined : Number(val) });
-            }}
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Telefone"
-        htmlFor={`${fieldId}-phone`}
-        hint="A formatação digitada será mantida."
-        issues={phoneIssues}
-        validationPath={`${path}.phoneDisplay`}
-      >
-        <input
-          id={`${fieldId}-phone`}
-          inputMode="tel"
-          className={fieldClass(phoneIssues)}
-          value={service.phoneDisplay}
-          onChange={(event) => {
-            const phoneDisplay = event.target.value;
-            onChange({ phoneDisplay, phoneHref: normalizePhoneHref(phoneDisplay) });
-          }}
-        />
-      </Field>
-
-      <Field
-        label="Horário de atendimento (opcional)"
-        htmlFor={`${fieldId}-hours`}
-        issues={hoursIssues}
-        validationPath={`${path}.hours`}
-      >
-        <input
-          id={`${fieldId}-hours`}
-          className={fieldClass(hoursIssues)}
-          value={service.hours ?? ''}
-          onChange={(event) => onChange({ hours: event.target.value })}
-        />
-      </Field>
-
-      <Field
-        label="Sobre o atendimento (opcional)"
-        htmlFor={`${fieldId}-notes`}
-        hint="Escreva aqui a descrição do serviço, público atendido e orientações de acesso."
-        issues={notesIssues}
-        validationPath={`${path}.notes`}
-      >
-        <textarea
-          id={`${fieldId}-notes`}
-          className={fieldClass(notesIssues, textareaClass)}
-          value={service.notes ?? ''}
-          onChange={(event) => onChange({ notes: event.target.value })}
-        />
-      </Field>
-    </div>
-  );
-}
-
-function fieldClass(issues: FieldIssues, base = inputClass) {
-  return fieldHasError(issues) ? `${base} ${inputInvalidClass}` : base;
-}
-
-function mergeFieldIssues(...issueGroups: FieldIssues[]): FieldIssues {
-  return {
-    errors: issueGroups.flatMap(({ errors }) => errors),
-    warnings: issueGroups.flatMap(({ warnings }) => warnings),
-  };
-}
-
-function normalizeContactValidationPath(path: string) {
-  if (path.endsWith('.phoneHref')) return path.replace(/\.phoneHref$/, '.phoneDisplay');
-  if (/^contacts\.\d+\.(?:city|state)$/.test(path)) return path.replace(/\.(?:city|state)$/, '.locationId');
-  return path;
 }

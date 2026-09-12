@@ -15,7 +15,7 @@ const modulesDir = isWindows
     : 'node_modules';
 const ts = require(path.join(root, modulesDir, 'typescript', 'lib', 'typescript.js'));
 const BUDGETS = { ts: 300, tsx: 320, test: 500, mjs: 320 };
-export const ENORMOUS_FILE_THRESHOLD = 1000;
+export const ENORMOUS_FILE_THRESHOLD = 500;
 const SCAN_ROOTS = ['src', 'scripts', 'packages', 'neon/tests'];
 // prettier-ignore
 const IGNORE_DIRS = new Set(['node_modules', 'node_modules.win', 'node_modules.wsl', '.worktrees', 'dist', 'coverage', '.git']);

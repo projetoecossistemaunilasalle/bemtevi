@@ -220,13 +220,13 @@ describe('runArchitectureCheck', () => {
 });
 
 describe('enormous file prevention', () => {
-  it('rejects files exceeding ENORMOUS_FILE_THRESHOLD (1000 lines) even when listed in baseline', () => {
+  it('rejects files exceeding ENORMOUS_FILE_THRESHOLD (500 lines) even when listed in baseline', () => {
     const root = makeTempRoot();
     const rel = 'src/enormous.ts';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    writeFileSync(abs, `${'x\n'.repeat(1001)}`);
-    const errors = checkSizeBudgets(root, { [rel]: 2000 }, [rel]);
+    writeFileSync(abs, `${'x\n'.repeat(501)}`);
+    const errors = checkSizeBudgets(root, { [rel]: 1000 }, [rel]);
     expect(errors.some((e) => e.includes('ENORMOUS_FILE') && e.includes(rel))).toBe(true);
   });
 
@@ -235,12 +235,12 @@ describe('enormous file prevention', () => {
     const rel = 'src/some-file.ts';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    writeFileSync(abs, `${'x\n'.repeat(500)}`);
-    const errors = checkSizeBudgets(root, { [rel]: 1200 }, [rel]);
+    writeFileSync(abs, `${'x\n'.repeat(300)}`);
+    const errors = checkSizeBudgets(root, { [rel]: 600 }, [rel]);
     expect(errors.some((e) => e.includes('ENORMOUS_BASELINE') && e.includes(rel))).toBe(true);
   });
 
-  it('explicitly guarantees that no enormous file (> 1,000 physical lines) exists anywhere in the repository', () => {
+  it('explicitly guarantees that no enormous file (> 500 physical lines) exists anywhere in the repository', () => {
     const files = collectSourceFiles(repoRoot);
     const oversized: Array<{ file: string; lines: number }> = [];
     for (const file of files) {

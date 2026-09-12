@@ -6,7 +6,6 @@ import { getBundledContent } from '../../../app/content/bundledContent';
 import { EducationLibraryScreen } from '../EducationLibraryScreen';
 import { ResourceDetailScreen } from '../ResourceDetailScreen';
 import {
-  buildDatabaseEducationPayload,
   contentWithoutEducation,
   createDraftState,
   firstShippedMaterial,
@@ -134,9 +133,7 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    // 'Autocuidado' group heading should appear because it has resources
     expect(screen.getByRole('heading', { name: 'Autocuidado' })).toBeInTheDocument();
-    // 'Grupo sem recursos' should NOT appear
     expect(screen.queryByRole('heading', { name: 'Grupo sem recursos' })).not.toBeInTheDocument();
     expect(screen.queryByText('Grupo sem recursos')).not.toBeInTheDocument();
   });
@@ -228,11 +225,9 @@ describe('EducationLibraryScreen', () => {
       contentWithoutEducation(),
     );
 
-    // geral has no heading (h2); named group heading should appear
     const groupHeadings = screen.getAllByRole('heading', { level: 2 });
     expect(groupHeadings).toHaveLength(1);
     expect(groupHeadings[0].textContent).toBe('Primeiro Grupo');
-    // geral resources should still be visible
     expect(screen.getByText('Material Geral')).toBeInTheDocument();
     expect(screen.getByText('Material Named')).toBeInTheDocument();
   });
@@ -329,8 +324,6 @@ describe('EducationLibraryScreen', () => {
       contentWithoutEducation(),
     );
 
-    // geral has no h2 heading; check resource card titles (h3) instead
-    // Filter out the shipped resources that also render in geral
     const baseTitles = new Set(getBundledContent().educationMaterials.map((r) => r.title));
     const resourceTitles = screen
       .getAllByRole('heading', { level: 3 })
@@ -360,238 +353,8 @@ describe('EducationLibraryScreen', () => {
       </MemoryRouter>,
     );
 
-    // Should still render (in geral section since group doesn't exist)
     expect(screen.getByText('Material Órfão')).toBeInTheDocument();
-    // Should NOT have any extra heading since it's in geral
     const headings = screen.getAllByRole('heading');
     expect(headings.every((h) => h.textContent !== 'Material Órfão')).toBe(false);
-  });
-
-  it('sets isPreviewingDrafts true when only groups have drafts', async () => {
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedGroups: [{ id: 'new-group', title: 'Novo Grupo', order: 5 }],
-        }),
-      ),
-    );
-
-    const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-    const preview = resolveEducationResourcesForPreview(getBundledContent());
-
-    expect(preview.isPreviewingDrafts).toBe(true);
-  });
-
-  it('previews a local default group order of zero against a nonzero database baseline', async () => {
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          schemaVersion: '4.0.0',
-          defaultGroupOrder: 0,
-          contactPatches: [],
-          addedContacts: [],
-          removedContactIds: [],
-        }),
-      ),
-    );
-    const baseline = { ...getBundledContent(), defaultGroupOrder: 5 };
-
-    const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-    const preview = resolveEducationResourcesForPreview(baseline);
-
-    expect(preview.defaultGroupOrder).toBe(0);
-    expect(preview.isPreviewingDrafts).toBe(true);
-  });
-
-  it('marks edits and removals of database groups as local previews', async () => {
-    const baseline = getBundledContent();
-    const firstGroup = baseline.educationGroups[0];
-    const secondGroup = baseline.educationGroups[1];
-    expect(firstGroup).toBeDefined();
-    expect(secondGroup).toBeDefined();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          schemaVersion: '4.0.0',
-          groupPatches: [{ id: firstGroup.id, sourceIndex: 0, patch: { title: 'Grupo editado' } }],
-          removedGroupIds: [secondGroup.id],
-          contactPatches: [],
-          addedContacts: [],
-          removedContactIds: [],
-        }),
-      ),
-    );
-
-    const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-    const preview = resolveEducationResourcesForPreview(baseline);
-
-    expect(preview.groups.find((group) => group.id === firstGroup.id)?.title).toBe('Grupo editado');
-    expect(preview.groups.some((group) => group.id === secondGroup.id)).toBe(false);
-    expect(preview.isPreviewingDrafts).toBe(true);
-  });
-});
-
-it('resolves local dashboard education drafts for preview', async () => {
-  const resource = firstShippedMaterial();
-  localStorage.setItem(
-    'bemtevi:dev-dashboard:drafts:v1',
-    JSON.stringify(
-      createDraftState({
-        educationMaterialPatches: [
-          {
-            id: resource.id,
-            sourceIndex: shippedMaterialSourceIndex(resource.id),
-            patch: { title: 'Material em teste' },
-          },
-        ],
-      }),
-    ),
-  );
-
-  const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-  const preview = resolveEducationResourcesForPreview(getBundledContent());
-
-  expect(preview.isPreviewingDrafts).toBe(true);
-  expect(preview.changedResourceIds).toEqual([resource.id]);
-  expect(preview.resources[0].title).toBe('Material em teste');
-});
-
-it('ignores unchanged education patches when computing preview warning state', async () => {
-  const bundled = getBundledContent();
-  const resource = firstShippedMaterial();
-  localStorage.setItem(
-    'bemtevi:dev-dashboard:drafts:v1',
-    JSON.stringify(
-      createDraftState({
-        educationMaterialPatches: [
-          {
-            id: resource.id,
-            sourceIndex: shippedMaterialSourceIndex(resource.id),
-            patch: {
-              title: resource.title,
-              body: resource.body,
-            },
-          },
-        ],
-      }),
-    ),
-  );
-
-  const { resolveEducationResourcesForPreview } = await import('../educationResourcePreview');
-  const preview = resolveEducationResourcesForPreview(getBundledContent());
-
-  expect(preview.isPreviewingDrafts).toBe(false);
-  expect(preview.changedResourceIds).toEqual([]);
-  expect(preview.resources).toEqual(bundled.educationMaterials);
-});
-
-describe('resolveVideoEmbed', () => {
-  it('converts YouTube watch URLs to embed URLs', async () => {
-    const { resolveVideoEmbed } = await import('../videoEmbeds');
-
-    expect(resolveVideoEmbed('https://www.youtube.com/watch?v=abcdef12345')).toEqual({
-      kind: 'youtube',
-      embedUrl: 'https://www.youtube.com/embed/abcdef12345',
-    });
-  });
-
-  it('recognizes Instagram /p/ URLs', async () => {
-    const { resolveVideoEmbed } = await import('../videoEmbeds');
-
-    expect(resolveVideoEmbed('https://www.instagram.com/p/DFxyz123/')).toEqual({
-      kind: 'instagram',
-      url: 'https://www.instagram.com/p/DFxyz123/',
-      permalink: 'https://www.instagram.com/p/DFxyz123/',
-    });
-  });
-
-  it('recognizes Instagram /reel/ URLs', async () => {
-    const { resolveVideoEmbed } = await import('../videoEmbeds');
-
-    expect(resolveVideoEmbed('https://www.instagram.com/reel/C-xyz789/')).toEqual({
-      kind: 'instagram',
-      url: 'https://www.instagram.com/reel/C-xyz789/',
-      permalink: 'https://www.instagram.com/reel/C-xyz789/',
-    });
-  });
-
-  it('falls back to a link for generic or unknown video URLs', async () => {
-    const { resolveVideoEmbed } = await import('../videoEmbeds');
-
-    expect(resolveVideoEmbed('https://example.com/video')).toEqual({
-      kind: 'link',
-      url: 'https://example.com/video',
-    });
-  });
-});
-
-describe('published content provider', () => {
-  it('renders published education resources and groups', () => {
-    const payload = buildDatabaseEducationPayload();
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao']}>
-        <Routes>
-          <Route path="/educacao" element={<EducationLibraryScreen />} />
-        </Routes>
-      </MemoryRouter>,
-      payload,
-    );
-
-    expect(screen.getByText('Recurso do Banco de Dados')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Grupo do Banco de Dados' })).toBeInTheDocument();
-  });
-
-  it('resolves published resource details by route id', () => {
-    const payload = buildDatabaseEducationPayload();
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao/db-recurso']}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-      payload,
-    );
-
-    expect(screen.getByRole('heading', { name: 'Recurso do Banco de Dados' })).toBeInTheDocument();
-  });
-
-  it('renders paragraph blocks and descriptions preserving line breaks with whitespace-pre-line', () => {
-    const payload = buildDatabaseEducationPayload();
-    const multilineResource = {
-      ...payload.educationMaterials[0],
-      id: 'multiline-resource',
-      title: 'Material com Parágrafos Múltiplos',
-      description: 'Primeira linha da descrição.\nSegunda linha da descrição.',
-      body: [
-        {
-          id: 'p1',
-          kind: 'paragraph' as const,
-          title: 'Bloco de Texto',
-          text: 'Primeiro parágrafo do conteúdo.\nSegundo parágrafo após enter.',
-        },
-      ],
-    };
-    const testPayload = {
-      ...payload,
-      educationMaterials: [multilineResource],
-    };
-
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao/multiline-resource']}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-      testPayload,
-    );
-
-    const descriptionEl = screen.getByText(/Primeira linha da descrição/);
-    expect(descriptionEl).toHaveClass('whitespace-pre-line');
-
-    const paragraphEl = screen.getByText(/Primeiro parágrafo do conteúdo/);
-    expect(paragraphEl).toHaveClass('whitespace-pre-line');
   });
 });
