@@ -3210,50 +3210,6 @@
     ],
     "educationMaterials": [
       {
-        "id": "teacher-emotional-regulation-classroom",
-        "body": [
-          {
-            "id": "overview",
-            "kind": "paragraph",
-            "text": "Este conteúdo reúne orientações breves para reconhecer sinais de desconforto emocional, organizar pequenas pausas e retomar a rotina com mais presença. É um material informativo e sem finalidade diagnóstica, portanto, não substitui o atendimento especializado com profissional.",
-            "title": "Sobre este material"
-          },
-          {
-            "id": "breathing-video",
-            "url": "https://www.youtube.com/watch?v=kiEmbhvv7Fo",
-            "kind": "video",
-            "title": "Vídeo: Técnica de respiração"
-          },
-          {
-            "id": "respiracao-image-1",
-            "alt": "Exercício de respiração passo 1.",
-            "kind": "image",
-            "imageUrl": "/bemtevi/respiracao1.jpg"
-          },
-          {
-            "id": "respiracao-image-2",
-            "alt": "Exercício de respiração passo 2.",
-            "kind": "image",
-            "imageUrl": "/bemtevi/respiracao2.jpg"
-          },
-          {
-            "id": "practice",
-            "kind": "paragraph",
-            "text": "Recomendamos reservar um tempo adequado da sua rotina para esta prática. Você pode adaptar o tempo da prática de acordo com o contexto em que está inserido no momento.",
-            "title": "Aplicação prática"
-          },
-          { "id": "source", "url": "https://www.feevale.br/", "kind": "sourceLink", "label": "FEEVALE" }
-        ],
-        "tags": ["regulação-emocional", "respiração", "professores"],
-        "title": "Guia de Regulação Emocional",
-        "review": { "notes": "", "status": "pending_review", "reviewedAt": null, "reviewedBy": null },
-        "source": "FEEVALE",
-        "audience": "teachers",
-        "imageUrl": "/bemtevi/hands_holding_plant.png",
-        "description": "Estratégias de suporte para apoiar o professor no cuidado pessoal com a sua saúde mental.",
-        "featuredImage": { "kind": "catalog", "imageId": "classroom-1" }
-      },
-      {
         "id": "teacher-caring-selfcare",
         "body": [
           {

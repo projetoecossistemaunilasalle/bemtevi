@@ -1,173 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { defaultFeaturedImageId, featuredImageOptions } from '../../content/resources/featuredImages';
-import { DEFAULT_EDUCATION_GROUP_ID } from '../../content/resources/groups';
-import type {
-  EducationResource,
-  EducationResourceBlock,
-  EducationResourceFeaturedImage,
-} from '../../domain/resources/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { EducationResource } from '../../domain/resources/types';
 import type { EducationResourceGroup } from '../../content/resources/groups';
-import { Badge } from '../../design-system/components/Badge';
 import { Button } from '../../design-system/components/Button';
-import { formatCitationSourceLabel, parseSourceCitations } from '../../features/education/sourceFormatter';
-import { ChipInput } from '../components/ChipInput';
-import { ConfirmButton } from '../components/ConfirmButton';
-import { Field } from '../components/Field';
-import { FieldHint } from '../components/FieldHint';
-import {
-  inputClass,
-  inputClassSm,
-  inputInvalidClass,
-  textareaClass,
-  textareaClassTall,
-} from '../components/fieldStyles';
 import { ValidationSummary, type ValidationIssueAction } from '../components/ValidationSummary';
-import { readFileAsDataUrl, acceptImageTypes } from '../components/fileUpload';
-import { issuesForPath } from '../validation/fieldIssues';
-import type { FieldIssues } from '../validation/fieldIssues';
 import { scheduleValidationFocus } from '../validation/validationNavigation';
 import type { DashboardValidationIssue } from '../validation/validationTypes';
+import { EducationBodyEditor } from './EducationBodyEditor';
+import { EducationFeaturedImageEditor } from './EducationFeaturedImageEditor';
+import { EducationGroupManagement } from './EducationGroupManagement';
+import { EducationMetadataEditor } from './EducationMetadataEditor';
+import { EducationResourceList } from './EducationResourceList';
 import { validateDashboardEducation } from './educationValidation';
+import { resolveEducationValidationTarget } from './educationValidationNavigation';
+import { useEducationImageUpload } from './useEducationImageUpload';
+import { useEducationResourceSelection } from './useEducationResourceSelection';
 
-const blockKindLabels: Record<EducationResourceBlock['kind'], string> = {
-  paragraph: 'Parágrafo',
-  heading: 'Título',
-  list: 'Lista',
-  image: 'Imagem',
-  video: 'Vídeo',
-  pdf: 'PDF incorporado',
-  sourceLink: 'Link da fonte',
-  link: 'Link',
-};
-
-type ManagedEducationGroup = EducationResourceGroup & { isDefault?: boolean };
-type ResourceSelection = { index: number; id: string };
-type ImageError = { message: string; path: string };
-
-function isUploadedImageValue(value: string | undefined) {
-  return value?.trimStart().startsWith('data:') ?? false;
-}
-
-function isPublicImagePath(value: string | undefined): boolean {
-  if (!value) return false;
-  const trimmed = value.trim();
-  return trimmed.startsWith('/') && !trimmed.startsWith('//');
-}
-
-function publicImageInputLabel(value: string | undefined) {
-  const name = value?.split('/').pop() ?? '';
-  return `Imagem interna (${name})`;
-}
-
-function uploadedImageInputLabel(fileName: string | undefined) {
-  const label = fileName?.trim() || 'Base64';
-  return `Imagem enviada (${label})`;
-}
-
-function SourceCardPreview({ sourceText }: { sourceText?: string }) {
-  const citations = useMemo(() => parseSourceCitations(sourceText), [sourceText]);
-
-  return (
-    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-low p-3.5">
-      <div className="flex items-center justify-between font-label-sm text-on-surface-variant font-semibold">
-        <span>Pré-visualização da fonte no cartão</span>
-        <span className="font-label-sm text-on-surface-variant/75">
-          {citations.length === 1 ? '1 fonte' : `${citations.length} fontes`}
-        </span>
-      </div>
-
-      {citations.length === 0 ? (
-        <p className="font-body-sm text-on-surface-variant/70 italic">
-          Nenhuma fonte inserida. As citações e os selos do cartão aparecerão aqui.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          <div className="flex flex-wrap items-center gap-2" aria-label="Pré-visualização dos selos no cartão">
-            <span className="font-label-sm text-on-surface-variant">Selo no cartão:</span>
-            {citations.map((citation) => (
-              <span key={citation.id} title={citation.rawText}>
-                <Badge tone="secondary">{formatCitationSourceLabel(citation.rawText)}</Badge>
-              </span>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-1.5 border-t border-outline-variant/20 pt-2">
-            <span className="font-label-sm text-on-surface-variant font-medium">Citações e links reconhecidos:</span>
-            <ul className="flex flex-col gap-1.5 font-body-sm text-on-surface-variant">
-              {citations.map((citation) => (
-                <li
-                  key={citation.id}
-                  className="flex flex-col gap-1 rounded bg-surface-container-lowest p-2 border border-outline-variant/20"
-                >
-                  <span className="line-clamp-2">{citation.rawText}</span>
-                  {citation.segments.some((s) => s.kind === 'link') && (
-                    <div className="flex flex-wrap gap-2 text-primary font-label-sm">
-                      {citation.segments
-                        .filter((s) => s.kind === 'link')
-                        .map((seg, idx) => (
-                          <span key={idx} className="underline underline-offset-2">
-                            🔗 {seg.url}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function getBlockSummary(block: EducationResourceBlock): string {
-  if (block.kind === 'paragraph') {
-    return block.title || block.text || 'Parágrafo sem texto';
-  }
-  if (block.kind === 'heading') {
-    return block.text || 'Título sem texto';
-  }
-  if (block.kind === 'video') {
-    return block.title || block.url || 'Vídeo sem URL';
-  }
-  if (block.kind === 'pdf') {
-    return block.title || block.url || 'PDF sem URL';
-  }
-  if (block.kind === 'image') {
-    if (block.imageFileName) return `Imagem: ${block.imageFileName}`;
-    if (block.alt) return `Imagem: ${block.alt}`;
-    if (block.imageUrl) return `Imagem: ${block.imageUrl.slice(0, 40)}...`;
-    return 'Imagem sem arquivo ou URL';
-  }
-  if (block.kind === 'list') {
-    const count = block.items?.length ?? 0;
-    const title = block.title ? `${block.title} • ` : '';
-    return `${title}${count} ${count === 1 ? 'item' : 'itens'}`;
-  }
-  if (block.kind === 'sourceLink') {
-    return block.label || block.url || 'Link de fonte';
-  }
-  if (block.kind === 'link') {
-    return block.label || block.url || 'Link';
-  }
-  return '';
-}
-
-export function EducationDashboard({
-  resources,
-  groups,
-  defaultGroupOrder = 0,
-  externalFocus,
-  onResourceChange,
-  onResourceAdd,
-  onResourceRemove = () => {},
-  onGroupChange,
-  onGroupAdd,
-  onGroupRemove,
-  onGroupMove,
-}: {
+export type EducationDashboardProps = {
   resources: EducationResource[];
   groups: EducationResourceGroup[];
   defaultGroupOrder?: number;
@@ -179,233 +27,84 @@ export function EducationDashboard({
   onGroupAdd: () => void;
   onGroupRemove: (groupIndex: number, groupId: string) => void;
   onGroupMove: (groupIndex: number, direction: -1 | 1) => void;
-}) {
-  const [selection, setSelection] = useState<ResourceSelection | null>(() =>
-    resources[0] ? { index: 0, id: resources[0].id } : null,
-  );
+};
+
+export function EducationDashboard({
+  resources,
+  groups,
+  defaultGroupOrder = 0,
+  externalFocus,
+  onResourceChange,
+  onResourceAdd,
+  onResourceRemove,
+  onGroupChange,
+  onGroupAdd,
+  onGroupRemove,
+  onGroupMove,
+}: EducationDashboardProps) {
   const [groupsExpanded, setGroupsExpanded] = useState(false);
-  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(() => new Set());
+  const [validationBlockFocus, setValidationBlockFocus] = useState<{ blockId: string; requestId: number } | null>(null);
+  const [localBodyFocusRequestId, setLocalBodyFocusRequestId] = useState<number | null>(null);
+  const validationFocusSequence = useRef(0);
+  const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
+  const { imageError, readImageSafely } = useEducationImageUpload();
+  const { effectiveIndex, selectedResource, selectResource, addResource, removeResource } =
+    useEducationResourceSelection({ resources, externalFocus, onResourceAdd, onResourceRemove });
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (!externalFocus?.id) return;
-    const materialIndex = resources.findIndex((resource) => resource.id === externalFocus.id);
-    if (materialIndex >= 0) {
-      setSelection({ index: materialIndex, id: externalFocus.id });
-      const path = externalFocus.path ?? `${externalFocus.id}.title`;
-      // Se o caminho for de um bloco, expande o bloco
-      const blockMatch = /body\.([^.]+)/.exec(path);
-      if (blockMatch?.[1]) {
-        const blockId = blockMatch[1];
-        setCollapsedBlockIds((current) => {
-          const next = new Set(current);
-          next.delete(blockId);
-          return next;
-        });
-      }
-      window.setTimeout(() => scheduleValidationFocus(path), 120);
-      return;
-    }
+    if (!externalFocus?.id || resources.some((resource) => resource.id === externalFocus.id)) return;
     const groupIndex = groups.findIndex((group) => group.id === externalFocus.id);
-    if (groupIndex >= 0) {
-      setGroupsExpanded(true);
-      const path = externalFocus.path ?? `groups.${groupIndex}.title`;
-      window.setTimeout(() => scheduleValidationFocus(path), 150);
-    }
-  }, [externalFocus?.requestId, externalFocus?.id, externalFocus?.path, groups, resources]);
+    if (groupIndex < 0) return;
+
+    setGroupsExpanded(true);
+    const path = externalFocus.path ?? `groups.${groupIndex}.title`;
+    const timeoutId = window.setTimeout(() => scheduleValidationFocus(path), 150);
+    return () => window.clearTimeout(timeoutId);
+  }, [externalFocus?.id, externalFocus?.path, externalFocus?.requestId, groups, resources]);
   /* eslint-enable react-hooks/set-state-in-effect */
-  const resourceAtSelectedIndex = selection ? resources[selection.index] : undefined;
-  const selectedIndex =
-    selection && resourceAtSelectedIndex?.id === selection.id
-      ? selection.index
-      : selection
-        ? resources.findIndex((resource) => resource.id === selection.id)
-        : -1;
-  const validation = useMemo(() => validateDashboardEducation(resources, groups), [resources, groups]);
 
-  const [imageError, setImageError] = useState<ImageError | null>(null);
+  const externalBlockFocus = useMemo(() => {
+    if (!externalFocus || externalFocus.id !== selectedResource?.id) return null;
+    const blockId = getEducationBlockId(externalFocus.path);
+    return blockId ? { blockId, requestId: externalFocus.requestId } : null;
+  }, [externalFocus, selectedResource?.id]);
+  const currentExternalFocusRequestId = externalFocus?.requestId ?? null;
+  const bodyFocusRequest =
+    localBodyFocusRequestId === currentExternalFocusRequestId ? validationBlockFocus : externalBlockFocus;
 
-  /** Reads an image file as a data URL, surfacing size/format errors to one shared alert. */
-  async function readImageSafely(file: File, path: string): Promise<string | null> {
-    setImageError(null);
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setImageError(null);
-      return dataUrl;
-    } catch (error) {
-      setImageError({
-        message: error instanceof Error ? error.message : 'Não foi possível enviar a imagem. Escolha outro arquivo.',
-        path,
-      });
-      return null;
-    }
+  function changeResource(patch: Partial<EducationResource>) {
+    if (selectedResource && effectiveIndex >= 0) onResourceChange(effectiveIndex, selectedResource.id, patch);
   }
-
-  // Canonical selection: fall back to the first resource if the selected id is
-  // no longer present (e.g. after the data set changes). All field edits and
-  // list highlighting key off these two values.
-  const effectiveIndex = selectedIndex >= 0 ? selectedIndex : 0;
-  const selectedResource = resources[effectiveIndex];
-
-  function changeField(patch: Partial<EducationResource>) {
-    if (!selectedResource) return;
-    onResourceChange(effectiveIndex, selectedResource.id, patch);
-  }
-
-  function addResource() {
-    const newId = onResourceAdd();
-    setSelection({ index: resources.length, id: newId });
-  }
-
-  function removeResource() {
-    if (!selectedResource) return;
-
-    const neighbor = resources[effectiveIndex + 1] ?? resources[effectiveIndex - 1];
-    const neighborIndex = resources[effectiveIndex + 1] ? effectiveIndex + 1 : effectiveIndex - 1;
-    setSelection(neighbor && neighborIndex >= 0 ? { index: neighborIndex, id: neighbor.id } : null);
-    onResourceRemove(effectiveIndex, selectedResource.id);
-  }
-
-  /** Builds an invalid-aware input className for a given issue set. */
-  function fieldClass(issues: FieldIssues, base = inputClass) {
-    return issues.errors.length > 0 ? `${base} ${inputInvalidClass}` : base;
-  }
-
-  const [newBlockKind, setNewBlockKind] = useState<EducationResourceBlock['kind']>('paragraph');
-
-  const selectedResourceBody = selectedResource
-    ? (selectedResource.body ?? [
-        {
-          id: `${selectedResource.id}-overview`,
-          kind: 'paragraph',
-          title: 'Sobre este material',
-          text: 'Descreva aqui o conteúdo principal do material.',
-        },
-      ])
-    : [];
-
-  const featuredImage = selectedResource?.featuredImage ?? {
-    kind: 'catalog',
-    imageId: defaultFeaturedImageId,
-  };
-
-  function updateFeaturedImage(next: EducationResourceFeaturedImage) {
-    changeField({ featuredImage: next });
-  }
-
-  function updateBody(body: EducationResourceBlock[]) {
-    changeField({ body });
-  }
-
-  function updateGroupSelection(groupId: string | undefined) {
-    if (groupId === undefined || groupId === DEFAULT_EDUCATION_GROUP_ID) {
-      changeField({ group: undefined });
-    } else {
-      changeField({ group: groupId });
-    }
-  }
-
-  function toggleBlockExpanded(blockId: string) {
-    setCollapsedBlockIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(blockId)) {
-        next.delete(blockId);
-      } else {
-        next.add(blockId);
-      }
-      return next;
-    });
-  }
-
-  function expandAllBlocks() {
-    setCollapsedBlockIds(new Set());
-  }
-
-  function collapseAllBlocks() {
-    setCollapsedBlockIds(new Set(selectedResourceBody.map((block) => block.id)));
-  }
-
-  function updateBlock(blockId: string, patch: Partial<EducationResourceBlock>) {
-    updateBody(selectedResourceBody.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
-  }
-
-  function addBlock() {
-    const newBlock = createBodyBlock(newBlockKind, selectedResourceBody.length);
-    updateBody([...selectedResourceBody, newBlock]);
-    setCollapsedBlockIds((prev) => {
-      const next = new Set(prev);
-      next.delete(newBlock.id);
-      return next;
-    });
-  }
-
-  function removeBlock(blockId: string) {
-    updateBody(selectedResourceBody.filter((block) => block.id !== blockId));
-  }
-
-  function moveBlock(blockIndex: number, direction: -1 | 1) {
-    const body = [...selectedResourceBody];
-    const nextIndex = blockIndex + direction;
-    if (nextIndex < 0 || nextIndex >= body.length) return;
-    [body[blockIndex], body[nextIndex]] = [body[nextIndex], body[blockIndex]];
-    updateBody(body);
-  }
-
-  // Path prefix used to scope inline validation issues to the selected resource.
-  const resourcePath = selectedResource?.id ?? '';
 
   function getIssueAction(issue: DashboardValidationIssue): ValidationIssueAction | null {
-    const groupMatch = /^groups\.(\d+)(?:\.|$)/.exec(issue.path ?? '');
-    if (groupMatch) {
-      const groupIndex = Number(groupMatch[1]);
-      if (!groups[groupIndex]) return null;
-
-      return {
-        label: 'Ir ao grupo',
-        description: issue.path?.endsWith('.title')
-          ? 'preencha o título destacado no cadastro do grupo.'
-          : 'revise o grupo destacado; se o identificador estiver inválido, remova-o e crie outro.',
-        onClick: () => {
-          setGroupsExpanded(true);
-          scheduleValidationFocus(issue.path!);
-        },
-      };
-    }
-
-    const duplicateMaterialMatch = /^materials\.(\d+)$/.exec(issue.path ?? '');
-    const resourceIndex = duplicateMaterialMatch
-      ? Number(duplicateMaterialMatch[1])
-      : resources.findIndex((resource) => issue.path === resource.id || issue.path?.startsWith(`${resource.id}.`));
-    const resource = resources[resourceIndex];
-    if (!resource) return null;
-
-    const blockMatch = new RegExp(`^${escapeRegExp(resource.id)}\\.body\\.([^.]*)`).exec(issue.path ?? '');
-    const targetPath = normalizeEducationValidationPath(issue.path ?? resource.id);
+    const target = resolveEducationValidationTarget(issue, resources, groups);
+    if (!target) return null;
 
     return {
-      label: 'Ir ao material',
-      description: duplicateMaterialMatch
-        ? 'revise o material destacado; se o identificador estiver duplicado, remova-o e crie outro.'
-        : blockMatch
-          ? 'corrija o campo destacado dentro do bloco de conteúdo indicado.'
-          : 'corrija o campo destacado nos dados deste material.',
+      label: target.label,
+      description: target.description,
       onClick: () => {
-        setSelection({ index: resourceIndex, id: resource.id });
-        if (blockMatch?.[1]) {
-          setCollapsedBlockIds((current) => {
-            const next = new Set(current);
-            next.delete(blockMatch[1]);
-            return next;
-          });
+        if (target.kind === 'group') {
+          setGroupsExpanded(true);
+        } else {
+          selectResource(target.resourceIndex);
+          setLocalBodyFocusRequestId(currentExternalFocusRequestId);
+          if (target.blockId) {
+            validationFocusSequence.current += 1;
+            setValidationBlockFocus({ blockId: target.blockId, requestId: validationFocusSequence.current });
+          } else {
+            setValidationBlockFocus(null);
+          }
         }
-        scheduleValidationFocus(targetPath);
+        scheduleValidationFocus(target.focusPath);
       },
     };
   }
 
   return (
     <section className="grid gap-stack-md lg:grid-cols-[280px_1fr]">
-      <GroupManagementSection
+      <EducationGroupManagement
         groups={groups}
         defaultGroupOrder={defaultGroupOrder}
         onGroupChange={onGroupChange}
@@ -426,518 +125,48 @@ export function EducationDashboard({
         </section>
       ) : (
         <>
-          <aside className="rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-4">
-            <h2 className="font-headline-sm text-on-surface">Materiais</h2>
-            <Button className="mt-3 w-full" onClick={addResource}>
-              Novo material
-            </Button>
-            <div className="mt-3 flex flex-col gap-2">
-              {resources.map((resource, resourceIndex) => (
-                <button
-                  key={`${resource.id}-${resourceIndex}`}
-                  type="button"
-                  onClick={() => setSelection({ index: resourceIndex, id: resource.id })}
-                  className={`rounded-lg px-3 py-2 text-left font-label-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                    resourceIndex === effectiveIndex
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                  }`}
-                >
-                  {resource.title}
-                  {validation.errors.some(
-                    (issue) => issue.path === `materials.${resourceIndex}` || issue.path?.startsWith(`${resource.id}.`),
-                  ) ? (
-                    <span
-                      className={`mt-1 flex items-center gap-1 font-label-sm ${resourceIndex === effectiveIndex ? 'text-on-primary' : 'text-error'}`}
-                    >
-                      <AlertCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                      Precisa de correção
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </aside>
-
+          <EducationResourceList
+            resources={resources}
+            selectedIndex={effectiveIndex}
+            validation={validation}
+            onAdd={addResource}
+            onSelect={(resourceIndex) => {
+              selectResource(resourceIndex);
+              setLocalBodyFocusRequestId(currentExternalFocusRequestId);
+              setValidationBlockFocus(null);
+            }}
+          />
           <div
             data-validation-path={`materials.${effectiveIndex}`}
             className="dashboard-validation-target flex flex-col gap-stack-md"
           >
-            {imageError ? (
-              <div
-                role="alert"
-                className="rounded-lg border border-error bg-error-container px-4 py-3 font-label-md text-on-error-container"
-              >
-                <p className="font-label-md">Falha no campo de imagem</p>
-                <p className="mt-1 font-body-md">{imageError.message}</p>
-                <button
-                  type="button"
-                  className="mt-2 rounded-full border border-current/35 px-3 py-1.5 font-label-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  onClick={() => scheduleValidationFocus(imageError.path)}
-                >
-                  Voltar ao campo da imagem
-                </button>
-              </div>
-            ) : null}
-            <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-headline-sm text-on-surface">Dados principais</h2>
-                <ConfirmButton
-                  key={`${effectiveIndex}-${selectedResource.id}`}
-                  prompt="Remover material"
-                  onConfirm={removeResource}
-                  aria-label={`Remover material ${selectedResource.title || 'sem título'}`}
+            {imageError ? <EducationImageError message={imageError.message} path={imageError.path} /> : null}
+            <EducationMetadataEditor
+              resource={selectedResource}
+              resourceIndex={effectiveIndex}
+              groups={groups}
+              validation={validation}
+              onChange={changeResource}
+              onRemove={removeResource}
+              readImageFile={readImageSafely}
+              featuredImageEditor={
+                <EducationFeaturedImageEditor
+                  resource={selectedResource}
+                  validation={validation}
+                  onChange={(featuredImage) => changeResource({ featuredImage })}
+                  readImageFile={readImageSafely}
                 />
-              </div>
-              <Field
-                label="Título do material"
-                issues={issuesForPath(validation, `${resourcePath}.title`)}
-                validationPath={`${resourcePath}.title`}
-              >
-                <input
-                  aria-label="Título do material"
-                  className={fieldClass(issuesForPath(validation, `${resourcePath}.title`))}
-                  value={selectedResource.title}
-                  onChange={(event) => changeField({ title: event.target.value })}
-                />
-              </Field>
-              <Field
-                label="Descrição do material"
-                hint="Resumo curto que aparece na lista de materiais."
-                issues={issuesForPath(validation, `${resourcePath}.description`)}
-                validationPath={`${resourcePath}.description`}
-              >
-                <textarea
-                  aria-label="Descrição do material"
-                  className={fieldClass(issuesForPath(validation, `${resourcePath}.description`), textareaClassTall)}
-                  value={selectedResource.description}
-                  onChange={(event) => changeField({ description: event.target.value })}
-                />
-              </Field>
-              <Field
-                label="Fonte do material"
-                hint="Fontes e referências bibliográficas no padrão ABNT. Separe múltiplas fontes com barra (/) ou quebra de linha. Links inseridos no texto serão detectados automaticamente."
-                issues={issuesForPath(validation, `${resourcePath}.source`)}
-                validationPath={`${resourcePath}.source`}
-              >
-                <textarea
-                  aria-label="Fonte do material"
-                  className={fieldClass(issuesForPath(validation, `${resourcePath}.source`), textareaClass)}
-                  rows={3}
-                  value={selectedResource.source}
-                  onChange={(event) => changeField({ source: event.target.value })}
-                />
-                <SourceCardPreview sourceText={selectedResource.source} />
-              </Field>
-
-              <Field
-                label="Miniatura da biblioteca"
-                hint="Imagem pequena usada no cartão da biblioteca de materiais."
-                issues={issuesForPath(validation, `${resourcePath}.imageUrl`)}
-                validationPath={`${resourcePath}.imageUrl`}
-              >
-                <div className="flex gap-2">
-                  <input
-                    aria-label="URL da miniatura da biblioteca"
-                    className={`${inputClass} flex-1`}
-                    disabled={
-                      isUploadedImageValue(selectedResource.imageUrl) || isPublicImagePath(selectedResource.imageUrl)
-                    }
-                    value={
-                      isUploadedImageValue(selectedResource.imageUrl)
-                        ? uploadedImageInputLabel(selectedResource.imageFileName)
-                        : isPublicImagePath(selectedResource.imageUrl)
-                          ? publicImageInputLabel(selectedResource.imageUrl)
-                          : (selectedResource.imageUrl ?? '')
-                    }
-                    onChange={(event) => changeField({ imageUrl: event.target.value })}
-                  />
-                  {isUploadedImageValue(selectedResource.imageUrl) ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      onClick={() => changeField({ imageUrl: '', imageFileName: '' })}
-                    >
-                      Deletar miniatura da biblioteca
-                    </Button>
-                  ) : (
-                    <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 text-sm font-label-md text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:border-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                      <input
-                        type="file"
-                        accept={acceptImageTypes()}
-                        className="sr-only"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          const dataUrl = await readImageSafely(file, `${resourcePath}.imageUrl`);
-                          if (dataUrl) changeField({ imageUrl: dataUrl, imageFileName: file.name });
-                          event.target.value = '';
-                        }}
-                      />
-                      Enviar imagem
-                    </label>
-                  )}
-                </div>
-                {selectedResource.imageUrl ? (
-                  <div className="h-32 w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
-                    <img
-                      alt="Miniatura da biblioteca"
-                      className="h-full w-full object-cover"
-                      src={selectedResource.imageUrl}
-                    />
-                  </div>
-                ) : null}
-                {selectedResource.imageFileName ? (
-                  <p className="font-label-sm text-on-surface-variant">
-                    Arquivo enviado: {selectedResource.imageFileName}
-                  </p>
-                ) : null}
-              </Field>
-
-              <fieldset
-                data-validation-path={`${resourcePath}.featuredImage`}
-                aria-label="Imagem principal do material"
-                className="flex flex-col gap-3 rounded-lg border border-outline-variant/50 p-4"
-              >
-                <legend className="font-label-md text-on-surface font-semibold">Imagem principal do material</legend>
-                <FieldHint>Imagem grande exibida acima do conteúdo do material.</FieldHint>
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex items-center gap-2 font-label-md text-on-surface">
-                    <input
-                      checked={featuredImage.kind === 'catalog'}
-                      name="featured-image-kind"
-                      type="radio"
-                      onChange={() => updateFeaturedImage({ kind: 'catalog', imageId: defaultFeaturedImageId })}
-                    />
-                    Usar imagem padrão
-                  </label>
-                  <label className="flex items-center gap-2 font-label-md text-on-surface">
-                    <input
-                      checked={featuredImage.kind === 'external'}
-                      name="featured-image-kind"
-                      type="radio"
-                      onChange={() =>
-                        updateFeaturedImage({ kind: 'external', imageUrl: selectedResource.imageUrl ?? '' })
-                      }
-                    />
-                    Usar URL externa
-                  </label>
-                  <label className="flex items-center gap-2 font-label-md text-on-surface">
-                    <input
-                      checked={featuredImage.kind === 'uploaded'}
-                      name="featured-image-kind"
-                      type="radio"
-                      onChange={() => updateFeaturedImage({ kind: 'uploaded', dataUrl: '', fileName: '' })}
-                    />
-                    Enviar do computador
-                  </label>
-                </div>
-                {featuredImage.kind === 'catalog' ? (
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {featuredImageOptions.map((option) => {
-                      const isActive = featuredImage.kind === 'catalog' && featuredImage.imageId === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          aria-label={option.alt}
-                          aria-pressed={isActive}
-                          onClick={() => updateFeaturedImage({ kind: 'catalog', imageId: option.id })}
-                          className={`relative h-24 overflow-hidden rounded-xl border-2 transition-all ${
-                            isActive
-                              ? 'border-primary ring-2 ring-primary/30'
-                              : 'border-transparent hover:border-outline-variant'
-                          }`}
-                        >
-                          <img alt="" className="h-full w-full object-cover" src={option.src} />
-                          {isActive && (
-                            <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-on-primary shadow-sm">
-                              <Check aria-hidden="true" className="h-4 w-4" />
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : featuredImage.kind === 'uploaded' ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 self-start rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 font-label-md text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:border-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                        <input
-                          type="file"
-                          accept={acceptImageTypes()}
-                          className="sr-only"
-                          onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            const dataUrl = await readImageSafely(file, `${resourcePath}.featuredImage`);
-                            if (dataUrl) updateFeaturedImage({ kind: 'uploaded', dataUrl, fileName: file.name });
-                            event.target.value = '';
-                          }}
-                        />
-                        {featuredImage.dataUrl ? 'Trocar imagem' : 'Escolher imagem'}
-                      </label>
-                      {featuredImage.dataUrl ? (
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="sm"
-                          onClick={() => updateFeaturedImage({ kind: 'catalog', imageId: defaultFeaturedImageId })}
-                        >
-                          Deletar imagem principal
-                        </Button>
-                      ) : null}
-                    </div>
-                    {featuredImage.dataUrl ? (
-                      <div className="h-48 w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
-                        <img
-                          alt={featuredImage.alt ?? ''}
-                          className="h-full w-full object-cover"
-                          src={featuredImage.dataUrl}
-                        />
-                      </div>
-                    ) : (
-                      <p className="font-body-md text-on-surface-variant">Nenhuma imagem selecionada.</p>
-                    )}
-                    {featuredImage.fileName ? (
-                      <p className="font-label-sm text-on-surface-variant">Arquivo enviado: {featuredImage.fileName}</p>
-                    ) : null}
-                    <Field label="Descrição da imagem (acessibilidade)">
-                      <input
-                        aria-label="Descrição da imagem principal"
-                        className={inputClass}
-                        value={featuredImage.alt ?? ''}
-                        onChange={(event) =>
-                          updateFeaturedImage({
-                            kind: 'uploaded',
-                            dataUrl: featuredImage.dataUrl,
-                            alt: event.target.value,
-                            fileName: featuredImage.fileName,
-                          })
-                        }
-                      />
-                    </Field>
-                  </div>
-                ) : (
-                  <Field
-                    label="URL da imagem principal"
-                    issues={issuesForPath(validation, `${resourcePath}.featuredImage`)}
-                    validationPath={`${resourcePath}.featuredImage`}
-                  >
-                    <input
-                      aria-label="URL da imagem principal"
-                      className={fieldClass(issuesForPath(validation, `${resourcePath}.featuredImage`))}
-                      value={featuredImage.kind === 'external' ? featuredImage.imageUrl : ''}
-                      onChange={(event) => updateFeaturedImage({ kind: 'external', imageUrl: event.target.value })}
-                    />
-                    {featuredImage.kind === 'external' && featuredImage.imageUrl ? (
-                      <div className="mt-3 h-48 w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
-                        <img
-                          alt={featuredImage.alt ?? ''}
-                          className="h-full w-full object-cover"
-                          src={featuredImage.imageUrl}
-                        />
-                      </div>
-                    ) : null}
-                  </Field>
-                )}
-              </fieldset>
-              <Field
-                label="Grupo do material"
-                hint="Categoria que agrupa este material junto com outros relacionados."
-                issues={issuesForPath(validation, `${resourcePath}.group`)}
-                validationPath={`${resourcePath}.group`}
-              >
-                <select
-                  aria-label="Grupo do material"
-                  className={inputClass}
-                  value={selectedResource.group ?? DEFAULT_EDUCATION_GROUP_ID}
-                  onChange={(event) => updateGroupSelection(event.target.value || undefined)}
-                >
-                  <option value={DEFAULT_EDUCATION_GROUP_ID}>Geral</option>
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.title}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <div
-                data-validation-path={`${resourcePath}.tags`}
-                className="dashboard-validation-target flex flex-col gap-2"
-              >
-                <span className="font-label-md text-on-surface">Marcadores</span>
-                <FieldHint>Use palavras curtas para ajudar professores a encontrar o material.</FieldHint>
-                <ChipInput
-                  aria-label="Marcadores do material"
-                  placeholder="Digite um marcador e pressione Enter"
-                  values={selectedResource.tags}
-                  onChange={(tags) => changeField({ tags })}
-                />
-              </div>
-            </section>
-
-            <section className="flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-headline-sm text-on-surface">Conteúdo do material</h2>
-                  <p className="font-label-sm text-on-surface-variant">
-                    {selectedResourceBody.length === 1
-                      ? '1 bloco de conteúdo'
-                      : `${selectedResourceBody.length} blocos de conteúdo`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" onClick={expandAllBlocks}>
-                    Expandir todos
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={collapseAllBlocks}>
-                    Recolher todos
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                {selectedResourceBody.map((block, blockIndex) => {
-                  const blockNumber = blockIndex + 1;
-                  const isExpanded = !collapsedBlockIds.has(block.id);
-                  const blockIssues = issuesForPath(validation, `${resourcePath}.body.${block.id}`);
-                  const isFirst = blockIndex === 0;
-                  const isLast = blockIndex === selectedResourceBody.length - 1;
-
-                  return (
-                    <div
-                      key={block.id}
-                      data-validation-path={`${resourcePath}.body.${block.id}`}
-                      className={`flex flex-col rounded-lg border transition-all ${
-                        isExpanded
-                          ? 'border-primary/40 bg-surface-container-lowest shadow-sm'
-                          : 'border-outline-variant/40 bg-surface-container-low hover:bg-surface-container-low/80'
-                      }`}
-                    >
-                      {/* Header Row */}
-                      <div
-                        className="flex flex-wrap items-center justify-between gap-2 p-3.5 cursor-pointer select-none"
-                        onClick={(e) => {
-                          if ((e.target as HTMLElement).closest('[data-no-toggle]')) return;
-                          toggleBlockExpanded(block.id);
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={isExpanded}
-                        aria-label={`Bloco ${blockNumber}: ${blockKindLabels[block.kind]}`}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            if ((e.target as HTMLElement).closest('[data-no-toggle]')) return;
-                            e.preventDefault();
-                            toggleBlockExpanded(block.id);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-label-sm font-bold text-primary">
-                            {blockNumber}
-                          </span>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-label-md font-semibold text-on-surface">
-                                {blockKindLabels[block.kind]}
-                              </span>
-                              {blockIssues.errors.length > 0 && (
-                                <span className="rounded bg-error-container px-2 py-0.5 font-label-sm text-on-error-container font-medium">
-                                  Erro
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-body-sm text-on-surface-variant truncate">
-                              {getBlockSummary(block)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions Bar inside Header */}
-                        <div className="flex items-center gap-1.5" data-no-toggle>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={isFirst}
-                            onClick={() => moveBlock(blockIndex, -1)}
-                            aria-label={`Mover bloco ${blockNumber} para cima`}
-                            title="Mover para cima"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                            <span className="sr-only lg:not-sr-only">Cima</span>
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={isLast}
-                            onClick={() => moveBlock(blockIndex, 1)}
-                            aria-label={`Mover bloco ${blockNumber} para baixo`}
-                            title="Mover para baixo"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                            <span className="sr-only lg:not-sr-only">Baixo</span>
-                          </Button>
-                          <ConfirmButton
-                            prompt="Remover bloco"
-                            confirmLabel="Confirmar"
-                            onConfirm={() => removeBlock(block.id)}
-                            aria-label={`Remover bloco ${blockNumber}`}
-                            className="rounded-full bg-error-container px-3 py-1.5 font-label-sm text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => toggleBlockExpanded(block.id)}
-                            className="p-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
-                            aria-label={isExpanded ? 'Recolher bloco' : 'Expandir bloco'}
-                          >
-                            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <div className="border-t border-outline-variant/30 p-4 bg-surface-container-lowest rounded-b-lg">
-                          <BlockFields
-                            block={block}
-                            blockNumber={blockNumber}
-                            invalid={blockIssues.errors.length > 0}
-                            onChange={(patch) => updateBlock(block.id, patch)}
-                            readImageFile={readImageSafely}
-                            validationPath={`${resourcePath}.body.${block.id}`}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-outline-variant/30 pt-4">
-                <Field label="Tipo do novo bloco" className="flex-1 min-w-[200px]">
-                  <select
-                    aria-label="Tipo do novo bloco"
-                    className={inputClass}
-                    value={newBlockKind}
-                    onChange={(event) => setNewBlockKind(event.target.value as EducationResourceBlock['kind'])}
-                  >
-                    {Object.entries(blockKindLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Button onClick={addBlock} className="self-start">
-                  Adicionar bloco
-                </Button>
-              </div>
-            </section>
-
+              }
+            />
+            <EducationBodyEditor
+              key={selectedResource.id}
+              body={educationBody(selectedResource)}
+              resourcePath={selectedResource.id}
+              validation={validation}
+              focusRequest={bodyFocusRequest}
+              onChange={(body) => changeResource({ body })}
+              readImageFile={readImageSafely}
+            />
             <ValidationSummary result={validation} getIssueAction={getIssueAction} />
           </div>
         </>
@@ -946,439 +175,38 @@ export function EducationDashboard({
   );
 }
 
-function getManagedGroups(groups: EducationResourceGroup[], defaultGroupOrder: number): ManagedEducationGroup[] {
-  return [
-    {
-      id: DEFAULT_EDUCATION_GROUP_ID,
-      title: 'Geral',
-      description: 'Grupo padrão para materiais sem categoria específica.',
-      order: defaultGroupOrder,
-      isDefault: true,
-    },
-    ...groups,
-  ].sort((left, right) => left.order - right.order);
-}
-
-function GroupManagementSection({
-  groups,
-  defaultGroupOrder,
-  groupsExpanded,
-  validation,
-  onGroupChange,
-  onGroupAdd,
-  onGroupRemove,
-  onGroupMove,
-  onToggleExpanded,
-}: {
-  groups: EducationResourceGroup[];
-  defaultGroupOrder: number;
-  groupsExpanded: boolean;
-  validation: ReturnType<typeof validateDashboardEducation>;
-  onGroupChange: (groupIndex: number, groupId: string, patch: Partial<EducationResourceGroup>) => void;
-  onGroupAdd: () => void;
-  onGroupRemove: (groupIndex: number, groupId: string) => void;
-  onGroupMove: (groupIndex: number, direction: -1 | 1) => void;
-  onToggleExpanded: () => void;
-}) {
+function EducationImageError({ message, path }: { message: string; path: string }) {
   return (
-    <section className="lg:col-span-2 flex flex-col gap-stack-sm rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-5">
+    <div
+      role="alert"
+      className="rounded-lg border border-error bg-error-container px-4 py-3 font-label-md text-on-error-container"
+    >
+      <p className="font-label-md">Falha no campo de imagem</p>
+      <p className="mt-1 font-body-md">{message}</p>
       <button
         type="button"
-        aria-expanded={groupsExpanded}
-        aria-controls="education-group-management-content"
-        aria-label={`Gerenciar grupos de materiais (${groupsExpanded ? 'ocultar' : 'mostrar'})`}
-        onClick={onToggleExpanded}
-        className="flex items-center justify-between font-headline-sm text-on-surface"
+        className="mt-2 rounded-full border border-current/35 px-3 py-1.5 font-label-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        onClick={() => scheduleValidationFocus(path)}
       >
-        <span>Grupos de materiais</span>
-        <span className="font-label-md">{groupsExpanded ? 'Ocultar' : 'Mostrar'}</span>
+        Voltar ao campo da imagem
       </button>
-      <FieldHint>Gerencie os grupos usados para organizar os materiais no painel administrativo.</FieldHint>
-
-      {groupsExpanded && (
-        <div id="education-group-management-content" className="mt-3 flex flex-col gap-3">
-          {(() => {
-            const managedGroups = getManagedGroups(groups, defaultGroupOrder);
-
-            return managedGroups.map((group, groupIndex) => {
-              const isDefault = group.isDefault === true;
-
-              return (
-                <div
-                  key={`${group.id}-${groupIndex}`}
-                  data-validation-path={isDefault ? undefined : `groups.${groupIndex}`}
-                  className="grid gap-3 rounded-lg border border-outline-variant/30 p-3 md:grid-cols-[1fr_auto]"
-                >
-                  <div className="flex flex-col gap-2">
-                    <Field
-                      label="Título"
-                      issues={isDefault ? undefined : issuesForPath(validation, `groups.${groupIndex}.title`)}
-                      validationPath={isDefault ? undefined : `groups.${groupIndex}.title`}
-                    >
-                      <input
-                        aria-label={`Título do grupo ${group.title}`}
-                        className={inputClassSm}
-                        value={group.title}
-                        disabled={isDefault}
-                        onChange={(event) => onGroupChange(groupIndex, group.id, { title: event.target.value })}
-                      />
-                    </Field>
-                    {isDefault ? (
-                      <FieldHint>
-                        Geral é o grupo padrão para materiais sem categoria específica. Ele não pode ser removido porque
-                        garante que todo material tenha uma seção padrão.
-                      </FieldHint>
-                    ) : (
-                      <label className="flex flex-col gap-1">
-                        <span className="font-label-sm text-on-surface-variant">Descrição opcional</span>
-                        <textarea
-                          aria-label={`Descrição do grupo ${group.title}`}
-                          className={textareaClass}
-                          value={group.description ?? ''}
-                          onChange={(event) => onGroupChange(groupIndex, group.id, { description: event.target.value })}
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-end gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={groupIndex === 0}
-                      onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, -1)}
-                      aria-label={`Mover grupo ${group.title} para cima`}
-                    >
-                      Mover para cima
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={groupIndex === managedGroups.length - 1}
-                      onClick={() => onGroupMove(isDefault ? -1 : groupIndex - 1, 1)}
-                      aria-label={`Mover grupo ${group.title} para baixo`}
-                    >
-                      Mover para baixo
-                    </Button>
-                    {!isDefault && (
-                      <ConfirmButton
-                        prompt="Remover"
-                        confirmLabel="Confirmar"
-                        onConfirm={() => onGroupRemove(groupIndex, group.id)}
-                        aria-label={`Remover grupo ${group.title}`}
-                        className="inline-flex items-center justify-center gap-2 rounded-full bg-error-container px-4 py-2 font-label-md text-on-error-container transition-colors hover:bg-error-container/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
-                      />
-                    )}
-                    {isDefault && <span className="font-label-sm text-on-surface-variant">Grupo padrão</span>}
-                  </div>
-                </div>
-              );
-            });
-          })()}
-          <Button onClick={onGroupAdd} className="self-start">
-            Novo grupo
-          </Button>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
 
-function createBodyBlock(kind: EducationResourceBlock['kind'], existingCount: number): EducationResourceBlock {
-  const id = `body-block-${crypto.randomUUID()}-${existingCount + 1}`;
-
-  if (kind === 'heading') return { id, kind, text: 'Novo título' };
-  if (kind === 'list') return { id, kind, title: 'Nova lista', items: ['Novo item'] };
-  if (kind === 'image') return { id, kind, imageUrl: '', alt: '' };
-  if (kind === 'video') return { id, kind, title: 'Novo vídeo', url: 'https://www.youtube.com/watch?v=abcdef12345' };
-  if (kind === 'pdf') return { id, kind, title: 'Novo PDF', url: 'https://example.com/documento.pdf' };
-  if (kind === 'sourceLink') return { id, kind, label: 'Acessar fonte original', url: 'https://example.com' };
-  if (kind === 'link') return { id, kind, label: 'Formulário', url: 'https://example.com' };
-
-  return { id, kind: 'paragraph', title: 'Novo bloco', text: 'Texto do bloco.' };
+function educationBody(resource: EducationResource) {
+  return (
+    resource.body ?? [
+      {
+        id: `${resource.id}-overview`,
+        kind: 'paragraph' as const,
+        title: 'Sobre este material',
+        text: 'Descreva aqui o conteúdo principal do material.',
+      },
+    ]
+  );
 }
 
-function BlockFields({
-  block,
-  blockNumber,
-  invalid = false,
-  onChange,
-  readImageFile,
-  validationPath,
-}: {
-  block: EducationResourceBlock;
-  blockNumber: number;
-  invalid?: boolean;
-  onChange: (patch: Partial<EducationResourceBlock>) => void;
-  readImageFile: (file: File, path: string) => Promise<string | null>;
-  validationPath: string;
-}) {
-  const baseInput = invalid ? `${inputClass} ${inputInvalidClass}` : inputClass;
-  const baseTextarea = invalid ? `${textareaClassTall} ${inputInvalidClass}` : textareaClassTall;
-
-  if (block.kind === 'paragraph') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
-          <input
-            aria-label={`Título do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.title ?? ''}
-            onChange={(e) => onChange({ title: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Texto do bloco {blockNumber}</span>
-          <textarea
-            data-validation-path={validationPath}
-            aria-label={`Texto do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseTextarea}
-            value={block.text ?? ''}
-            onChange={(e) => onChange({ text: e.target.value })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'heading') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
-          <input
-            data-validation-path={validationPath}
-            aria-label={`Título do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.text ?? ''}
-            onChange={(e) => onChange({ text: e.target.value })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'video') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Título do bloco {blockNumber}</span>
-          <input
-            aria-label={`Título do bloco ${blockNumber}`}
-            className={baseInput}
-            value={block.title ?? ''}
-            onChange={(e) => onChange({ title: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL do vídeo do bloco {blockNumber}</span>
-          <input
-            data-validation-path={`${validationPath}.url`}
-            aria-label={`URL do vídeo do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.url ?? ''}
-            onChange={(e) => onChange({ url: e.target.value })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'pdf') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Título do PDF do bloco {blockNumber}</span>
-          <input
-            aria-label={`Título do PDF do bloco ${blockNumber}`}
-            className={baseInput}
-            value={block.title ?? ''}
-            onChange={(e) => onChange({ title: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL direta do PDF do bloco {blockNumber}</span>
-          <input
-            data-validation-path={`${validationPath}.url`}
-            aria-label={`URL do PDF do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.url ?? ''}
-            onChange={(e) => onChange({ url: e.target.value })}
-          />
-        </label>
-        <FieldHint>
-          Use uma URL pública direta para o arquivo PDF. Se a fonte bloquear incorporação, o leitor poderá abrir o
-          documento em outra aba.
-        </FieldHint>
-      </div>
-    );
-  }
-
-  if (block.kind === 'image') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL da imagem do bloco {blockNumber}</span>
-          <input
-            data-validation-path={`${validationPath}.imageUrl`}
-            aria-label={`URL da imagem do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            disabled={isUploadedImageValue(block.imageUrl)}
-            value={
-              isUploadedImageValue(block.imageUrl)
-                ? uploadedImageInputLabel(block.imageFileName)
-                : (block.imageUrl ?? '')
-            }
-            onChange={(e) => onChange({ imageUrl: e.target.value })}
-          />
-        </label>
-        {isUploadedImageValue(block.imageUrl) ? (
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            className="self-start"
-            onClick={() => onChange({ imageUrl: '', imageFileName: '' })}
-          >
-            Deletar imagem do bloco {blockNumber}
-          </Button>
-        ) : (
-          <label className="inline-flex cursor-pointer items-center justify-center gap-2 self-start rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 font-label-md text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:border-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            <input
-              type="file"
-              accept={acceptImageTypes()}
-              className="sr-only"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                const dataUrl = await readImageFile(file, `${validationPath}.imageUrl`);
-                if (dataUrl) onChange({ imageUrl: dataUrl, imageFileName: file.name });
-                event.target.value = '';
-              }}
-            />
-            {block.imageUrl ? 'Trocar imagem do bloco' : 'Enviar imagem do bloco'}
-          </label>
-        )}
-        {block.imageUrl ? (
-          <div className="h-40 w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
-            <img alt={block.alt ?? ''} className="h-full w-full object-cover" src={block.imageUrl} />
-          </div>
-        ) : null}
-        {block.imageFileName ? (
-          <p className="font-label-sm text-on-surface-variant">Arquivo enviado: {block.imageFileName}</p>
-        ) : null}
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Descrição da imagem do bloco {blockNumber}</span>
-          <input
-            aria-label={`Descrição da imagem do bloco ${blockNumber}`}
-            className={baseInput}
-            value={block.alt ?? ''}
-            onChange={(e) => onChange({ alt: e.target.value })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'list') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Itens da lista do bloco {blockNumber}</span>
-          <textarea
-            data-validation-path={validationPath}
-            aria-label={`Itens da lista do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseTextarea}
-            value={(block.items ?? []).join('\n')}
-            onChange={(e) => onChange({ items: e.target.value.split('\n') })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'sourceLink') {
-    return (
-      <div data-validation-path={validationPath} className="dashboard-validation-target flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Texto da fonte / Citação ABNT do bloco {blockNumber}</span>
-          <textarea
-            aria-label={`Texto do link do bloco ${blockNumber}`}
-            className={baseTextarea}
-            value={block.label ?? ''}
-            onChange={(e) => onChange({ label: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL direta da fonte (opcional se houver citação ABNT)</span>
-          <input
-            data-validation-path={`${validationPath}.url`}
-            aria-label={`URL da fonte do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.url ?? ''}
-            onChange={(e) => onChange({ url: e.target.value })}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  if (block.kind === 'link') {
-    return (
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">Texto do link do bloco {blockNumber} (ex: Formulário)</span>
-          <input
-            data-validation-path={`${validationPath}.label`}
-            aria-label={`Texto do link do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.label ?? ''}
-            onChange={(e) => onChange({ label: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="font-label-md text-on-surface">URL do link do bloco {blockNumber}</span>
-          <input
-            data-validation-path={`${validationPath}.url`}
-            aria-label={`URL do link do bloco ${blockNumber}`}
-            aria-invalid={invalid || undefined}
-            className={baseInput}
-            value={block.url ?? ''}
-            onChange={(e) => onChange({ url: e.target.value })}
-          />
-        </label>
-        {block.label ? (
-          <div className="mt-1 flex flex-col gap-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low p-3">
-            <span className="font-label-sm text-on-surface-variant font-medium">Pré-visualização no material:</span>
-            <span className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 font-label-md font-semibold text-primary self-start">
-              <span>{block.label}</span>
-              <ExternalLink size={16} />
-            </span>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function normalizeEducationValidationPath(path: string) {
-  if (/^materials\.\d+$/.test(path)) return path;
-  if (path.includes('.featuredImage.')) return path.slice(0, path.indexOf('.featuredImage.') + '.featuredImage'.length);
-  return path;
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function getEducationBlockId(path?: string) {
+  return path ? /(?:^|\.)body\.([^.]+)/.exec(path)?.[1] : undefined;
 }

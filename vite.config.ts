@@ -65,6 +65,10 @@ export default defineConfig({
       '@': path.resolve(dirname, 'src'),
     },
   },
+  // Workspace package source is TypeScript; let Vite bundle it directly.
+  optimizeDeps: {
+    exclude: ['@bemtevi/content-core'],
+  },
   build: {
     rollupOptions: {
       output: {

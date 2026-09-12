@@ -39,6 +39,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ['packages/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/rules-of-hooks': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
+  {
     files: ['vite.config.ts', 'vitest.config.ts', 'scripts/**/*.ts'],
     rules: {
       'react-refresh/only-export-components': 'off',

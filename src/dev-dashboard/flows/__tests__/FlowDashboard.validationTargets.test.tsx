@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { GuidedFlow } from '../../../domain/flow-engine/types';
 import type { DashboardValidationIssue } from '../../validation/validationTypes';
-import { FlowDashboard, resolveFlowValidationTarget } from '../FlowDashboard';
+import { FlowDashboard } from '../FlowDashboard';
+import { resolveFlowValidationTarget } from '../flowValidationNavigation';
 import { installScrollStub } from './scrollStubs';
 
 const flow: GuidedFlow = {

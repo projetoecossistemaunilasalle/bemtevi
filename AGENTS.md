@@ -28,8 +28,11 @@ O comando `check` executa sequencialmente e de forma idêntica ao pipeline de CI
 2. **Lint (`pnpm run lint`):** Verificação de regras de código com ESLint (`eslint .`).
 3. **Format Check (`pnpm run format:check`):** Verificação de formatação com Prettier (`prettier --check .`).
 4. **Validação de Fluxos (`pnpm run validate:flows`):** Validação de integridade e consistência dos fluxos JSON (`scripts/validate-flows.ts`).
-5. **Testes Unitários e de Integração (`pnpm run test`):** Execução de todos os testes com Vitest (`vitest run`).
-6. **Build (`pnpm run build`):** Compilação de produção com Vite (`vite build`).
+5. **Testes Unitários e de Integração (`pnpm run test`):** Execução da suíte local determinística com Vitest (`vitest run`). Exclui `neon/tests/**` (suíte live) e o smoke de release do pacote MCP.
+6. **Arquitetura (`pnpm run check:architecture`):** Orçamentos de tamanho, baseline de arquivos oversized, imports proibidos, pins de pacote e varredura de segredos.
+7. **Build (`pnpm run build`):** Compilação de produção com Vite (`vite build`).
+
+Quando os artefatos do pacote MCP existirem (MCP-01+), o `check` também roda `test:mcp` e, se houver `build.mjs`, `build:mcp`. Até lá esses comandos falham fechado (não skipam).
 
 ### Se qualquer verificação falhar:
 
@@ -51,19 +54,40 @@ O comando `check` executa sequencialmente e de forma idêntica ao pipeline de CI
 
 ## 3. Comandos Úteis
 
-| Ação                          | Windows                   | WSL / Linux                   |
-| ----------------------------- | ------------------------- | ----------------------------- |
-| **Gate completo (CI local)**  | `pnpm run check`          | `pnpm run check:wsl`          |
-| Rodar testes                  | `pnpm run test`           | `pnpm run test:wsl`           |
-| Testes em modo watch          | `pnpm run test:watch`     | `pnpm run test:watch:wsl`     |
-| Verificação de tipos          | `pnpm run typecheck`      | `pnpm run typecheck:wsl`      |
-| Linter                        | `pnpm run lint`           | `pnpm run lint:wsl`           |
-| Checagem de formatação        | `pnpm run format:check`   | `pnpm run format:check:wsl`   |
-| Formatação automática         | `pnpm run format`         | `pnpm run format:wsl`         |
-| Validação de fluxos JSON      | `pnpm run validate:flows` | `pnpm run validate:flows:wsl` |
-| Servidor de desenvolvimento   | `pnpm run dev`            | `pnpm run dev:wsl`            |
-| Build de produção             | `pnpm run build`          | `pnpm run build:wsl`          |
-| Espelho de conteúdo publicado | `pnpm run content:pull`   | `pnpm run content:pull:wsl`   |
+| Ação                          | Windows                        | WSL / Linux                        |
+| ----------------------------- | ------------------------------ | ---------------------------------- |
+| **Gate completo (CI local)**  | `pnpm run check`               | `pnpm run check:wsl`               |
+| Rodar testes                  | `pnpm run test`                | `pnpm run test:wsl`                |
+| Testes em modo watch          | `pnpm run test:watch`          | `pnpm run test:watch:wsl`          |
+| Verificação de tipos          | `pnpm run typecheck`           | `pnpm run typecheck:wsl`           |
+| Linter                        | `pnpm run lint`                | `pnpm run lint:wsl`                |
+| Checagem de formatação        | `pnpm run format:check`        | `pnpm run format:check:wsl`        |
+| Formatação automática         | `pnpm run format`              | `pnpm run format:wsl`              |
+| Validação de fluxos JSON      | `pnpm run validate:flows`      | `pnpm run validate:flows:wsl`      |
+| Servidor de desenvolvimento   | `pnpm run dev`                 | `pnpm run dev:wsl`                 |
+| Build de produção             | `pnpm run build`               | `pnpm run build:wsl`               |
+| Gate de arquitetura           | `pnpm run check:architecture`  | `pnpm run check:architecture:wsl`  |
+| Testes focados (unit)         | `pnpm run test:unit -- <path>` | `pnpm run test:unit:wsl -- <path>` |
+| Gate live Neon (DB)           | `pnpm run check:db`            | `pnpm run check:db:wsl`            |
+| Smoke do pacote MCP           | `pnpm run check:mcp-package`   | `pnpm run check:mcp-package:wsl`   |
+| Espelho de conteúdo publicado | `pnpm run content:pull`        | `pnpm run content:pull:wsl`        |
+
+---
+
+## 3.1 Gates sem credencial vs. live
+
+- **`pnpm run check`** é o gate local determinístico e **sem credenciais**. Inclui typecheck, lint, format, validate:flows, test, check:architecture e build. É o gate obrigatório pré-push.
+- **`pnpm run check:db`** provisiona um branch descartável do Neon e exercita a Data API real (admin, anônimo e capability). **Requer credenciais** (`NEON_API_KEY`, contas de teste, etc.). Ausência de credencial **falha o comando** — nunca trate como skip ou como incerteza de arquitetura. O job protegido `v2-database` no CI espelha esse gate.
+- **`pnpm run check:mcp-package`** é o smoke de tarball standalone do MCP (MCP-04). Também é gate de release, não substituto do check local.
+- Trabalho que afeta banco só é mergeável quando **ambos** `pnpm run check` e o job `v2-database` (ou `check:db` local com credenciais) passam.
+
+## 3.2 Fronteira editorial vs. código
+
+- **GitHub é a fonte de verdade do software.** Código, testes, migrations, schemas e tooling vivem no repositório.
+- **Neon é a fonte de verdade do conteúdo editorial.** Conteúdo publicado e o rascunho canônico editável vivem no Neon.
+- Tarefas editoriais (título/texto de material, adicionar recurso, imagem, contato) usam o fluxo de drafts do dashboard / agentes — **não** editem arquivos de conteúdo do repo como se fossem a fonte canônica em produção.
+- `src/content` no Git é fallback embutido / espelho via `content:pull`, não o armazenamento canônico de edição.
+- Publicar no Neon continua sendo ação explícita no dashboard (ou protocolo V2 equivalente), nunca implícita ao salvar um rascunho.
 
 ---
 

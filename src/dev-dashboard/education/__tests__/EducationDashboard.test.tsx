@@ -149,4 +149,36 @@ describe('EducationDashboard - Source Preview & Accordion Layout', () => {
     await waitFor(() => expect(screen.getByLabelText('Título do material')).toHaveFocus());
     expect(screen.getByLabelText('Título do material')).toHaveValue('');
   });
+
+  it('lets local validation focus override an earlier external block focus request', () => {
+    const resources: EducationResource[] = [
+      {
+        ...mockResources[0],
+        body: [mockResources[0].body![0], { id: 'b-2', kind: 'paragraph', title: 'Bloco inválido', text: '' }],
+      },
+    ];
+
+    render(
+      <EducationDashboard
+        resources={resources}
+        groups={mockGroups}
+        externalFocus={{ id: 'mat-1', requestId: 1, path: 'mat-1.body.b-1.text' }}
+        onResourceChange={vi.fn()}
+        onResourceAdd={vi.fn(() => 'new-id')}
+        onGroupChange={vi.fn()}
+        onGroupAdd={vi.fn()}
+        onGroupRemove={vi.fn()}
+        onGroupMove={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recolher todos' }));
+    expect(screen.queryByLabelText('Texto do bloco 2')).not.toBeInTheDocument();
+
+    const blockIssue = screen.getByText('Este bloco do conteúdo está vazio.').closest('li');
+    expect(blockIssue).not.toBeNull();
+    fireEvent.click(within(blockIssue!).getByRole('button', { name: 'Ir ao material' }));
+
+    expect(screen.getByLabelText('Texto do bloco 2')).toBeInTheDocument();
+  });
 });

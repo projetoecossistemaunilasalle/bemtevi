@@ -2,21 +2,13 @@ import { useMemo } from 'react';
 
 import type { FlowTopologyNode } from './flowTopology';
 import { selectClassName } from './flowEffectFields';
+import { excerptFlowText } from './flowText';
 
 /**
  * Shared node-target select used by NodeEditorPanel (option/free-text/branch
  * rows) and FlowSettingsPanel (entry stage): one native select over the
  * flow's topology nodes, grouped by depth/reachability.
  */
-
-/**
- * Same collapsing rules as flowTopology's private excerpt helper: trims,
- * collapses whitespace and ellipsizes past `length` characters.
- */
-function excerpt(text: string, length: number) {
-  const normalized = text.trim().replace(/\s+/g, ' ');
-  return normalized.length <= length ? normalized : `${normalized.slice(0, length - 1).trimEnd()}…`;
-}
 
 /** Group bucket for a topology node; determines which `<optgroup>` lists it. */
 function targetGroupLabel(node: FlowTopologyNode): string {
@@ -93,7 +85,10 @@ export function TargetSelect({
       {groups.map((group) => (
         <optgroup key={group.label} label={group.label}>
           {group.nodes.map((node) => (
-            <option key={node.id} value={node.id}>{`Etapa ${node.stepNumber} · ${excerpt(node.node.text, 40)}`}</option>
+            <option
+              key={node.id}
+              value={node.id}
+            >{`Etapa ${node.stepNumber} · ${excerptFlowText(node.node.text, 40)}`}</option>
           ))}
         </optgroup>
       ))}

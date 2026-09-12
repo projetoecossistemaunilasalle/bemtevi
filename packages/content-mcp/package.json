@@ -1,0 +1,29 @@
+{
+  "name": "@bemtevi/content-mcp",
+  "version": "1.0.0",
+  "description": "Standalone BemTeVi editorial content MCP server (stdio).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "bemtevi-content-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@neondatabase/neon-js": "0.6.2-beta"
+  },
+  "devDependencies": {
+    "@bemtevi/content-core": "workspace:*",
+    "@types/node": "^22.14.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "test": "vitest run --config vitest.config.ts"
+  }
+}

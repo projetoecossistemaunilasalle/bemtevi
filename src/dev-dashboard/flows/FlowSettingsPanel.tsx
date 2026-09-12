@@ -1,64 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FlowPurpose, GuidedFlow } from '../../domain/flow-engine/types';
 import { STATUS_LABELS } from './flowDisplay';
+import { DraftTextAreaField, DraftTextField, textFieldClassName } from './flowEditorFields';
 import { flowPurposeLabels } from './flowLabels';
 import { selectClassName } from './flowEffectFields';
 import { setEntryNode, updateFlowSettings } from './flowMutations';
 import { TargetSelect } from './flowTargetSelect';
 import { buildFlowTopology } from './flowTopology';
 
-const textFieldClassName =
-  'rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-2 font-body-md text-sm text-on-surface focus:outline focus:outline-2 focus:outline-primary';
-
 const sectionHeadingClassName = 'font-label-sm text-xs text-on-surface-variant';
 
 /** Union members from the domain types, verbatim; typed so a renamed or removed member fails to compile. */
 const PURPOSE_OPTIONS: FlowPurpose[] = ['orientation_entry', 'post_flow_routing'];
 const KNOWN_PURPOSES = new Set<string>(PURPOSE_OPTIONS);
-
-interface DraftTextFieldProps {
-  ariaLabel: string;
-  value: string;
-  /** Invoked at most once per blur and only when the draft differs from `value`. */
-  onCommit: (next: string) => void;
-}
-
-/**
- * Single-line field with a per-field draft sentinel; commits onBlur. Local
- * mirror of NodeEditorPanel's private DraftTextField.
- */
-function DraftTextField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
-  const [draft, setDraft] = useState<string | null>(null);
-  return (
-    <input
-      aria-label={ariaLabel}
-      className={textFieldClassName}
-      value={draft ?? value}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => {
-        setDraft(null);
-        if (draft !== null && draft !== value) onCommit(draft);
-      }}
-    />
-  );
-}
-
-/** Multiline twin of DraftTextField: same per-field draft sentinel, commits onBlur. */
-function DraftTextAreaField({ ariaLabel, value, onCommit }: DraftTextFieldProps) {
-  const [draft, setDraft] = useState<string | null>(null);
-  return (
-    <textarea
-      aria-label={ariaLabel}
-      className={`min-h-[64px] ${textFieldClassName}`}
-      value={draft ?? value}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => {
-        setDraft(null);
-        if (draft !== null && draft !== value) onCommit(draft);
-      }}
-    />
-  );
-}
 
 interface EnteringPhrasesSectionProps {
   flow: GuidedFlow;

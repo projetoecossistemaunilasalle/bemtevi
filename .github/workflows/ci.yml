@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -22,3 +25,68 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run check
+
+  # Live Neon disposable-branch gate. Missing credentials fail (never skip).
+  # Fork PRs do not receive secrets; a trusted maintainer must rerun this job.
+  v2-database:
+    runs-on: ubuntu-latest
+    # Environment approval is configured in repository settings (trusted refs only).
+    environment: v2-database
+    # Only run for trusted repository refs. Fork pull_request events skip here
+    # rather than exposing secrets to untrusted code; maintainers rerun from a
+    # trusted workflow after review.
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'workflow_call'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Require database credentials
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_TEST_PROJECT_ID: ${{ secrets.NEON_TEST_PROJECT_ID }}
+          NEON_TEST_PARENT_BRANCH_ID: ${{ secrets.NEON_TEST_PARENT_BRANCH_ID }}
+          NEON_TEST_DATABASE: ${{ secrets.NEON_TEST_DATABASE }}
+          NEON_TEST_ADMIN_A_EMAIL: ${{ secrets.NEON_TEST_ADMIN_A_EMAIL }}
+          NEON_TEST_ADMIN_A_PASSWORD: ${{ secrets.NEON_TEST_ADMIN_A_PASSWORD }}
+          NEON_TEST_ADMIN_B_EMAIL: ${{ secrets.NEON_TEST_ADMIN_B_EMAIL }}
+          NEON_TEST_ADMIN_B_PASSWORD: ${{ secrets.NEON_TEST_ADMIN_B_PASSWORD }}
+          NEON_TEST_NONADMIN_EMAIL: ${{ secrets.NEON_TEST_NONADMIN_EMAIL }}
+          NEON_TEST_NONADMIN_PASSWORD: ${{ secrets.NEON_TEST_NONADMIN_PASSWORD }}
+        run: |
+          missing=0
+          for name in NEON_API_KEY NEON_TEST_PROJECT_ID NEON_TEST_PARENT_BRANCH_ID NEON_TEST_DATABASE NEON_TEST_ADMIN_A_EMAIL NEON_TEST_ADMIN_A_PASSWORD NEON_TEST_ADMIN_B_EMAIL NEON_TEST_ADMIN_B_PASSWORD NEON_TEST_NONADMIN_EMAIL NEON_TEST_NONADMIN_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "v2-database gate cannot run without credentials. This is a failure, not a skip."
+            exit 1
+          fi
+
+      - name: Run live Neon Data API tests
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_TEST_PROJECT_ID: ${{ secrets.NEON_TEST_PROJECT_ID }}
+          NEON_TEST_PARENT_BRANCH_ID: ${{ secrets.NEON_TEST_PARENT_BRANCH_ID }}
+          NEON_TEST_DATABASE: ${{ secrets.NEON_TEST_DATABASE }}
+          NEON_TEST_ADMIN_A_EMAIL: ${{ secrets.NEON_TEST_ADMIN_A_EMAIL }}
+          NEON_TEST_ADMIN_A_PASSWORD: ${{ secrets.NEON_TEST_ADMIN_A_PASSWORD }}
+          NEON_TEST_ADMIN_B_EMAIL: ${{ secrets.NEON_TEST_ADMIN_B_EMAIL }}
+          NEON_TEST_ADMIN_B_PASSWORD: ${{ secrets.NEON_TEST_ADMIN_B_PASSWORD }}
+          NEON_TEST_NONADMIN_EMAIL: ${{ secrets.NEON_TEST_NONADMIN_EMAIL }}
+          NEON_TEST_NONADMIN_PASSWORD: ${{ secrets.NEON_TEST_NONADMIN_PASSWORD }}
+        run: pnpm run check:db

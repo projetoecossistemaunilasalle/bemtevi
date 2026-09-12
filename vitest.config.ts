@@ -24,6 +24,8 @@ export default defineConfig({
       '**/.worktrees/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/neon/tests/**',
+      '**/packages/content-mcp/**',
     ],
   },
 });

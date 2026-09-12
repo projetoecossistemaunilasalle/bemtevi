@@ -1,4 +1,5 @@
 import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
+import { compactFlowText } from './flowText';
 
 /**
  * Node-panel sections addressable by a map focus request. Flow-level
@@ -6,6 +7,18 @@ import type { FlowNode, GuidedFlow } from '../../domain/flow-engine/types';
  * by an absent `nodeId`, so this union stays panel-only.
  */
 export type MapFocusSection = 'texto' | 'opcoes' | 'ramificacao' | 'midia' | 'opcao' | 'faixa' | 'geral';
+
+/** Validation deep-link payload consumed by the destination map. */
+export interface MapFocusRequest {
+  /** Stage to select on the destination canvas; absent means a flow-level target. */
+  nodeId?: string;
+  /** Node panel section to reveal; flow-level settings targets omit this field. */
+  section?: MapFocusSection;
+  /** Specific sub-item to focus within the section, such as an option or branch id. */
+  targetId?: string;
+  /** Bump to apply an otherwise identical request again. */
+  requestId: number;
+}
 
 /**
  * Shared pt-BR labels for the flow status union. Single source for every
@@ -25,7 +38,7 @@ export function getFlowNodeTitle(nodeId: string, nodes: FlowNode[]) {
 }
 
 export function getFlowNodeLabel(node: FlowNode, nodes: FlowNode[]) {
-  const preview = node.text.trim().replace(/\s+/g, ' ').slice(0, 64);
+  const preview = compactFlowText(node.text).slice(0, 64);
   return `${getFlowNodeTitle(node.id, nodes)} - ${preview}`;
 }
 

@@ -9,7 +9,7 @@ import type {
   SafetyInterruptFlowEffect,
   ScoreFlowEffect,
 } from '../../domain/flow-engine/types';
-
+import { NAVIGATION_OPTIONS } from './flowNavigation';
 /*
  * This module intentionally mixes presentation constants/builders with the
  * field components that consume them (single cohesive effect-builder cluster
@@ -64,7 +64,7 @@ export const EFFECT_KIND_OPTIONS: Array<{ kind: FlowEffect['kind']; label: strin
   { kind: 'end_flow', label: 'Encerrar fluxo' },
 ];
 
-const SAFETY_DESTINATIONS = ['/apoio', '/contatos', '/educacao'] as const;
+const SAFETY_DESTINATIONS = NAVIGATION_OPTIONS;
 
 type SafetyDestination = (typeof SAFETY_DESTINATIONS)[number];
 
