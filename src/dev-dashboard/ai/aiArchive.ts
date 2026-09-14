@@ -6,6 +6,46 @@ import type { PublishedContentPayload } from '../../app/content/publishedContent
 import { buildFullPayloadPromptForArchive, extractJsonFromAiResponse } from './aiPrompts';
 import { parseAiOperationsResponse, type AiOperationEnvelope } from './aiOperations';
 
+/**
+ * Compatibility facade (task AI-FILE-01). The legacy V1 functions below remain
+ * only for currently compiled legacy callers (AiArchiveSection until
+ * AI-FILE-02 / LEGACY-01) and are clearly separated from the V2 durable
+ * archive helpers re-exported underneath. The facade does NOT preserve the V1
+ * whole-payload/bridge semantics as a V2 API: V1 envelopes are rejected by the
+ * V2 parser with `unsupported_schema`, context.json is never accepted as
+ * operations, and the V2 archive contract lives in `./files/**`.
+ * LEGACY-01 removes this facade once its final caller is gone.
+ */
+
+// V2 durable archive helpers (canonical implementation: ./files/**).
+export {
+  createExportRepository,
+  type ExportRepository,
+  type ExportRpcCallResult,
+  type ExportRpcTransport,
+  type ExportSelection,
+} from './files/exportRepository';
+export {
+  createEditorialArchive as createEditorialArchiveV2,
+  type ArchiveManifest,
+  type EditorialArchiveBuild,
+} from './files/createEditorialArchive';
+export {
+  parseEditorialArchive as parseEditorialArchiveV2,
+  type ArchiveSource,
+  type ParsedEditorialArchive,
+} from './files/parseEditorialArchive';
+export {
+  importEditorialOperations as importEditorialOperationsV2,
+  type EditorialImportOutcome,
+} from './files/importEditorialOperations';
+export { preflightCentralDirectory, MAX_ARCHIVE_COMPRESSED_BYTES } from './files/zipBounds';
+export { buildArchiveInstructions } from './files/archiveInstructions';
+
+// ---------------------------------------------------------------------------
+// Legacy V1 local-agent archive helpers (still-compiled callers only).
+// ---------------------------------------------------------------------------
+
 export interface AiArchiveContent {
   payload: PublishedContentPayload;
   images: ExtractedImage[];

@@ -4,6 +4,15 @@ import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/servic
 import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import { AI_OPERATIONS_SCHEMA_VERSION } from './aiOperations';
 
+/**
+ * Compatibility facade (task AI-FILE-01). This module remains only for
+ * currently compiled legacy callers (DirectAgentSection/AiArchiveSection until
+ * AI-FILE-02 / LEGACY-01). It does NOT preserve the V1 whole-payload response
+ * semantics: the whole-payload prompt builder was removed and the V2 archive
+ * instructions live in `./files/archiveInstructions.ts`. LEGACY-01 removes
+ * this facade once its final caller is gone.
+ */
+
 const INSTRUCOES_COMUNS = `INSTRUÇÕES OBRIGATÓRIAS:
 - Responda SEMPRE em português do Brasil (PT-BR).
 - Devolva APENAS JSON válido, sem comentários, sem texto explicativo fora do bloco de código.
@@ -211,19 +220,6 @@ Lembre-se: devolva APENAS o bloco \`\`\`json com o JSON válido. Nenhum texto an
 }
 
 // Builders
-
-export function buildFullPayloadPrompt(payload: PublishedContentPayload): string {
-  const header = `Você é um assistente editorial do projeto BemTeVi, uma plataforma de apoio a professores que enfrentam violência escolar no Brasil.`;
-  const instrucoesUsuario = `
-TAREFA DO USUÁRIO (o administrador dirá o que quer alterar em seguida, mas se nada for dito, revise ortografia, clareza e tom acolhedor sem mudar estrutura):
-
-- Faça APENAS as alterações solicitadas pelo administrador na próxima mensagem.
-- Se o administrador pedir para "melhorar textos", reescreva mantendo sentido e estrutura.
-- Se pedir para "adicionar" algo, crie com id único e estrutura válida.
-- Nunca remova itens que não foram solicitados para remoção.
-`;
-  return wrapJsonPrompt(header, REGRAS_PAYLOAD_COMPLETO, payload, instrucoesUsuario);
-}
 
 export function buildFullPayloadPromptForArchive(payload: PublishedContentPayload, baseRevision: number): string {
   const header = `Você é um assistente editorial do projeto BemTeVi, uma plataforma de apoio a professores que enfrentam violência escolar no Brasil. Você recebeu um arquivo ZIP com data.json + pasta images/.`;

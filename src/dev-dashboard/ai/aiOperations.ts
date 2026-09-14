@@ -267,3 +267,20 @@ export function applyAiOperations(
 
   return validatePublicationPayload(next);
 }
+
+/**
+ * Clearly named V1 adapter for still-compiled callers. The V1 protocol above
+ * (`schemaVersion: "1.0.0"`, `baseRevision`) remains functional for current
+ * dashboard/agent callers, but it is NOT the V2 editorial protocol: V1 and V2
+ * parsers are distinct and V1 input cannot pass as V2 (the V2 parser rejects
+ * it with `unsupported_schema`).
+ */
+export const parseAiOperationsResponseV1 = parseAiOperationsResponse;
+export const applyAiOperationsV1 = applyAiOperations;
+
+// V2 editorial protocol routed through @bemtevi/content-core (canonical authority).
+export {
+  parseOperationsEnvelope,
+  applyOperations as applyEditorialOperations,
+  encodeOperations as encodeEditorialOperations,
+} from '@bemtevi/content-core';

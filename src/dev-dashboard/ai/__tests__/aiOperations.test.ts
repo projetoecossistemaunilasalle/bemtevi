@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PublishedContentPayload } from '../../../app/content/publishedContent';
+import { parseOperationsEnvelope } from '@bemtevi/content-core';
 import { applyAiOperations, parseAiOperationsResponse } from '../aiOperations';
 
 const payload: PublishedContentPayload = {
@@ -80,5 +81,22 @@ describe('operações de IA', () => {
 
     expect(() => applyAiOperations(payload, operations, 40)).toThrow('revisão 39');
     expect(() => applyAiOperations(payload, operations, 39)).toThrow('precisa de um "title"');
+  });
+
+  it('não deixa uma resposta V1 passar como V2 nem uma V2 passar como V1', () => {
+    const v1 = envelope([{ op: 'update', scope: 'educationGroups', id: 'grupo-um', patch: { title: 'X' } }]);
+    const v1Parsed = parseOperationsEnvelope(v1);
+    expect(v1Parsed.ok).toBe(false);
+    if (v1Parsed.ok === false) expect(v1Parsed.error.code).toBe('unsupported_schema');
+
+    const v2 = {
+      schemaVersion: '2.0.0',
+      exportId: '00000000-0000-4000-8000-000000000001',
+      baseGeneration: 39,
+      baseDigest: 'a'.repeat(64),
+      operations: [{ op: 'set_default_group_order', value: 1 }],
+      selfCheck: { ...v1.selfCheck, notes: [] },
+    };
+    expect(() => parseAiOperationsResponse(v2)).toThrow('não permitido');
   });
 });
