@@ -16,7 +16,7 @@ MERGE-03 -> MCP-01 -> MCP-02 -> MCP-03
 DB-04 + MCP-03 -> MCP-04
 DASHBOARD-03 + AI-FILE-02 + MCP-03 + DB-04 -> INTEGRATION-01
 INTEGRATION-01 -> INTEGRATION-02 -> INTEGRATION-03
-INTEGRATION-03 + MCP-04 -> LEGACY-01 -> LEGACY-02 -> INTEGRATION-04
+INTEGRATION-03 + MCP-04 -> LEGACY-00 -> LEGACY-01 -> LEGACY-02 -> INTEGRATION-04
 ```
 
 INTEGRATION-00 is an adopt/verify gate at the audited base because scaffolding exists. DB-01 may begin after MERGE-02, but the default serial order still finishes MERGE-03 before entering DB. DB-01..03 author live suites; DB-04 is the first executable `check:db` owner. Dashboard/MCP/AI unit work uses fake feature transports before typed/live integration. MCP-04 waits for DB-04 because full release evidence also includes the single live installed-artifact proof owned by INTEGRATION-03.
@@ -25,20 +25,21 @@ INTEGRATION-00 is an adopt/verify gate at the audited base because scaffolding e
 
 This table summarizes task-file allowlists; task files remain the exact path authority. A path can pass between serial owners only where the task explicitly calls it a handoff/removal-only edit.
 
-| Hot area                                                                | Serial owner sequence                                                                                       |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| root workspace/package/lockfile/runner/CI/architecture/AGENTS bootstrap | INTEGRATION-00 -> LEGACY-02 only where explicitly listed                                                    |
-| content-core and audited domain/validation facades                      | MERGE-01 -> MERGE-02 -> MERGE-03 -> LEGACY-01 only for explicitly temporary V1 AI facades                   |
-| SQL/additive migrations/cutover and DB harness                          | DB-01 -> DB-02 -> DB-03 -> DB-04                                                                            |
-| draft repository/coordinator/cache + legacy recovery extraction         | DASHBOARD-01 -> DASHBOARD-02 -> DASHBOARD-03 -> INTEGRATION-02 hook handoff -> LEGACY-01 old-store deletion |
-| file archive services + AI presentation/connections                     | AI-FILE-01 -> AI-FILE-02 -> INTEGRATION-01 service composition -> LEGACY-01 temporary facade deletion       |
-| standalone MCP package/source/tests                                     | MCP-01 -> MCP-02 -> MCP-03 -> MCP-04                                                                        |
-| handwritten Neon DB types + `editorialNeonServices.ts`                  | INTEGRATION-01 only                                                                                         |
-| `DashboardRoute.tsx` / `DashboardTabContent.tsx`                        | INTEGRATION-02 -> LEGACY-01 removal-only legacy imports -> LEGACY-02 enablement-branch removal only         |
-| publication/provider composition                                        | INTEGRATION-02 -> LEGACY-01 temporary adapter removal                                                       |
-| live replacement evidence                                               | INTEGRATION-03 only; it does not own root CI                                                                |
-| root legacy command/config/docs cleanup                                 | LEGACY-02 only                                                                                              |
-| final release evidence document                                         | INTEGRATION-03 creates -> INTEGRATION-04 appends final verification evidence                                |
+| Hot area                                                                | Serial owner sequence                                                                                                                          |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| root workspace/package/lockfile/runner/CI/architecture/AGENTS bootstrap | INTEGRATION-00 -> LEGACY-02 only where explicitly listed                                                                                       |
+| content-core and audited domain/validation facades                      | MERGE-01 -> MERGE-02 -> MERGE-03 -> LEGACY-01 only for explicitly temporary V1 AI facades                                                      |
+| SQL/additive migrations/cutover and DB harness                          | DB-01 -> DB-02 -> DB-03 -> DB-04                                                                                                               |
+| draft repository/coordinator/cache + legacy recovery extraction         | DASHBOARD-01 -> DASHBOARD-02 -> DASHBOARD-03 -> INTEGRATION-02 hook handoff -> LEGACY-00 pure-model extraction -> LEGACY-01 old-store deletion |
+| file archive services + AI presentation/connections                     | AI-FILE-01 -> AI-FILE-02 -> INTEGRATION-01 service composition -> LEGACY-01 temporary facade deletion                                          |
+| standalone MCP package/source/tests                                     | MCP-01 -> MCP-02 -> MCP-03 -> MCP-04                                                                                                           |
+| handwritten Neon DB types + `editorialNeonServices.ts`                  | INTEGRATION-01 only                                                                                                                            |
+| `DashboardRoute.tsx` / `DashboardTabContent.tsx`                        | INTEGRATION-02 -> LEGACY-00 pure-model import move -> LEGACY-01 removal-only legacy imports -> LEGACY-02 enablement-branch removal only        |
+| public education published-content projection                           | existing feature -> LEGACY-00 removes browser-draft preview; published context becomes the only public input                                   |
+| publication/provider composition                                        | INTEGRATION-02 -> LEGACY-01 temporary adapter removal                                                                                          |
+| live replacement evidence                                               | INTEGRATION-03 only; it does not own root CI                                                                                                   |
+| root legacy command/config/docs cleanup                                 | LEGACY-02 only                                                                                                                                 |
+| final release evidence document                                         | INTEGRATION-03 creates -> INTEGRATION-04 appends final verification evidence                                                                   |
 
 INTEGRATION-01 does **not** own the root lockfile or `AiArchiveSection.tsx`. INTEGRATION-03 does **not** own `.github/workflows/ci.yml`; the audited CI already discovers `check:db` through the DB-04 harness. INTEGRATION-04 owns no source/config code and cannot perform late fixes.
 

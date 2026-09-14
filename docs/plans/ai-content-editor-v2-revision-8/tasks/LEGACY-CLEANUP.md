@@ -1,10 +1,20 @@
 # Legacy Removal Tasks
 
-**Specification revision: 8.** Removal is last. V2 replacement proof must already exist. The dedicated read-only legacy recovery adapter survives; browser-canonical persistence, local bridges and V1 AI protocol facades do not.
+**Specification revision: 8; execution alignment: remaining-work bundle revision 3.** Removal is last. V2 replacement proof must already exist. The dedicated read-only legacy recovery adapter and pure V2 draft model survive; browser-canonical persistence, public browser-draft preview, local bridges and V1 AI protocol facades do not.
+
+## LEGACY-00: Extract Surviving V2 Model And Retire Public Browser-Draft Preview
+
+**Depends:** INTEGRATION-03. **Unblocks:** LEGACY-01.
+
+This change-control handback resolves a repository-shape contradiction found after INTEGRATION-03: `dashboardStorage.ts` owns both obsolete browser persistence and pure model helpers still imported by the live V2 dashboard, and the public education screens still project browser-local drafts. The exact ownership, tests, gates and commit contract are frozen in `REMAINING-WORK-EXECUTION-BUNDLE.md` revision 3.
+
+Copy the surviving schema constant/state/types/create-empty helper into `src/dev-dashboard/dashboardDraftState.ts` and move pure merge/sanitization behavior into `src/dev-dashboard/dashboardDraftMerge.ts`, migrate surviving consumers and merge tests, and remove the public education local-draft preview path. `hasDashboardChanges` remains legacy-only and is not extracted. The new modules must contain no storage behavior. Do not edit or delete the legacy storage/hook modules here; LEGACY-01 removes them after the extraction is green.
+
+**Acceptance:** every production consumer that survives LEGACY-01 is independent of `dashboardStorage.ts`; public education routes render only `PublishedContentContext.content`; pure merge behavior remains covered; no browser persistence moves into the extracted model.
 
 ## LEGACY-01: Remove Local Product Architecture
 
-**Depends:** INTEGRATION-03 and MCP-04. **Unblocks:** LEGACY-02.
+**Depends:** LEGACY-00 (INTEGRATION-03 and MCP-04 complete). **Unblocks:** LEGACY-02.
 
 ### Delete owned subtrees
 
@@ -44,7 +54,7 @@ If one of the explicitly listed test files is absent at the audited base, treat 
 - `src/dev-dashboard/__tests__/dashboardStorage.merge.test.ts`
 - `src/dev-dashboard/__tests__/dashboardStorageTestFixtures.ts`
 
-Before deleting these files, verify DASHBOARD-03 moved every decoder needed for one-time recovery into `src/dev-dashboard/draft-storage/legacyRecovery.ts` and its tests. Preserve original user bytes; never delete browser IndexedDB/localStorage as part of migration. `useDraftWorkspace.ts`, `localDraftCache.ts`, `legacyRecovery.ts` and `dashboardTabStorage.ts` survive.
+Before deleting these files, verify DASHBOARD-03 moved every decoder needed for one-time recovery into `src/dev-dashboard/draft-storage/legacyRecovery.ts` and LEGACY-00 moved every pure-model consumer that must survive. Preserve original user bytes; never delete browser IndexedDB/localStorage as part of migration. `useDraftWorkspace.ts`, `localDraftCache.ts`, `legacyRecovery.ts`, `dashboardTabStorage.ts`, `dashboardDraftState.ts` and `dashboardDraftMerge.ts` survive.
 
 ### Delete temporary coexistence path
 

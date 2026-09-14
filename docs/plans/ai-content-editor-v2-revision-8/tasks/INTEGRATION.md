@@ -176,7 +176,7 @@ Use 16 save labels and conflict/recovery behavior. Wire the real repositories fr
 ## INTEGRATION-03: Live Replacement And Deployment Proof
 
 **Depends:** INTEGRATION-02, DB-04.  
-**Unblocks:** LEGACY-01 jointly with MCP-04.
+**Unblocks:** LEGACY-00; its green handback then unblocks LEGACY-01 jointly with MCP-04.
 
 **Owns exactly:**
 
@@ -200,7 +200,7 @@ Record in `docs/editorial-v2-rollout.md` the fixed rollout sequence:
 6. separately apply direct-write cutover artifact;
 7. refresh Data API schema;
 8. verify old direct write denied and prepared admin/MCP publication succeeds;
-9. only then permit LEGACY-01.
+9. only then permit the LEGACY-00 extraction handback, followed by LEGACY-01 deletion.
 
 Dashboard browser smoke is recorded separately from API tests: `/bemtevi/dashboard` in two independent authenticated test sessions, edit/save/reload resumes canonical draft, file-first export/import preview works, and no legacy bridge/sync network request occurs in the V2 branch. Use only disposable/test credentials and never write them into the rollout document.
 

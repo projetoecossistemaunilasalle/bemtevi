@@ -1,13 +1,13 @@
-# Remaining-Work Execution Bundle — INTEGRATION-03 → LEGACY-02 → INTEGRATION-04
+# Remaining-Work Execution Bundle — LEGACY-00 → LEGACY-02 → INTEGRATION-04
 
 **Status:** `EXECUTION_READY`
-**Bundle revision:** 2 (post-INTEGRATION-02, post-pragma-ban, post-commit)
-**Repository base:** `91d3efe61780509a73303c1d0ca9be212f938b65` (all INTEGRATION-01/02 + MCP/DB/dashboard work through MCP-04 is now COMMITTED on `main` as 10 workstream commits `9db2086..91d3efe`; the working tree is clean)
-**Provenance:** written by the orchestrator agent that completed INTEGRATION-01/INTEGRATION-02 (both implemented, handoff'd, independently reviewed green) and the prettier-ignore architecture ban. This bundle is for a **faster, weaker executor agent**: every decision is pre-made here. Execute tasks in the serial order below. Do not reinterpret; when reality differs from this document, STOP that slice and report the exact mismatch with evidence.
+**Bundle revision:** 3 (post-INTEGRATION-03, LEGACY-00 change-control alignment)
+**Repository base:** `cc61a67fd99a70ff83be0ae7b7f4665027ac565d` (INTEGRATION-03 and its DB-04 Auth-URL harness handback are committed on `main`; the working tree was clean when this alignment was authored)
+**Provenance:** written and realigned by the orchestrator agent that completed INTEGRATION-01/02/03 and the prettier-ignore architecture ban. Revision 3 closes a discovered LEGACY-01 ownership contradiction without weakening the required deletion: surviving V2 draft-model helpers move out of `dashboardStorage.ts`, and the public education UI stops reading browser-local dashboard drafts, before LEGACY-01 deletes the old storage module. This bundle is for a **faster, weaker executor agent**: every decision is pre-made here. Execute remaining tasks in the serial order below. Do not reinterpret; when reality differs from this document, STOP that slice and report the exact mismatch with evidence.
 
 ## Ground rules (apply to every task)
 
-1. **Preflight per task:** `git rev-parse HEAD` must print `91d3efe61780509a73303c1d0ca9be212f938b65` (or a descendant commit that you created yourself via Ground rule 8). Record `git status --short` (expected CLEAN at start) before and after each task; the tree must be clean again once your task's commit lands. Never stash, push, or revert unrelated changes. The original dossier audited base `e030264…` is history: all prior V2 tasks were verified against it and committed; treat `91d3efe…` as the working base and do NOT run the old drift gate against `e030264…`.
+1. **Preflight per task:** `git rev-parse HEAD` must print `cc61a67fd99a70ff83be0ae7b7f4665027ac565d` (or a descendant commit that you created yourself via Ground rule 8, including the commit that contains this bundle revision). Record `git status --short` (expected CLEAN at start) before and after each task; the tree must be clean again once your task's commit lands. Never stash, push, or revert unrelated changes. The original dossier audited base `e030264…` is history: all prior V2 tasks were verified against it and committed; treat `cc61a67…` as the implementation base and do NOT run the old drift gate against `e030264…`.
 2. **Ownership is a literal allowlist.** Files not named by the task are not touched. A needed fix outside the allowlist is a change-control report, never an edit.
 3. **`// prettier-ignore` is BANNED.** The architecture gate rejects it: `PRETTIER_IGNORE_BANNED` for any new production file using it, `PRETTIER_IGNORE_GREW` if an allowlisted file's count grows. When a file would exceed its size budget (300 `ts`, 320 `tsx`, 320 `mjs`, 500 `test`, 500 global), **decompose** — extract a sibling module inside the task's allowed paths. Never compress lines, never chain statements, never suppress formatting.
 4. **Gates per task (unless narrowed):** `pnpm run typecheck`, `pnpm run lint`, `pnpm run check:architecture`, `pnpm run format:check` (prettier --write only owned files), focused `pnpm exec vitest run <owned tests>`, then full `pnpm run check`. Live gate `pnpm run check:db` requires credentials from `~/.config/bemtevi-db04/neon-test.env` (already present on this machine; missing credentials = FAIL, never a skip). `pnpm run check:mcp-package` is the packed-artifact gate (~25 s warm).
@@ -16,17 +16,20 @@
 7. PT-BR for user-facing UI text; English for engineering docs/comments.
 8. **Commits:** after a task's full gate set is green, commit its owned files (plus its handoff) with a PT-BR conventional message citing the task ID (follow the style of `git log e030264..91d3efe`). Never commit secrets, lockfile noise, or files outside the task allowlist; never push. If a task ends with an unresolved STOP, commit nothing for that slice.
 
-## Known-good current state (verified by the orchestrator, at base `91d3efe…`)
+## Known-good current state (verified by the orchestrator, at base `cc61a67…`)
 
 - INTEGRATION-01/02 complete, green and COMMITTED: `src/app/neon/database.ts` typed V2 catalog; `src/dev-dashboard/editorialNeonServices.ts` composition; `editorFlags.ts` exact-`'true'` parsing; V2/legacy route coexistence (`DashboardRoute.tsx` branches on `v2Enabled`, legacy hook renamed `useLegacyDraftWorkspace`); read-only `PublishedContentRepository`/provider; `usePublicationController` V2 prepare/publish; temporary `publishing/legacyPublication.ts` (the ONLY direct-write path, legacy branch only); drafts components `DraftWorkspaceSection`/`DraftSaveStatus`/`DraftConflictDialog`.
-- Full suite at base: **144 files / 1269 tests** green; `pnpm run check` exit 0 (verified on the commit itself); `check:db` green (last full live run by INTEGRATION-02, disposable branch created+deleted). The working tree is CLEAN.
-- Architecture gate: **563 source files**, composed of `check-architecture.mjs` (orchestrator) + `architecture-file-scanner.mjs`, `architecture-import-boundaries.mjs`, `architecture-size-budgets.mjs`, `architecture-pins-secrets.mjs`, `architecture-pragma-ban.mjs`. Do NOT re-merge these modules.
+- INTEGRATION-03 is complete and COMMITTED: DB-04 harness handback `6f64794` exports the already-provisioned disposable Auth URL; INTEGRATION-03 `cc61a67` adds the live editorial and installed-package proof plus rollout evidence. Do not re-execute or amend INTEGRATION-03.
+- Full suite at base: **144 files / 1269 tests** green; MCP suite **12 files / 120 tests** green; `pnpm run check` exit 0; `pnpm run check:db` exit 0 (**10 files / 128 passed / 2 skipped**, cutover **6 passed / 2 skipped**, disposable branch deleted); `pnpm run check:mcp-package` exit 0. The working tree is CLEAN.
+- Architecture gate: **565 source files**, composed of `check-architecture.mjs` (orchestrator) + `architecture-file-scanner.mjs`, `architecture-import-boundaries.mjs`, `architecture-size-budgets.mjs`, `architecture-pins-secrets.mjs`, `architecture-pragma-ban.mjs`. Do NOT re-merge these modules.
 - Baseline file `scripts/architecture-baseline.json` contains legacy entries (e.g. `scripts/content-agent/draftStore.ts: 419`, `src/dev-dashboard/ai/DirectAgentSection.tsx: 500`, `src/dev-dashboard/draft-storage/dashboardStorage.ts: 475`) that become **stale after LEGACY-01 deletes those files** — cleaning them is authorized in LEGACY-02 (see its allowlist).
 - The architecture-pragma-ban module allowlists 7 grandfathered files with frozen counts: DashboardRoute.tsx:40, DashboardTabContent.tsx:12, AiFileArchiveSection.tsx:48, legacyRecovery.ts:29, useDraftWorkspace.ts:34, saveCoordinator.ts:19, PublishDashboard.tsx:41 (and the ban module itself: 1). These counts may ONLY shrink; LEGACY-01/02 must drive them to zero and then delete the entries (see LEGACY-01 step 5).
 
 ---
 
-## TASK INTEGRATION-03 — Live Replacement And Deployment Proof (Gates C, D, E-live)
+## COMPLETED TASK INTEGRATION-03 — Live Replacement And Deployment Proof (Gates C, D, E-live)
+
+**Status:** committed as `cc61a67` after the DB-04 handback `6f64794`; retained below as evidence only. The remaining executor must not repeat or amend this task.
 
 **Depends on:** INTEGRATION-02 (done), DB-04 (done), MCP-04 (done).
 **Owns exactly (create ONLY these):** `neon/tests/editorial-e2e.test.ts`, `neon/tests/mcp-package-live.test.ts`, `docs/editorial-v2-rollout.md`.
@@ -73,16 +76,48 @@ Mechanics (copy from `packages/content-mcp/scripts/tarball-smoke.mjs` — read i
 
 ---
 
+## TASK LEGACY-00 — Extract Surviving V2 Model And Retire Public Browser-Draft Preview
+
+**Change-control decision:** this is a mandatory implementation-alignment handback discovered after INTEGRATION-03. `dashboardStorage.ts` still mixes obsolete browser persistence with pure draft-state/merge helpers consumed by the live V2 dashboard, while `educationResourcePreview.ts` still lets public routes read the same local-storage draft. Keeping `dashboardStorage.ts` would violate LEGACY-01's literal deletion and the frozen rule that Neon published content is canonical for public reads. Deleting it immediately would break live V2 consumers. Therefore extract only the surviving pure model first and remove the public local-draft projection. Do not preserve, rename or recreate browser-canonical persistence.
+
+**Depends on:** INTEGRATION-03 (done). **Unblocks:** LEGACY-01.
+
+**Owns exactly:**
+
+- Create `src/dev-dashboard/dashboardDraftState.ts`, containing `DASHBOARD_DRAFT_SCHEMA_VERSION`, `DashboardRecordPatch`, `DashboardDraftState` and `createEmptyDashboardDraftState` copied without semantic change from `draft-storage/dashboardStorage.ts`. The old module keeps its temporary copy until LEGACY-01 deletes it; do not move `hasDashboardChanges` because it belongs only to the legacy persistence path.
+- Create `src/dev-dashboard/dashboardDraftMerge.ts`, containing `mergeDashboardDrafts`, `sanitizeFlow` and their private pure merge/sanitization helpers moved without semantic change from `draft-storage/dashboardStorage.ts`. It may import the state types from `dashboardDraftState.ts`; it must not import browser storage, IndexedDB or any deleted legacy module.
+- Create a self-contained `src/dev-dashboard/__tests__/dashboardDraftMerge.test.ts` by migrating the still-relevant pure merge/sanitization coverage from `dashboardStorage.merge.test.ts`. Do not import `dashboardStorageTestFixtures.ts`, weaken assertions or leave permanent duplicate coverage. The old suite remains temporarily for LEGACY-01 to delete with the old module.
+- Update imports only in `src/dev-dashboard/DashboardRoute.tsx`, `DashboardTabContent.tsx`, `dashboardContactMutations.ts`, `dashboardDerivedContent.ts`, `dashboardEducationMutations.ts`, `dashboardModel.ts`, `dashboardMutationTypes.ts`, `src/dev-dashboard/__tests__/dashboardMutationControllers.test.ts`, `dashboardRoute.contacts.test.tsx` and `dashboardRoute.publishing.test.tsx` so live V2 code/tests consume the extracted pure modules. No UI, mutation or merge behavior change is allowed.
+- Delete `src/features/education/educationResourcePreview.ts` and `src/features/education/__tests__/educationResourcePreview.test.ts`.
+- Update `src/features/education/EducationLibraryScreen.tsx` and `ResourceDetailScreen.tsx` to render only `PublishedContentContext.content`; remove the local-draft warning branches and all reads of dashboard/local storage. Preserve existing grouping, ordering, fallback, media and citation behavior.
+- Update `src/features/education/__tests__/EducationLibraryScreen.test.tsx`, `ResourceDetailScreen.test.tsx` and `educationScreensTestUtils.tsx`: pass test-specific material/group payloads through `renderWithContent` instead of localStorage, delete preview-warning expectations, and add one explicit regression in each screen suite proving populated `bemtevi:dev-dashboard:drafts:v1` bytes cannot change that public screen. Keep all non-preview rendering assertions.
+- Create `docs/plans/ai-content-editor-v2-revision-8/handoffs/LEGACY-00.md`.
+
+**Forbidden:** editing or deleting `dashboardStorage.ts`, `draftDb.ts`, `workspace.ts`, `useDraftWorkspace.ts`, `legacyRecovery.ts`, any Neon/MCP module, or any config/script. LEGACY-01 owns old-store and legacy-hook deletion. Do not introduce a compatibility re-export from `dashboardStorage.ts`; surviving consumers must import the new pure modules directly.
+
+**Required verification:**
+
+1. `git grep -n "draft-storage/dashboardStorage" -- src ':!src/**/__tests__/**' ':!src/dev-dashboard/draft-storage/useDraftWorkspace.ts' ':!src/dev-dashboard/draft-storage/draftDb.ts' ':!src/dev-dashboard/ai/aiDraft.ts'` returns no matches. This proves every surviving production consumer has moved while allowing temporary legacy tests that LEGACY-01 removes or rewrites. Any other production match is a STOP.
+2. `git grep -nE 'DASHBOARD_STORAGE_KEY|bemtevi:dev-dashboard:drafts:v1' -- src/features` returns only the new tests that prove the public UI ignores legacy bytes; production `src/features/**` has zero matches.
+3. `pnpm exec vitest run src/dev-dashboard/__tests__/dashboardDraftMerge.test.ts src/dev-dashboard/__tests__/dashboardMutationControllers.test.ts src/dev-dashboard/__tests__/dashboardRoute.contacts.test.tsx src/dev-dashboard/__tests__/dashboardRoute.publishing.test.tsx src/features/education/__tests__/EducationLibraryScreen.test.tsx src/features/education/__tests__/ResourceDetailScreen.test.tsx` is green.
+4. Run the common task gates and full `pnpm run check`; `check:db` is not required because this task changes no database-facing code. Record that justified omission.
+
+**Acceptance:** all production consumers that must survive LEGACY-01 are independent of `dashboardStorage.ts`; public education screens ignore browser-local drafts and render only published context; pure draft merge behavior remains covered; no persistence semantics were moved into the new modules.
+
+**Commit:** after green gates, commit only the owned files plus the handoff with `refactor(editor): separar modelo V2 do legado (LEGACY-00)`. Never push.
+
+---
+
 ## TASK LEGACY-01 — Remove Local Product Architecture
 
-**Depends on:** INTEGRATION-03 + MCP-04 (MCP-04 done; INTEGRATION-03 must be green first).
+**Depends on:** LEGACY-00 (INTEGRATION-03 and MCP-04 are done). Do not start until LEGACY-00 is committed and its handoff is green.
 **Read first:** `docs/plans/ai-content-editor-v2-revision-8/tasks/LEGACY-CLEANUP.md` (LEGACY-01 section — the deletion lists are literal).
 
 **Delete (exact paths):**
 
 - Subtrees: `scripts/content-agent/**` (16 files incl. `__tests__/`), `scripts/agent-bridge/**`, `src/dev-dashboard/draft-sync/**`.
 - Legacy AI files: `src/dev-dashboard/ai/{DirectAgentSection,McpDraftSection,agentBridge,agentSetup,aiDraft,aiArchive,aiPrompts,aiOperations}.tsx|.ts` and their tests in `src/dev-dashboard/ai/__tests__/`: `DirectAgentSection.test.tsx`, `McpDraftSection.test.tsx`, `agentBridge.test.ts`, `agentSetup.test.ts`, `aiDraft.test.ts`, `aiOperations.test.ts`, `aiPrompts.test.ts`, `aiArchiveV2Compatibility.test.ts` (all exist — verified). KEEP `AiArchiveSection.test.tsx`, `AiFileArchiveSection.test.tsx`, everything under `ai/connections/**`, `ai/files/**`.
-- Old browser-canonical storage (after confirming decoders live in `legacyRecovery.ts` — verified self-contained): `src/dev-dashboard/draft-storage/{WorkspaceHistory.tsx,dashboardStorage.ts,draftDb.ts,workspace.ts}` and tests `src/dev-dashboard/__tests__/{dashboardStorage.lifecycle,dashboardStorage.migrations,dashboardStorage.merge}.test.ts`, `dashboardStorageTestFixtures.ts`, plus `draftDb.test.ts` and `workspace.test.ts` (both exist in `src/dev-dashboard/__tests__/` — verified; the task text names the three dashboardStorage suites explicitly, and draftDb/workspace tests test only the deleted modules, so they go too — record this as a disclosed addition). KEEP `useDraftWorkspace.ts`, `localDraftCache.ts`, `legacyRecovery.ts`, `dashboardTabStorage.ts` and their tests.
+- Old browser-canonical storage (LEGACY-00 has already moved every surviving V2 model consumer, while DASHBOARD-03's decoders remain self-contained in `legacyRecovery.ts`): `src/dev-dashboard/draft-storage/{WorkspaceHistory.tsx,dashboardStorage.ts,draftDb.ts,workspace.ts}` and tests `src/dev-dashboard/__tests__/{dashboardStorage.lifecycle,dashboardStorage.migrations,dashboardStorage.merge}.test.ts`, `dashboardStorageTestFixtures.ts`, plus `draftDb.test.ts` and `workspace.test.ts` (both exist in `src/dev-dashboard/__tests__/` — verified; the task text names the three dashboardStorage suites explicitly, and draftDb/workspace tests test only the deleted modules, so they go too — record this as a disclosed addition). KEEP `useDraftWorkspace.ts`, `localDraftCache.ts`, `legacyRecovery.ts`, `dashboardTabStorage.ts`, the new `dashboardDraftState.ts`/`dashboardDraftMerge.ts` and their tests.
 - Temporary coexistence: `src/dev-dashboard/publishing/legacyPublication.ts` + `src/dev-dashboard/publishing/__tests__/legacyPublication.test.ts` (exists — verified).
 
 **Removal-only consumer edits (edit ONLY to remove references):**
@@ -92,6 +127,7 @@ Mechanics (copy from `packages/content-mcp/scripts/tarball-smoke.mjs` — read i
 - `src/dev-dashboard/publishing/usePublicationController.ts` — remove any legacy-mode parameter/branch introduced for coexistence.
 - Focused `dashboardRoute.*.test.tsx` files and `dashboardRouteTestHarness.tsx` ONLY where a deleted fixture/component is referenced (remove/adapt those cases; keep V2 cases). The coexistence suite `dashboardRoute.coexistence.test.tsx` must be REWRITTEN to V2-only expectations (legacy branch no longer exists; keep the read-only kill-flag cases — the read-only flag survives until LEGACY-02 removes only the V2 enablement flag, NOT read-only).
 - `src/dev-dashboard/__tests__/useDraftWorkspace.test.ts` — currently tests the promoted hook (post-INTEGRATION-02 rename); only remove cases that cover `useLegacyDraftWorkspace` if present.
+- At task start, `dashboardStorage.ts` imports are permitted only from files in this task's deletion set or from the legacy portion of `useDraftWorkspace.ts` that this task removes. If any surviving consumer still imports it, STOP: do not keep the old file and do not broaden ownership ad hoc.
 - `scripts/run-project-command.mjs` — NOT owned here (LEGACY-02 owns it). Deleting `scripts/content-agent/**` will break its switch cases and `package.json` scripts — that is LEGACY-02's scope; LEGACY-01 leaves them dangling ONLY if gates still pass. If `pnpm run check` fails because of dangling references (e.g., tsconfig include, vitest picking up `scripts/content-agent/__tests__`), the minimal compilation-preserving edit is authorized under "removal-only consumer edits" scope extension — record it as change-control disclosure. Check what breaks: root `tsconfig.json` includes `scripts/**`? Run typecheck immediately after the deletions to find the dangling set. `pnpm run check` must be green at the end of LEGACY-01.
 
 **Pragma strip obligation (user directive):** while editing each allowlisted grandfathered file you touch (`DashboardRoute.tsx` 40, `DashboardTabContent.tsx` 12, `useDraftWorkspace.ts` 34, `PublishDashboard.tsx` 41, `saveCoordinator.ts` 19, `AiFileArchiveSection.tsx` 48, `legacyRecovery.ts` 29), REMOVE every `// prettier-ignore` and let prettier reformat; then decompose to fit budgets:
@@ -177,11 +213,11 @@ Any failure returns to the owning task (file owner per the task allowlists above
 
 ## Completion audit checklist (run at the very end)
 
-1. All handoff files exist: INTEGRATION-01..04, LEGACY-01..02, PRAGMA-STRIP (+ all earlier ones untouched).
+1. All handoff files exist: INTEGRATION-01..04, LEGACY-00..02, PRAGMA-STRIP (+ all earlier ones untouched).
 2. `pnpm run check` exit 0; `pnpm run check:db` exit 0; `pnpm run check:mcp-package` exit 0 — all run in INTEGRATION-04, not stale claims.
 3. `git grep -nE 'prettier-ignore'` in production source → only `scripts/architecture-pragma-ban.mjs` (count 1).
 4. Greps: no `content-agent|agent-bridge|draft-sync|DirectAgentSection|McpDraftSection|legacyPublication` in operational production code (outside `docs/plans/**`, historical notices, `legacyRecovery.ts` internal legacy-key constants).
 5. `.env.example` has `VITE_EDITOR_READ_ONLY=false`, no `VITE_EDITOR_V2_ENABLED`.
 6. Every dossier Gate: A (MERGE-03 arch), B (DB-04), C/D/E-local (INTEGRATION-02/MCP-04), E-live (INTEGRATION-03), F (this bundle's final state) — each with cited evidence.
-7. Working tree CLEAN at the end of every task's commit; each task committed separately with its handoff; `git log --oneline 91d3efe..HEAD` shows only task-owned commits. No pushes.
+7. Working tree CLEAN at the end of every task's commit; each remaining task committed separately with its handoff; `git log --oneline cc61a67..HEAD` shows only execution-bundle alignment and task-owned commits. No pushes.
 8. All audit greps re-run live by you at the end (not quoted from earlier handoffs), with results recorded in the INTEGRATION-04 handoff.

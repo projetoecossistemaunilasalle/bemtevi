@@ -26,7 +26,7 @@ A task's `Owned`/`Owns` section is an **allowlist**, not a suggestion. Running a
 5. **AI-FILE-01..02** — durable archive and file-first/connection UI.
 6. **MCP-01..04** — standalone package, edit/read, publication, packed clone-free gate. MCP-04 additionally requires DB-04 green.
 7. **INTEGRATION-01..03** — typed wiring, dashboard/publication cutover, live proof.
-8. **LEGACY-01..02** — remove legacy product paths/config/docs.
+8. **LEGACY-00..02** — extract the surviving pure V2 model, retire public browser-draft preview, then remove legacy product paths/config/docs.
 9. **INTEGRATION-04** — verification-only final complete gate.
 
 The dependency graph in 08 is authoritative if optional parallel scheduling is used.
