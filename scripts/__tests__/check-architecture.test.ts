@@ -16,6 +16,7 @@ import {
   collectSourceFiles,
   loadBaseline,
 } from '../check-architecture.mjs';
+import { checkPragmaBan, countPrettierIgnores, PRAGMA_LIMITS } from '../architecture-pragma-ban.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const temps: string[] = [];
@@ -263,5 +264,66 @@ describe('enormous file prevention', () => {
     const result = runArchitectureCheck(repoRoot);
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('prettier-ignore ban', () => {
+  it('counts comment-form pragmas', () => {
+    expect(countPrettierIgnores('const a = 1;\n// prettier-ignore\nconst b  =  2;')).toBe(1);
+    expect(countPrettierIgnores('//prettier-ignore\nconst a = 1;')).toBe(1);
+    expect(countPrettierIgnores('const a = 1;')).toBe(0);
+  });
+
+  it('fails any production file outside the allowlist that uses the pragma', () => {
+    const root = makeTempRoot();
+    const rel = 'src/dev-dashboard/newComponent.tsx';
+    const abs = path.join(root, rel);
+    mkdirSync(path.dirname(abs), { recursive: true });
+    writeFileSync(abs, '// prettier-ignore\nexport const a = 1;\n// prettier-ignore\nexport const b = 2;\n');
+    const errors = checkPragmaBan(root, [rel]);
+    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_BANNED') && e.includes('occurrences=2'))).toBe(true);
+  });
+
+  it('ignores test files entirely', () => {
+    const root = makeTempRoot();
+    const rel = 'src/dev-dashboard/__tests__/x.test.tsx';
+    const abs = path.join(root, rel);
+    mkdirSync(path.dirname(abs), { recursive: true });
+    writeFileSync(abs, '// prettier-ignore\nexport const a = 1;\n');
+    expect(checkPragmaBan(root, [rel])).toEqual([]);
+  });
+
+  it('fails an allowlisted file that grows its pragma count', () => {
+    const root = makeTempRoot();
+    const rel = 'src/dev-dashboard/publishing/PublishDashboard.tsx';
+    const abs = path.join(root, rel);
+    mkdirSync(path.dirname(abs), { recursive: true });
+    const limit = 41;
+    writeFileSync(abs, `${'// prettier-ignore\n'.repeat(limit + 1)}`);
+    const errors = checkPragmaBan(root, [rel]);
+    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_GREW') && e.includes('occurrences=42'))).toBe(true);
+  });
+
+  it('accepts an allowlisted file at or below its frozen count', () => {
+    const root = makeTempRoot();
+    const rel = 'src/dev-dashboard/publishing/PublishDashboard.tsx';
+    const abs = path.join(root, rel);
+    mkdirSync(path.dirname(abs), { recursive: true });
+    writeFileSync(abs, `${'// prettier-ignore\n'.repeat(41)}`);
+    expect(checkPragmaBan(root, [rel])).toEqual([]);
+  });
+
+  it('explicitly guarantees no allowlisted production file exceeds its frozen pragma count', () => {
+    const files = collectSourceFiles(repoRoot);
+    const offenders: Array<{ file: string; count: number; limit: number }> = [];
+    for (const file of files) {
+      const posix = file.replace(/\\/g, '/');
+      if (posix.endsWith('.test.ts') || posix.endsWith('.test.tsx') || posix.includes('/__tests__/')) continue;
+      const count = countPrettierIgnores(readFileSync(path.join(repoRoot, file), 'utf8'));
+      if (count === 0) continue;
+      const limit = PRAGMA_LIMITS[posix] ?? 0;
+      if (count > limit) offenders.push({ file: posix, count, limit });
+    }
+    expect(offenders).toEqual([]);
   });
 });
