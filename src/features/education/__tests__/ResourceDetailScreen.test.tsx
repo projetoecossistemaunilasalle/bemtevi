@@ -1,13 +1,13 @@
 import { screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { getBundledContent } from '../../../app/content/bundledContent';
 import { ResourceDetailScreen } from '../ResourceDetailScreen';
 import {
-  createDraftState,
   firstShippedMaterial,
   renderWithContent,
+  seedLegacyDashboardDraftBytes,
   shippedEducationMaterials,
-  shippedMaterialSourceIndex,
 } from './educationScreensTestUtils';
 
 beforeEach(() => {
@@ -31,22 +31,15 @@ describe('ResourceDetailScreen', () => {
 
   it('renders the source badge and dashboard-defined tags without empty badges', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          educationMaterialPatches: [
-            {
-              id: resource.id,
-              sourceIndex: shippedMaterialSourceIndex(resource.id),
-              patch: {
-                tags: ['Respiração', '   ', '', 'Sala de aula'],
-              },
-            },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...resource,
+          tags: ['Respiração', '   ', '', 'Sala de aula'],
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
@@ -54,6 +47,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     const detailHeader = screen.getByRole('heading', { name: resource.title }).closest('header');
@@ -89,29 +83,24 @@ describe('ResourceDetailScreen', () => {
   it('renders YouTube block titles before the iframe and omits the seeded mock description', () => {
     const baseResource = firstShippedMaterial();
     const videoTitle = 'Vídeo: Técnica de respiração';
-
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...baseResource,
+          id: 'youtube-block-material',
+          title: 'Material com vídeo do YouTube',
+          body: [
             {
-              ...baseResource,
-              id: 'youtube-block-material',
-              title: 'Material com vídeo do YouTube',
-              body: [
-                {
-                  id: 'breathing-video',
-                  kind: 'video',
-                  title: videoTitle,
-                  url: 'https://www.youtube.com/watch?v=kiEmbhvv7Fo',
-                },
-              ],
+              id: 'breathing-video',
+              kind: 'video' as const,
+              title: videoTitle,
+              url: 'https://www.youtube.com/watch?v=kiEmbhvv7Fo',
             },
           ],
-        }),
-      ),
-    );
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao/youtube-block-material']}>
@@ -119,6 +108,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     const videoHeading = screen.getByRole('heading', { name: videoTitle });
@@ -132,30 +122,25 @@ describe('ResourceDetailScreen', () => {
     const baseResource = firstShippedMaterial();
     const videoTitle = 'Vídeo: pausa guiada de respiração';
     const videoDescription = 'Uma prática breve para acompanhar antes do início da próxima aula.';
-
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...baseResource,
+          id: 'video-block-with-description',
+          title: 'Material com descrição de vídeo',
+          body: [
             {
-              ...baseResource,
-              id: 'video-block-with-description',
-              title: 'Material com descrição de vídeo',
-              body: [
-                {
-                  id: 'described-video',
-                  kind: 'video',
-                  title: videoTitle,
-                  description: videoDescription,
-                  url: 'https://www.youtube.com/watch?v=abcdef12345',
-                },
-              ],
+              id: 'described-video',
+              kind: 'video' as const,
+              title: videoTitle,
+              description: videoDescription,
+              url: 'https://www.youtube.com/watch?v=abcdef12345',
             },
           ],
-        }),
-      ),
-    );
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao/video-block-with-description']}>
@@ -163,6 +148,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     const videoHeading = screen.getByRole('heading', { name: videoTitle });
@@ -178,30 +164,25 @@ describe('ResourceDetailScreen', () => {
     const postTitle = 'Publicação educativa no Instagram';
     const postDescription = 'Dicas de saúde mental compartilhadas no nosso perfil oficial.';
     const instagramUrl = 'https://www.instagram.com/p/DFxyz123/';
-
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...baseResource,
+          id: 'instagram-block-material',
+          title: 'Material com post do Instagram',
+          body: [
             {
-              ...baseResource,
-              id: 'instagram-block-material',
-              title: 'Material com post do Instagram',
-              body: [
-                {
-                  id: 'instagram-post',
-                  kind: 'video',
-                  title: postTitle,
-                  description: postDescription,
-                  url: instagramUrl,
-                },
-              ],
+              id: 'instagram-post',
+              kind: 'video' as const,
+              title: postTitle,
+              description: postDescription,
+              url: instagramUrl,
             },
           ],
-        }),
-      ),
-    );
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao/instagram-block-material']}>
@@ -209,6 +190,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.getByRole('heading', { name: postTitle })).toBeInTheDocument();
@@ -224,21 +206,16 @@ describe('ResourceDetailScreen', () => {
     const baseResource = firstShippedMaterial();
     const pdfTitle = 'Cartilha de acolhimento';
     const pdfUrl = 'https://example.com/cartilha.pdf';
-
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            {
-              ...baseResource,
-              id: 'pdf-block-material',
-              body: [{ id: 'pdf-one', kind: 'pdf', title: pdfTitle, url: pdfUrl }],
-            },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...baseResource,
+          id: 'pdf-block-material',
+          body: [{ id: 'pdf-one', kind: 'pdf' as const, title: pdfTitle, url: pdfUrl }],
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao/pdf-block-material']}>
@@ -246,6 +223,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.getByTitle(pdfTitle)).toHaveAttribute('src', pdfUrl);
@@ -271,118 +249,19 @@ describe('ResourceDetailScreen', () => {
     expect(screen.getByTitle(pdfBlock.label ?? 'Documento em PDF')).toHaveAttribute('src', pdfBlock.url);
   });
 
-  it('previews local dashboard drafts with a warning banner', () => {
-    const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          educationMaterialPatches: [
-            {
-              id: resource.id,
-              sourceIndex: shippedMaterialSourceIndex(resource.id),
-              patch: {
-                title: 'Material em teste',
-                body: [{ id: 'draft-body', kind: 'paragraph', title: 'Rascunho', text: 'Texto em revisão.' }],
-              },
-            },
-          ],
-        }),
-      ),
-    );
-
-    renderWithContent(
-      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('heading', { name: 'Material em teste' })).toBeInTheDocument();
-    expect(screen.getByText(/versão de teste/i)).toBeInTheDocument();
-    expect(screen.getByText('Texto em revisão.')).toBeInTheDocument();
-  });
-
-  it('does not show the preview warning on an unchanged material when another material was added', () => {
-    const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            {
-              ...resource,
-              id: 'preview-added-material',
-              title: 'Material adicionado em teste',
-            },
-          ],
-        }),
-      ),
-    );
-
-    renderWithContent(
-      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('heading', { name: resource.title })).toBeInTheDocument();
-    expect(screen.queryByText(/versão de teste/i)).not.toBeInTheDocument();
-  });
-
-  it('shows the preview warning on a detail page for an added material', () => {
-    const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            {
-              ...resource,
-              id: 'preview-added-material',
-              title: 'Material adicionado em teste',
-            },
-          ],
-        }),
-      ),
-    );
-
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao/preview-added-material']}>
-        <Routes>
-          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('heading', { name: 'Material adicionado em teste' })).toBeInTheDocument();
-    expect(screen.getByText(/versão de teste/i)).toBeInTheDocument();
-  });
-
   it('renders generic video URLs as full-card links instead of broken embeds', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify({
-        schemaVersion: '1.0.0',
-        flowPatches: [],
-        educationMaterialPatches: [
-          {
-            id: resource.id,
-            sourceIndex: shippedMaterialSourceIndex(resource.id),
-            patch: {
-              body: [{ id: 'generic-video', kind: 'video', title: 'Vídeo externo', url: 'https://example.com/video' }],
-            },
-          },
-        ],
-        addedFlows: [],
-        addedEducationMaterials: [],
-        updatedAt: '2026-06-05T00:00:00.000Z',
-      }),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [
+        {
+          ...resource,
+          body: [
+            { id: 'generic-video', kind: 'video' as const, title: 'Vídeo externo', url: 'https://example.com/video' },
+          ],
+        },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
@@ -390,6 +269,7 @@ describe('ResourceDetailScreen', () => {
           <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.getByRole('link', { name: /vídeo externo abrir vídeo externo/i })).toHaveAttribute(
@@ -420,5 +300,22 @@ describe('ResourceDetailScreen', () => {
 
     const paragraphText = screen.getByText(paragraphBlock.text);
     expect(paragraphText).toHaveClass('text-justify');
+  });
+
+  it('ignores populated bemtevi:dev-dashboard:drafts:v1 bytes and renders only published content', () => {
+    seedLegacyDashboardDraftBytes();
+    const resource = firstShippedMaterial();
+
+    renderWithContent(
+      <MemoryRouter initialEntries={[`/educacao/${resource.id}`]}>
+        <Routes>
+          <Route path="/educacao/:resourceId" element={<ResourceDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: resource.title })).toBeInTheDocument();
+    expect(screen.queryByText('Material adicionado em teste')).not.toBeInTheDocument();
+    expect(screen.queryByText(/versão de teste/i)).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import type { DashboardDraftState } from './draft-storage/dashboardStorage';
+import type { DashboardDraftState } from './dashboardDraftState';
 import type { DraftWorkspace } from './draft-storage/workspace';
 
 export type DashboardDraftUpdater = (updater: (current: DashboardDraftState) => DashboardDraftState) => void;

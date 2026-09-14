@@ -1,7 +1,7 @@
 import type { PublishedContentPayload } from '../app/content/publishedContent';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../domain/services/types';
 import { createLocalLocation, createLocalService } from './contacts/contactDrafts';
-import type { DashboardDraftState } from './draft-storage/dashboardStorage';
+import type { DashboardDraftState } from './dashboardDraftState';
 import { resolveRecordOrigin, updateRecordAtIndex, upsertPatchById } from './dashboardModel';
 import type { DashboardDraftUpdater, DashboardWorkspaceUpdater } from './dashboardMutationTypes';
 

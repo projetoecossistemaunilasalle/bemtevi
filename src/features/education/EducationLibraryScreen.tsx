@@ -3,7 +3,6 @@ import { BookOpen, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
-import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { Button } from '../../design-system/components/Button';
 import { Card } from '../../design-system/components/Card';
 import { Page } from '../../design-system/components/Page';
@@ -12,7 +11,9 @@ import { PageHeader } from '../../design-system/components/PageHeader';
 export function EducationLibraryScreen() {
   const navigate = useNavigate();
   const { content } = usePublishedContent();
-  const { resources, groups, defaultGroupOrder, isPreviewingDrafts } = resolveEducationResourcesForPreview(content);
+  const resources = content.educationMaterials;
+  const groups = content.educationGroups;
+  const defaultGroupOrder = content.defaultGroupOrder;
 
   // Determine group for each resource
   const groupAssignments = resources.map((resource) => {
@@ -36,12 +37,6 @@ export function EducationLibraryScreen() {
         description="Recursos revisáveis para apoiar professores com informação clara, prática e não diagnóstica."
         icon={<BookOpen className="text-primary" size={32} />}
       />
-
-      {isPreviewingDrafts ? (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 font-body-md text-yellow-900">
-          Essa é uma versão de teste. O conteúdo não está salvo no site oficial.
-        </div>
-      ) : null}
 
       {groupsWithResources.map((group, sectionIndex) => {
         const isGeral = group.id === DEFAULT_EDUCATION_GROUP_ID;

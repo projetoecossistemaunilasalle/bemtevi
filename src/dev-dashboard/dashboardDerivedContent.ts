@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { PublishedContentPayload, PublishedContentSnapshot } from '../app/content/publishedContent';
 import { normalizeContactLocations } from '../domain/services/locations';
 import { validateDashboardContacts } from './contacts/contactsValidation';
-import { createEmptyDashboardDraftState, type DashboardDraftState } from './draft-storage/dashboardStorage';
+import { createEmptyDashboardDraftState, type DashboardDraftState } from './dashboardDraftState';
 import type { DraftWorkspace } from './draft-storage/workspace';
 import { validateDashboardEducation } from './education/educationValidation';
 import { validateDashboardFlows } from './flows/flowValidation';

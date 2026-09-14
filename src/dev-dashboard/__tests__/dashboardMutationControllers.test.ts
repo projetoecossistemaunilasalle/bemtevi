@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
-import { createEmptyDashboardDraftState, type DashboardDraftState } from '../draft-storage/dashboardStorage';
+import { createEmptyDashboardDraftState, type DashboardDraftState } from '../dashboardDraftState';
 import { createWorkspace, type DraftWorkspace } from '../draft-storage/workspace';
 import { createDashboardContactMutationController } from '../dashboardContactMutations';
 import { createDashboardFlowMutationController } from '../dashboardFlowMutations';

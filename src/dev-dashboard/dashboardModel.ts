@@ -1,7 +1,7 @@
 import type { PublishedContentPayload } from '../app/content/publishedContent';
 import { defaultFeaturedImageId } from '../content/resources/featuredImages';
 import type { EducationResourceGroup } from '../content/resources/groups';
-import type { DashboardRecordPatch } from './draft-storage/dashboardStorage';
+import type { DashboardRecordPatch } from './dashboardDraftState';
 import type { DashboardShippedContent } from './content/shippedContent';
 
 export type DashboardRecordOrigin =

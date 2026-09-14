@@ -2,7 +2,8 @@ import type { PublishedContentPayload } from '../app/content/publishedContent';
 import { DEFAULT_EDUCATION_GROUP_ID } from '../content/resources/groups';
 import type { EducationResourceGroup } from '../content/resources/groups';
 import type { EducationResource } from '../domain/resources/types';
-import { mergeDashboardDrafts, type DashboardDraftState } from './draft-storage/dashboardStorage';
+import type { DashboardDraftState } from './dashboardDraftState';
+import { mergeDashboardDrafts } from './dashboardDraftMerge';
 import {
   createLocalEducationMaterial,
   createLocalGroup,

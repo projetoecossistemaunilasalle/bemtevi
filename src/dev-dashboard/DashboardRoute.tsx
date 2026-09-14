@@ -2,11 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Page } from '../design-system/components/Page';
 import { PageHeader } from '../design-system/components/PageHeader';
 import { DashboardShell, type DashboardTab } from './components/DashboardShell';
-import {
-  createEmptyDashboardDraftState,
-  mergeDashboardDrafts,
-  type DashboardDraftState,
-} from './draft-storage/dashboardStorage';
+import { createEmptyDashboardDraftState, type DashboardDraftState } from './dashboardDraftState';
+import { mergeDashboardDrafts } from './dashboardDraftMerge';
 import { Button } from '../design-system/components/Button';
 import { AlertCircle, Download, Info, Upload } from 'lucide-react';
 import { WorkspaceHistory } from './draft-storage/WorkspaceHistory';

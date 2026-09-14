@@ -11,7 +11,7 @@ import { getShippedDashboardContent } from '../content/shippedContent';
 import { screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createEmptyDashboardDraftState } from '../draft-storage/dashboardStorage';
+import { createEmptyDashboardDraftState } from '../dashboardDraftState';
 
 describe('DashboardRoute contacts', () => {
   beforeEach(setupDashboardRouteTest);

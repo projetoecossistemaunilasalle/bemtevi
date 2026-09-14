@@ -5,7 +5,7 @@ import { AiArchiveSection } from './ai/AiArchiveSection';
 import type { AiOperationEnvelope } from './ai/aiOperations';
 import { McpDraftSection } from './ai/McpDraftSection';
 import type { ContentDraft } from './draft-sync/contentDraft';
-import type { DashboardDraftState } from './draft-storage/dashboardStorage';
+import type { DashboardDraftState } from './dashboardDraftState';
 import type { DraftWorkspace } from './draft-storage/workspace';
 import { ContactsDashboard } from './contacts/ContactsDashboard';
 import { EducationDashboard } from './education/EducationDashboard';

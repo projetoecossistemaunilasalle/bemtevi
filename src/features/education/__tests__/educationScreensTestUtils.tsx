@@ -14,12 +14,6 @@ export function firstShippedMaterial() {
   return resource;
 }
 
-export function shippedMaterialSourceIndex(id: string) {
-  const sourceIndex = shippedEducationMaterials().findIndex((material) => material.id === id);
-  if (sourceIndex < 0) throw new Error(`Expected shipped education material with id ${id}.`);
-  return sourceIndex;
-}
-
 function buildContentValue(payload: PublishedContentPayload) {
   const snapshot = {
     schemaVersion: '1.0.0',
@@ -65,16 +59,29 @@ export function buildDatabaseEducationPayload(): PublishedContentPayload {
   };
 }
 
-export function createDraftState(overrides: Record<string, unknown> = {}) {
-  return {
-    schemaVersion: '2.0.0',
-    flowPatches: [],
-    educationMaterialPatches: [],
-    groupPatches: [],
-    addedFlows: [],
-    addedEducationMaterials: [],
-    addedGroups: [],
-    updatedAt: '2026-06-05T00:00:00.000Z',
-    ...overrides,
-  };
+/** LEGACY-00: bytes that once drove the public localStorage draft preview. */
+export function seedLegacyDashboardDraftBytes(): void {
+  localStorage.setItem(
+    'bemtevi:dev-dashboard:drafts:v1',
+    JSON.stringify({
+      schemaVersion: '2.0.0',
+      flowPatches: [],
+      educationMaterialPatches: [],
+      groupPatches: [],
+      addedFlows: [],
+      addedEducationMaterials: [
+        {
+          id: 'preview-added-material',
+          title: 'Material adicionado em teste',
+          source: 'BemTeVi',
+          description: 'Não deve aparecer na tela pública.',
+          tags: ['preview'],
+          audience: 'teachers',
+          review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
+        },
+      ],
+      addedGroups: [{ id: 'unused-group', title: 'Grupo sem recursos', order: 10 }],
+      updatedAt: '2026-06-05T00:00:00.000Z',
+    }),
+  );
 }

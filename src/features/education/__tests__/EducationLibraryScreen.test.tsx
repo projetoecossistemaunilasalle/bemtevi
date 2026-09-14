@@ -7,10 +7,9 @@ import { EducationLibraryScreen } from '../EducationLibraryScreen';
 import { ResourceDetailScreen } from '../ResourceDetailScreen';
 import {
   contentWithoutEducation,
-  createDraftState,
   firstShippedMaterial,
   renderWithContent,
-  shippedMaterialSourceIndex,
+  seedLegacyDashboardDraftBytes,
 } from './educationScreensTestUtils';
 
 beforeEach(() => {
@@ -43,26 +42,25 @@ describe('EducationLibraryScreen', () => {
     }
   });
 
-  it('does not render source badges at the top of library cards', () => {
-    const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          educationMaterialPatches: [
-            {
-              id: resource.id,
-              sourceIndex: shippedMaterialSourceIndex(resource.id),
-              patch: {
-                source:
-                  'ORGANIZAÇÃO MUNDIAL DA SAÚDE (OMS). Saúde mental e bem-estar. / PARROTT, E. et al. The Role of Teachers.',
-              },
-            },
-          ],
-        }),
-      ),
+  it('ignores populated bemtevi:dev-dashboard:drafts:v1 bytes and renders only published content', () => {
+    seedLegacyDashboardDraftBytes();
+    const published = getBundledContent();
+
+    renderWithContent(
+      <MemoryRouter initialEntries={['/educacao']}>
+        <Routes>
+          <Route path="/educacao" element={<EducationLibraryScreen />} />
+        </Routes>
+      </MemoryRouter>,
+      published,
     );
 
+    expect(screen.queryByText('Material adicionado em teste')).not.toBeInTheDocument();
+    expect(screen.queryByText(/versão de teste/i)).not.toBeInTheDocument();
+    expect(screen.getByText(published.educationMaterials[0]!.title)).toBeInTheDocument();
+  });
+
+  it('does not render source badges at the top of library cards', () => {
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
         <Routes>
@@ -77,53 +75,16 @@ describe('EducationLibraryScreen', () => {
     expect(screen.queryByText(/Saúde mental e bem-estar/)).not.toBeInTheDocument();
   });
 
-  it('shows the preview warning when at least one material was actually added', () => {
-    const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            {
-              ...resource,
-              id: 'preview-added-material',
-              title: 'Material adicionado em teste',
-            },
-          ],
-        }),
-      ),
-    );
-
-    renderWithContent(
-      <MemoryRouter initialEntries={['/educacao']}>
-        <Routes>
-          <Route path="/educacao" element={<EducationLibraryScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText(/versão de teste/i)).toBeInTheDocument();
-    expect(screen.getByText('Material adicionado em teste')).toBeInTheDocument();
-  });
-
   it('renders named group headings only for groups with resources', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedGroups: [{ id: 'unused-group', title: 'Grupo sem recursos', order: 10 }],
-          addedEducationMaterials: [
-            {
-              ...resource,
-              id: 'material-in-group',
-              title: 'Material em grupo',
-              group: 'auto-cuidado',
-            },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [{ ...resource, id: 'material-in-group', title: 'Material em grupo', group: 'auto-cuidado' }],
+      educationGroups: [
+        { id: 'auto-cuidado', title: 'Autocuidado', order: 1 },
+        { id: 'unused-group', title: 'Grupo sem recursos', order: 10 },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -131,6 +92,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.getByRole('heading', { name: 'Autocuidado' })).toBeInTheDocument();
@@ -140,21 +102,11 @@ describe('EducationLibraryScreen', () => {
 
   it('does not render headings for empty groups', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedGroups: [{ id: 'empty-group', title: 'Grupo Vazio', order: 5 }],
-          addedEducationMaterials: [
-            {
-              ...resource,
-              id: 'material-no-group',
-              title: 'Material sem grupo',
-            },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [{ ...resource, id: 'material-no-group', title: 'Material sem grupo' }],
+      educationGroups: [{ id: 'empty-group', title: 'Grupo Vazio', order: 5 }],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -162,6 +114,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.queryByRole('heading', { name: 'Grupo Vazio' })).not.toBeInTheDocument();
@@ -170,23 +123,19 @@ describe('EducationLibraryScreen', () => {
 
   it('renders named groups ordered by their order field', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedGroups: [
-            { id: 'group-z', title: 'Grupo Z', order: 30 },
-            { id: 'group-a', title: 'Grupo A', order: 10 },
-            { id: 'group-m', title: 'Grupo M', order: 20 },
-          ],
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-z', title: 'Material Z', group: 'group-z', groupOrder: 1 },
-            { ...resource, id: 'mat-a', title: 'Material A', group: 'group-a', groupOrder: 1 },
-            { ...resource, id: 'mat-m', title: 'Material M', group: 'group-m', groupOrder: 1 },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...contentWithoutEducation(),
+      educationMaterials: [
+        { ...resource, id: 'mat-z', title: 'Material Z', group: 'group-z', groupOrder: 1 },
+        { ...resource, id: 'mat-a', title: 'Material A', group: 'group-a', groupOrder: 1 },
+        { ...resource, id: 'mat-m', title: 'Material M', group: 'group-m', groupOrder: 1 },
+      ],
+      educationGroups: [
+        { id: 'group-z', title: 'Grupo Z', order: 30 },
+        { id: 'group-a', title: 'Grupo A', order: 10 },
+        { id: 'group-m', title: 'Grupo M', order: 20 },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -194,7 +143,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
-      contentWithoutEducation(),
+      payload,
     );
 
     const groupHeadings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
@@ -203,18 +152,14 @@ describe('EducationLibraryScreen', () => {
 
   it('renders geral section first without a heading', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
-            { ...resource, id: 'mat-named', title: 'Material Named', group: 'first-group' },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...contentWithoutEducation(),
+      educationMaterials: [
+        { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
+        { ...resource, id: 'mat-named', title: 'Material Named', group: 'first-group' },
+      ],
+      educationGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -222,7 +167,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
-      contentWithoutEducation(),
+      payload,
     );
 
     const groupHeadings = screen.getAllByRole('heading', { level: 2 });
@@ -234,19 +179,15 @@ describe('EducationLibraryScreen', () => {
 
   it('renders geral according to the default group order', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          defaultGroupOrder: 2,
-          addedGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
-            { ...resource, id: 'mat-named', title: 'Material Pinned', group: 'first-group' },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      defaultGroupOrder: 2,
+      educationMaterials: [
+        { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
+        { ...resource, id: 'mat-named', title: 'Material Pinned', group: 'first-group' },
+      ],
+      educationGroups: [{ id: 'first-group', title: 'Primeiro Grupo', order: 1 }],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -254,6 +195,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     const pinnedHeading = screen.getByRole('heading', { name: 'Primeiro Grupo' });
@@ -266,19 +208,15 @@ describe('EducationLibraryScreen', () => {
 
   it('separates geral from a previous named group without rendering a geral heading', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          defaultGroupOrder: 2,
-          addedGroups: [{ id: 'auto-group', title: 'Autocuidado', order: 1 }],
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-autocuidado', title: 'Material Autocuidado', group: 'auto-group' },
-            { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...contentWithoutEducation(),
+      defaultGroupOrder: 2,
+      educationMaterials: [
+        { ...resource, id: 'mat-autocuidado', title: 'Material Autocuidado', group: 'auto-group' },
+        { ...resource, id: 'mat-geral', title: 'Material Geral', group: 'geral' },
+      ],
+      educationGroups: [{ id: 'auto-group', title: 'Autocuidado', order: 1 }],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -286,7 +224,7 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
-      contentWithoutEducation(),
+      payload,
     );
 
     const separator = screen.getByRole('separator', { name: 'Separador entre grupos de materiais' });
@@ -301,19 +239,15 @@ describe('EducationLibraryScreen', () => {
 
   it('sorts resources within groups by groupOrder with stable tie-breaking', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-3', title: 'Terceiro', group: 'geral', groupOrder: 3 },
-            { ...resource, id: 'mat-1', title: 'Primeiro', group: 'geral', groupOrder: 1 },
-            { ...resource, id: 'mat-2', title: 'Segundo', group: 'geral', groupOrder: 2 },
-            { ...resource, id: 'mat-undefined', title: 'Sem order', group: 'geral' },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...contentWithoutEducation(),
+      educationMaterials: [
+        { ...resource, id: 'mat-3', title: 'Terceiro', group: 'geral', groupOrder: 3 },
+        { ...resource, id: 'mat-1', title: 'Primeiro', group: 'geral', groupOrder: 1 },
+        { ...resource, id: 'mat-2', title: 'Segundo', group: 'geral', groupOrder: 2 },
+        { ...resource, id: 'mat-undefined', title: 'Sem order', group: 'geral' },
+      ],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -321,29 +255,19 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
-      contentWithoutEducation(),
+      payload,
     );
 
-    const baseTitles = new Set(getBundledContent().educationMaterials.map((r) => r.title));
-    const resourceTitles = screen
-      .getAllByRole('heading', { level: 3 })
-      .map((h) => h.textContent)
-      .filter((t): t is string => t !== null && !baseTitles.has(t));
+    const resourceTitles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(resourceTitles).toEqual(['Primeiro', 'Segundo', 'Terceiro', 'Sem order']);
   });
 
   it('falls back dangling group references to geral', () => {
     const resource = firstShippedMaterial();
-    localStorage.setItem(
-      'bemtevi:dev-dashboard:drafts:v1',
-      JSON.stringify(
-        createDraftState({
-          addedEducationMaterials: [
-            { ...resource, id: 'mat-dangling', title: 'Material Órfão', group: 'non-existent-group' },
-          ],
-        }),
-      ),
-    );
+    const payload = {
+      ...getBundledContent(),
+      educationMaterials: [{ ...resource, id: 'mat-dangling', title: 'Material Órfão', group: 'non-existent-group' }],
+    };
 
     renderWithContent(
       <MemoryRouter initialEntries={['/educacao']}>
@@ -351,10 +275,9 @@ describe('EducationLibraryScreen', () => {
           <Route path="/educacao" element={<EducationLibraryScreen />} />
         </Routes>
       </MemoryRouter>,
+      payload,
     );
 
     expect(screen.getByText('Material Órfão')).toBeInTheDocument();
-    const headings = screen.getAllByRole('heading');
-    expect(headings.every((h) => h.textContent !== 'Material Órfão')).toBe(false);
   });
 });

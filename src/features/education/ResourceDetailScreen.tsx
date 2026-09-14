@@ -7,7 +7,6 @@ import { Badge } from '../../design-system/components/Badge';
 import { Card } from '../../design-system/components/Card';
 import { Page } from '../../design-system/components/Page';
 import type { EducationResource, EducationResourceBlock } from '../../domain/resources/types';
-import { resolveEducationResourcesForPreview } from './educationResourcePreview';
 import { resolveVideoEmbed } from './videoEmbeds';
 import { InstagramEmbed } from '../../design-system/components/InstagramEmbed';
 import { SourceCitationsView } from './SourceCitationsView';
@@ -16,9 +15,8 @@ import { isLegacySourceBlock, parseSourceCitations } from './sourceFormatter';
 export function ResourceDetailScreen() {
   const { resourceId } = useParams();
   const { content } = usePublishedContent();
-  const { resources, changedResourceIds } = resolveEducationResourcesForPreview(content);
+  const resources = content.educationMaterials;
   const resource = resources.find((item) => item.id === resourceId) ?? resources[0];
-  const isPreviewingResource = changedResourceIds.includes(resource.id);
   const featuredImage = resolveFeaturedImage(resource);
   const resourceTags = resource.tags.map((tag) => tag.trim()).filter(Boolean);
   const legacySourceBlock = resource.body?.find((block) => isLegacySourceBlock(block) && block.text?.trim());
@@ -29,12 +27,6 @@ export function ResourceDetailScreen() {
 
   return (
     <Page width="narrow" className="gap-stack-md">
-      {isPreviewingResource ? (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 font-body-md text-yellow-900">
-          Essa é uma versão de teste. O conteúdo não está salvo no site oficial.
-        </div>
-      ) : null}
-
       <Link to={routes.education} className="inline-flex items-center gap-2 font-label-md text-primary">
         <ArrowLeft size={18} />
         Materiais
