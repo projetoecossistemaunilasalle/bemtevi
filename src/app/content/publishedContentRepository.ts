@@ -1,14 +1,20 @@
 import {
-  PUBLISHED_CONTENT_SCHEMA_VERSION,
   parsePublishedContentRow,
-  validatePublicationPayload,
   PublishedContentValidationError,
-  type PublishedContentPayload,
   type PublishedContentRow,
   type PublishedContentSnapshot,
 } from './publishedContent';
 import type { Database } from '../neon/database';
 import { defaultNeonClient, type BemTeViNeonClient } from '../neon/client';
+
+/**
+ * Read-only repository for the published content (INTEGRATION-02). The former
+ * direct `publishContent` write path was MOVED into the temporary
+ * `src/dev-dashboard/publishing/legacyPublication.ts` adapter, reachable only
+ * from the legacy (`v2Enabled=false`) dashboard branch during coexistence.
+ * V2 publication goes exclusively through the guarded
+ * `DraftRepository.prepare()` + `DraftRepository.publish()` protocol.
+ */
 
 export type PublishedContentRepositoryErrorCode =
   | 'not_configured'
@@ -27,15 +33,8 @@ export class PublishedContentRepositoryError extends Error {
   }
 }
 
-export interface PublishContentInput {
-  payload: PublishedContentPayload;
-  expectedRevision: number | null;
-  publisherId: string;
-}
-
 export interface PublishedContentRepository {
   loadPublishedContent(): Promise<PublishedContentSnapshot | null>;
-  publishContent(input: PublishContentInput): Promise<PublishedContentSnapshot>;
 }
 
 interface DataApiError {
@@ -44,14 +43,13 @@ interface DataApiError {
 }
 
 type PublishedContentInsert = Database['public']['Tables']['published_content']['Insert'];
-type PublishedContentUpdate = Database['public']['Tables']['published_content']['Update'];
 
 export interface PublishedContentGateway {
   readCurrent(): Promise<{ data: PublishedContentRow | null; error: DataApiError | null }>;
   insertCurrent(row: PublishedContentInsert): Promise<{ data: PublishedContentRow | null; error: DataApiError | null }>;
   updateCurrent(
     expectedRevision: number,
-    row: PublishedContentUpdate,
+    row: Partial<PublishedContentInsert>,
   ): Promise<{ data: PublishedContentRow | null; error: DataApiError | null }>;
 }
 
@@ -74,7 +72,7 @@ function indicatesMissingAuth(error: unknown): boolean {
   return name === 'AuthRequiredError' || /auth.?required|missing auth|token/i.test(haystack);
 }
 
-function mapDataApiError(error: DataApiError): PublishedContentRepositoryError {
+export function mapDataApiError(error: DataApiError): PublishedContentRepositoryError {
   if (error.code === '42501' || error.code === 'PGRST301' || indicatesMissingAuth(error)) {
     return new PublishedContentRepositoryError('unauthorized', 'Acesso não autorizado ao conteúdo publicado.');
   }
@@ -84,7 +82,7 @@ function mapDataApiError(error: DataApiError): PublishedContentRepositoryError {
   return new PublishedContentRepositoryError('unavailable', 'Não foi possível concluir a operação no momento.');
 }
 
-function mapThrownError(error: unknown): PublishedContentRepositoryError {
+export function mapThrownRepositoryError(error: unknown): PublishedContentRepositoryError {
   if (error instanceof PublishedContentRepositoryError) return error;
   if (indicatesMissingAuth(error)) {
     return new PublishedContentRepositoryError('unauthorized', 'Acesso não autorizado ao conteúdo publicado.');
@@ -148,56 +146,17 @@ export function createPublishedContentRepository(gateway: PublishedContentGatewa
         return parseRow(data);
       } catch (error) {
         if (error instanceof PublishedContentRepositoryError) throw error;
-        throw mapThrownError(error);
-      }
-    },
-
-    async publishContent(input) {
-      let payload: PublishedContentPayload;
-      try {
-        payload = validatePublicationPayload(input.payload);
-      } catch (error) {
-        if (error instanceof PublishedContentValidationError) {
-          throw new PublishedContentRepositoryError('invalid_payload', 'O payload publicado é inválido.');
-        }
-        throw error;
-      }
-
-      const nextRevision = input.expectedRevision === null ? 1 : input.expectedRevision + 1;
-      const write = {
-        schema_version: PUBLISHED_CONTENT_SCHEMA_VERSION,
-        revision: nextRevision,
-        payload,
-        published_at: new Date().toISOString(),
-        published_by: input.publisherId,
-      };
-
-      try {
-        const result =
-          input.expectedRevision === null
-            ? await gateway.insertCurrent({ id: 'current', ...write })
-            : await gateway.updateCurrent(input.expectedRevision, { ...write });
-
-        if (result.error) throw mapDataApiError(result.error);
-        if (result.data === null) {
-          throw new PublishedContentRepositoryError('conflict', 'Conflito de revisão ao publicar o conteúdo.');
-        }
-        return parseRow(result.data);
-      } catch (error) {
-        if (error instanceof PublishedContentRepositoryError) throw error;
-        throw mapThrownError(error);
+        throw mapThrownRepositoryError(error);
       }
     },
   };
 }
 
 function createNotConfiguredRepository(): PublishedContentRepository {
-  const fail = (): never => {
-    throw new PublishedContentRepositoryError('not_configured', 'O cliente Neon não está configurado.');
-  };
   return {
-    loadPublishedContent: fail,
-    publishContent: fail,
+    loadPublishedContent() {
+      throw new PublishedContentRepositoryError('not_configured', 'O cliente Neon não está configurado.');
+    },
   };
 }
 

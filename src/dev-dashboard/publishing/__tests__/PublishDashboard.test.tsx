@@ -61,25 +61,33 @@ function makeSnapshot(revision: number, payload: PublishedContentPayload = basel
 const account: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
 
 function renderPublish({
-  publish = vi.fn<PublishedContentContextValue['publish']>(),
+  legacyPublish = vi.fn<
+    (
+      payload: PublishedContentPayload,
+      publisherId: string,
+      expectedRevision: number | null,
+    ) => Promise<import('../../../app/content/publishedContent').PublishedContentSnapshot>
+  >(),
   snapshot = makeSnapshot(4),
   currentAccount = account as AdminAccount | null,
   draft = draftWithChanges,
   basePayload,
   refreshLatest,
   validation = emptyValidation,
-  onMergeConflict = vi.fn(),
   onPublished = vi.fn(),
   onOpenValidationArea = vi.fn(),
 }: {
-  publish?: PublishedContentContextValue['publish'];
+  legacyPublish?: (
+    payload: PublishedContentPayload,
+    publisherId: string,
+    expectedRevision: number | null,
+  ) => Promise<PublishedContentSnapshot>;
   snapshot?: PublishedContentSnapshot | null;
   currentAccount?: AdminAccount | null;
   draft?: PublishedContentPayload;
   basePayload?: PublishedContentPayload;
   refreshLatest?: () => Promise<PublishedContentSnapshot | null>;
   validation?: DashboardValidationResult;
-  onMergeConflict?: (snapshot: PublishedContentSnapshot) => void;
   onPublished?: (next: PublishedContentSnapshot) => void;
   onOpenValidationArea?: (area: import('../../validation/validationTypes').DashboardValidationArea) => void;
 } = {}) {
@@ -91,7 +99,6 @@ function renderPublish({
     loadError: null,
     refresh: vi.fn(),
     refreshLatest,
-    publish,
   };
   const authValue: AdminAuthContextValue = {
     status: currentAccount ? 'authenticated' : 'unauthenticated',
@@ -105,12 +112,14 @@ function renderPublish({
     <PublishedContentContext.Provider value={publishedValue}>
       <AdminAuthContext.Provider value={authValue}>
         <PublishDashboard
+          mode="legacy"
           baseline={baseline}
           draft={draft}
           validation={validation}
           draftUpdatedAt="2026-07-12T00:00:00.000Z"
           basePayload={basePayload}
-          onMergeConflict={onMergeConflict}
+          refreshLatest={refreshLatest}
+          legacyPublish={legacyPublish}
           onPublished={onPublished}
           onResetDrafts={vi.fn()}
           onOpenValidationArea={onOpenValidationArea}
@@ -119,7 +128,7 @@ function renderPublish({
     </PublishedContentContext.Provider>
   );
 
-  return { ...render(ui), publish, onPublished, onOpenValidationArea };
+  return { ...render(ui), legacyPublish, onPublished, onOpenValidationArea };
 }
 
 describe('PublishDashboard', () => {
@@ -138,50 +147,49 @@ describe('PublishDashboard', () => {
   });
   it('requires review of the exact combined candidate before sending', async () => {
     const user = userEvent.setup();
-    const publish = vi.fn().mockResolvedValue(makeSnapshot(5, draftWithChanges));
-    const { onPublished } = renderPublish({ publish });
+    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(5, draftWithChanges));
+    const { onPublished } = renderPublish({ legacyPublish });
     await prepare(user);
-    expect(publish).not.toHaveBeenCalled();
+    expect(legacyPublish).not.toHaveBeenCalled();
     await review(user);
-    expect(publish).not.toHaveBeenCalled();
+    expect(legacyPublish).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
     await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(5, draftWithChanges)));
-    expect(publish).toHaveBeenCalledWith(draftWithChanges, account.id, 4);
+    expect(legacyPublish).toHaveBeenCalledWith(draftWithChanges, account.id, 4);
   });
   it('prepares independent concurrent changes without automatically publishing', async () => {
     const user = userEvent.setup();
     const remote = { ...baseline, defaultGroupOrder: 2 };
-    const publish = vi.fn().mockResolvedValue(makeSnapshot(6));
+    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(6));
     renderPublish({
-      publish,
+      legacyPublish,
       basePayload: baseline,
       refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
     });
     await prepare(user);
-    expect(publish).not.toHaveBeenCalled();
+    expect(legacyPublish).not.toHaveBeenCalled();
     await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    expect(publish).toHaveBeenCalledWith({ ...draftWithChanges, defaultGroupOrder: 2 }, account.id, 5);
+    expect(legacyPublish).toHaveBeenCalledWith({ ...draftWithChanges, defaultGroupOrder: 2 }, account.id, 5);
   });
   it('resolves and undoes a field conflict without resetting the draft', async () => {
     const user = userEvent.setup();
     const b = { ...baseline, contacts: [contact] };
     const local = { ...b, contacts: [{ ...contact, name: 'Minha alteração' }] };
     const remote = { ...b, contacts: [{ ...contact, name: 'Alteração publicada' }] };
-    const publish = vi.fn().mockResolvedValue(makeSnapshot(6, local));
+    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(6, local));
     const onMergeConflict = vi.fn();
     renderPublish({
-      publish,
+      legacyPublish,
       basePayload: b,
       draft: local,
-      onMergeConflict,
       refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
     });
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
     expect(await screen.findByText('1 conflitos pendentes')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Contatos \/ contact-one \/ Nome/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Alterações já publicadas/ })).toBeInTheDocument();
-    expect(publish).not.toHaveBeenCalled();
+    expect(legacyPublish).not.toHaveBeenCalled();
     expect(onMergeConflict).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
     expect(await screen.findByText('0 conflitos pendentes')).toBeInTheDocument();
@@ -190,30 +198,30 @@ describe('PublishDashboard', () => {
     await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
     await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    expect(publish).toHaveBeenCalledWith(local, account.id, 5);
+    expect(legacyPublish).toHaveBeenCalledWith(local, account.id, 5);
   });
   it('does not blindly retry when the remote advances after review', async () => {
     const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'private detail'));
+    const legacyPublish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'private detail'));
     const refreshLatest = vi
       .fn()
       .mockResolvedValueOnce(makeSnapshot(4))
       .mockResolvedValueOnce(makeSnapshot(5, { ...baseline, defaultGroupOrder: 2 }));
-    renderPublish({ publish, refreshLatest });
+    renderPublish({ legacyPublish, refreshLatest });
     await prepare(user);
     await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
     expect(await screen.findByText(/Há uma nova publicação/)).toBeInTheDocument();
-    expect(publish).toHaveBeenCalledTimes(1);
+    expect(legacyPublish).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Confirmar publicação' })).not.toBeInTheDocument();
   });
   it('blocks confirmation without real authentication', async () => {
     const user = userEvent.setup();
-    const { publish } = renderPublish({ currentAccount: null });
+    const { legacyPublish } = renderPublish({ currentAccount: null });
     await prepare(user);
     await review(user);
     expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeDisabled();
-    expect(publish).not.toHaveBeenCalled();
+    expect(legacyPublish).not.toHaveBeenCalled();
   });
   it('preserves export and does not leak comparison errors', () => {
     const invalid = { ...draftWithChanges, contacts: [contact, contact] };
@@ -223,14 +231,14 @@ describe('PublishDashboard', () => {
   });
   it('reports uncertain results safely and prevents duplicate sends', async () => {
     const user = userEvent.setup();
-    const publish = vi.fn().mockRejectedValue(new Error('secret database stack'));
-    renderPublish({ publish });
+    const legacyPublish = vi.fn().mockRejectedValue(new Error('secret database stack'));
+    renderPublish({ legacyPublish });
     await prepare(user);
     await review(user);
     await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Não foi possível confirmar o resultado');
     expect(alert).not.toHaveTextContent('secret');
-    expect(publish).toHaveBeenCalledTimes(1);
+    expect(legacyPublish).toHaveBeenCalledTimes(1);
   });
 });

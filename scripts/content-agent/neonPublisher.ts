@@ -3,10 +3,8 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import {
-  createPublishedContentRepository,
-  type PublishedContentGateway,
-} from '../../src/app/content/publishedContentRepository';
+import { type PublishedContentGateway } from '../../src/app/content/publishedContentRepository';
+import { legacyPublishContent } from '../../src/dev-dashboard/publishing/legacyPublication';
 import type { PublishedContentRow } from '../../src/app/content/publishedContent';
 import type { Database } from '../../src/app/neon/database';
 import { ContentAgentError, type ContentAgentSession, type ContentPublisher } from './server';
@@ -122,10 +120,10 @@ export function createVaultContentPublisher(vault = new AdminCredentialVault()):
       if (context.remote.user.id !== input.publisherId) {
         throw new ContentAgentError('unauthorized', 'A identidade da sessão administrativa mudou.');
       }
-      const repository = createPublishedContentRepository(
-        createAuthenticatedGateway(context.stored.dataApiUrl, context.jwt),
-      );
-      return repository.publishContent(input);
+      // INTEGRATION-02 moved the direct `published_content` write out of the
+      // now read-only repository into the temporary legacy adapter; this
+      // legacy content-agent script (deleted by LEGACY-01) consumes it here.
+      return legacyPublishContent(createAuthenticatedGateway(context.stored.dataApiUrl, context.jwt), input);
     },
   };
 }

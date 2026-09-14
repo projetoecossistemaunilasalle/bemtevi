@@ -72,8 +72,26 @@ vi.mock('../../app/content/PublishedContentContext', () => ({
     status: 'ready',
     loadError: null,
     refresh: vi.fn(),
-    publish: dashboardMocks.publish,
+    refreshLatest: async () => dashboardMocks.snapshot,
   }),
+}));
+
+// INTEGRATION-02: the legacy branch publishes through the temporary
+// `publishing/legacyPublication.ts` direct-table adapter. The harness keeps
+// the same observable mock (`dashboardMocks.publish`) by faking the adapter
+// boundary instead of the removed provider `publish` method. The Neon client
+// module is mocked as configured so the route's adapter wiring is reachable.
+vi.mock('../app/neon/client', () => ({
+  getNeonConfig: () => ({ authUrl: 'https://auth.bemtevi.test', dataApiUrl: 'https://data.bemtevi.test' }),
+  defaultNeonClient: { rpc: vi.fn() },
+  createConfiguredNeonClient: vi.fn(() => null),
+}));
+vi.mock('../publishing/legacyPublication', () => ({
+  createNeonPublishedContentGateway: vi.fn(() => ({ readCurrent: vi.fn() })),
+  legacyPublishContent: vi.fn(
+    async (_gateway: unknown, input: { payload: unknown; publisherId: string; expectedRevision: number | null }) =>
+      dashboardMocks.publish(input.payload, input.publisherId, input.expectedRevision),
+  ),
 }));
 
 vi.mock('../../app/auth/AdminAuthContext', () => ({

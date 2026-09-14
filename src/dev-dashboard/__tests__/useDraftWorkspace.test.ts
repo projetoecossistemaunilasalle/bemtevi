@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useDraftWorkspace } from '../draft-storage/useDraftWorkspace';
+import { useLegacyDraftWorkspace } from '../draft-storage/useDraftWorkspace';
 import { createWorkspace, listWorkspaces, writeWorkspace } from '../draft-storage/workspace';
 import { createEmptyDashboardDraftState, DASHBOARD_STORAGE_KEY } from '../draft-storage/dashboardStorage';
 const payload = {
@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 describe('workspace lifecycle', () => {
   it('keeps B and L fixed when the remote changes', async () => {
-    const { result, rerender } = renderHook(({ remote }) => useDraftWorkspace(remote, 3), {
+    const { result, rerender } = renderHook(({ remote }) => useLegacyDraftWorkspace(remote, 3), {
       initialProps: { remote: payload },
     });
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -38,7 +38,7 @@ describe('workspace lifecycle', () => {
     expect(result.current.workspace?.local.defaultGroupOrder).toBe(2);
   });
   it('preserves unsaved memory and prevents import when its checkpoint fails', async () => {
-    const { result } = renderHook(() => useDraftWorkspace(payload, 3));
+    const { result } = renderHook(() => useLegacyDraftWorkspace(payload, 3));
     await waitFor(() => expect(result.current.status).toBe('ready'));
     act(() => result.current.update((w) => ({ ...w, local: { ...w.local, defaultGroupOrder: 2 } })));
     vi.mocked(writeWorkspace).mockResolvedValue({ ok: false, code: 'storage_unavailable' });
@@ -55,7 +55,7 @@ describe('workspace lifecycle', () => {
     const legacy = { ...createEmptyDashboardDraftState(), defaultGroupOrder: 2 };
     const raw = JSON.stringify(legacy);
     localStorage.setItem(DASHBOARD_STORAGE_KEY, raw);
-    const { result } = renderHook(() => useDraftWorkspace(payload, 3));
+    const { result } = renderHook(() => useLegacyDraftWorkspace(payload, 3));
     await waitFor(() => expect(result.current.recovery).toBe(raw));
     expect(result.current.workspace).toBeNull();
     expect(writeWorkspace).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('workspace lifecycle', () => {
     };
     vi.mocked(listWorkspaces).mockResolvedValue([saved]);
     sessionStorage.setItem('bemtevi:dashboard:workspace-session', saved.workspaceId);
-    const { result } = renderHook(() => useDraftWorkspace(payload, 4));
+    const { result } = renderHook(() => useLegacyDraftWorkspace(payload, 4));
     await waitFor(() => expect(result.current.status).toBe('saved'));
     expect(result.current.workspace?.workspaceId).not.toBe(saved.workspaceId);
     expect(result.current.workspace?.reconciliation?.decisions).toEqual(saved.reconciliation.decisions);

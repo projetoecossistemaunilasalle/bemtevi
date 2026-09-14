@@ -91,7 +91,7 @@ function createFakeGateway(overrides: Partial<FakeGateway> = {}): FakeGateway {
   };
 }
 
-describe('PublishedContentRepository', () => {
+describe('PublishedContentRepository (read-only, INTEGRATION-02)', () => {
   it('returns null when the current row does not exist', async () => {
     const gateway = createFakeGateway({
       readCurrent: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -111,90 +111,9 @@ describe('PublishedContentRepository', () => {
     await expect(repo.loadPublishedContent()).resolves.toEqual(parsePublishedContentRow(row));
   });
 
-  it('inserts revision 1 when expectedRevision is null', async () => {
-    const insertedRow = buildValidRow({ revision: 1 });
-    const gateway = createFakeGateway({
-      insertCurrent: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    await repo.publishContent({ payload: buildValidPayload(), expectedRevision: null, publisherId: 'pub-9' });
-
-    expect(gateway.insertCurrent).toHaveBeenCalledTimes(1);
-    const [inserted] = gateway.insertCurrent.mock.calls[0] as unknown[];
-    expect((inserted as { revision: number }).revision).toBe(1);
-    expect((inserted as { id: string }).id).toBe('current');
-  });
-
-  it('updates revision N to N+1 using the expected revision', async () => {
-    const expected = 7;
-    const returnedRow = buildValidRow({ revision: expected + 1, published_by: 'pub-9' });
-    const gateway = createFakeGateway({
-      updateCurrent: vi.fn().mockResolvedValue({ data: returnedRow, error: null }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    const result = await repo.publishContent({
-      payload: buildValidPayload(),
-      expectedRevision: expected,
-      publisherId: 'pub-9',
-    });
-
-    expect(gateway.updateCurrent).toHaveBeenCalledTimes(1);
-    const [revisionArg, updateArg] = gateway.updateCurrent.mock.calls[0] as unknown[];
-    expect(revisionArg).toBe(expected);
-    expect((updateArg as { revision: number }).revision).toBe(expected + 1);
-    expect((updateArg as { id?: string }).id).toBeUndefined();
-    expect((updateArg as { payload: PublishedContentPayload }).payload).toEqual(buildValidPayload());
-    expect(result.revision).toBe(expected + 1);
-    expect(result.publishedBy).toBe('pub-9');
-  });
-
-  it('maps an empty conditional update to conflict', async () => {
-    const gateway = createFakeGateway({
-      updateCurrent: vi.fn().mockResolvedValue({ data: null, error: null }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    await expect(
-      repo.publishContent({ payload: buildValidPayload(), expectedRevision: 2, publisherId: 'pub-9' }),
-    ).rejects.toMatchObject({ code: 'conflict' });
-  });
-
-  it('maps PostgreSQL 23505 on first insert to conflict', async () => {
-    const gateway = createFakeGateway({
-      insertCurrent: vi.fn().mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate' } }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    await expect(
-      repo.publishContent({ payload: buildValidPayload(), expectedRevision: null, publisherId: 'pub-9' }),
-    ).rejects.toMatchObject({ code: 'conflict' });
-  });
-
-  it('maps the 42501 code to unauthorized', async () => {
-    const gateway = createFakeGateway({
-      insertCurrent: vi.fn().mockResolvedValue({ data: null, error: { code: '42501', message: 'permissao negada' } }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    await expect(
-      repo.publishContent({ payload: buildValidPayload(), expectedRevision: null, publisherId: 'pub-9' }),
-    ).rejects.toMatchObject({ code: 'unauthorized' });
-  });
-
-  it('maps missing-auth-token errors to unauthorized', async () => {
-    const gateway = createFakeGateway({
-      updateCurrent: vi.fn().mockResolvedValue({
-        data: null,
-        error: { code: 'PGRST301', message: 'Missing auth token' },
-      }),
-    });
-    const repo = createPublishedContentRepository(gateway);
-
-    await expect(
-      repo.publishContent({ payload: buildValidPayload(), expectedRevision: 3, publisherId: 'pub-9' }),
-    ).rejects.toMatchObject({ code: 'unauthorized' });
+  it('exposes no publication method: the direct write moved to the legacy adapter', () => {
+    const repo = createPublishedContentRepository(createFakeGateway());
+    expect(Object.keys(repo)).toEqual(['loadPublishedContent']);
   });
 
   it('maps invalid rows to invalid_payload', async () => {
@@ -248,16 +167,12 @@ describe('PublishedContentRepository', () => {
     expect(error.message).not.toContain('boom');
   });
 
-  it('rejects oversized payloads before calling the gateway', async () => {
-    const gateway = createFakeGateway();
+  it('maps a read 42501 to unauthorized (public read path keeps its mapping)', async () => {
+    const gateway = createFakeGateway({
+      readCurrent: vi.fn().mockResolvedValue({ data: null, error: { code: '42501', message: 'permissao negada' } }),
+    });
     const repo = createPublishedContentRepository(gateway);
-    const big = buildValidPayload();
-    big.educationMaterials[0].description = 'x'.repeat(6 * 1024 * 1024);
 
-    await expect(
-      repo.publishContent({ payload: big, expectedRevision: null, publisherId: 'pub-9' }),
-    ).rejects.toMatchObject({ code: 'invalid_payload' });
-    expect(gateway.insertCurrent).not.toHaveBeenCalled();
-    expect(gateway.updateCurrent).not.toHaveBeenCalled();
+    await expect(repo.loadPublishedContent()).rejects.toMatchObject({ code: 'unauthorized' });
   });
 });

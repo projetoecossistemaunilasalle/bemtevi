@@ -1,243 +1,264 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import {
+  inspectContent,
+  sha256Bytes,
+  type ContentDraft,
+  type PublicationPreparation,
+  type PublishResult,
+  type PublishedContentPayload,
+} from '@bemtevi/content-core';
+import type { DraftRepository } from '../drafts/draftRepository';
 import { useAdminAuth } from '../../app/auth/AdminAuthContext';
 import { usePublishedContent } from '../../app/content/PublishedContentContext';
-import {
-  getPublishedPayloadSize,
-  MAX_PUBLISHED_PAYLOAD_BYTES,
-  validatePublicationPayload,
-  type PublishedContentPayload,
-  type PublishedContentSnapshot,
-} from '../../app/content/publishedContent';
-import { PublishedContentRepositoryError } from '../../app/content/publishedContentRepository';
-import { validateDashboardContacts } from '../contacts/contactsValidation';
-import { validateDashboardEducation } from '../education/educationValidation';
-import { validateDashboardFlows } from '../flows/flowValidation';
-import type { useDraftWorkspace } from '../draft-storage/useDraftWorkspace';
-import type { ReconciliationSession } from '../draft-storage/workspace';
-import { compareContent, contentIdentity, reconcileContent, type ValueSlot } from './semanticDiff';
+import { compareContent, contentIdentity, type ValueSlot } from './semanticDiff';
 
-export type WorkspaceStore = ReturnType<typeof useDraftWorkspace>;
-type Phase = 'editing' | 'comparing' | 'resolving' | 'ready' | 'publishing' | 'uncertain' | 'success' | 'error';
+/**
+ * V2 publication controller (doc 16 "Publication And File Actions", task
+ * INTEGRATION-02). Implements the guarded `DraftRepository.prepare()` +
+ * `DraftRepository.publish()` protocol:
+ *
+ * - publish/export first awaits `flush()`; false/offline/conflict/error cancels;
+ * - the clean generation is captured and re-checked (head) together with the
+ *   live revision immediately before prepare;
+ * - the exact canonical snapshot is validated with content-core
+ *   (`inspectContent`) and shown as a diff versus the live content
+ *   (`ContentComparison`); an explicit `Publicar` click is required;
+ * - prepare uses a NEW preparation UUID plus a fresh 32-byte random token —
+ *   only the SHA-256 hash of the decoded bytes crosses the wire; publish sends
+ *   the raw token with the same preparation;
+ * - the raw token lives only in memory while the confirmation is open and is
+ *   cleared on dialog close, logout/principal change and after success;
+ * - a lost publish response may replay the SAME preparation/token exactly once,
+ *   then the UI refreshes (explicit review and refresh after the result);
+ * - after success the canonical draft and the public publication query are
+ *   refreshed (other editors' newer changes are never overwritten);
+ * - no error path calls the legacy direct-table adapter.
+ */
 
-export function validateCandidate(payload: PublishedContentPayload) {
-  try {
-    if (getPublishedPayloadSize(payload) > MAX_PUBLISHED_PAYLOAD_BYTES) return false;
-    validatePublicationPayload(payload);
-    return [
-      validateDashboardContacts(payload.contacts, payload.locations),
-      validateDashboardEducation(payload.educationMaterials, payload.educationGroups),
-      validateDashboardFlows(
-        payload.flows,
-        payload.educationMaterials.map((r) => r.id),
-      ),
-    ].every((result) => result.errors.length === 0);
-  } catch {
-    return false;
-  }
+export type PublicationPhase = 'editing' | 'preparing' | 'review' | 'publishing' | 'success' | 'replay' | 'error';
+
+export interface PublicationPreview {
+  /** Draft head captured after the flush that gates this preview. */
+  draft: ContentDraft;
+  /** Live published snapshot captured with the head (must stay unchanged). */
+  liveRevision: number;
+  /** Reconciled candidate versus the live published payload. */
+  candidate: PublishedContentPayload;
+}
+
+export interface PublicationOutcome {
+  preparation: PublicationPreparation;
+  result: PublishResult;
+}
+
+export interface UsePublicationControllerOptions {
+  /** The V2 draft repository from `editorialNeonServices`. */
+  repository: DraftRepository;
+  /** Workspace flush gate; publication is canceled when it returns false. */
+  flush(): Promise<boolean>;
+  /** Refreshes the canonical draft after publication (doc 16). */
+  refreshDraft(): Promise<void>;
+  /** Notified after a successful publish and the follow-up refreshes. */
+  onPublished?(result: PublishResult): void;
+  /** Emergency read-only UI kill flag blocks every publication action. */
+  readOnly?: boolean;
+  /** Generates the raw 32-byte token; injectable for deterministic tests. */
+  secretBytes?(): Uint8Array;
+  /** Generates the preparation UUID; injectable for deterministic tests. */
+  preparationId?(): string;
+}
+
+/** Raw 32 publish-token bytes (Web Crypto; never Math.random). */
+function defaultSecretBytes(): Uint8Array {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+function defaultPreparationId(): string {
+  return crypto.randomUUID();
+}
+
+/** Canonical 43-character unpadded base64url encoding of exactly 32 bytes. */
+export function encodePublishToken(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
 export function usePublicationController({
-  base,
-  local,
-  expectedRevision,
-  store,
+  repository,
+  flush,
+  refreshDraft,
   onPublished,
-}: {
-  base: PublishedContentPayload;
-  local: PublishedContentPayload;
-  expectedRevision: number | null;
-  store?: WorkspaceStore;
-  onPublished(snapshot: PublishedContentSnapshot): void;
-}) {
+  readOnly = false,
+  secretBytes = defaultSecretBytes,
+  preparationId = defaultPreparationId,
+}: UsePublicationControllerOptions) {
   const { account } = useAdminAuth();
-  const { snapshot, publish, refreshLatest, refresh } = usePublishedContent();
-  const [phase, setPhase] = useState<Phase>('editing');
+  const { refresh: refreshPublicQuery, refreshLatest } = usePublishedContent();
+  const [phase, setPhase] = useState<PublicationPhase>('editing');
   const [message, setMessage] = useState<string | null>(null);
-  const [fallback, setFallback] = useState<ReconciliationSession>();
-  const lock = useRef(false);
-  const session = store?.workspace?.reconciliation ?? fallback;
-  const merge = session
-    ? reconcileContent(session.base, session.local, session.remote.payload, session.decisions)
-    : null;
-  const candidate =
-    merge?.ok && merge.value.kind === 'complete' ? (session?.candidateOverride ?? merge.value.candidate) : null;
-  const diff = candidate && session ? compareContent(session.remote.payload, candidate) : null;
-  const candidateValid = candidate !== null && validateCandidate(candidate);
-  const canConfirm =
-    !!account &&
-    !!session?.reviewed &&
-    candidateValid &&
-    diff?.ok === true &&
-    diff.value.length > 0 &&
-    (!store || store.status === 'saved') &&
-    !store?.workspace?.publicationAttempt &&
-    phase !== 'publishing' &&
-    phase !== 'comparing' &&
-    phase !== 'uncertain';
+  const [preview, setPreview] = useState<PublicationPreview | null>(null);
+  const [outcome, setOutcome] = useState<PublicationOutcome | null>(null);
+  const preparationRef = useRef<{
+    preparation: PublicationPreparation;
+    token: string;
+    replayed: boolean;
+  } | null>(null);
+  const busyRef = useRef(false);
 
-  async function saveSession(next: ReconciliationSession) {
-    if (store) return store.persist((w) => ({ ...w, reconciliation: next }));
-    setFallback(next);
-    return true;
-  }
-  async function latest() {
-    if (refreshLatest) return refreshLatest();
-    await refresh();
-    return snapshot;
-  }
-  function busy(value: boolean) {
-    lock.current = value;
-    store?.setBusy(value);
-  }
+  const clearRawToken = useCallback(() => {
+    preparationRef.current = null;
+  }, []);
 
-  async function prepare() {
-    if (lock.current || store?.workspace?.publicationAttempt) return;
-    busy(true);
-    setPhase('comparing');
+  /** Closes the confirmation and clears the raw token (dialog close/staleness). */
+  const closeReview = useCallback(() => {
+    clearRawToken();
+    setPreview(null);
+    setPhase('editing');
+  }, [clearRawToken]);
+
+  /**
+   * Step 1: flush, then capture the clean draft head and live revision. Any
+   * change after this preview closes the confirmation (the caller re-checks
+   * before prepare, and `publish` re-verifies server-side).
+   */
+  const openReview = useCallback(async (): Promise<void> => {
+    if (readOnly) {
+      setMessage('A publicação está temporariamente desativada neste painel.');
+      return;
+    }
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setPhase('preparing');
     setMessage(null);
     try {
-      if (store && !(await store.checkpoint())) throw new Error('checkpoint');
-      const remote = await latest();
-      if (!remote && expectedRevision !== null) throw new Error('remote');
-      const next: ReconciliationSession = {
-        base: candidate && session ? session.remote.payload : (session?.base ?? base),
-        local: candidate ?? session?.local ?? local,
-        remote: { revision: remote?.revision ?? null, payload: remote?.payload ?? base },
-        localGeneration: store?.current.current?.generation ?? 0,
-        decisions: candidate ? {} : (session?.decisions ?? {}),
-        reviewed: false,
-      };
-      const result = reconcileContent(next.base, next.local, next.remote.payload, next.decisions);
-      if (!result.ok) throw new Error('diff');
-      if (!(await saveSession(next))) throw new Error('checkpoint');
-      setPhase(result.value.kind === 'complete' ? 'ready' : 'resolving');
-    } catch {
+      const flushed = await flush();
+      if (!flushed) throw new Error('flush');
+      const loaded = await repository.load();
+      if (loaded.ok === false) throw loaded.error;
+      const draft = loaded.data;
+      const live = await refreshLatest?.();
+      const liveRevision = live?.revision ?? draft.baseRevision;
+      const inspection = inspectContent(draft.payload);
+      if (inspection.validation.issues.some((issue) => issue.level === 'error')) {
+        throw new Error('invalid');
+      }
+      setPreview({ draft, liveRevision, candidate: draft.payload });
+      setPhase('review');
+    } catch (error) {
       setPhase('error');
       setMessage(
-        'Não foi possível comparar as alterações. Seu rascunho não foi descartado. Tente comparar novamente ou baixe uma cópia.',
+        error instanceof Error && error.message === 'flush'
+          ? 'Há alterações não salvas. Finalize o salvamento antes de publicar.'
+          : 'Não foi possível preparar a publicação. Seu rascunho foi preservado.',
       );
     } finally {
-      busy(false);
+      busyRef.current = false;
     }
-  }
+  }, [flush, readOnly, refreshLatest, repository]);
 
-  async function decide(id: string, choice?: ValueSlot) {
-    if (!session || lock.current) return;
-    const decisions = { ...session.decisions };
-    if (choice) decisions[id] = choice;
-    else delete decisions[id];
-    await saveSession({ ...session, decisions, candidateOverride: undefined, reviewed: false });
-  }
-  async function editCandidate(payload: PublishedContentPayload) {
-    if (!session || lock.current) return;
-    await saveSession({ ...session, candidateOverride: payload, reviewed: false });
-  }
-  async function review() {
-    if (!session || !candidateValid || !diff?.ok || lock.current) return;
-    await saveSession({ ...session, reviewed: true });
-  }
-
-  async function reconcileNewRemote(remote: PublishedContentSnapshot, sent: PublishedContentPayload) {
-    if (!session) return;
-    const next: ReconciliationSession = {
-      base: session.remote.payload,
-      local: sent,
-      remote: { revision: remote.revision, payload: remote.payload },
-      localGeneration: store?.current.current?.generation ?? 0,
-      decisions: {},
-      reviewed: false,
-    };
-    if (store) await store.persist((w) => ({ ...w, publicationAttempt: undefined, reconciliation: next }));
-    else setFallback(next);
-    setPhase('resolving');
-    setMessage(
-      'Há uma nova publicação. As escolhas anteriores foram preservadas no resultado local. Revise este novo conjunto antes de publicar.',
-    );
-  }
-
-  async function confirm() {
-    if (lock.current || !canConfirm || !session || !candidate || !account) return;
-    busy(true);
+  /**
+   * Step 2: explicit `Publicar` click. Re-checks the generation and live
+   * revision, prepares with a fresh UUID/token hash, then publishes the same
+   * preparation. A lost publish response replays the same preparation/token
+   * exactly once before the UI refreshes.
+   */
+  const publish = useCallback(async (): Promise<void> => {
+    if (readOnly) return;
+    if (busyRef.current || preview === null) return;
+    busyRef.current = true;
     setPhase('publishing');
     setMessage(null);
-    let sentWorkspace = store?.current.current;
     try {
-      // The attempted payload is durable before any network write.
-      if (store) {
-        if (
-          !(await store.persist((w) => ({
-            ...w,
-            publicationAttempt: {
-              id: crypto.randomUUID(),
-              candidate,
-              expectedRevision: session.remote.revision,
-              generation: w.generation + 1,
-            },
-          })))
-        )
-          throw new Error('checkpoint');
-        sentWorkspace = store.current.current;
-      }
-      const next = await publish(candidate, account.id, session.remote.revision);
-      setPhase('success');
-      if (store && sentWorkspace && !(await store.archive(sentWorkspace)))
-        setMessage(
-          'O conteúdo foi publicado, mas não foi possível arquivar esta geração. A cópia local foi preservada.',
-        );
-      onPublished(next);
-    } catch (error) {
-      if (error instanceof PublishedContentRepositoryError && error.code === 'conflict') {
-        const remote = await latest().catch(() => null);
-        if (remote) await reconcileNewRemote(remote, candidate);
-        else {
-          setPhase('uncertain');
-          setMessage('Não foi possível carregar a nova publicação. A tentativa e o rascunho foram preservados.');
+      let preparation = preparationRef.current;
+      if (preparation === null) {
+        const current = await repository.load();
+        if (current.ok === false) throw current.error;
+        const draft = current.data;
+        const live = await refreshLatest?.();
+        const liveRevision = live?.revision ?? draft.baseRevision;
+        if (draft.generation !== preview.draft.generation || draft.digest !== preview.draft.digest) {
+          throw new Error('stale');
         }
-      } else {
-        setPhase('uncertain');
-        setMessage(
-          'Não foi possível confirmar o resultado do envio. Consulte a publicação antes de tentar novamente. O rascunho e a tentativa foram preservados.',
-        );
+        if (liveRevision !== preview.liveRevision || draft.baseRevision !== preview.liveRevision) {
+          throw new Error('stale');
+        }
+        const bytes = secretBytes();
+        const token = encodePublishToken(bytes);
+        const tokenHash = await sha256Bytes(bytes);
+        const prepared = await repository.prepare({
+          generation: draft.generation,
+          expectedRevision: liveRevision,
+          digest: draft.digest,
+          preparationId: preparationId(),
+          tokenHash,
+        });
+        if (prepared.ok === false) throw prepared.error;
+        preparation = { preparation: prepared.data, token, replayed: false };
+        preparationRef.current = preparation;
       }
+      const result = await repository.publish(preparation.preparation.preparationId, preparation.token);
+      if (result.ok === false) throw result.error;
+      preparationRef.current = null;
+      setOutcome({ preparation: preparation.preparation, result: result.data });
+      setPhase('success');
+      setMessage('O conteúdo foi publicado. As informações foram atualizadas.');
+      // Post-publish refreshes: canonical draft AND public query (doc 16).
+      await Promise.allSettled([refreshDraft(), refreshPublicQuery()]);
+      onPublished?.(result.data);
+    } catch (error) {
+      const lostResponse = preparationRef.current !== null && !preparationRef.current.replayed;
+      if (lostResponse) {
+        // The request outcome is unknown: replay the SAME preparation/token
+        // exactly once (publish replays return the stored PublishResult).
+        preparationRef.current = { ...preparationRef.current, replayed: true };
+        setPhase('replay');
+        setMessage(
+          'Não foi possível confirmar a publicação. Tentaremos novamente com a mesma autorização; consulte o resultado antes de repetir.',
+        );
+        return;
+      }
+      // Replay budget exhausted: the raw token is cleared and the preview is
+      // closed — a new attempt must pass a fresh review (doc 16).
+      clearRawToken();
+      setPreview(null);
+      setPhase('error');
+      setMessage(
+        error instanceof Error && error.message === 'stale'
+          ? 'O rascunho ou a publicação mudou desde a revisão. A confirmação foi encerrada; revise novamente antes de publicar.'
+          : 'Não foi possível publicar. Seu rascunho foi preservado. Revise as alterações e tente novamente.',
+      );
     } finally {
-      busy(false);
+      busyRef.current = false;
     }
-  }
+  }, [
+    clearRawToken,
+    onPublished,
+    preparationId,
+    preview,
+    readOnly,
+    refreshDraft,
+    refreshLatest,
+    refreshPublicQuery,
+    repository,
+    secretBytes,
+  ]);
 
-  async function checkOutcome() {
-    const attempt = store?.workspace?.publicationAttempt;
-    if (lock.current || !attempt) return;
-    busy(true);
-    try {
-      const remote = await latest();
-      if (!remote) throw new Error('remote');
-      if (contentIdentity(remote.payload) === contentIdentity(attempt.candidate)) {
-        setMessage('Este conteúdo está publicado. A igualdade não confirma a autoria da tentativa.');
-        setPhase('success');
-        await store!.archive(store!.current.current ?? undefined);
-        onPublished(remote);
-      } else await reconcileNewRemote(remote, attempt.candidate);
-    } catch {
-      setMessage('Não foi possível consultar a publicação. A tentativa permanece preservada.');
-    } finally {
-      busy(false);
-    }
-  }
   return {
     phase,
     message,
-    session,
-    merge,
-    candidate,
-    diff,
-    candidateValid,
-    canConfirm,
-    prepare,
-    decide,
-    editCandidate,
-    review,
-    confirm,
-    checkOutcome,
-    uncertain: !!store?.workspace?.publicationAttempt,
+    preview,
+    outcome,
+    readOnly,
+    account,
+    openReview,
+    publish,
+    closeReview,
+    clearRawToken,
   };
 }
+
+/** Re-exported semantic helpers used by the publishing UI. */
+export { compareContent, contentIdentity, type ValueSlot };

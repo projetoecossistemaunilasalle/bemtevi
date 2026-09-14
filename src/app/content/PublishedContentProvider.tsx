@@ -13,6 +13,15 @@ import {
 } from './publishedContentRepository';
 import { PublishedContentContext, type PublishedContentContextValue } from './PublishedContentContext';
 
+/**
+ * Read-only provider powering the public PWA reads (doc 16): bundled fallback
+ * on startup/offline, latest published snapshot when the database is
+ * reachable, focus-triggered refresh. The former `publish` method was removed
+ * with the repository's direct write path (INTEGRATION-02); publication is
+ * guarded exclusively by the V2 prepare/publish protocol or, during
+ * coexistence, the legacy branch's dedicated adapter.
+ */
+
 type LoadError = PublishedContentRepositoryError | PublishedContentValidationError | null;
 
 export interface PublishedContentProviderProps {
@@ -65,32 +74,6 @@ export function PublishedContentProvider({
     await refreshLatest();
   }, [refreshLatest]);
 
-  const publish = useCallback(
-    async (
-      payload: PublishedContentPayload,
-      publisherId: string,
-      expectedRevision = snapshotRef.current?.revision ?? null,
-    ): Promise<PublishedContentSnapshot> => {
-      const result = await repository.publishContent({
-        payload,
-        expectedRevision,
-        publisherId,
-      });
-      if (!active.current) return result;
-      refreshSequenceRef.current += 1;
-      if (snapshotRef.current === null || result.revision >= snapshotRef.current.revision) {
-        snapshotRef.current = result;
-        setContent(result.payload);
-        setSnapshot(result);
-        setSource('database');
-      }
-      setStatus('ready');
-      setLoadError(null);
-      return result;
-    },
-    [repository],
-  );
-
   useEffect(() => {
     active.current = true;
     // Load published content on mount; the actual setState happens after the async refresh resolves.
@@ -107,8 +90,8 @@ export function PublishedContentProvider({
   }, [refresh]);
 
   const value = useMemo<PublishedContentContextValue>(
-    () => ({ content, snapshot, source, status, loadError, refresh, refreshLatest, publish }),
-    [content, snapshot, source, status, loadError, refresh, refreshLatest, publish],
+    () => ({ content, snapshot, source, status, loadError, refresh, refreshLatest }),
+    [content, snapshot, source, status, loadError, refresh, refreshLatest],
   );
 
   return <PublishedContentContext.Provider value={value}>{children}</PublishedContentContext.Provider>;

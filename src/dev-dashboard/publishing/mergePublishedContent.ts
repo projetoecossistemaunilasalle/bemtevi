@@ -12,7 +12,9 @@ export interface PublishedContentMergeResult {
   conflicts: PublishedContentMergeConflict[];
 }
 
-// Compatibility adapter. New callers use the discriminated result and typed paths.
+// Compatibility adapter (MERGE-03: reconciliation now lives in
+// `@bemtevi/content-core`; this facade keeps the legacy flattened shape).
+// New callers use the discriminated result and typed paths.
 export function mergePublishedContent(
   base: PublishedContentPayload,
   local: PublishedContentPayload,

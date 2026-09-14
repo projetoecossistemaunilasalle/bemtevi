@@ -43,7 +43,6 @@ function deferred<T>() {
 function createFakeRepository(overrides: Partial<PublishedContentRepository> = {}): PublishedContentRepository {
   return {
     loadPublishedContent: vi.fn(),
-    publishContent: vi.fn(),
     ...overrides,
   };
 }
@@ -158,6 +157,19 @@ describe('PublishedContentProvider', () => {
     expect(repository.loadPublishedContent).toHaveBeenCalledTimes(2);
   });
 
+  it('exposes no publish method on the context (INTEGRATION-02 read-only provider)', async () => {
+    const repository = createFakeRepository({ loadPublishedContent: vi.fn().mockResolvedValue(null) });
+    render(
+      <PublishedContentProvider repository={repository}>
+        <Probe />
+      </PublishedContentProvider>,
+    );
+    await screen.findByTestId('status');
+    expect('publish' in latest!).toBe(false);
+    expect(latest!.refresh).toBeInstanceOf(Function);
+    expect(latest!.refreshLatest).toBeInstanceOf(Function);
+  });
+
   it('returns the newest snapshot when a merge check explicitly refreshes content', async () => {
     const repository = createFakeRepository({
       loadPublishedContent: vi
@@ -180,125 +192,5 @@ describe('PublishedContentProvider', () => {
 
     expect(latestSnapshot?.revision).toBe(5);
     await waitFor(() => expect(screen.getByTestId('contact')).toHaveTextContent('Revision 5 Contact'));
-  });
-
-  it('publishes with the current revision and replaces content in memory', async () => {
-    const nextPayload = dbPayload('Next Contact');
-    const repository = createFakeRepository({
-      loadPublishedContent: vi.fn().mockResolvedValue(makeSnapshot(dbPayload('DB Contact'), 4)),
-      publishContent: vi.fn().mockResolvedValue(makeSnapshot(nextPayload, 5)),
-    });
-
-    render(
-      <PublishedContentProvider repository={repository}>
-        <Probe />
-      </PublishedContentProvider>,
-    );
-
-    expect(await screen.findByTestId('source')).toHaveTextContent('database');
-
-    await act(async () => {
-      await latest!.publish(nextPayload, 'admin-id');
-    });
-
-    expect(repository.publishContent).toHaveBeenCalledWith({
-      payload: nextPayload,
-      expectedRevision: 4,
-      publisherId: 'admin-id',
-    });
-    expect(screen.getByTestId('contact')).toHaveTextContent('Next Contact');
-    expect(screen.getByTestId('source')).toHaveTextContent('database');
-    expect(screen.getByTestId('status')).toHaveTextContent('ready');
-    expect(screen.getByTestId('revision')).toHaveTextContent('5');
-    expect(screen.getByTestId('load-error')).toHaveTextContent('');
-  });
-
-  it('publishes against an explicitly supplied draft revision after a refresh', async () => {
-    const nextPayload = dbPayload('Draft Contact');
-    const repository = createFakeRepository({
-      loadPublishedContent: vi
-        .fn()
-        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 4 Contact'), 4))
-        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 5 Contact'), 5)),
-      publishContent: vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'conflict')),
-    });
-
-    render(
-      <PublishedContentProvider repository={repository}>
-        <Probe />
-      </PublishedContentProvider>,
-    );
-
-    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('4'));
-    await act(async () => window.dispatchEvent(new Event('focus')));
-    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('5'));
-
-    await expect(latest!.publish(nextPayload, 'admin-id', 4)).rejects.toMatchObject({ code: 'conflict' });
-    expect(repository.publishContent).toHaveBeenCalledWith({
-      payload: nextPayload,
-      expectedRevision: 4,
-      publisherId: 'admin-id',
-    });
-  });
-
-  it('does not let a delayed refresh replace a newer published revision', async () => {
-    const delayedRefresh = deferred<PublishedContentSnapshot | null>();
-    const nextPayload = dbPayload('Published Contact');
-    const repository = createFakeRepository({
-      loadPublishedContent: vi
-        .fn()
-        .mockResolvedValueOnce(makeSnapshot(dbPayload('Revision 4 Contact'), 4))
-        .mockImplementationOnce(() => delayedRefresh.promise),
-      publishContent: vi.fn().mockResolvedValue(makeSnapshot(nextPayload, 5)),
-    });
-
-    render(
-      <PublishedContentProvider repository={repository}>
-        <Probe />
-      </PublishedContentProvider>,
-    );
-
-    await waitFor(() => expect(screen.getByTestId('revision')).toHaveTextContent('4'));
-    act(() => window.dispatchEvent(new Event('focus')));
-
-    await act(async () => {
-      await latest!.publish(nextPayload, 'admin-id');
-    });
-    expect(screen.getByTestId('revision')).toHaveTextContent('5');
-
-    delayedRefresh.resolve(makeSnapshot(dbPayload('Stale Contact'), 4));
-    await act(async () => delayedRefresh.promise);
-
-    expect(screen.getByTestId('revision')).toHaveTextContent('5');
-    expect(screen.getByTestId('contact')).toHaveTextContent('Published Contact');
-  });
-
-  it('does not replace content when publication fails', async () => {
-    const error = new PublishedContentRepositoryError('conflict', 'conflito de revisão');
-    const nextPayload = dbPayload('Next Contact');
-    const repository = createFakeRepository({
-      loadPublishedContent: vi.fn().mockResolvedValue(makeSnapshot(dbPayload('DB Contact'), 4)),
-      publishContent: vi.fn().mockRejectedValue(error),
-    });
-
-    render(
-      <PublishedContentProvider repository={repository}>
-        <Probe />
-      </PublishedContentProvider>,
-    );
-
-    await waitFor(() => expect(screen.getByTestId('source')).toHaveTextContent('database'));
-
-    await expect(latest!.publish(nextPayload, 'admin-id')).rejects.toThrow('conflito de revisão');
-
-    expect(repository.publishContent).toHaveBeenCalledWith({
-      payload: nextPayload,
-      expectedRevision: 4,
-      publisherId: 'admin-id',
-    });
-    expect(screen.getByTestId('contact')).toHaveTextContent('DB Contact');
-    expect(screen.getByTestId('source')).toHaveTextContent('database');
-    expect(screen.getByTestId('status')).toHaveTextContent('ready');
-    expect(screen.getByTestId('revision')).toHaveTextContent('4');
   });
 });
