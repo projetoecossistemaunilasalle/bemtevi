@@ -1,12 +1,2 @@
-import type { GuidedFlow } from './types';
-import { validateFlow } from './validateFlow';
-
-export function parseGuidedFlow(flow: unknown): GuidedFlow {
-  const validation = validateFlow(flow);
-
-  if (!validation.valid) {
-    throw new Error(validation.errors.join(' '));
-  }
-
-  return flow as GuidedFlow;
-}
+// Compatibility facade: canonical implementation lives in @bemtevi/content-core (validation/parseFlow).
+export { parseGuidedFlow } from '@bemtevi/content-core';

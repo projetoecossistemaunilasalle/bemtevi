@@ -1,223 +1,39 @@
-import type { ContentLocale, ContentStatus } from '../content/types';
-
-export type FlowType = 'guided_conversation';
-export type FlowPurpose = 'orientation_entry' | 'post_flow_routing';
-export type FlowNodeKind = 'choice' | 'result' | 'score_branch';
-export type ChatMessageSender = 'bot' | 'user';
-export type RuntimeOptionKind = 'node_option' | 'entry_phrase' | 'global_action' | 'resume_flow' | 'flow_start';
-export type GlobalActionTarget = '/apoio' | '/contatos' | '/educacao' | 'end';
-
-export interface ScoreFlowEffect {
-  kind: 'score';
-  scoreKey: string;
-  value: number;
-}
-
-export interface SafetyInterruptFlowEffect {
-  kind: 'safety_interrupt';
-  message: string;
-  destination: Exclude<GlobalActionTarget, 'end'>;
-  blockResume: boolean;
-}
-
-export interface DeferredSafetyFlowEffect {
-  kind: 'deferred_safety';
-  flagKey: string;
-  message: string;
-  destination: Exclude<GlobalActionTarget, 'end'>;
-}
-
-export interface FlowStartFlowEffect {
-  kind: 'flow_start';
-  flowId: string;
-}
-
-export interface NavigateFlowEffect {
-  kind: 'navigate';
-  destination: Exclude<GlobalActionTarget, 'end'>;
-}
-
-export interface EndFlowEffect {
-  kind: 'end_flow';
-  message: string;
-}
-
-export type FlowEffect =
-  | ScoreFlowEffect
-  | SafetyInterruptFlowEffect
-  | DeferredSafetyFlowEffect
-  | FlowStartFlowEffect
-  | NavigateFlowEffect
-  | EndFlowEffect;
-
-export interface FlowEntry {
-  nodeId: string;
-  enteringPhrases: string[];
-  transitionMessage: string;
-}
-
-export interface FlowOption {
-  id: string;
-  label: string;
-  next: string;
-  effects?: FlowEffect[];
-}
-
-export interface FreeTextFlowAdvance {
-  next: string;
-}
-
-export interface OrientationVideo {
-  id: string;
-  title: string;
-  url: string;
-}
-
-export interface OrientationVisual {
-  id: string;
-  alt: string;
-  src: string;
-}
-
-export type FlowExercise = 'breathing';
-
-export interface ChoiceFlowNode {
-  id: string;
-  kind: 'choice';
-  text: string;
-  videos?: OrientationVideo[];
-  visuals?: OrientationVisual[];
-  exercise?: FlowExercise;
-  options: FlowOption[];
-  freeText?: FreeTextFlowAdvance;
-}
-
-export interface ResultFlowNode {
-  id: string;
-  kind: 'result';
-  text: string;
-  videos?: OrientationVideo[];
-  visuals?: OrientationVisual[];
-  exercise?: FlowExercise;
-  recommendations?: string[];
-}
-
-export interface ScoreBranch {
-  id: string;
-  min: number;
-  max: number;
-  next: string;
-  navigation?: Exclude<GlobalActionTarget, 'end'>;
-}
-
-export interface ScoreBranchFlowNode {
-  id: string;
-  kind: 'score_branch';
-  text: string;
-  videos?: OrientationVideo[];
-  visuals?: OrientationVisual[];
-  exercise?: FlowExercise;
-  scoreKey: string;
-  branches: ScoreBranch[];
-}
-
-export type FlowNode = ChoiceFlowNode | ResultFlowNode | ScoreBranchFlowNode;
-
-export interface GuidedFlow {
-  id: string;
-  version: string;
-  locale: ContentLocale;
-  title: string;
-  type: FlowType;
-  purpose?: FlowPurpose;
-  status: ContentStatus;
-  entry: FlowEntry;
-  nodes: Record<string, FlowNode>;
-  nodeOrder?: string[];
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: ChatMessageSender;
-  text: string;
-  flowId: string;
-  nodeId?: string;
-  videos?: OrientationVideo[];
-  visuals?: OrientationVisual[];
-  exercise?: FlowExercise;
-}
-
-export interface SuspendedFlowState {
-  flowId: string;
-  nodeId: string;
-  answers: Record<string, string>;
-  scores: Record<string, number>;
-  transcript: ChatMessage[];
-}
-
-export interface DeferredNavigationState {
-  destination: Exclude<GlobalActionTarget, 'end'>;
-  message: string;
-  reason: string;
-}
-
-export interface FlowRuntimeState {
-  activeFlowId?: string;
-  activeNodeId?: string;
-  transcript: ChatMessage[];
-  suspendedFlows: Record<string, SuspendedFlowState>;
-  answers: Record<string, string>;
-  scores: Record<string, number>;
-  safetyFlags: Record<string, boolean>;
-  pendingNavigation?: Exclude<GlobalActionTarget, 'end'>;
-  deferredNavigation?: DeferredNavigationState;
-}
-
-export interface RuntimeNodeOption {
-  kind: 'node_option';
-  id: string;
-  label: string;
-  flowId: string;
-  next: string;
-  effects?: FlowEffect[];
-}
-
-export interface RuntimeEntryOption {
-  kind: 'entry_phrase';
-  id: string;
-  label: string;
-  flowId: string;
-}
-
-export interface RuntimeGlobalAction {
-  kind: 'global_action';
-  id: string;
-  label: string;
-  target: GlobalActionTarget;
-}
-
-export interface RuntimeResumeOption {
-  kind: 'resume_flow';
-  id: string;
-  label: string;
-  flowId: string;
-}
-
-export interface RuntimeFlowStartOption {
-  kind: 'flow_start';
-  id: string;
-  label: string;
-  flowId: string;
-}
-
-export type RuntimeOption =
-  | RuntimeNodeOption
-  | RuntimeEntryOption
-  | RuntimeGlobalAction
-  | RuntimeResumeOption
-  | RuntimeFlowStartOption;
-
-export interface FlowValidationResult {
-  valid: boolean;
-  errors: string[];
-}
+// Compatibility facade: canonical implementation lives in @bemtevi/content-core (model/flowTypes).
+export type {
+  FlowType,
+  FlowPurpose,
+  FlowNodeKind,
+  ChatMessageSender,
+  RuntimeOptionKind,
+  GlobalActionTarget,
+  ScoreFlowEffect,
+  SafetyInterruptFlowEffect,
+  DeferredSafetyFlowEffect,
+  FlowStartFlowEffect,
+  NavigateFlowEffect,
+  EndFlowEffect,
+  FlowEffect,
+  FlowEntry,
+  FlowOption,
+  FreeTextFlowAdvance,
+  OrientationVideo,
+  OrientationVisual,
+  FlowExercise,
+  ChoiceFlowNode,
+  ResultFlowNode,
+  ScoreBranch,
+  ScoreBranchFlowNode,
+  FlowNode,
+  GuidedFlow,
+  ChatMessage,
+  SuspendedFlowState,
+  DeferredNavigationState,
+  FlowRuntimeState,
+  RuntimeNodeOption,
+  RuntimeEntryOption,
+  RuntimeGlobalAction,
+  RuntimeResumeOption,
+  RuntimeFlowStartOption,
+  RuntimeOption,
+  FlowValidationResult,
+} from '@bemtevi/content-core';
