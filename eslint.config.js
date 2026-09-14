@@ -6,7 +6,16 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', 'node_modules.win', 'node_modules.wsl', '.pnpm-store', '.worktrees'],
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      'node_modules.win',
+      'node_modules.wsl',
+      '.pnpm-store',
+      '.worktrees',
+      '**/dist',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -53,7 +62,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'packages/*/build.mjs'],
     languageOptions: {
       globals: {
         AbortController: 'readonly',
