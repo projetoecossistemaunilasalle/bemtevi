@@ -224,6 +224,7 @@ async function main(): Promise<void> {
     const suiteEnv: NodeJS.ProcessEnv = {
       ...process.env,
       NEON_TEST_OWNER_DATABASE_URL: provisioned.ownerDatabaseUrl,
+      NEON_TEST_AUTH_URL: provisioned.authBaseUrl,
       NEON_TEST_DATA_API_URL: provisioned.dataApiUrl,
       NEON_TEST_ADMIN_A_TOKEN: principals.tokens.adminA,
       NEON_TEST_ADMIN_B_TOKEN: principals.tokens.adminB,
