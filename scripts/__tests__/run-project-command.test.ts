@@ -7,6 +7,7 @@ import {
   resolveModulesDir,
   mcpSuiteReady,
   hasMcpBuildScript,
+  buildCheckSteps,
 } from '../run-project-command.mjs';
 
 const RETIRED_COMMANDS = [
@@ -79,6 +80,10 @@ describe('MCP gate readiness', () => {
   it('does not claim MCP suite/build before MCP-01 artifacts exist', () => {
     expect(mcpSuiteReady(() => false)).toBe(false);
     expect(hasMcpBuildScript(() => false)).toBe(false);
+  });
+
+  it('builds the standalone artifact before running its tests', () => {
+    expect(buildCheckSteps(true, true).slice(-2)).toEqual(['build:mcp', 'test:mcp']);
   });
 });
 

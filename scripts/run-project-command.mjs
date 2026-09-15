@@ -52,6 +52,15 @@ export function mcpSuiteReady(exists = existsSync) {
   return hasMcpPackageTests(exists) && countTestFiles('packages/content-mcp') > 0;
 }
 
+export function buildCheckSteps(mcpTestsReady = mcpSuiteReady(), mcpBuildReady = hasMcpBuildScript()) {
+  const steps = ['typecheck', 'lint', 'format:check', 'validate:flows', 'test', 'check:architecture', 'build'];
+  // The MCP tests execute the generated standalone artifact, so build it first
+  // on clean CI checkouts where packages/content-mcp/dist does not exist yet.
+  if (mcpBuildReady) steps.push('build:mcp');
+  if (mcpTestsReady) steps.push('test:mcp');
+  return steps;
+}
+
 const modulesDir = resolveModulesDir(process.env, process.platform, existsSync);
 const installTarget = resolveInstallTarget(modulesDir);
 
@@ -232,14 +241,7 @@ function runCli(cmd, args = []) {
       runStep('check:mcp-package');
       break;
     case 'check': {
-      const steps = ['typecheck', 'lint', 'format:check', 'validate:flows', 'test', 'check:architecture', 'build'];
-      if (mcpSuiteReady()) {
-        steps.push('test:mcp');
-      }
-      if (hasMcpBuildScript()) {
-        steps.push('build:mcp');
-      }
-      steps.forEach(runStep);
+      buildCheckSteps().forEach(runStep);
       break;
     }
     default:
