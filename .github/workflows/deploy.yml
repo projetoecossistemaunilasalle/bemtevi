@@ -13,6 +13,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
+    secrets: inherit
 
   build-and-deploy:
     needs: test
