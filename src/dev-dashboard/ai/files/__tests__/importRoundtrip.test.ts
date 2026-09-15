@@ -5,6 +5,7 @@ import {
   PNG_1X1_BASE64,
   conformanceBasePayload,
   sameContent,
+  sha256Bytes,
   sha256Text,
   type EditExport,
 } from '@bemtevi/content-core';
@@ -79,8 +80,7 @@ function manifestFor(exportRecord: EditExport): Record<string, unknown> {
 
 async function imageHex(): Promise<string> {
   const bytes = decodeBase64ToBytes(PNG_1X1_BASE64);
-  const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer as ArrayBuffer);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return sha256Bytes(bytes);
 }
 
 async function buildImageZip(

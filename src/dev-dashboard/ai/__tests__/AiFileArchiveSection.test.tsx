@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentDraft, EditExport, PublishedContentPayload } from '@bemtevi/content-core';
-import { PNG_1X1_BASE64, conformanceBasePayload, sha256Text } from '@bemtevi/content-core';
+import { PNG_1X1_BASE64, conformanceBasePayload, sha256Bytes, sha256Text } from '@bemtevi/content-core';
 import { AiFileArchiveSection } from '../AiFileArchiveSection';
 import { createExportRepository, type ExportRpcCallResult, type ExportRpcTransport } from '../files/exportRepository';
 
@@ -322,8 +322,7 @@ describe('AiFileArchiveSection', () => {
 
     const hex = await (async () => {
       const bytes = Uint8Array.from(atob(PNG_1X1_BASE64), (c) => c.charCodeAt(0));
-      const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer as ArrayBuffer);
-      return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+      return sha256Bytes(bytes);
     })();
     const zip = new JSZip();
     zip.file(

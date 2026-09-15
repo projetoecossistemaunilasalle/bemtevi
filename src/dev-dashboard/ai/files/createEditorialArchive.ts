@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { EditExport } from '@bemtevi/content-core';
+import { sha256Bytes, type EditExport } from '@bemtevi/content-core';
 import { buildArchiveInstructions } from './archiveInstructions';
 import type { ExportSelection } from './exportRepository';
 
@@ -66,8 +66,7 @@ function encodeBase64(bytes: Uint8Array): string {
 export { decodeBase64, encodeBase64 };
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer as ArrayBuffer);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return sha256Bytes(bytes);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
