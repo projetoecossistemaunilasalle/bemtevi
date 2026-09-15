@@ -9,9 +9,9 @@
  * - Any production file (ts/tsx/mjs; tests excluded) containing the pragma that is
  *   NOT in `PRAGMA_ALLOWLIST` fails with `PRETTIER_IGNORE_BANNED`.
  * - An allowlisted file fails with `PRETTIER_IGNORE_GREW` if its count exceeds the
- *   frozen limit below; counts may only shrink (to zero) as owning tasks strip them.
- * - The allowlist exists solely for the grandfathered files that already carried
- *   the pragma when this rule landed; it must shrink over time, never grow.
+ *   frozen limit below.
+ * - Only this detector's own regex is allowlisted; production source has no
+ *   grandfathered suppression pragmas.
  *
  * This module is itself allowlisted (limit 1) because its detection regex contains
  * the token exactly once — that is the rule's own machinery, not a suppression.
@@ -21,19 +21,11 @@ import path from 'node:path';
 
 const PRAGMA_PATTERN = /prettier-ignore/g;
 
-export const PRAGMA_ALLOWLIST = new Set([
-  'scripts/architecture-pragma-ban.mjs',
-  'src/dev-dashboard/ai/AiFileArchiveSection.tsx',
-  'src/dev-dashboard/draft-storage/legacyRecovery.ts',
-  'src/dev-dashboard/drafts/saveCoordinator.ts',
-]);
+export const PRAGMA_ALLOWLIST = new Set(['scripts/architecture-pragma-ban.mjs']);
 
-/** Frozen per-file occurrence caps; entries are removed when a file reaches zero. */
+/** The detector's regex is the only permitted occurrence. */
 export const PRAGMA_LIMITS = {
   'scripts/architecture-pragma-ban.mjs': 1,
-  'src/dev-dashboard/ai/AiFileArchiveSection.tsx': 48,
-  'src/dev-dashboard/draft-storage/legacyRecovery.ts': 29,
-  'src/dev-dashboard/drafts/saveCoordinator.ts': 19,
 };
 
 export function countPrettierIgnores(source) {

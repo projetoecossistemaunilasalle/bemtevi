@@ -16,7 +16,7 @@ import {
   collectSourceFiles,
   loadBaseline,
 } from '../check-architecture.mjs';
-import { checkPragmaBan, countPrettierIgnores, PRAGMA_LIMITS } from '../architecture-pragma-ban.mjs';
+import { checkPragmaBan, countPrettierIgnores, PRAGMA_ALLOWLIST, PRAGMA_LIMITS } from '../architecture-pragma-ban.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const temps: string[] = [];
@@ -268,6 +268,11 @@ describe('enormous file prevention', () => {
 });
 
 describe('prettier-ignore ban', () => {
+  it('allows only the detector module and its single detection token', () => {
+    expect([...PRAGMA_ALLOWLIST]).toEqual(['scripts/architecture-pragma-ban.mjs']);
+    expect(PRAGMA_LIMITS).toEqual({ 'scripts/architecture-pragma-ban.mjs': 1 });
+  });
+
   it('counts comment-form pragmas', () => {
     expect(countPrettierIgnores('const a = 1;\n// prettier-ignore\nconst b  =  2;')).toBe(1);
     expect(countPrettierIgnores('//prettier-ignore\nconst a = 1;')).toBe(1);
@@ -293,23 +298,23 @@ describe('prettier-ignore ban', () => {
     expect(checkPragmaBan(root, [rel])).toEqual([]);
   });
 
-  it('fails an allowlisted file that grows its pragma count', () => {
+  it('fails the detector module if its single detection token grows', () => {
     const root = makeTempRoot();
-    const rel = 'src/dev-dashboard/drafts/saveCoordinator.ts';
+    const rel = 'scripts/architecture-pragma-ban.mjs';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    const limit = 19;
+    const limit = 1;
     writeFileSync(abs, `${'// prettier-ignore\n'.repeat(limit + 1)}`);
     const errors = checkPragmaBan(root, [rel]);
-    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_GREW') && e.includes('occurrences=20'))).toBe(true);
+    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_GREW') && e.includes('occurrences=2'))).toBe(true);
   });
 
-  it('accepts an allowlisted file at or below its frozen count', () => {
+  it('accepts the detector module with its single detection token', () => {
     const root = makeTempRoot();
-    const rel = 'src/dev-dashboard/drafts/saveCoordinator.ts';
+    const rel = 'scripts/architecture-pragma-ban.mjs';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    writeFileSync(abs, `${'// prettier-ignore\n'.repeat(19)}`);
+    writeFileSync(abs, '// prettier-ignore\n');
     expect(checkPragmaBan(root, [rel])).toEqual([]);
   });
 

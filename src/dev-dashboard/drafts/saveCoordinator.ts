@@ -1,19 +1,20 @@
 import { encodeOperations, verifySnapshot } from '@bemtevi/content-core';
-import type { ConflictDecisions, DraftHead, EditorialError, PublishedContentPayload } from '@bemtevi/content-core';
+import type { DraftHead, EditorialError, PublishedContentPayload } from '@bemtevi/content-core';
 import { getTabId } from '../draft-storage/localDraftCache';
 import { initializeDraft } from './draftInitialization';
 import type { DraftRepository } from './draftRepository';
 import type { DraftBaseSnapshot } from './draftTypes';
 import { createAutosaveScheduler, createDebounceScheduler } from './draftPolling';
+import { createSaveCoordinatorInternals } from './saveCoordinatorInternals';
 import {
   createRecoveryCoordinator,
   createRecoveryRecorder,
   type RecoveryCoordinator,
   type RecoveryRecorder,
 } from './recoveryCoordinator';
-import { TIMINGS, acknowledgeMutation, applyRemote, failureDecision } from './saveTransitions';
+import { TIMINGS, acknowledgeMutation, failureDecision } from './saveTransitions';
 import { initialSaveState, initializedState, remoteMatchesCandidate } from './saveTransitions';
-import { sameHead, toBaseSnapshot, toClean, toConflict, toDirty, toError, toSaving } from './saveTransitions';
+import { toClean, toConflict, toDirty, toError, toSaving } from './saveTransitions';
 import type {
   RemoteApplication,
   RemoteDraft,
@@ -43,6 +44,7 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     inFlight = false;
   let queuedRefresh = false,
     pendingRemote: RemoteDraft | null = null;
+  let refreshAction: ((saveIfDirty: boolean) => Promise<void>) | null = null;
   const waiters: Array<() => void> = [];
   const { saveDebounceMs, maxWaitMs, cacheDebounceMs } = TIMINGS;
   const emit = (): void => onChange({ ...state, conflicts: [...state.conflicts] });
@@ -62,13 +64,17 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     if (next.phase === 'offline' || next.phase === 'error' || next.phase === 'conflict') suspendTimers();
     emit();
     for (const waiter of waiters.splice(0)) waiter();
-    // prettier-ignore
-    if (queuedRefresh && alive(epoch)) { queuedRefresh = false; void refresh(false); }
+    if (queuedRefresh && alive(epoch)) {
+      queuedRefresh = false;
+      void refreshAction?.(false);
+    }
   };
   const onCacheFailure = (): void => {
     // A cache-write failure never claims a locally saved draft.
-    // prettier-ignore
-    if (state.cacheAvailable) { state = { ...state, cacheAvailable: false }; emit(); }
+    if (state.cacheAvailable) {
+      state = { ...state, cacheAvailable: false };
+      emit();
+    }
   };
   function removeRecord(e: number): void {
     recorder?.remove(() => {
@@ -78,8 +84,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   async function readFullDraft(e: number): Promise<RemoteDraft | null> {
     const loaded = await repository.load();
     if (!alive(e)) return null;
-    // prettier-ignore
-    if (loaded.ok === false) { settle(errorState(loaded.error, !isOnline())); return null; }
+    if (loaded.ok === false) {
+      settle(errorState(loaded.error, !isOnline()));
+      return null;
+    }
     const draft = loaded.data;
     const verified = await verifySnapshot(draft.payload, draft.canonicalPayload, draft.digest);
     if (!alive(e)) return null;
@@ -100,8 +108,11 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   ): Promise<void> {
     const encoded = encodeOperations(base.payload, candidate);
     if (encoded.ok === false) return settle(toError(state, { code: encoded.error.code }, false));
-    // prettier-ignore
-    if (encoded.data.length === 0) { cycle = null; removeRecord(e); return settle(toClean(state, base)); }
+    if (encoded.data.length === 0) {
+      cycle = null;
+      removeRecord(e);
+      return settle(toClean(state, base));
+    }
     cycle = { base, candidate, sentPayload: candidate, capturedLocal: state.local ?? candidate, retryUsed };
     state = toSaving(state);
     emit();
@@ -114,10 +125,14 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     cycle = null;
     const outcome = acknowledgeMutation(current, head, state.local);
     if (outcome.kind === 'invalid') return settle(invalidState());
-    // prettier-ignore
-    if (outcome.kind === 'conflict') { pendingRemote = outcome.remote; return settle(conflictWith(outcome.conflicts, undefined)); }
-    // prettier-ignore
-    if (outcome.kind === 'acknowledged') { removeRecord(e); return settle(toClean(state, outcome.base)); }
+    if (outcome.kind === 'conflict') {
+      pendingRemote = outcome.remote;
+      return settle(conflictWith(outcome.conflicts, undefined));
+    }
+    if (outcome.kind === 'acknowledged') {
+      removeRecord(e);
+      return settle(toClean(state, outcome.base));
+    }
     const { base, local } = outcome;
     if (remoteMatchesCandidate(local, base.payload)) {
       removeRecord(e);
@@ -130,18 +145,23 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   }
   async function handleFailedMutation(e: number, error: EditorialError, stale: boolean): Promise<void> {
     const current = cycle;
-    // prettier-ignore
-    if (current === null) { return settle(stale ? errorState(error, false) : errorState({ code: 'unavailable' }, !isOnline())); }
+    if (current === null) {
+      return settle(stale ? errorState(error, false) : errorState({ code: 'unavailable' }, !isOnline()));
+    }
     const remote = await readFullDraft(e);
     if (!alive(e)) return;
-    // prettier-ignore
-    if (remote === null) { cycle = null; return settle(state); }
+    if (remote === null) {
+      cycle = null;
+      return settle(state);
+    }
     const decision = failureDecision(current, remote, stale, state, error, !isOnline());
     cycle = null;
     if (decision.kind === 'acknowledge') return acknowledge(e, remote.head, current);
     if (decision.kind === 'retry') return beginSend(decision.base, decision.candidate, true, e);
-    // prettier-ignore
-    if (decision.kind === 'conflict') { pendingRemote = decision.remote; return settle(decision.next); }
+    if (decision.kind === 'conflict') {
+      pendingRemote = decision.remote;
+      return settle(decision.next);
+    }
     return settle(decision.next);
   }
   async function handleMutateResult(e: number, result: Awaited<ReturnType<DraftRepository['mutate']>>): Promise<void> {
@@ -152,8 +172,11 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
       const error = result.error;
       if (error.code === 'stale_generation') await handleFailedMutation(e, error, true);
       else if (error.code === 'unavailable') await handleFailedMutation(e, error, false);
-      // prettier-ignore
-      else { cycle = null; const conflict = error.code === 'retry_required' || error.code === 'merge_conflict'; settle(conflict ? conflictWith([], error.currentHead) : errorState(error, false)); }
+      else {
+        cycle = null;
+        const conflict = error.code === 'retry_required' || error.code === 'merge_conflict';
+        settle(conflict ? conflictWith([], error.currentHead) : errorState(error, false));
+      }
     }
   }
   async function settleApplied(
@@ -163,39 +186,28 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     dirty: 'save' | 'arm',
   ): Promise<void> {
     if (applied.kind === 'invalid') return settle(invalidState());
-    // prettier-ignore
-    if (applied.kind === 'conflict') { pendingRemote = remote; return settle(conflictWith(applied.conflicts, remote.head)); }
-    // prettier-ignore
-    if (applied.kind === 'clean') { removeRecord(e); return settle(toClean(state, applied.base)); }
+    if (applied.kind === 'conflict') {
+      pendingRemote = remote;
+      return settle(conflictWith(applied.conflicts, remote.head));
+    }
+    if (applied.kind === 'clean') {
+      removeRecord(e);
+      return settle(toClean(state, applied.base));
+    }
     state = { ...toDirty(state, applied.local), base: applied.base };
     emit();
     autosave.suspend();
     if (dirty === 'save') return fireSave();
     if (dirty === 'arm') autosave.arm(true);
   }
-  async function refresh(saveIfDirty: boolean): Promise<void> {
-    const e = epoch;
-    // prettier-ignore
-    if (inFlight) { queuedRefresh = true; return; }
-    if (disposed || state.phase === 'loading' || state.base === null) return;
-    const headResult = await repository.head();
-    if (!alive(e)) return;
-    // prettier-ignore
-    if (headResult.ok === false) { if (state.phase !== 'clean') settle(errorState(headResult.error, !isOnline())); return; }
-    const base = state.base;
-    const head = headResult.data;
-    // prettier-ignore
-    if (sameHead(head, base)) { if (saveIfDirty && state.phase === 'dirty') await fireSave(); return; }
-    const remote = await readFullDraft(e);
-    // prettier-ignore
-    if (alive(e) && remote !== null) { await settleApplied(e, applyRemote(base, state.local, remote), remote, saveIfDirty ? 'save' : 'arm'); }
-  }
   async function performLoad(pid: string): Promise<void> {
     const init = await initializeDraft({ repository, cache, principalId: pid, tabId: tabIdOf() });
     if (!alive(epoch)) return;
     // Failure preserves cache and any retained base/local, and offers retry.
-    // prettier-ignore
-    if (init.status === 'unavailable') { settle(errorState(init.error, !isOnline())); return; }
+    if (init.status === 'unavailable') {
+      settle(errorState(init.error, !isOnline()));
+      return;
+    }
     const next = initializedState(state, init);
     state = next.state;
     if (next.resumed) {
@@ -205,76 +217,54 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     }
     settle(state);
   }
-  function edit(candidate: PublishedContentPayload): void {
-    const editable = state.phase === 'clean' || state.phase === 'dirty' || state.phase === 'saving';
-    if (disposed || state.base === null || !editable) return;
-    // prettier-ignore
-    if (inFlight) { state = { ...state, local: candidate, conflicts: [], error: null }; emit(); }
-    else {
-      const fromClean = state.phase === 'clean';
-      state = toDirty(state, candidate);
-      emit();
-      autosave.suspend();
-      autosave.arm(fromClean);
-    }
-    cacheWrite.schedule();
-  }
-  async function flush(): Promise<boolean> {
-    const e = epoch;
-    if (disposed) return false;
-    for (;;) {
-      if (!alive(e)) return false;
-      if (state.phase === 'dirty' && !inFlight) await fireSave();
-      else if (inFlight || state.phase === 'saving') await new Promise<void>((wake) => waiters.push(wake));
-      else break;
-    }
-    return alive(e) && state.phase === 'clean';
-  }
-  async function resolve(decisions: ConflictDecisions): Promise<void> {
-    const e = epoch;
-    if (disposed || state.phase !== 'conflict' || state.base === null || state.local === null) return;
-    const headResult = await repository.head();
-    if (!alive(e)) return;
-    if (headResult.ok === false) return settle(errorState(headResult.error, !isOnline()));
-    // prettier-ignore
-    const remote = pendingRemote !== null && sameHead(headResult.data, pendingRemote.head) ? pendingRemote : await readFullDraft(e);
-    if (!alive(e) || remote === null) return;
-    pendingRemote = null;
-    await settleApplied(e, applyRemote(state.base, state.local, remote, decisions), remote, 'save');
-  }
-  async function retry(): Promise<void> {
-    const e = epoch;
-    const retriable = state.phase === 'conflict' || state.phase === 'error' || state.phase === 'offline';
-    if (disposed || principalId === null || !retriable) return;
-    if (state.base === null) return performLoad(principalId);
-    const remote = await readFullDraft(e);
-    if (!alive(e) || remote === null) return;
-    pendingRemote = null;
-    await settleApplied(e, applyRemote(state.base, state.local, remote), remote, 'save');
-  }
-  async function discardLocal(): Promise<void> {
-    const e = epoch;
-    if (disposed) return;
-    suspendTimers();
-    const remote = await readFullDraft(e);
-    if (!alive(e) || remote === null) return;
-    cycle = null;
-    pendingRemote = null;
-    settle(toClean(state, toBaseSnapshot(remote.head, remote.payload)));
-    void recorder?.remove(() => undefined);
-  }
-  function resetCycle(): void {
-    suspendTimers();
-    cycle = null;
-    inFlight = false;
-    queuedRefresh = false;
-    pendingRemote = null;
-  }
+  const actions = createSaveCoordinatorInternals({
+    repository,
+    waiters,
+    getRecorder: () => recorder,
+    getEpoch: () => epoch,
+    isAlive: alive,
+    isDisposed: () => disposed,
+    getPrincipalId: () => principalId,
+    getState: () => state,
+    setState: (next) => {
+      state = next;
+    },
+    emit,
+    isInFlight: () => inFlight,
+    suspendAutosave: () => autosave.suspend(),
+    armAutosave: (fromClean) => autosave.arm(fromClean),
+    scheduleCacheWrite: () => cacheWrite.schedule(),
+    fireSave,
+    performLoad,
+    readFullDraft,
+    settle,
+    errorState,
+    isOnline,
+    settleApplied,
+    getPendingRemote: () => pendingRemote,
+    setPendingRemote: (remote) => {
+      pendingRemote = remote;
+    },
+    clearCycle: () => {
+      cycle = null;
+    },
+    setInFlight: (value) => {
+      inFlight = value;
+    },
+    clearQueuedRefresh: () => {
+      queuedRefresh = false;
+    },
+    queueRefresh: () => {
+      queuedRefresh = true;
+    },
+    suspendTimers,
+  });
+  refreshAction = actions.refresh;
   return {
     async load(pid) {
       if (disposed) return;
       epoch += 1;
-      resetCycle();
+      actions.resetCycle();
       principalId = pid;
       recovery = createRecoveryCoordinator({ cache, principalId: pid, tabId: tabIdOf(), now });
       recorder = createRecoveryRecorder(recovery, () => alive(epoch), onCacheFailure);
@@ -282,16 +272,16 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
       emit();
       await performLoad(pid);
     },
-    edit,
-    flush,
-    refresh: () => (disposed ? Promise.resolve() : refresh(false)),
-    resolve,
-    retry,
-    discardLocal,
+    edit: actions.edit,
+    flush: actions.flush,
+    refresh: () => (disposed ? Promise.resolve() : actions.refresh(false)),
+    resolve: actions.resolve,
+    retry: actions.retry,
+    discardLocal: actions.discardLocal,
     dispose() {
       disposed = true;
       epoch += 1;
-      resetCycle();
+      actions.resetCycle();
       for (const waiter of waiters.splice(0)) waiter();
     },
   };
