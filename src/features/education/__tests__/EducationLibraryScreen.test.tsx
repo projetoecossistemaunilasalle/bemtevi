@@ -245,7 +245,7 @@ describe('EducationLibraryScreen', () => {
         { ...resource, id: 'mat-3', title: 'Terceiro', group: 'geral', groupOrder: 3 },
         { ...resource, id: 'mat-1', title: 'Primeiro', group: 'geral', groupOrder: 1 },
         { ...resource, id: 'mat-2', title: 'Segundo', group: 'geral', groupOrder: 2 },
-        { ...resource, id: 'mat-undefined', title: 'Sem order', group: 'geral' },
+        { ...resource, id: 'mat-undefined', title: 'Sem order', group: 'geral', groupOrder: undefined },
       ],
     };
 

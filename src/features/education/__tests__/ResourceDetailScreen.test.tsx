@@ -230,7 +230,7 @@ describe('ResourceDetailScreen', () => {
     expect(screen.getByRole('link', { name: /abrir pdf em outra aba/i })).toHaveAttribute('href', pdfUrl);
   });
 
-  it('renders legacy PDF source links inside the material', () => {
+  it('renders PDF source links as source cards instead of embedding them', () => {
     const resource = shippedEducationMaterials().find((candidate) =>
       candidate.body?.some((block) => block.kind === 'sourceLink' && block.url?.includes('.pdf')),
     );
@@ -246,7 +246,10 @@ describe('ResourceDetailScreen', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTitle(pdfBlock.label ?? 'Documento em PDF')).toHaveAttribute('src', pdfBlock.url);
+    expect(screen.getByText('Fonte do material')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /acessar fonte original/i })).toHaveAttribute('href', pdfBlock.url);
+    expect(screen.queryByTitle(pdfBlock.label ?? 'Documento em PDF')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /abrir pdf em outra aba/i })).not.toBeInTheDocument();
   });
 
   it('renders generic video URLs as full-card links instead of broken embeds', () => {
@@ -279,7 +282,7 @@ describe('ResourceDetailScreen', () => {
     expect(screen.queryByTitle('Vídeo externo')).not.toBeInTheDocument();
   });
 
-  it('renders material body texts and descriptions with text-justify class', () => {
+  it('renders material descriptions without body text blocks', () => {
     const resource = firstShippedMaterial();
 
     renderWithContent(
@@ -293,18 +296,7 @@ describe('ResourceDetailScreen', () => {
     const description = screen.getByText(resource.description);
     expect(description).toHaveClass('text-justify');
 
-    const paragraphBlock = resource.body?.find((block) => block.kind === 'paragraph' && block.text);
-    if (!paragraphBlock || paragraphBlock.kind !== 'paragraph' || !paragraphBlock.text) {
-      throw new Error('Expected a published material with a paragraph block.');
-    }
-
-    const paragraphText = screen.getByText((_, element) => {
-      if (element?.tagName.toLowerCase() !== 'p') return false;
-      const normalizedContent = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-      const normalizedExpected = paragraphBlock.text.replace(/\s+/g, ' ').trim();
-      return normalizedContent === normalizedExpected;
-    });
-    expect(paragraphText).toHaveClass('text-justify');
+    expect(resource.body?.some((block) => ['paragraph', 'heading', 'list'].includes(block.kind))).toBe(false);
   });
 
   it('ignores populated bemtevi:dev-dashboard:drafts:v1 bytes and renders only published content', () => {

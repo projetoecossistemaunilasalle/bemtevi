@@ -304,7 +304,7 @@ describe('OrientationScreen', () => {
     expect(screen.queryByText('Técnica de respiração seguindo figuras geométricas')).not.toBeInTheDocument();
   });
 
-  it('renders interactive breathing exercise for irritation (c4-irritacao)', () => {
+  it('renders the irritation follow-up choices (c4-irritacao)', () => {
     renderOrientation();
     startOrientationWithStarter('Quero entender como estou me sentindo');
 
@@ -314,13 +314,13 @@ describe('OrientationScreen', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Tenho ficado irritado(a) ou impaciente.' }));
     advanceInitialLoad();
 
-    expect(screen.getByRole('button', { name: 'Começar a respirar' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'A irritabilidade pode aparecer quando os limites foram ultrapassados por muito tempo. Faça uma pausa e realize respirações lentas.',
+        'A irritação pode aparecer diante de sobrecarga, frustração, conflitos, cansaço ou quando nossos limites estão sendo ultrapassados. Antes de responder à situação, pode ser útil perceber o que desencadeou essa reação e o que você precisa naquele momento.',
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Respiração geométrica')).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Quero criar algum espaço antes de responder.' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Começar a respirar' })).not.toBeInTheDocument();
   });
 
   it('continues SRQ-20 after Q17 yes and navigates to apoio only after the final result', () => {
