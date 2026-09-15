@@ -17,3 +17,8 @@ coverage/
 .codex-remote-attachments/
 .impeccable/
 .bemtevi/
+
+# Temporary image scratch / slices in repository root
+/*.png
+/*.jpg
+/*.jpeg
