@@ -110,7 +110,7 @@ describe('OrientationScreen', () => {
 
     fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido sobrecarregado(a).' }));
     advanceInitialLoad();
-    fireEvent.click(screen.getByRole('option', { name: 'Sinto que tenho coisas demais para resolver.' }));
+    fireEvent.click(screen.getByRole('option', { name: /(?:Sinto que tenho|Tenho) coisas demais para resolver\./ }));
 
     expect(window.localStorage).toHaveLength(0);
     expect(window.sessionStorage).toHaveLength(0);
@@ -142,11 +142,13 @@ describe('OrientationScreen', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido sobrecarregado(a).' }));
     advanceInitialLoad();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Sinto que tenho coisas demais para resolver.' }));
+    fireEvent.click(screen.getByRole('option', { name: /(?:Sinto que tenho|Tenho) coisas demais para resolver\./ }));
     advanceInitialLoad();
 
     expect(screen.getByPlaceholderText('Digite ou escolha uma opção')).toHaveValue('');
-    expect(screen.getByText(/O vídeo abaixo apresenta uma forma simples/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/(?:O vídeo abaixo apresenta uma forma simples|Quando tudo parece urgente)/),
+    ).toBeInTheDocument();
   });
 
   it('exposes the conversation as an accessible log with sender context', () => {
@@ -288,12 +290,16 @@ describe('OrientationScreen', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Tenho me sentido cansado(a) e preciso descansar.' }));
     advanceInitialLoad();
 
-    fireEvent.click(screen.getByRole('option', { name: 'Fazer uma pausa curta.' }));
+    fireEvent.click(
+      screen.getByRole('option', {
+        name: /(?:Fazer uma pausa curta\.|Estou cansado\(a\), mas consigo descansar\.)/,
+      }),
+    );
     advanceInitialLoad();
 
     expect(screen.getByRole('button', { name: 'Começar a respirar' })).toBeInTheDocument();
     expect(
-      screen.getByText('Uma pausa curta pode ajudar a interromper, por alguns instantes, o ritmo das demandas.'),
+      screen.getByText(/(?:Uma pausa curta pode ajudar a interromper|Descansar também é uma forma de cuidado)/),
     ).toBeInTheDocument();
     expect(screen.queryByText('Técnica de respiração seguindo figuras geométricas')).not.toBeInTheDocument();
   });

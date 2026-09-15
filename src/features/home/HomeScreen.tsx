@@ -13,7 +13,7 @@ import { OnboardingScreen } from './OnboardingScreen';
 export function HomeScreen() {
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(isFirstVisit());
-  const [supportAction, orientationAction, contactsAction] = homeCopy.actions;
+  const [orientationAction, supportAction, contactsAction] = homeCopy.actions;
 
   function handleOnboardingComplete() {
     markVisited();
@@ -45,16 +45,16 @@ export function HomeScreen() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-stack-sm">
               <ActionCard
-                icon={<MessageCircleHeart className="text-primary" size={22} />}
-                label={supportAction.label}
-                description={supportAction.description}
-                onClick={() => navigate(routes.support)}
-              />
-              <ActionCard
                 icon={<Compass size={22} />}
                 label={orientationAction.label}
                 description={orientationAction.description}
                 onClick={() => navigate(routes.orientation)}
+              />
+              <ActionCard
+                icon={<MessageCircleHeart className="text-primary" size={22} />}
+                label={supportAction.label}
+                description={supportAction.description}
+                onClick={() => navigate(routes.support)}
               />
               <ActionCard
                 icon={<MapPin size={22} />}

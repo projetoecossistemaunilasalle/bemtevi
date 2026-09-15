@@ -50,8 +50,8 @@ Example:
 Respire comigo por um momento
 
 Inspire por 4 segundos.
-Segure por 4 segundos.
-Expire por 4 segundos.
+Segure por 2 segundos.
+Expire por 6 segundos.
 
 Repita algumas vezes antes de decidir o próximo passo.
 ```

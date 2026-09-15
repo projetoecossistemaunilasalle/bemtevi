@@ -71,6 +71,23 @@ describe('app navigation', () => {
     expect(screen.queryByRole('link', { name: /painel/i })).not.toBeInTheDocument();
   });
 
+  it('renders public navigation links in the expected order in TopBar and BottomNav', async () => {
+    renderNavigation(<TopBar />);
+    const topBarNav = await screen.findByRole('navigation', { name: /navegação principal/i });
+    const topBarLinks = within(topBarNav)
+      .getAllByRole('link')
+      .map((link) => link.textContent?.trim());
+    expect(topBarLinks).toEqual(['Início', 'Orientação', 'Materiais', 'Apoio', 'Contatos']);
+
+    renderNavigation(<BottomNav />);
+    const allNavs = await screen.findAllByRole('navigation', { name: /navegação principal/i });
+    const bottomNav = allNavs[1];
+    const bottomNavLinks = within(bottomNav)
+      .getAllByRole('link')
+      .map((link) => link.textContent?.trim());
+    expect(bottomNavLinks).toEqual(['Início', 'Orientação', 'Materiais', 'Apoio', 'Contatos']);
+  });
+
   it('logs out and removes admin navigation immediately', async () => {
     const user = userEvent.setup();
     const service = renderNavigation(<TopBar />, admin);

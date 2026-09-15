@@ -13,14 +13,14 @@ export const homeCopy = {
     'Este é um espaço seguro. O BemTeVi não pede login, CPF, e-mail, nome ou escola. Suas conversas e respostas não ficam guardadas entre acessos. O navegador lembra apenas que você já viu a apresentação.',
   actions: [
     {
-      id: 'immediate-support',
-      label: 'Quero escolher um próximo passo',
-      description: 'Explore pequenas ações de cuidado, apoio de alguém ou ajuda profissional.',
-    },
-    {
       id: 'guided-orientation',
       label: 'Quero entender como estou me sentindo',
       description: 'Responda a algumas perguntas e receba uma orientação inicial.',
+    },
+    {
+      id: 'immediate-support',
+      label: 'Quero escolher um próximo passo',
+      description: 'Explore pequenas ações de cuidado, apoio de alguém ou ajuda profissional.',
     },
     {
       id: 'professional-support',

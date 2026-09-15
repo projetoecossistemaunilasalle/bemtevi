@@ -298,7 +298,12 @@ describe('ResourceDetailScreen', () => {
       throw new Error('Expected a published material with a paragraph block.');
     }
 
-    const paragraphText = screen.getByText(paragraphBlock.text);
+    const paragraphText = screen.getByText((_, element) => {
+      if (element?.tagName.toLowerCase() !== 'p') return false;
+      const normalizedContent = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+      const normalizedExpected = paragraphBlock.text.replace(/\s+/g, ' ').trim();
+      return normalizedContent === normalizedExpected;
+    });
     expect(paragraphText).toHaveClass('text-justify');
   });
 

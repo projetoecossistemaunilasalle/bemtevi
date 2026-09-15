@@ -43,7 +43,15 @@ describe('HomeScreen onboarding', () => {
     });
     expect(screen.getByRole('heading', { name: 'Que bom ter você aqui!' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Como você está hoje?' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quero entender como estou me sentindo/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /quero escolher um próximo passo/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quero encontrar atendimento/i })).toBeInTheDocument();
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0]).toHaveTextContent(/quero entender como estou me sentindo/i);
+    expect(buttons[1]).toHaveTextContent(/quero escolher um próximo passo/i);
+    expect(buttons[2]).toHaveTextContent(/quero encontrar atendimento/i);
+
     expect(screen.getByText(/não ficam guardadas entre acessos/i)).toBeInTheDocument();
     expect(screen.queryByText(/entre sessões/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /materiais educativos/i })).toHaveAttribute('href', '/educacao');

@@ -9,8 +9,8 @@ function getNavItems(showDashboard: boolean) {
     { to: routes.home, label: 'Início', Icon: Home },
     { to: routes.orientation, label: 'Orientação', Icon: Compass },
     { to: routes.education, label: 'Materiais', Icon: GraduationCap },
-    { to: routes.contacts, label: 'Contatos', Icon: Users },
     { to: routes.support, label: 'Apoio', Icon: HeartHandshake },
+    { to: routes.contacts, label: 'Contatos', Icon: Users },
     ...(showDashboard ? [{ to: routes.dashboard, label: 'Painel', Icon: Gauge }] : []),
   ];
 }
