@@ -23,25 +23,17 @@ const PRAGMA_PATTERN = /prettier-ignore/g;
 
 export const PRAGMA_ALLOWLIST = new Set([
   'scripts/architecture-pragma-ban.mjs',
-  'src/dev-dashboard/DashboardRoute.tsx',
-  'src/dev-dashboard/DashboardTabContent.tsx',
   'src/dev-dashboard/ai/AiFileArchiveSection.tsx',
   'src/dev-dashboard/draft-storage/legacyRecovery.ts',
-  'src/dev-dashboard/draft-storage/useDraftWorkspace.ts',
   'src/dev-dashboard/drafts/saveCoordinator.ts',
-  'src/dev-dashboard/publishing/PublishDashboard.tsx',
 ]);
 
 /** Frozen per-file occurrence caps; entries are removed when a file reaches zero. */
 export const PRAGMA_LIMITS = {
   'scripts/architecture-pragma-ban.mjs': 1,
-  'src/dev-dashboard/DashboardRoute.tsx': 40,
-  'src/dev-dashboard/DashboardTabContent.tsx': 12,
   'src/dev-dashboard/ai/AiFileArchiveSection.tsx': 48,
   'src/dev-dashboard/draft-storage/legacyRecovery.ts': 29,
-  'src/dev-dashboard/draft-storage/useDraftWorkspace.ts': 34,
   'src/dev-dashboard/drafts/saveCoordinator.ts': 19,
-  'src/dev-dashboard/publishing/PublishDashboard.tsx': 41,
 };
 
 export function countPrettierIgnores(source) {

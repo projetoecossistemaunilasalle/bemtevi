@@ -3,7 +3,7 @@ import type { ServiceDirectoryEntry, ServiceLocation } from '../domain/services/
 import { createLocalLocation, createLocalService } from './contacts/contactDrafts';
 import type { DashboardDraftState } from './dashboardDraftState';
 import { resolveRecordOrigin, updateRecordAtIndex, upsertPatchById } from './dashboardModel';
-import type { DashboardDraftUpdater, DashboardWorkspaceUpdater } from './dashboardMutationTypes';
+import type { DashboardDraftUpdater } from './dashboardMutationTypes';
 
 export interface DashboardContactMutationController {
   onServiceChange: (serviceIndex: number, serviceId: string, patch: Partial<ServiceDirectoryEntry>) => void;
@@ -18,12 +18,10 @@ export function createDashboardContactMutationController({
   shipped,
   draftState,
   updateDraftState,
-  updateWorkspace,
 }: {
   shipped: PublishedContentPayload;
   draftState: DashboardDraftState;
   updateDraftState: DashboardDraftUpdater;
-  updateWorkspace: DashboardWorkspaceUpdater;
 }): DashboardContactMutationController {
   return {
     onServiceChange: (serviceIndex, serviceId, patch) =>
@@ -61,15 +59,27 @@ export function createDashboardContactMutationController({
       return newService.id;
     },
     onServiceRemove: (serviceIndex, serviceId) =>
-      updateWorkspace((current) => {
-        if (current.local.contacts[serviceIndex]?.id !== serviceId) return current;
+      updateDraftState((current) => {
+        const origin = resolveRecordOrigin(
+          shipped.contacts,
+          current.addedContacts,
+          current.removedContactIds ?? [],
+          serviceIndex,
+          serviceId,
+        );
+        if (!origin || origin.id !== serviceId) return current;
+
+        if (origin.kind === 'added') {
+          return {
+            ...current,
+            addedContacts: current.addedContacts.filter((_, index) => index !== origin.addedIndex),
+          };
+        }
+
         return {
           ...current,
-          local: {
-            ...current.local,
-            contacts: current.local.contacts.filter((_, index) => index !== serviceIndex),
-          },
-          reconciliation: undefined,
+          contactPatches: current.contactPatches.filter((patch) => patch.id !== origin.id),
+          removedContactIds: [...new Set([...(current.removedContactIds ?? []), origin.id])],
         };
       }),
     onLocationChange: (locationIndex, locationId, patch) =>

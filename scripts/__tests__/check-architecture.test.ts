@@ -295,21 +295,21 @@ describe('prettier-ignore ban', () => {
 
   it('fails an allowlisted file that grows its pragma count', () => {
     const root = makeTempRoot();
-    const rel = 'src/dev-dashboard/publishing/PublishDashboard.tsx';
+    const rel = 'src/dev-dashboard/drafts/saveCoordinator.ts';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    const limit = 41;
+    const limit = 19;
     writeFileSync(abs, `${'// prettier-ignore\n'.repeat(limit + 1)}`);
     const errors = checkPragmaBan(root, [rel]);
-    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_GREW') && e.includes('occurrences=42'))).toBe(true);
+    expect(errors.some((e) => e.includes('PRETTIER_IGNORE_GREW') && e.includes('occurrences=20'))).toBe(true);
   });
 
   it('accepts an allowlisted file at or below its frozen count', () => {
     const root = makeTempRoot();
-    const rel = 'src/dev-dashboard/publishing/PublishDashboard.tsx';
+    const rel = 'src/dev-dashboard/drafts/saveCoordinator.ts';
     const abs = path.join(root, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
-    writeFileSync(abs, `${'// prettier-ignore\n'.repeat(41)}`);
+    writeFileSync(abs, `${'// prettier-ignore\n'.repeat(19)}`);
     expect(checkPragmaBan(root, [rel])).toEqual([]);
   });
 

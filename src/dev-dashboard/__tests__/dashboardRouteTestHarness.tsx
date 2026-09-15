@@ -1,12 +1,12 @@
 import { render as renderUi, screen, waitFor } from '@testing-library/react';
 import { expect, vi } from 'vitest';
 import type { ServiceDirectoryEntry } from '../../domain/services/types';
-import { createDraftFromAiPayload } from '../ai/aiDraft';
 import { normalizeContactLocations } from '../../domain/services/locations';
-import type { DraftWorkspace } from '../draft-storage/workspace';
 import { getShippedDashboardContent } from '../content/shippedContent';
 import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
 import type { DashboardShippedContent } from '../content/shippedContent';
+import { createEmptyDashboardDraftState, type DashboardDraftState } from '../dashboardDraftState';
+import type { SaveState } from '../drafts/saveTransitions';
 
 export function asPayload(shipped: DashboardShippedContent): PublishedContentPayload {
   const normalized = normalizeContactLocations(shipped.contacts, shipped.locations ?? []);
@@ -20,43 +20,153 @@ export function asPayload(shipped: DashboardShippedContent): PublishedContentPay
   };
 }
 
-const persisted = vi.hoisted(() => ({ workspaces: [] as DraftWorkspace[] }));
-vi.mock('../draft-storage/workspace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../draft-storage/workspace')>();
-  return {
-    ...actual,
-    listWorkspaces: vi.fn(async () => persisted.workspaces),
-    writeWorkspace: vi.fn(async (workspace: DraftWorkspace) => {
-      persisted.workspaces = [
-        ...persisted.workspaces.filter((item) => item.workspaceId !== workspace.workspaceId),
-        structuredClone(workspace),
-      ];
-      return { ok: true };
-    }),
-  };
-});
-export async function renderDashboard(ui: Parameters<typeof renderUi>[0]) {
-  if (dashboardMocks.content === initialContent) dashboardMocks.content = asPayload(getShippedDashboardContent());
-  const result = renderUi(ui);
-  await waitFor(() => expect(screen.queryByText('Carregando rascunhos…')).not.toBeInTheDocument());
-  return result;
-}
-export async function readDraft() {
-  await waitFor(() => expect(screen.queryByText('Salvando…')).not.toBeInTheDocument());
-  const workspace = persisted.workspaces.at(-1)!;
-  const legacy = createDraftFromAiPayload(workspace.base.payload, workspace.local, workspace.local);
-  legacy.groupPatches.sort((a, b) => (a.sourceIndex ?? 0) - (b.sourceIndex ?? 0));
-  return { ...legacy, basePayload: workspace.base.payload, baseRevision: workspace.base.revision };
+interface TestWorkspace {
+  workspaceId: string;
+  base: { revision: number | null; payload: PublishedContentPayload };
+  local: PublishedContentPayload;
+  archived?: boolean;
 }
 
-const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
-
+const persisted = vi.hoisted(() => ({ workspaces: [] as TestWorkspace[] }));
 const dashboardMocks = vi.hoisted(() => ({
   content: null as PublishedContentPayload | null,
   snapshot: null as PublishedContentSnapshot | null,
   publish: vi.fn(),
   account: { id: 'admin-id', email: 'admin@bemtevi.test' } as { id: string; email: string } | null,
 }));
+
+function emptyPayload(): PublishedContentPayload {
+  return { flows: [], educationMaterials: [], educationGroups: [], contacts: [], locations: [], defaultGroupOrder: 0 };
+}
+
+function rememberWorkspace(base: PublishedContentPayload, local: PublishedContentPayload, archived = false): void {
+  const current = persisted.workspaces.at(-1);
+  if (current) {
+    current.local = structuredClone(local);
+    current.archived = archived;
+    return;
+  }
+  persisted.workspaces.push({
+    workspaceId: 'test-workspace',
+    base: { revision: dashboardMocks.snapshot?.revision ?? null, payload: structuredClone(base) },
+    local: structuredClone(local),
+    archived,
+  });
+}
+
+function diffRecords<T extends { id: string }>(source: T[], next: T[]) {
+  const sourceById = new Map<string, Array<{ item: T; index: number }>>();
+  source.forEach((item, index) => sourceById.set(item.id, [...(sourceById.get(item.id) ?? []), { item, index }]));
+  const sourceCounts = new Map<string, number>();
+  source.forEach((item) => sourceCounts.set(item.id, (sourceCounts.get(item.id) ?? 0) + 1));
+  const nextCounts = new Map<string, number>();
+  next.forEach((item) => nextCounts.set(item.id, (nextCounts.get(item.id) ?? 0) + 1));
+  const used = new Map<string, number>();
+  const patches: Array<{ id: string; sourceIndex: number; sourceIdUnique: boolean; patch: Partial<T> }> = [];
+  const added: T[] = [];
+  next.forEach((item) => {
+    const occurrence = used.get(item.id) ?? 0;
+    const match = sourceById.get(item.id)?.[occurrence];
+    used.set(item.id, occurrence + 1);
+    if (!match) {
+      added.push(item);
+      return;
+    }
+    if (JSON.stringify(match.item) !== JSON.stringify(item)) {
+      const { id: _id, ...patch } = item;
+      patches.push({
+        id: item.id,
+        sourceIndex: match.index,
+        sourceIdUnique: sourceCounts.get(item.id) === 1 && nextCounts.get(item.id) === 1,
+        patch: patch as Partial<T>,
+      });
+    }
+  });
+  const removedIds = source
+    .filter((item) => (nextCounts.get(item.id) ?? 0) < (sourceCounts.get(item.id) ?? 0))
+    .map((item) => item.id)
+    .filter((id, index, ids) => ids.indexOf(id) === index);
+  return { patches, added, removedIds };
+}
+
+function deriveDraftState(base: PublishedContentPayload, local: PublishedContentPayload): DashboardDraftState {
+  const draft = createEmptyDashboardDraftState();
+  const flows = diffRecords(base.flows, local.flows);
+  draft.flowPatches = flows.patches;
+  draft.addedFlows = flows.added;
+  draft.removedFlowIds = flows.removedIds;
+  const materials = diffRecords(base.educationMaterials, local.educationMaterials);
+  draft.educationMaterialPatches = materials.patches;
+  draft.addedEducationMaterials = materials.added;
+  draft.removedEducationMaterialIds = materials.removedIds;
+  const groups = diffRecords(base.educationGroups, local.educationGroups);
+  draft.groupPatches = groups.patches;
+  draft.addedGroups = groups.added;
+  draft.removedGroupIds = groups.removedIds;
+  const contacts = diffRecords(base.contacts, local.contacts);
+  draft.contactPatches = contacts.patches;
+  draft.addedContacts = contacts.added;
+  draft.removedContactIds = contacts.removedIds;
+  const locations = diffRecords(base.locations ?? [], local.locations ?? []);
+  draft.locationPatches = locations.patches;
+  draft.addedLocations = locations.added;
+  draft.removedLocationIds = locations.removedIds;
+  if ((base.defaultGroupOrder ?? 0) !== (local.defaultGroupOrder ?? 0))
+    draft.defaultGroupOrder = local.defaultGroupOrder;
+  return draft;
+}
+
+vi.mock('../draft-storage/useDraftWorkspace', async () => {
+  const React = await import('react');
+  return {
+    configureCanonicalWorkspaceServices: vi.fn(),
+    useDraftWorkspace: () => {
+      const [state, setState] = React.useState<SaveState>({
+        phase: 'clean',
+        base: null,
+        local: null,
+        conflicts: [],
+        error: null,
+        cacheAvailable: true,
+      });
+      const edit = (candidate: PublishedContentPayload) => {
+        setState((current) => {
+          rememberWorkspace(current.base?.payload ?? dashboardMocks.content ?? emptyPayload(), candidate);
+          return { ...current, phase: 'clean', local: candidate };
+        });
+      };
+      const flush = async () => true;
+      const refresh = async () => undefined;
+      const resolve = async () => undefined;
+      const retry = async () => undefined;
+      const discardLocal = async () => {
+        setState((current) => {
+          const base = current.base?.payload ?? dashboardMocks.content ?? emptyPayload();
+          rememberWorkspace(base, base, true);
+          return { ...current, phase: 'clean', local: null, conflicts: [], error: null };
+        });
+      };
+      const undo = () => undefined;
+      return { state, edit, flush, refresh, resolve, retry, discardLocal, undo };
+    },
+  };
+});
+
+export async function renderDashboard(ui: Parameters<typeof renderUi>[0]) {
+  if (dashboardMocks.content === initialContent) dashboardMocks.content = asPayload(getShippedDashboardContent());
+  const result = renderUi(ui);
+  await waitFor(() => expect(screen.queryByText('Carregando rascunho...')).not.toBeInTheDocument());
+  return result;
+}
+export async function readDraft() {
+  await waitFor(() => expect(screen.queryByText('Salvando...')).not.toBeInTheDocument());
+  const workspace = persisted.workspaces.at(-1)!;
+  const draft = deriveDraftState(workspace.base.payload, workspace.local);
+  draft.groupPatches.sort((a, b) => (a.sourceIndex ?? 0) - (b.sourceIndex ?? 0));
+  return { ...draft, basePayload: workspace.base.payload, baseRevision: workspace.base.revision };
+}
+
+const shippedContacts = vi.hoisted(() => [] as ServiceDirectoryEntry[]);
 export const dashboardTestState = { dashboardMocks, persisted, shippedContacts };
 let initialContent: PublishedContentPayload;
 
@@ -76,22 +186,10 @@ vi.mock('../../app/content/PublishedContentContext', () => ({
   }),
 }));
 
-// INTEGRATION-02: the legacy branch publishes through the temporary
-// `publishing/legacyPublication.ts` direct-table adapter. The harness keeps
-// the same observable mock (`dashboardMocks.publish`) by faking the adapter
-// boundary instead of the removed provider `publish` method. The Neon client
-// module is mocked as configured so the route's adapter wiring is reachable.
-vi.mock('../app/neon/client', () => ({
+vi.mock('../../app/neon/client', () => ({
   getNeonConfig: () => ({ authUrl: 'https://auth.bemtevi.test', dataApiUrl: 'https://data.bemtevi.test' }),
-  defaultNeonClient: { rpc: vi.fn() },
+  defaultNeonClient: null,
   createConfiguredNeonClient: vi.fn(() => null),
-}));
-vi.mock('../publishing/legacyPublication', () => ({
-  createNeonPublishedContentGateway: vi.fn(() => ({ readCurrent: vi.fn() })),
-  legacyPublishContent: vi.fn(
-    async (_gateway: unknown, input: { payload: unknown; publisherId: string; expectedRevision: number | null }) =>
-      dashboardMocks.publish(input.payload, input.publisherId, input.expectedRevision),
-  ),
 }));
 
 vi.mock('../../app/auth/AdminAuthContext', () => ({

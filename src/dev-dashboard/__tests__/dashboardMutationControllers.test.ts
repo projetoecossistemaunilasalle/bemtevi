@@ -1,13 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import type { PublishedContentPayload, PublishedContentSnapshot } from '../../app/content/publishedContent';
+import { describe, expect, it } from 'vitest';
+import type { PublishedContentPayload } from '../../app/content/publishedContent';
 import type { GuidedFlow } from '../../domain/flow-engine/types';
 import type { ServiceDirectoryEntry, ServiceLocation } from '../../domain/services/types';
 import { createEmptyDashboardDraftState, type DashboardDraftState } from '../dashboardDraftState';
-import { createWorkspace, type DraftWorkspace } from '../draft-storage/workspace';
 import { createDashboardContactMutationController } from '../dashboardContactMutations';
 import { createDashboardFlowMutationController } from '../dashboardFlowMutations';
-import type { DashboardWorkspaceUpdater } from '../dashboardMutationTypes';
-import { buildDashboardPublicationPayload, createDashboardPublicationSuccessHandler } from '../dashboardPublication';
 
 function content(overrides: Partial<PublishedContentPayload> = {}): PublishedContentPayload {
   return {
@@ -79,7 +76,6 @@ describe('dashboard mutation controllers', () => {
       shipped: content({ contacts: [contact('contact-b'), contact('contact-a')] }),
       draftState: initial,
       updateDraftState: update.updateDraftState,
-      updateWorkspace: () => {},
     });
 
     controller.onServiceChange(1, 'contact-a', { name: 'edição atual' });
@@ -95,7 +91,6 @@ describe('dashboard mutation controllers', () => {
       shipped: content({ locations: [location('loc-a')] }),
       draftState: createEmptyDashboardDraftState(),
       updateDraftState: update.updateDraftState,
-      updateWorkspace: () => {},
     });
 
     controller.onLocationRemove(0, 'loc-a');
@@ -103,38 +98,29 @@ describe('dashboard mutation controllers', () => {
     expect(update.latest?.removedLocationIds).toEqual(['loc-a']);
   });
 
-  it('removes a service from the current workspace only when its index still owns the ID', () => {
-    let workspace: DraftWorkspace = createWorkspace(content({ contacts: [contact('contact-a')] }), null);
-    const updateWorkspace: DashboardWorkspaceUpdater = (updater) => {
-      workspace = updater(workspace);
-    };
+  it('tombstones a shipped service only when its merged index still owns the ID', () => {
+    const update = captureDraftUpdate();
+    const controller = createDashboardContactMutationController({
+      shipped: content({ contacts: [contact('contact-a'), contact('contact-b')] }),
+      draftState: createEmptyDashboardDraftState(),
+      updateDraftState: update.updateDraftState,
+    });
+
+    controller.onServiceRemove(1, 'contact-b');
+
+    expect(update.latest?.removedContactIds).toEqual(['contact-b']);
+  });
+
+  it('ignores a service removal when the selected index belongs to another ID', () => {
+    const update = captureDraftUpdate();
     const controller = createDashboardContactMutationController({
       shipped: content({ contacts: [contact('contact-a')] }),
       draftState: createEmptyDashboardDraftState(),
-      updateDraftState: () => {},
-      updateWorkspace,
+      updateDraftState: update.updateDraftState,
     });
 
-    controller.onServiceRemove(0, 'contact-a');
+    controller.onServiceRemove(0, 'contact-b');
 
-    expect(workspace.local.contacts).toEqual([]);
-  });
-});
-
-describe('dashboard publication adapter', () => {
-  it('builds the payload consumed by PublishDashboard without dropping locations', () => {
-    const payload = content({ locations: [location('loc-a')], defaultGroupOrder: 3 });
-
-    expect(buildDashboardPublicationPayload(payload)).toEqual(payload);
-  });
-
-  it('clears the draft only when the confirmed-publication callback is invoked', () => {
-    const clearDraft = vi.fn();
-    const onPublished = createDashboardPublicationSuccessHandler(clearDraft);
-    const snapshot = { revision: 4 } as PublishedContentSnapshot;
-
-    expect(clearDraft).not.toHaveBeenCalled();
-    onPublished(snapshot);
-    expect(clearDraft).toHaveBeenCalledOnce();
+    expect(update.latest).toEqual(createEmptyDashboardDraftState());
   });
 });

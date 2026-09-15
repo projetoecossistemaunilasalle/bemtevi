@@ -1,31 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PublishDashboard } from '../PublishDashboard';
-import {
-  PublishedContentContext,
-  type PublishedContentContextValue,
-} from '../../../app/content/PublishedContentContext';
-import { AdminAuthContext, type AdminAuthContextValue } from '../../../app/auth/AdminAuthContext';
-import type { AdminAccount } from '../../../app/auth/adminAuth';
-import { type PublishedContentPayload, type PublishedContentSnapshot } from '../../../app/content/publishedContent';
-import { PublishedContentRepositoryError } from '../../../app/content/publishedContentRepository';
-import type { ServiceDirectoryEntry } from '../../../domain/services/types';
+import type { PublishedContentPayload } from '../../../app/content/publishedContent';
 import type { DashboardValidationResult } from '../../validation/validationTypes';
-
-const contact: ServiceDirectoryEntry = {
-  id: 'contact-one',
-  name: 'Contato Um',
-  type: 'CAPS',
-  badgeTone: 'primary',
-  city: '',
-  state: '',
-  address: 'Rua Um, 123',
-  phoneDisplay: '(51) 3000-0000',
-  phoneHref: 'tel:5130000000',
-  review: { status: 'pending_review', reviewedBy: null, reviewedAt: null, notes: '' },
-};
+import { PublishDashboard, type PublishDashboardProps } from '../PublishDashboard';
+import type { PublicationPreview } from '../usePublicationController';
 
 const baseline: PublishedContentPayload = {
   flows: [],
@@ -38,7 +17,7 @@ const baseline: PublishedContentPayload = {
 
 const draftWithChanges: PublishedContentPayload = {
   ...baseline,
-  contacts: [contact],
+  defaultGroupOrder: 1,
 };
 
 const emptyValidation: DashboardValidationResult = { errors: [], warnings: [] };
@@ -48,197 +27,94 @@ const validationWithError: DashboardValidationResult = {
   warnings: [],
 };
 
-function makeSnapshot(revision: number, payload: PublishedContentPayload = baseline): PublishedContentSnapshot {
-  return {
-    schemaVersion: '1.0.0',
-    revision,
-    payload,
-    publishedAt: '2026-07-12T00:00:00.000Z',
-    publishedBy: 'admin-id',
+function renderPublish(overrides: Partial<PublishDashboardProps> = {}) {
+  const callbacks = {
+    onOpenReview: vi.fn(),
+    onPublish: vi.fn(),
+    onCloseReview: vi.fn(),
   };
-}
-
-const account: AdminAccount = { id: 'admin-id', email: 'admin@bemtevi.test' };
-
-function renderPublish({
-  legacyPublish = vi.fn<
-    (
-      payload: PublishedContentPayload,
-      publisherId: string,
-      expectedRevision: number | null,
-    ) => Promise<import('../../../app/content/publishedContent').PublishedContentSnapshot>
-  >(),
-  snapshot = makeSnapshot(4),
-  currentAccount = account as AdminAccount | null,
-  draft = draftWithChanges,
-  basePayload,
-  refreshLatest,
-  validation = emptyValidation,
-  onPublished = vi.fn(),
-  onOpenValidationArea = vi.fn(),
-}: {
-  legacyPublish?: (
-    payload: PublishedContentPayload,
-    publisherId: string,
-    expectedRevision: number | null,
-  ) => Promise<PublishedContentSnapshot>;
-  snapshot?: PublishedContentSnapshot | null;
-  currentAccount?: AdminAccount | null;
-  draft?: PublishedContentPayload;
-  basePayload?: PublishedContentPayload;
-  refreshLatest?: () => Promise<PublishedContentSnapshot | null>;
-  validation?: DashboardValidationResult;
-  onPublished?: (next: PublishedContentSnapshot) => void;
-  onOpenValidationArea?: (area: import('../../validation/validationTypes').DashboardValidationArea) => void;
-} = {}) {
-  const publishedValue: PublishedContentContextValue = {
-    content: baseline,
-    snapshot,
-    source: 'database',
-    status: 'ready',
-    loadError: null,
-    refresh: vi.fn(),
-    refreshLatest,
+  const props: PublishDashboardProps = {
+    baseline,
+    draft: draftWithChanges,
+    validation: emptyValidation,
+    phase: 'editing',
+    message: null,
+    preview: null,
+    busy: false,
+    disabled: false,
+    readOnly: false,
+    ...callbacks,
+    ...overrides,
   };
-  const authValue: AdminAuthContextValue = {
-    status: currentAccount ? 'authenticated' : 'unauthenticated',
-    account: currentAccount,
-    login: vi.fn(),
-    logout: vi.fn(),
-    refresh: vi.fn(),
-  };
-
-  const ui: ReactElement = (
-    <PublishedContentContext.Provider value={publishedValue}>
-      <AdminAuthContext.Provider value={authValue}>
-        <PublishDashboard
-          mode="legacy"
-          baseline={baseline}
-          draft={draft}
-          validation={validation}
-          draftUpdatedAt="2026-07-12T00:00:00.000Z"
-          basePayload={basePayload}
-          refreshLatest={refreshLatest}
-          legacyPublish={legacyPublish}
-          onPublished={onPublished}
-          onResetDrafts={vi.fn()}
-          onOpenValidationArea={onOpenValidationArea}
-        />
-      </AdminAuthContext.Provider>
-    </PublishedContentContext.Provider>
-  );
-
-  return { ...render(ui), legacyPublish, onPublished, onOpenValidationArea };
+  return { ...render(<PublishDashboard {...props} />), ...callbacks };
 }
 
 describe('PublishDashboard', () => {
-  async function prepare(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    await screen.findByRole('heading', { name: 'Revisão final' });
-  }
-  async function review(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole('button', { name: 'Confirmar revisão do resultado' }));
-    await screen.findByRole('button', { name: 'Confirmar publicação' });
-  }
-  it('shows all local changes and blocks invalid content', () => {
+  it('shows the V2 diff and blocks invalid content', () => {
     renderPublish({ validation: validationWithError });
+
     expect(screen.getByRole('heading', { name: 'Alterações do seu rascunho (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Ainda não é possível publicar');
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
-  it('requires review of the exact combined candidate before sending', async () => {
+
+  it('requests the guarded review through the controller callback', async () => {
     const user = userEvent.setup();
-    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(5, draftWithChanges));
-    const { onPublished } = renderPublish({ legacyPublish });
-    await prepare(user);
-    expect(legacyPublish).not.toHaveBeenCalled();
-    await review(user);
-    expect(legacyPublish).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    await waitFor(() => expect(onPublished).toHaveBeenCalledWith(makeSnapshot(5, draftWithChanges)));
-    expect(legacyPublish).toHaveBeenCalledWith(draftWithChanges, account.id, 4);
-  });
-  it('prepares independent concurrent changes without automatically publishing', async () => {
-    const user = userEvent.setup();
-    const remote = { ...baseline, defaultGroupOrder: 2 };
-    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(6));
-    renderPublish({
-      legacyPublish,
-      basePayload: baseline,
-      refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
-    });
-    await prepare(user);
-    expect(legacyPublish).not.toHaveBeenCalled();
-    await review(user);
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    expect(legacyPublish).toHaveBeenCalledWith({ ...draftWithChanges, defaultGroupOrder: 2 }, account.id, 5);
-  });
-  it('resolves and undoes a field conflict without resetting the draft', async () => {
-    const user = userEvent.setup();
-    const b = { ...baseline, contacts: [contact] };
-    const local = { ...b, contacts: [{ ...contact, name: 'Minha alteração' }] };
-    const remote = { ...b, contacts: [{ ...contact, name: 'Alteração publicada' }] };
-    const legacyPublish = vi.fn().mockResolvedValue(makeSnapshot(6, local));
-    const onMergeConflict = vi.fn();
-    renderPublish({
-      legacyPublish,
-      basePayload: b,
-      draft: local,
-      refreshLatest: vi.fn().mockResolvedValue(makeSnapshot(5, remote)),
-    });
+    const { onOpenReview } = renderPublish();
+
     await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
-    expect(await screen.findByText('1 conflitos pendentes')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Contatos \/ contact-one \/ Nome/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Alterações já publicadas/ })).toBeInTheDocument();
-    expect(legacyPublish).not.toHaveBeenCalled();
-    expect(onMergeConflict).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
-    expect(await screen.findByText('0 conflitos pendentes')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Desfazer escolha' }));
-    expect(await screen.findByText('1 conflitos pendentes')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Usar minha alteração' }));
-    await review(user);
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    expect(legacyPublish).toHaveBeenCalledWith(local, account.id, 5);
+
+    expect(onOpenReview).toHaveBeenCalledOnce();
   });
-  it('does not blindly retry when the remote advances after review', async () => {
-    const user = userEvent.setup();
-    const legacyPublish = vi.fn().mockRejectedValue(new PublishedContentRepositoryError('conflict', 'private detail'));
-    const refreshLatest = vi
-      .fn()
-      .mockResolvedValueOnce(makeSnapshot(4))
-      .mockResolvedValueOnce(makeSnapshot(5, { ...baseline, defaultGroupOrder: 2 }));
-    renderPublish({ legacyPublish, refreshLatest });
-    await prepare(user);
-    await review(user);
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    expect(await screen.findByText(/Há uma nova publicação/)).toBeInTheDocument();
-    expect(legacyPublish).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: 'Confirmar publicação' })).not.toBeInTheDocument();
-  });
-  it('blocks confirmation without real authentication', async () => {
-    const user = userEvent.setup();
-    const { legacyPublish } = renderPublish({ currentAccount: null });
-    await prepare(user);
-    await review(user);
-    expect(screen.getByRole('button', { name: 'Confirmar publicação' })).toBeDisabled();
-    expect(legacyPublish).not.toHaveBeenCalled();
-  });
-  it('preserves export and does not leak comparison errors', () => {
-    const invalid = { ...draftWithChanges, contacts: [contact, contact] };
-    renderPublish({ draft: invalid });
-    expect(screen.getByRole('alert')).toHaveTextContent('Seu rascunho não foi descartado');
+
+  it('keeps review and publication actions disabled in read-only mode', () => {
+    renderPublish({ readOnly: true });
+
+    expect(screen.getByRole('status')).toHaveTextContent('temporariamente desativadas');
     expect(screen.getByRole('button', { name: 'Publicar alterações' })).toBeDisabled();
   });
-  it('reports uncertain results safely and prevents duplicate sends', async () => {
+
+  it('renders the exact controller preview and forwards review actions', async () => {
     const user = userEvent.setup();
-    const legacyPublish = vi.fn().mockRejectedValue(new Error('secret database stack'));
-    renderPublish({ legacyPublish });
-    await prepare(user);
-    await review(user);
-    await user.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Não foi possível confirmar o resultado');
-    expect(alert).not.toHaveTextContent('secret');
-    expect(legacyPublish).toHaveBeenCalledTimes(1);
+    const { onPublish, onCloseReview } = renderPublish({
+      preview: {
+        draft: { generation: 7 } as PublicationPreview['draft'],
+        liveRevision: 4,
+        candidate: draftWithChanges,
+      },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Revisão final antes de publicar' })).toBeInTheDocument();
+    expect(screen.getByText(/Geração do rascunho: 7/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Publicar' }));
+    await user.click(screen.getByRole('button', { name: 'Encerrar revisão' }));
+
+    expect(onPublish).toHaveBeenCalledOnce();
+    expect(onCloseReview).toHaveBeenCalledOnce();
+  });
+
+  it('renders controller errors and successful publication state without leaking details', () => {
+    const { rerender } = renderPublish({ phase: 'error', message: 'Não foi possível publicar.' });
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível publicar.');
+
+    rerender(
+      <PublishDashboard
+        {...{
+          baseline,
+          draft: draftWithChanges,
+          validation: emptyValidation,
+          phase: 'success',
+          message: null,
+          preview: null,
+          busy: false,
+          disabled: false,
+          readOnly: false,
+          onOpenReview: vi.fn(),
+          onPublish: vi.fn(),
+          onCloseReview: vi.fn(),
+        }}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('O conteúdo está publicado.');
   });
 });
