@@ -18,7 +18,6 @@ vi.mock('../editorFlags', async (importOriginal) => {
 const flagState = vi.hoisted(() => ({ readOnly: false }));
 
 vi.mocked(editorFlagsModule.getEditorFlags).mockImplementation(() => ({
-  v2Enabled: true,
   readOnly: flagState.readOnly,
 }));
 

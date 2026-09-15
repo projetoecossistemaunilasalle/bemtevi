@@ -109,10 +109,10 @@ Quando os artefatos do pacote MCP existirem (MCP-01+), o `check` também roda `t
    - Alterações em arquivos JSON sob `src/content` servem como fallback embutido no bundle. O conteúdo servido em produção é versionado no banco via Neon Data API através do Dashboard administrativo.
    - `content:pull` apenas lê e espelha a revisão atual do Neon no Git; não grava dados no banco.
 
-## 5. Conexão com LLM e verificação
+## 5. Fluxo editorial assistido e verificação
 
-- O procedimento completo está em [`docs/ai-agent-connector.md`](docs/ai-agent-connector.md).
-- O agente acessa a ponte local em `http://127.0.0.1:4318`; esse endereço não é a página para revisar mudanças.
+- O fluxo editorial file-first e os assistentes conectados usam o dashboard e o pacote MCP standalone; não há ponte local ou sincronização de rascunho no repositório.
+- Desenvolvedores devem consultar o [dossiê V2](docs/plans/ai-content-editor-v2-revision-8/README.md) e o [pacote MCP standalone](packages/content-mcp/README.md).
 - O link de verificação é o frontend servido pelo Vite: `http://localhost:<porta>/bemtevi/`. A porta padrão é `3000`; se ela estiver ocupada, use `pnpm run dev -- --port 3001` e abra `http://localhost:3001/bemtevi/`.
 - O dashboard fica em `http://localhost:<porta>/bemtevi/dashboard`, após o login em `http://localhost:<porta>/bemtevi/login`.
-- A conexão com o LLM gera um rascunho local. A publicação no Neon continua sendo explícita no dashboard, depois de revisar a prévia/diff.
+- Assistentes conectados trabalham sobre o rascunho canônico no Neon. A publicação continua sendo explícita no dashboard, depois de revisar a prévia/diff.

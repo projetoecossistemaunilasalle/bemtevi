@@ -170,18 +170,6 @@ function runStep(step) {
       }
       runNodeFile('packages/content-mcp/scripts/tarball-smoke.mjs');
       break;
-    case 'content-agent:mcp':
-      runBin('tsx', ['scripts/content-agent/server.ts']);
-      break;
-    case 'content-agent:sync':
-      runBin('tsx', ['scripts/content-agent/syncServer.ts']);
-      break;
-    case 'content-agent:login':
-      runBin('tsx', ['scripts/content-agent/authCli.ts', 'login']);
-      break;
-    case 'content-agent:logout':
-      runBin('tsx', ['scripts/content-agent/authCli.ts', 'logout']);
-      break;
     default:
       fail(`Unknown check step: ${step}`);
   }
@@ -233,18 +221,6 @@ function runCli(cmd, args = []) {
       break;
     case 'content:pull':
       runBin('tsx', ['scripts/content-pull.ts']);
-      break;
-    case 'content-agent:mcp':
-      runBin('tsx', ['scripts/content-agent/server.ts']);
-      break;
-    case 'content-agent:sync':
-      runBin('tsx', ['scripts/content-agent/syncServer.ts']);
-      break;
-    case 'content-agent:login':
-      runBin('tsx', ['scripts/content-agent/authCli.ts', 'login']);
-      break;
-    case 'content-agent:logout':
-      runBin('tsx', ['scripts/content-agent/authCli.ts', 'logout']);
       break;
     case 'check:architecture':
       runStep('check:architecture');

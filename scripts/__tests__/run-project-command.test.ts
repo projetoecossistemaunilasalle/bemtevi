@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   buildVitestRunArgs,
@@ -6,6 +8,15 @@ import {
   mcpSuiteReady,
   hasMcpBuildScript,
 } from '../run-project-command.mjs';
+
+const RETIRED_COMMANDS = [
+  'agent:bridge',
+  'content-agent:mcp',
+  'content-agent:sync',
+  'content-agent:login',
+  'content-agent:logout',
+];
+const RUNNER_PATH = path.resolve(process.cwd(), 'scripts/run-project-command.mjs');
 
 describe('resolveModulesDir', () => {
   it('uses node_modules.win on native Windows', () => {
@@ -68,5 +79,17 @@ describe('MCP gate readiness', () => {
   it('does not claim MCP suite/build before MCP-01 artifacts exist', () => {
     expect(mcpSuiteReady(() => false)).toBe(false);
     expect(hasMcpBuildScript(() => false)).toBe(false);
+  });
+});
+
+describe('retired local editor commands', () => {
+  it.each(RETIRED_COMMANDS)('rejects %s', (command) => {
+    const result = spawnSync(process.execPath, [RUNNER_PATH, command], {
+      encoding: 'utf8',
+      shell: false,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`Unknown command: ${command}`);
   });
 });

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { getEditorFlags, parseEditorFlag, type EditorFlags } from '../editorFlags';
 
 /**
- * Flag-parsing proof (doc 16 / task INTEGRATION-02): only the exact string
- * `'true'` enables a flag. Every other observed value — including the boolean
- * `true` — must keep the flag disabled.
+ * Flag-parsing proof: only the exact string `'true'` enables the read-only
+ * flag. Every other observed value — including the boolean `true` — must keep
+ * the flag disabled.
  */
 const NON_ENABLING_VALUES: Array<{ label: string; value: unknown }> = [
   { label: 'undefined', value: undefined },
@@ -31,7 +31,6 @@ describe('getEditorFlags', () => {
     // The test environment defines neither variable, which is itself the
     // "missing value" case of the frozen parsing rule.
     const flags: EditorFlags = getEditorFlags();
-    expect(flags.v2Enabled).toBe(false);
     expect(flags.readOnly).toBe(false);
   });
 });

@@ -8,12 +8,9 @@ import type { Database } from '../neon/database';
 import { defaultNeonClient, type BemTeViNeonClient } from '../neon/client';
 
 /**
- * Read-only repository for the published content (INTEGRATION-02). The former
- * direct `publishContent` write path was MOVED into the temporary
- * `src/dev-dashboard/publishing/legacyPublication.ts` adapter, reachable only
- * from the legacy (`v2Enabled=false`) dashboard branch during coexistence.
- * V2 publication goes exclusively through the guarded
- * `DraftRepository.prepare()` + `DraftRepository.publish()` protocol.
+ * Read-only repository for published content. Editorial publication goes
+ * exclusively through the guarded `DraftRepository.prepare()` +
+ * `DraftRepository.publish()` protocol.
  */
 
 export type PublishedContentRepositoryErrorCode =

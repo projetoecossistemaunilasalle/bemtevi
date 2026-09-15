@@ -5,12 +5,10 @@
  * Literal Vite-flag parsing: a flag is enabled ONLY by the exact string
  * `'true'`. Missing values, `'false'`, `'TRUE'`, `'1'`, empty strings and
  * booleans are all disabled. There is no localStorage, query-string or runtime
- * override — the build-time `import.meta.env` values are the single source.
+ * override — the build-time `import.meta.env` value is the single source.
  */
 
 export interface EditorFlags {
-  /** Selects the V2 canonical editor when true; legacy editor when false. */
-  v2Enabled: boolean;
   /** Emergency UI kill flag: blocks browser-side editorial mutations. */
   readOnly: boolean;
 }
@@ -20,10 +18,9 @@ export function parseEditorFlag(value: unknown): boolean {
   return value === 'true';
 }
 
-/** Reads only the two frozen VITE_ variables; no runtime override exists. */
+/** Reads only the frozen read-only flag; no runtime override exists. */
 export function getEditorFlags(): EditorFlags {
   return {
-    v2Enabled: parseEditorFlag(import.meta.env.VITE_EDITOR_V2_ENABLED),
     readOnly: parseEditorFlag(import.meta.env.VITE_EDITOR_READ_ONLY),
   };
 }

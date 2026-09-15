@@ -3,10 +3,6 @@
     "Neon": {
       "type": "http",
       "url": "https://mcp.neon.tech/mcp"
-    },
-    "bemtevi-content": {
-      "command": "pnpm",
-      "args": ["run", "content-agent:mcp"]
     }
   }
 }

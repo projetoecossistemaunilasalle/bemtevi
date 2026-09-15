@@ -24,10 +24,8 @@ import { validateDashboardEducation } from './education/educationValidation';
 import { validateDashboardFlows } from './flows/flowValidation';
 
 /**
- * V2-only dashboard (LEGACY-01): the legacy local-persistence branch, the
- * `v2Enabled` coexistence flag and the temporary direct-publication adapter
- * are gone. Neon published content is the only public read source; the
- * canonical draft lives in Neon through `useDraftWorkspace`.
+ * Canonical dashboard: Neon published content is the only public read source;
+ * the editable draft lives in Neon through `useDraftWorkspace`.
  * `VITE_EDITOR_READ_ONLY` remains the emergency UI kill flag.
  */
 export function DashboardRoute() {

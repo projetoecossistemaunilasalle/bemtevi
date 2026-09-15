@@ -1,6 +1,2 @@
 [mcp_servers.Neon]
 url = "https://mcp.neon.tech/mcp"
-
-[mcp_servers.bemtevi-content]
-command = "pnpm"
-args = ["run", "content-agent:mcp"]

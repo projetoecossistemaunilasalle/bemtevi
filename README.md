@@ -15,7 +15,7 @@ Aplicação web (mobile-first, PWA) de apoio à saúde mental de educadores, em 
 - **Organização:** `src/features` (telas por funcionalidade), `src/domain` (regras de negócio), `src/design-system` (primitivos de UI), `src/lib` (utilidades), `src/content` (dados).
 - **Motor de fluxos:** `src/domain/flow-engine` interpreta fluxos JSON (`src/content/flows/*.json`) com nós, opções, regras de resultado e regras de segurança — sem IA.
 - **Neon como fonte de conteúdo publicado:** o que o usuário vê (flows, recursos, grupos, contatos) é uma revisão completa e versionada no Postgres (Neon). O `PublishedContentProvider` inicia o app com o conteúdo embutido no bundle e, ao montar e a cada foco da janela, busca a revisão atual na tabela `published_content` via Neon Data API (`id='current'`, contador de revisão). Revisão válida → passa a servir o banco; ausente/erro → mantém o fallback do bundle. Não há push em tempo real.
-- **Publicação:** o dashboard admin edita e valida o conteúdo; o publish grava a próxima revisão no Neon (revisão `1` na primeira publicação, incremento a cada publish). Conflito de revisão ou falha de validação mantém o rascunho local intacto.
+- **Publicação:** o dashboard admin edita e valida o conteúdo; o publish grava a próxima revisão no Neon (revisão `1` na primeira publicação, incremento a cada publish). Conflito de revisão ou falha de validação mantém o rascunho canônico intacto.
 - **Auth:** leitura pública via Neon Auth (token anônimo); escrita administrativa restrita a contas Neon Auth em `public.admin_users`, com políticas RLS (`public.is_admin()`) na Neon Data API.
 - **Dashboard admin:** rotas `/login` e `/dashboard`, disponíveis apenas com `VITE_ENABLE_DEV_DASHBOARD=true` + conta autorizada em `public.admin_users`.
 
@@ -73,7 +73,7 @@ Copie `.env.example` para `.env`:
 - **Conteúdo embutido é só fallback:** editar JSON em `src/content` não muda o que os usuários veem — é preciso publicar uma nova revisão no Neon, salvo quando o banco está vazio ou indisponível.
 - **Sem publicação pelo repositório:** não existe comando ou variável de ambiente que envie conteúdo local ao Neon. O Dashboard é o único publicador; `content:pull` apenas espelha o Neon no Git.
 - **Importação de fluxos:** o Dashboard aceita um arquivo JSON de fluxo como rascunho. O arquivo é validado e só chega ao Neon após revisão e publicação explícita no painel.
-- **Publish não sobrescreve:** conflito de revisão ou falha de validação mantém o rascunho local intacto.
+- **Publish não sobrescreve:** conflito de revisão ou falha de validação mantém o rascunho canônico intacto.
 - **Limites de payload:** 1 MiB por imagem, 5 MiB por requisição.
 
 ## Documentação
